@@ -1,9 +1,18 @@
 import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export interface ProductInfo {
   name: string
   category?: string
   image_url?: string
+}
+
+interface LookupResult {
+  product: {
+    name: string
+    category: string | null
+    image_url: string | null
+  } | null
 }
 
 export function useBarcodeLookup() {
@@ -14,30 +23,16 @@ export function useBarcodeLookup() {
     setIsLoading(true)
     setError(null)
     try {
-      // Lookup via Open Food Facts API (public, no key needed)
-      const response = await fetch(
-        `https://world.openfoodfacts.org/api/v3/product/${encodeURIComponent(barcode)}.json`,
+      const { data, error: fnError } = await supabase.functions.invoke<LookupResult>(
+        'barcode-lookup',
+        { body: { barcode } },
       )
-      if (!response.ok) {
-        return null
-      }
-      const json = (await response.json()) as {
-        status: string
-        product?: {
-          product_name?: string
-          categories_tags?: string[]
-          image_url?: string
-        }
-      }
-      if (json.status !== 'success' || !json.product) {
-        return null
-      }
-      const product = json.product
-      const category = product.categories_tags?.[0]?.replace(/^en:/, '') ?? undefined
+      if (fnError) throw fnError
+      if (!data?.product) return null
       return {
-        name: product.product_name ?? '',
-        category,
-        image_url: product.image_url ?? undefined,
+        name: data.product.name,
+        category: data.product.category ?? undefined,
+        image_url: data.product.image_url ?? undefined,
       }
     } catch {
       setError('Failed to look up product')
