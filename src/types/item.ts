@@ -32,6 +32,7 @@ export type Item = z.infer<typeof itemSchema>
 export type ItemFormValues = z.infer<typeof itemFormSchema>
 
 export type ExpiryStatus = 'expired' | 'expiring-soon' | 'ok' | 'unknown'
+export const EXPIRY_WARNING_DAYS = 3
 
 export function getExpiryStatus(expiryDate: string | null | undefined): ExpiryStatus {
   if (!expiryDate) return 'unknown'
@@ -42,6 +43,6 @@ export function getExpiryStatus(expiryDate: string | null | undefined): ExpirySt
   const diffMs = expiry.getTime() - today.getTime()
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
   if (diffDays < 0) return 'expired'
-  if (diffDays <= 3) return 'expiring-soon'
+  if (diffDays <= EXPIRY_WARNING_DAYS) return 'expiring-soon'
   return 'ok'
 }
