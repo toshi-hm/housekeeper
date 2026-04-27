@@ -1,58 +1,62 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
-import { BrowserMultiFormatReader } from '@zxing/browser'
-import { NotFoundException } from '@zxing/library'
-import type { IScannerControls } from '@zxing/browser'
-import { Camera, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useRef, useEffect, useState, useCallback } from "react";
+import { BrowserMultiFormatReader } from "@zxing/browser";
+import { NotFoundException } from "@zxing/library";
+import type { IScannerControls } from "@zxing/browser";
+import { Camera, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface BarcodeScannerProps {
-  onScan: (barcode: string) => void
-  onClose: () => void
+  onScan: (barcode: string) => void;
+  onClose: () => void;
 }
 
 export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const controlsRef = useRef<IScannerControls | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isStarting, setIsStarting] = useState(true)
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(true);
 
   const startScanning = useCallback(async () => {
     try {
-      const reader = new BrowserMultiFormatReader()
-      const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices()
+      const reader = new BrowserMultiFormatReader();
+      const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
       // Prefer rear camera on mobile
       const rearCamera = videoInputDevices.find(
         (d) =>
-          d.label.toLowerCase().includes('back') ||
-          d.label.toLowerCase().includes('rear') ||
-          d.label.toLowerCase().includes('environment'),
-      )
-      const deviceId = rearCamera?.deviceId ?? videoInputDevices[0]?.deviceId ?? undefined
+          d.label.toLowerCase().includes("back") ||
+          d.label.toLowerCase().includes("rear") ||
+          d.label.toLowerCase().includes("environment"),
+      );
+      const deviceId = rearCamera?.deviceId ?? videoInputDevices[0]?.deviceId ?? undefined;
 
-      if (!videoRef.current) return
+      if (!videoRef.current) return;
 
-      const controls = await reader.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
-        if (result) {
-          onScan(result.getText())
-        }
-        if (err && !(err instanceof NotFoundException)) {
-          // ignore NotFoundException (no barcode in frame yet)
-        }
-      })
-      controlsRef.current = controls
-      setIsStarting(false)
+      const controls = await reader.decodeFromVideoDevice(
+        deviceId,
+        videoRef.current,
+        (result, err) => {
+          if (result) {
+            onScan(result.getText());
+          }
+          if (err && !(err instanceof NotFoundException)) {
+            // ignore NotFoundException (no barcode in frame yet)
+          }
+        },
+      );
+      controlsRef.current = controls;
+      setIsStarting(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Camera access denied')
-      setIsStarting(false)
+      setError(err instanceof Error ? err.message : "Camera access denied");
+      setIsStarting(false);
     }
-  }, [onScan])
+  }, [onScan]);
 
   useEffect(() => {
-    void startScanning()
+    void startScanning();
     return () => {
-      controlsRef.current?.stop()
-    }
-  }, [startScanning])
+      controlsRef.current?.stop();
+    };
+  }, [startScanning]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black">
@@ -61,7 +65,12 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
           <Camera className="h-5 w-5" />
           <span className="font-medium">Scan Barcode</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="text-white hover:bg-white/20"
+        >
           <X className="h-5 w-5" />
         </Button>
       </div>
@@ -102,5 +111,5 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
         Point the camera at a barcode to scan
       </div>
     </div>
-  )
+  );
 }

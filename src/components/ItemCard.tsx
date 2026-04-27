@@ -1,35 +1,31 @@
-import { Link } from '@tanstack/react-router'
-import { Package, MapPin, Calendar, Hash } from 'lucide-react'
-import { Card, CardContent, CardFooter } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ExpiryBadge } from '@/components/ExpiryBadge'
-import { getExpiryStatus, type Item } from '@/types/item'
-import { cn } from '@/lib/utils'
+import { Link } from "@tanstack/react-router";
+import { Package, MapPin, Calendar, Hash } from "lucide-react";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ExpiryBadge } from "@/components/ExpiryBadge";
+import { getExpiryStatus, type Item } from "@/types/item";
+import { cn } from "@/lib/utils";
 
 interface ItemCardProps {
-  item: Item
+  item: Item;
 }
 
 export function ItemCard({ item }: ItemCardProps) {
-  const expiryStatus = getExpiryStatus(item.expiry_date)
-  const isUrgent = expiryStatus === 'expired' || expiryStatus === 'expiring-soon'
+  const expiryStatus = getExpiryStatus(item.expiry_date);
+  const isUrgent = expiryStatus === "expired" || expiryStatus === "expiring-soon";
 
   return (
     <Link to="/items/$itemId" params={{ itemId: item.id }}>
       <Card
         className={cn(
-          'h-full transition-shadow hover:shadow-md cursor-pointer',
-          isUrgent && 'border-yellow-400',
-          expiryStatus === 'expired' && 'border-red-400',
+          "h-full transition-shadow hover:shadow-md cursor-pointer",
+          isUrgent && "border-yellow-400",
+          expiryStatus === "expired" && "border-red-400",
         )}
       >
         {item.image_url ? (
           <div className="relative aspect-square overflow-hidden rounded-t-lg">
-            <img
-              src={item.image_url}
-              alt={item.name}
-              className="h-full w-full object-cover"
-            />
+            <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
           </div>
         ) : (
           <div className="flex aspect-square items-center justify-center rounded-t-lg bg-muted">
@@ -72,5 +68,5 @@ export function ItemCard({ item }: ItemCardProps) {
         </CardFooter>
       </Card>
     </Link>
-  )
+  );
 }

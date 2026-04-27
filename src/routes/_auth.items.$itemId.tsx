@@ -1,26 +1,26 @@
-import React from 'react'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, Edit, Trash2, Package, MapPin, Calendar, Hash, StickyNote } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ExpiryBadge } from '@/components/ExpiryBadge'
-import { useItem, useDeleteItem } from '@/hooks/useItems'
+import React from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Edit, Trash2, Package, MapPin, Calendar, Hash, StickyNote } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ExpiryBadge } from "@/components/ExpiryBadge";
+import { useItem, useDeleteItem } from "@/hooks/useItems";
 
-export const Route = createFileRoute('/_auth/items/$itemId')({
+export const Route = createFileRoute("/_auth/items/$itemId")({
   component: ItemDetailPage,
-})
+});
 
 function ItemDetailPage() {
-  const { itemId } = Route.useParams()
-  const navigate = useNavigate()
-  const { data: item, isLoading, error } = useItem(itemId)
-  const deleteItem = useDeleteItem()
+  const { itemId } = Route.useParams();
+  const navigate = useNavigate();
+  const { data: item, isLoading, error } = useItem(itemId);
+  const deleteItem = useDeleteItem();
 
   async function handleDelete() {
-    if (!confirm('Delete this item?')) return
-    await deleteItem.mutateAsync(itemId)
-    void navigate({ to: '/' })
+    if (!confirm("Delete this item?")) return;
+    await deleteItem.mutateAsync(itemId);
+    void navigate({ to: "/" });
   }
 
   if (isLoading) {
@@ -28,27 +28,27 @@ function ItemDetailPage() {
       <div className="flex min-h-[200px] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    )
+    );
   }
 
   if (error || !item) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="icon" onClick={() => void navigate({ to: '/' })}>
+        <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="rounded-lg border border-destructive p-4 text-destructive">
           Item not found.
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => void navigate({ to: '/' })}>
+        <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex gap-2">
@@ -60,7 +60,9 @@ function ItemDetailPage() {
           <Button
             variant="destructive"
             size="icon"
-            onClick={() => { void handleDelete() }}
+            onClick={() => {
+              void handleDelete();
+            }}
             disabled={deleteItem.isPending}
           >
             <Trash2 className="h-4 w-4" />
@@ -71,7 +73,12 @@ function ItemDetailPage() {
       {/* Product image */}
       {item.image_url ? (
         <div className="overflow-hidden rounded-lg">
-          <img src={item.image_url} alt={item.name} className="w-full object-contain" style={{ maxHeight: 240 }} />
+          <img
+            src={item.image_url}
+            alt={item.name}
+            className="w-full object-contain"
+            style={{ maxHeight: 240 }}
+          />
         </div>
       ) : (
         <div className="flex h-40 items-center justify-center rounded-lg bg-muted">
@@ -91,12 +98,20 @@ function ItemDetailPage() {
       {/* Details */}
       <Card>
         <CardContent className="p-4 space-y-3">
-          <DetailRow icon={<Hash className="h-4 w-4" />} label="Quantity" value={String(item.quantity)} />
+          <DetailRow
+            icon={<Hash className="h-4 w-4" />}
+            label="Quantity"
+            value={String(item.quantity)}
+          />
           {item.barcode && (
             <DetailRow icon={<Hash className="h-4 w-4" />} label="Barcode" value={item.barcode} />
           )}
           {item.storage_location && (
-            <DetailRow icon={<MapPin className="h-4 w-4" />} label="Location" value={item.storage_location} />
+            <DetailRow
+              icon={<MapPin className="h-4 w-4" />}
+              label="Location"
+              value={item.storage_location}
+            />
           )}
           {item.purchase_date && (
             <DetailRow
@@ -118,10 +133,18 @@ function ItemDetailPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
-function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function DetailRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex items-start gap-3">
       <span className="mt-0.5 text-muted-foreground">{icon}</span>
@@ -130,5 +153,5 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
         <p className="text-sm font-medium">{value}</p>
       </div>
     </div>
-  )
+  );
 }
