@@ -7,9 +7,5 @@
     "no-var": "error",
     "prefer-const": "error"
   },
-  "ignorePatterns": [
-    "dist",
-    "node_modules",
-    "src/routeTree.gen.ts"
-  ]
+  "ignorePatterns": ["dist", "node_modules", "src/routeTree.gen.ts"]
 }

@@ -1,38 +1,38 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { Plus, Search, AlertTriangle } from 'lucide-react'
-import { useState } from 'react'
-import { ItemCard } from '@/components/ItemCard'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useItems } from '@/hooks/useItems'
-import { getExpiryStatus } from '@/types/item'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Plus, Search, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { ItemCard } from "@/components/ItemCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useItems } from "@/hooks/useItems";
+import { getExpiryStatus } from "@/types/item";
 
-export const Route = createFileRoute('/_auth/')({
+export const Route = createFileRoute("/_auth/")({
   component: DashboardPage,
-})
+});
 
 function DashboardPage() {
-  const { data: items = [], isLoading, error } = useItems()
-  const [search, setSearch] = useState('')
+  const { data: items = [], isLoading, error } = useItems();
+  const [search, setSearch] = useState("");
 
   const filtered = items.filter(
     (item) =>
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       (item.category?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
       (item.barcode?.includes(search) ?? false),
-  )
+  );
 
   const urgentCount = items.filter((item) => {
-    const status = getExpiryStatus(item.expiry_date)
-    return status === 'expired' || status === 'expiring-soon'
-  }).length
+    const status = getExpiryStatus(item.expiry_date);
+    return status === "expired" || status === "expiring-soon";
+  }).length;
 
   if (isLoading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -40,7 +40,7 @@ function DashboardPage() {
       <div className="rounded-lg border border-destructive p-4 text-destructive">
         Failed to load items. Please try again.
       </div>
-    )
+    );
   }
 
   return (
@@ -64,8 +64,10 @@ function DashboardPage() {
         <div className="flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">
           <AlertTriangle className="h-5 w-5 shrink-0" />
           <p className="text-sm">
-            <span className="font-medium">{urgentCount} item{urgentCount > 1 ? 's' : ''}</span>{' '}
-            {urgentCount > 1 ? 'are' : 'is'} expiring soon or already expired.
+            <span className="font-medium">
+              {urgentCount} item{urgentCount > 1 ? "s" : ""}
+            </span>{" "}
+            {urgentCount > 1 ? "are" : "is"} expiring soon or already expired.
           </p>
         </div>
       )}
@@ -110,5 +112,5 @@ function DashboardPage() {
         </div>
       )}
     </div>
-  )
+  );
 }
