@@ -75,6 +75,7 @@ bun run build
 ### 6. Deploy to Cloudflare Pages
 
 Connect your GitHub repository to Cloudflare Pages with:
+
 - **Build command**: `bun run build`
 - **Build output directory**: `dist`
 - **Environment variables**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
