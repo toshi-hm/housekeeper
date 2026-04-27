@@ -28,7 +28,7 @@ create policy "Users can only access their own items"
   with check (auth.uid() = user_id);
 
 -- Automatically update updated_at timestamp
-create or replace function update_updated_at_column()
+create or replace function public.items_set_updated_at()
 returns trigger as $$
 begin
   new.updated_at = now();
@@ -39,7 +39,7 @@ $$ language plpgsql;
 create trigger set_updated_at
   before update on items
   for each row
-  execute procedure update_updated_at_column();
+  execute function public.items_set_updated_at();
 
 -- Indexes for common queries
 create index if not exists items_user_id_idx on items(user_id);
