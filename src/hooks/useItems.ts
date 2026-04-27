@@ -19,13 +19,26 @@ async function fetchItem(id: string): Promise<Item> {
   return data as Item;
 }
 
+function normalizeFormValues(values: Partial<ItemFormValues>) {
+  return {
+    ...values,
+    barcode: values.barcode || null,
+    category: values.category || null,
+    storage_location: values.storage_location || null,
+    purchase_date: values.purchase_date || null,
+    expiry_date: values.expiry_date || null,
+    notes: values.notes || null,
+    image_url: values.image_url || null,
+  };
+}
+
 async function createItem(values: ItemFormValues): Promise<Item> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
     .from("items")
     .insert({
-      ...values,
+      ...normalizeFormValues(values),
       user_id: userData.user.id,
       quantity: values.quantity ?? 1,
     })
@@ -38,7 +51,7 @@ async function createItem(values: ItemFormValues): Promise<Item> {
 async function updateItem(id: string, values: Partial<ItemFormValues>): Promise<Item> {
   const { data, error } = await supabase
     .from("items")
-    .update({ ...values, updated_at: new Date().toISOString() })
+    .update({ ...normalizeFormValues(values), updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
