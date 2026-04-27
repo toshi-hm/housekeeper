@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
-  "plugins": ["typescript"],
+  "plugins": ["typescript", "import"],
   "rules": {
     "no-console": "warn",
     "no-debugger": "error",
@@ -12,7 +12,8 @@
     "typescript/consistent-type-imports": [
       "error",
       { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
-    ]
+    ],
+    "import/no-duplicates": ["error", { "prefer-inline": true }]
   },
   "ignorePatterns": ["dist", "node_modules", "src/routeTree.gen.ts"]
 }

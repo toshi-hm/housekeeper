@@ -1,5 +1,4 @@
-import type { IScannerControls } from "@zxing/browser";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BrowserMultiFormatReader,type IScannerControls } from "@zxing/browser";
 import { NotFoundException } from "@zxing/library";
 import { Camera, X } from "lucide-react";
 import { useCallback,useEffect, useRef, useState } from "react";
