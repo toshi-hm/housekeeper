@@ -1,23 +1,14 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { Loader2, Package } from "lucide-react";
 import React, { useState } from "react";
-import { Package, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { supabase } from "@/lib/supabase";
 
-export const Route = createFileRoute("/login")({
-  beforeLoad: async () => {
-    const { data } = await supabase.auth.getSession();
-    if (data.session) {
-      throw redirect({ to: "/" });
-    }
-  },
-  component: LoginPage,
-});
-
-function LoginPage() {
+const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +16,7 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"login" | "signup">("login");
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -44,7 +35,7 @@ function LoginPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 px-4">
@@ -123,4 +114,14 @@ function LoginPage() {
       </Card>
     </div>
   );
-}
+};
+
+export const Route = createFileRoute("/login")({
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+      throw redirect({ to: "/" });
+    }
+  },
+  component: LoginPage,
+});

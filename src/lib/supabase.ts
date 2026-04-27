@@ -9,7 +9,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       items: {
@@ -66,6 +66,6 @@ export type Database = {
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
-};
+}
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);

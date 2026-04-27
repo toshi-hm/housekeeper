@@ -1,26 +1,16 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { Link, useRouter } from "@tanstack/react-router";
-import { Home, Plus, LogOut, Package } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
+import { Home, LogOut, Package, Plus } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 
-export const Route = createFileRoute("/_auth")({
-  beforeLoad: async () => {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
-      throw redirect({ to: "/login" });
-    }
-  },
-  component: AuthLayout,
-});
-
-function AuthLayout() {
+const AuthLayout = () => {
   const router = useRouter();
 
-  async function handleSignOut() {
+  const handleSignOut = async () => {
     await supabase.auth.signOut();
     void router.navigate({ to: "/login" });
-  }
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -73,4 +63,14 @@ function AuthLayout() {
       </nav>
     </div>
   );
-}
+};
+
+export const Route = createFileRoute("/_auth")({
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: AuthLayout,
+});

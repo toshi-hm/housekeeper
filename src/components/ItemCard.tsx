@@ -1,16 +1,17 @@
 import { Link } from "@tanstack/react-router";
-import { Package, MapPin, Calendar, Hash } from "lucide-react";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Calendar, Hash,MapPin, Package } from "lucide-react";
+
 import { ExpiryBadge } from "@/components/ExpiryBadge";
-import { getExpiryStatus, type Item } from "@/types/item";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { getExpiryStatus, type Item } from "@/types/item";
 
 interface ItemCardProps {
   item: Item;
 }
 
-export function ItemCard({ item }: ItemCardProps) {
+export const ItemCard = ({ item }: ItemCardProps) => {
   const expiryStatus = getExpiryStatus(item.expiry_date);
   const isUrgent = expiryStatus === "expired" || expiryStatus === "expiring-soon";
 
@@ -69,4 +70,4 @@ export function ItemCard({ item }: ItemCardProps) {
       </Card>
     </Link>
   );
-}
+};

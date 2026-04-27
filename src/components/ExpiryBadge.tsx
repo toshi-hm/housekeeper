@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { getExpiryStatus, type ExpiryStatus } from "@/types/item";
+import { type ExpiryStatus,getExpiryStatus } from "@/types/item";
 
 interface ExpiryBadgeProps {
   expiryDate: string | null | undefined;
@@ -15,11 +15,11 @@ const statusConfig: Record<
   unknown: { label: "No expiry", variant: "outline" },
 };
 
-export function ExpiryBadge({ expiryDate }: ExpiryBadgeProps) {
+export const ExpiryBadge = ({ expiryDate }: ExpiryBadgeProps) => {
   const status = getExpiryStatus(expiryDate);
   const { label, variant } = statusConfig[status];
 
   if (status === "unknown") return null;
 
   return <Badge variant={variant}>{label}</Badge>;
-}
+};

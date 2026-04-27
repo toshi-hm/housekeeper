@@ -53,3 +53,16 @@ Read the relevant spec file before implementing any feature.
 - atoms / molecules / organismsを作ったら、必ず .stories.tsx を同時に作成する
 - Storyの規約はdocs/specs/storybook.mdに従う
 
+### TypeScript 記法ルール（lintで強制）
+- **関数定義**: `function` 宣言は使わず、必ず `const hoge = () => {}` で記載する
+- **型定義**: `type` ではなく `interface` を使う（ユニオン型など`interface`で表現できない場合は除く）
+- **type import**: 型のみのimportは必ず `import type` または `import { type Foo }` を使う
+  ```ts
+  // NG
+  import { Foo } from './foo'
+  // OK
+  import type { Foo } from './foo'
+  import { type Foo } from './foo'
+  ```
+- **import順序**: ESLintの `simple-import-sort` で自動整列（`bun run lint` で検出、IDEの自動修正も可）
+

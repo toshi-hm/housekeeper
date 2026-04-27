@@ -1,24 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
 import { ItemForm } from "@/components/ItemForm";
+import { Button } from "@/components/ui/button";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
 import type { ItemFormValues } from "@/types/item";
 
-export const Route = createFileRoute("/_auth/items/$itemId/edit")({
-  component: EditItemPage,
-});
-
-function EditItemPage() {
+const EditItemPage = () => {
   const { itemId } = Route.useParams();
   const navigate = useNavigate();
   const { data: item, isLoading } = useItem(itemId);
   const updateItem = useUpdateItem(itemId);
 
-  async function handleSubmit(values: ItemFormValues) {
+  const handleSubmit = async (values: ItemFormValues) => {
     await updateItem.mutateAsync(values);
     void navigate({ to: "/items/$itemId", params: { itemId } });
-  }
+  };
 
   if (isLoading) {
     return (
@@ -68,4 +65,8 @@ function EditItemPage() {
       />
     </div>
   );
-}
+};
+
+export const Route = createFileRoute("/_auth/items/$itemId/edit")({
+  component: EditItemPage,
+});

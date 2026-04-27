@@ -1,8 +1,9 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import type { IScannerControls } from "@zxing/browser";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { NotFoundException } from "@zxing/library";
-import type { IScannerControls } from "@zxing/browser";
 import { Camera, X } from "lucide-react";
+import { useCallback,useEffect, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 
 interface BarcodeScannerProps {
@@ -10,7 +11,7 @@ interface BarcodeScannerProps {
   onClose: () => void;
 }
 
-export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
+export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   }, [onScan]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void startScanning();
     return () => {
       controlsRef.current?.stop();
@@ -112,4 +114,4 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
       </div>
     </div>
   );
-}
+};
