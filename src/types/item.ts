@@ -38,8 +38,8 @@ export function getExpiryStatus(expiryDate: string | null | undefined): ExpirySt
   if (!expiryDate) return "unknown";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const expiry = new Date(expiryDate);
-  expiry.setHours(0, 0, 0, 0);
+  const [year, month, day] = expiryDate.split("-").map(Number);
+  const expiry = new Date(year, month - 1, day);
   const diffMs = expiry.getTime() - today.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   if (diffDays < 0) return "expired";
