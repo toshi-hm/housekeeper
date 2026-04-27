@@ -38,6 +38,7 @@ function AuthLayout() {
               void handleSignOut();
             }}
             title="Sign out"
+            aria-label="Sign out"
           >
             <LogOut className="h-5 w-5" />
           </Button>
