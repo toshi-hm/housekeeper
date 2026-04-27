@@ -78,7 +78,16 @@ export function ItemForm({
       setErrors(newErrors);
       return;
     }
-    onSubmit(values);
+    onSubmit({
+      ...values,
+      barcode: values.barcode || undefined,
+      category: values.category || undefined,
+      storage_location: values.storage_location || undefined,
+      purchase_date: values.purchase_date || undefined,
+      expiry_date: values.expiry_date || undefined,
+      notes: values.notes || undefined,
+      image_url: values.image_url || undefined,
+    });
   }
 
   return (
