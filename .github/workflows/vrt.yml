@@ -1,0 +1,143 @@
+name: VRT
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+jobs:
+  vrt:
+    name: Visual Regression Test
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'VRT')
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: current
+
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref || 'main' }}
+          path: base
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install & build current
+        working-directory: current
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+        run: |
+          bun install --frozen-lockfile
+          bun run build-storybook --output-dir ${{ github.workspace }}/storybook-current
+
+      - name: Install & build base
+        id: build-base
+        working-directory: base
+        continue-on-error: true
+        run: |
+          if ! grep -q '"build-storybook"' package.json; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          bun install --frozen-lockfile
+          VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}" \
+          VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}" \
+          bun run build-storybook --output-dir ${{ github.workspace }}/storybook-base
+
+      - name: Screenshot current
+        run: |
+          npx storycap http://localhost:6006 \
+            --serverCmd "npx serve ${{ github.workspace }}/storybook-current -l 6006 --no-clipboard" \
+            --outDir __screenshots__/current
+
+      - name: Screenshot base
+        if: steps.build-base.outputs.skip != 'true' && steps.build-base.outcome == 'success'
+        run: |
+          npx storycap http://localhost:6006 \
+            --serverCmd "npx serve ${{ github.workspace }}/storybook-base -l 6006 --no-clipboard" \
+            --outDir __screenshots__/base
+
+      - name: Create empty base (no Storybook on base branch)
+        if: steps.build-base.outputs.skip == 'true' || steps.build-base.outcome == 'failure'
+        run: mkdir -p __screenshots__/base
+
+      - name: Compare with reg-cli
+        run: |
+          npx reg-cli \
+            __screenshots__/current \
+            __screenshots__/base \
+            __screenshots__/diff \
+            -R __screenshots__/report.html \
+            --json __screenshots__/report.json || true
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrt-report-${{ github.sha }}
+          path: __screenshots__/
+
+      - name: Find PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            PR=$(gh pr list --repo "${{ github.repository }}" --head "$GITHUB_REF_NAME" --json number --jq '.[0].number // ""')
+            echo "number=$PR" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment PR
+        if: steps.pr.outputs.number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('__screenshots__/report.json', 'utf8'));
+            const {
+              newItems = [],
+              deletedItems = [],
+              failedItems = [],
+              passedItems = [],
+            } = report;
+
+            const lines = ['## VRT Results'];
+
+            if (failedItems.length > 0) {
+              lines.push(`\n### ⚠️ Diff (${failedItems.length})`);
+              failedItems.forEach((f) => lines.push(`- \`${f}\``));
+            }
+            if (newItems.length > 0) {
+              lines.push(`\n### ✨ New (${newItems.length})`);
+              newItems.forEach((f) => lines.push(`- \`${f}\``));
+            }
+            if (deletedItems.length > 0) {
+              lines.push(`\n### 🗑️ Deleted (${deletedItems.length})`);
+              deletedItems.forEach((f) => lines.push(`- \`${f}\``));
+            }
+            if (failedItems.length === 0 && newItems.length === 0 && deletedItems.length === 0) {
+              lines.push('\n### ✅ No visual differences');
+            }
+
+            const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            lines.push(`\n---\n✔ ${passedItems.length} stories passed · [View report](${runUrl})`);
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt('${{ steps.pr.outputs.number }}'),
+              body: lines.join('\n'),
+            });

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, Plus, Search } from "lucide-react";
 import { useState } from "react";
 
-import { ItemCard } from "@/components/ItemCard";
+import { ItemCard } from "@/components/molecules/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useItems } from "@/hooks/useItems";

@@ -1,7 +1,7 @@
 import { Barcode, Loader2 } from "lucide-react";
 import React, { useState } from "react";
 
-import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
