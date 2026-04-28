@@ -1,16 +1,19 @@
-import path from "path";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 import type { StorybookConfig } from "@storybook/react-vite";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const config: StorybookConfig = {
   framework: "@storybook/react-vite",
   stories: ["../src/**/*.stories.@(ts|tsx)"],
-  addons: ["@storybook/addon-docs"],
   staticDirs: ["../public"],
   viteFinal: async (config) => {
     const { mergeConfig } = await import("vite");
     return mergeConfig(config, {
       resolve: {
-        alias: { "@": path.resolve(__dirname, "../src") },
+        alias: { "@": resolve(__dirname, "../src") },
       },
     });
   },
