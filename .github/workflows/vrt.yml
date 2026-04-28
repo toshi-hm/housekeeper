@@ -35,6 +35,9 @@ jobs:
 
       - name: Install & build current
         working-directory: current
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
         run: |
           bun install --frozen-lockfile
           bun run build-storybook --output-dir ${{ github.workspace }}/storybook-current
@@ -49,6 +52,8 @@ jobs:
             exit 0
           fi
           bun install --frozen-lockfile
+          VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}" \
+          VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}" \
           bun run build-storybook --output-dir ${{ github.workspace }}/storybook-base
 
       - name: Screenshot current
