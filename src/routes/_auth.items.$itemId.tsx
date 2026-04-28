@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Calendar, Edit, Hash, MapPin, Package, StickyNote, Trash2 } from "lucide-react";
 import React from "react";
 
-import { ExpiryBadge } from "@/components/ExpiryBadge";
+import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

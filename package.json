@@ -10,7 +10,9 @@
     "lint": "oxlint --config oxlint.json src && eslint src",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.1",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@storybook/react-vite": "^10.3.5",
     "@tailwindcss/vite": "^4.2.4",
     "@tanstack/react-query-devtools": "^5.100.5",
     "@tanstack/router-devtools": "^1.166.13",
@@ -42,6 +45,9 @@
     "globals": "^17.5.0",
     "oxfmt": "^0.47.0",
     "oxlint": "1.62.0",
+    "reg-cli": "^0.18.14",
+    "storybook": "^10.3.5",
+    "storycap": "^5.0.1",
     "tailwindcss": "^4.2.4",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
