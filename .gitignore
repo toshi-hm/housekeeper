@@ -17,6 +17,12 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Storybook build output
+storybook-static
+
+# VRT screenshots
+__screenshots__
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
