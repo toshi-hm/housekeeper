@@ -97,4 +97,3 @@ VITE_SUPABASE_ANON_KEY=
 - Items expiring within 3 days should be visually highlighted
 - Items past expiry date should be clearly marked
 - Mobile-first UI (primary use case is scanning on a smartphone)
-

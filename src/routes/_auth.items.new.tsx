@@ -1,22 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
 import { ItemForm } from "@/components/ItemForm";
+import { Button } from "@/components/ui/button";
 import { useCreateItem } from "@/hooks/useItems";
 import type { ItemFormValues } from "@/types/item";
 
-export const Route = createFileRoute("/_auth/items/new")({
-  component: NewItemPage,
-});
-
-function NewItemPage() {
+const NewItemPage = () => {
   const navigate = useNavigate();
   const createItem = useCreateItem();
 
-  async function handleSubmit(values: ItemFormValues) {
+  const handleSubmit = async (values: ItemFormValues) => {
     await createItem.mutateAsync(values);
     void navigate({ to: "/" });
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -40,4 +37,8 @@ function NewItemPage() {
       />
     </div>
   );
-}
+};
+
+export const Route = createFileRoute("/_auth/items/new")({
+  component: NewItemPage,
+});

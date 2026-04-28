@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import { supabase } from "@/lib/supabase";
 
 export interface ProductInfo {
@@ -15,11 +16,11 @@ interface LookupResult {
   } | null;
 }
 
-export function useBarcodeLookup() {
+export const useBarcodeLookup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function lookup(barcode: string): Promise<ProductInfo | null> {
+  const lookup = async (barcode: string): Promise<ProductInfo | null> => {
     setIsLoading(true);
     setError(null);
     try {
@@ -40,7 +41,7 @@ export function useBarcodeLookup() {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   return { lookup, isLoading, error };
-}
+};

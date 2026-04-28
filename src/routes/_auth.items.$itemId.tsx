@@ -1,27 +1,40 @@
-import React from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Edit, Trash2, Package, MapPin, Calendar, Hash, StickyNote } from "lucide-react";
+import { ArrowLeft, Calendar, Edit, Hash, MapPin, Package, StickyNote, Trash2 } from "lucide-react";
+import React from "react";
+
+import { ExpiryBadge } from "@/components/ExpiryBadge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ExpiryBadge } from "@/components/ExpiryBadge";
-import { useItem, useDeleteItem } from "@/hooks/useItems";
+import { useDeleteItem, useItem } from "@/hooks/useItems";
 
-export const Route = createFileRoute("/_auth/items/$itemId")({
-  component: ItemDetailPage,
-});
+interface DetailRowProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}
 
-function ItemDetailPage() {
+const DetailRow = ({ icon, label, value }: DetailRowProps) => (
+  <div className="flex items-start gap-3">
+    <span className="mt-0.5 text-muted-foreground">{icon}</span>
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium">{value}</p>
+    </div>
+  </div>
+);
+
+const ItemDetailPage = () => {
   const { itemId } = Route.useParams();
   const navigate = useNavigate();
   const { data: item, isLoading, error } = useItem(itemId);
   const deleteItem = useDeleteItem();
 
-  async function handleDelete() {
+  const handleDelete = async () => {
     if (!confirm("Delete this item?")) return;
     await deleteItem.mutateAsync(itemId);
     void navigate({ to: "/" });
-  }
+  };
 
   if (isLoading) {
     return (
@@ -134,24 +147,8 @@ function ItemDetailPage() {
       </Card>
     </div>
   );
-}
+};
 
-function DetailRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="mt-0.5 text-muted-foreground">{icon}</span>
-      <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium">{value}</p>
-      </div>
-    </div>
-  );
-}
+export const Route = createFileRoute("/_auth/items/$itemId")({
+  component: ItemDetailPage,
+});

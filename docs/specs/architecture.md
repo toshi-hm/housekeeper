@@ -19,15 +19,16 @@ src/
 
 ### Classification Guide
 
-| Layer | 例 |
-|---|---|
-| atoms | Button, Badge, Input, Label, ExpiryBadge, Spinner |
-| molecules | FormField, ItemCard, SearchBar, BarcodeButton |
+| Layer     | 例                                                   |
+| --------- | ---------------------------------------------------- |
+| atoms     | Button, Badge, Input, Label, ExpiryBadge, Spinner    |
+| molecules | FormField, ItemCard, SearchBar, BarcodeButton        |
 | organisms | ItemForm, ItemList, BarcodeScanner, Header, AuthForm |
-| templates | DashboardTemplate, LoginTemplate |
-| pages | DashboardPage, LoginPage（routesからimportされる） |
+| templates | DashboardTemplate, LoginTemplate                     |
+| pages     | DashboardPage, LoginPage（routesからimportされる）   |
 
 ### Rules
+
 - atomsはpropsのみで動作し、外部状態に依存しない
 - molecules以上はatomsを使う（直接HTMLタグを多用しない）
 - organisms以上でのみhooksやSupabase呼び出しを許可する
@@ -47,6 +48,5 @@ src/routes/
   _auth.items.$itemId.edit.tsx
 ```
 
-- _auth.tsx: 未認証なら/loginへリダイレクト
+- \_auth.tsx: 未認証なら/loginへリダイレクト
 - routesはpagesをimportするだけ。ロジックはpages以下に書く
-

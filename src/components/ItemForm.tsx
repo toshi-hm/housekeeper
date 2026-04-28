@@ -1,11 +1,12 @@
-import React, { useState } from "react";
 import { Barcode, Loader2 } from "lucide-react";
+import React, { useState } from "react";
+
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
-import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { Textarea } from "@/components/ui/textarea";
 import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
 import type { ItemFormValues } from "@/types/item";
 
@@ -29,12 +30,12 @@ interface ItemFormProps {
   submitLabel?: string;
 }
 
-export function ItemForm({
+export const ItemForm = ({
   defaultValues,
   onSubmit,
   isSubmitting,
   submitLabel = "Save",
-}: ItemFormProps) {
+}: ItemFormProps) => {
   const [values, setValues] = useState<ItemFormValues>({
     name: defaultValues?.name ?? "",
     barcode: defaultValues?.barcode ?? "",
@@ -50,14 +51,14 @@ export function ItemForm({
   const [errors, setErrors] = useState<Partial<Record<keyof ItemFormValues, string>>>({});
   const { lookup, isLoading: isLookingUp } = useBarcodeLookup();
 
-  function handleChange(field: keyof ItemFormValues, value: string | number) {
+  const handleChange = (field: keyof ItemFormValues, value: string | number) => {
     setValues((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
-  }
+  };
 
-  async function handleBarcodeScan(barcode: string) {
+  const handleBarcodeScan = async (barcode: string) => {
     setShowScanner(false);
     handleChange("barcode", barcode);
     const info = await lookup(barcode);
@@ -66,9 +67,9 @@ export function ItemForm({
       if (info.category) handleChange("category", info.category);
       if (info.image_url) handleChange("image_url", info.image_url);
     }
-  }
+  };
 
-  function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Partial<Record<keyof ItemFormValues, string>> = {};
     if (!values.name.trim()) {
@@ -88,7 +89,7 @@ export function ItemForm({
       notes: values.notes || undefined,
       image_url: values.image_url || undefined,
     });
-  }
+  };
 
   return (
     <>
@@ -235,4 +236,4 @@ export function ItemForm({
       </form>
     </>
   );
-}
+};

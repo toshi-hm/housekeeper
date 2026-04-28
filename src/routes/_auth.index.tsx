@@ -1,17 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Search, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Plus, Search } from "lucide-react";
 import { useState } from "react";
+
 import { ItemCard } from "@/components/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useItems } from "@/hooks/useItems";
 import { getExpiryStatus } from "@/types/item";
 
-export const Route = createFileRoute("/_auth/")({
-  component: DashboardPage,
-});
-
-function DashboardPage() {
+const DashboardPage = () => {
   const { data: items = [], isLoading, error } = useItems();
   const [search, setSearch] = useState("");
 
@@ -113,4 +110,8 @@ function DashboardPage() {
       )}
     </div>
   );
-}
+};
+
+export const Route = createFileRoute("/_auth/")({
+  component: DashboardPage,
+});
