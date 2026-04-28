@@ -40,8 +40,14 @@ jobs:
           bun run build-storybook --output-dir ${{ github.workspace }}/storybook-current
 
       - name: Install & build base
+        id: build-base
         working-directory: base
+        continue-on-error: true
         run: |
+          if ! grep -q '"build-storybook"' package.json; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           bun install --frozen-lockfile
           bun run build-storybook --output-dir ${{ github.workspace }}/storybook-base
 
@@ -52,10 +58,15 @@ jobs:
             --outDir __screenshots__/current
 
       - name: Screenshot base
+        if: steps.build-base.outputs.skip != 'true' && steps.build-base.outcome == 'success'
         run: |
           npx storycap http://localhost:6006 \
             --serverCmd "npx serve ${{ github.workspace }}/storybook-base -l 6006 --no-clipboard" \
             --outDir __screenshots__/base
+
+      - name: Create empty base (no Storybook on base branch)
+        if: steps.build-base.outputs.skip == 'true' || steps.build-base.outcome == 'failure'
+        run: mkdir -p __screenshots__/base
 
       - name: Compare with reg-cli
         run: |
