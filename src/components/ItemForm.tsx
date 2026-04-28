@@ -24,7 +24,7 @@ const CATEGORIES = [
 ];
 
 interface ItemFormProps {
-  defaultValues?: Partial<Record<keyof ItemFormValues, string | number | null | undefined>>;
+  defaultValues?: Partial<ItemFormValues>;
   onSubmit: (values: ItemFormValues) => void;
   isSubmitting?: boolean;
   submitLabel?: string;
