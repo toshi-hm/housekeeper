@@ -94,7 +94,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
           else
-            PR=$(gh pr list --head "$GITHUB_REF_NAME" --json number --jq '.[0].number // ""')
+            PR=$(gh pr list --repo "${{ github.repository }}" --head "$GITHUB_REF_NAME" --json number --jq '.[0].number // ""')
             echo "number=$PR" >> "$GITHUB_OUTPUT"
           fi
         env:
