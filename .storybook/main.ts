@@ -13,7 +13,13 @@ const config: StorybookConfig = {
     const { mergeConfig } = await import("vite");
     return mergeConfig(config, {
       resolve: {
-        alias: { "@": resolve(__dirname, "../src") },
+        alias: [
+          {
+            find: "@/lib/supabase",
+            replacement: resolve(__dirname, "../src/mocks/supabase.ts"),
+          },
+          { find: "@", replacement: resolve(__dirname, "../src") },
+        ],
       },
     });
   },
