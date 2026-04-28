@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { type ExpiryStatus,getExpiryStatus } from "@/types/item";
+import { type ExpiryStatus, getExpiryStatus } from "@/types/item";
 
 interface ExpiryBadgeProps {
   expiryDate: string | null | undefined;

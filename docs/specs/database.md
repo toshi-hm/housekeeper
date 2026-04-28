@@ -1,6 +1,7 @@
 # Database Spec
 
 ## Provider
+
 Supabase (Postgres)
 
 ## Schema
@@ -31,5 +32,6 @@ with check (auth.uid() = user_id);
 ```
 
 ## RLS Policy
+
 All access is filtered by auth.uid() = user_id.
 No server-side authorization logic needed.

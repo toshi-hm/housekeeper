@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Calendar, Hash,MapPin, Package } from "lucide-react";
+import { Calendar, Hash, MapPin, Package } from "lucide-react";
 
 import { ExpiryBadge } from "@/components/ExpiryBadge";
 import { Badge } from "@/components/ui/badge";
