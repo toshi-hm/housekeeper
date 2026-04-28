@@ -56,7 +56,17 @@ const EditItemPage = () => {
         </div>
       )}
       <ItemForm
-        defaultValues={item}
+        defaultValues={{
+          name: item.name,
+          barcode: item.barcode ?? undefined,
+          category: item.category ?? undefined,
+          quantity: item.quantity,
+          storage_location: item.storage_location ?? undefined,
+          purchase_date: item.purchase_date ?? undefined,
+          expiry_date: item.expiry_date ?? undefined,
+          notes: item.notes ?? undefined,
+          image_url: item.image_url ?? undefined,
+        }}
         onSubmit={(values) => {
           void handleSubmit(values);
         }}

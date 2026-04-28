@@ -38,6 +38,7 @@ const createItem = async (values: ItemFormValues): Promise<Item> => {
     .from("items")
     .insert({
       ...normalizeFormValues(values),
+      name: values.name,
       user_id: userData.user.id,
       quantity: values.quantity ?? 1,
     })

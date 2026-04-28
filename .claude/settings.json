@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun run lint && bun run format:check"
+            "command": "bun run lint && bun run format:check && bun run typecheck"
           }
         ]
       }

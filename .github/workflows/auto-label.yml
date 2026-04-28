@@ -1,0 +1,44 @@
+name: Auto Label
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+
+jobs:
+  label:
+    name: Label by Branch
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+            const labelMap = [
+              { prefix: "feature/", name: "feature" },
+              { prefix: "release/", name: "release" },
+              { prefix: "fix/",     name: "fix" },
+            ];
+
+            const matched = labelMap.find(({ prefix }) => branch.startsWith(prefix));
+            if (!matched) return;
+
+            const { name } = matched;
+
+            const { repository } = await github.graphql(`
+              query($owner: String!, $repo: String!, $name: String!) {
+                repository(owner: $owner, name: $repo) {
+                  label(name: $name) { id }
+                  pullRequest: pullRequest(number: ${context.payload.pull_request.number}) { id }
+                }
+              }
+            `, { owner: context.repo.owner, repo: context.repo.repo, name });
+
+            await github.graphql(`
+              mutation($labelableId: ID!, $labelIds: [ID!]!) {
+                addLabelsToLabelable(input: { labelableId: $labelableId, labelIds: $labelIds }) {
+                  clientMutationId
+                }
+              }
+            `, { labelableId: repository.pullRequest.id, labelIds: [repository.label.id] });
