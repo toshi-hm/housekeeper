@@ -20,18 +20,18 @@
 
 ## API
 
-| hook | 機能 |
-| --- | --- |
-| `useNotificationPreferences()` | 設定取得 / 更新 |
-| `usePushSubscription()` | 購読登録 / 解除 |
-| `useTestNotification()` | テスト通知送信（任意） |
+| hook                           | 機能                   |
+| ------------------------------ | ---------------------- |
+| `useNotificationPreferences()` | 設定取得 / 更新        |
+| `usePushSubscription()`        | 購読登録 / 解除        |
+| `useTestNotification()`        | テスト通知送信（任意） |
 
 ### Edge Functions
 
-| 名前 | 内容 | トリガ |
-| --- | --- | --- |
-| `subscribe-push` | クライアントから受け取った購読を `push_subscriptions` に upsert（VAPID 鍵管理を Function 内に隠す） | クライアント |
-| `send-expiry-notifications` | 全ユーザーをループし、`notification_preferences` を見て送信 | `pg_cron` で `notify_at` 付近に発火（ユーザー TZ は当面サーバ TZ で代替、Backlog で改善） |
+| 名前                        | 内容                                                                                                | トリガ                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `subscribe-push`            | クライアントから受け取った購読を `push_subscriptions` に upsert（VAPID 鍵管理を Function 内に隠す） | クライアント                                                                              |
+| `send-expiry-notifications` | 全ユーザーをループし、`notification_preferences` を見て送信                                         | `pg_cron` で `notify_at` 付近に発火（ユーザー TZ は当面サーバ TZ で代替、Backlog で改善） |
 
 ### 環境変数（Edge Function 側）
 

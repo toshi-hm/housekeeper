@@ -7,12 +7,12 @@
 
 ## 数量モデル（重要）
 
-| 列 | 意味 | 例 |
-| --- | --- | --- |
-| `units` | 残点数 | 牛乳 3 本 |
-| `content_amount` | 1 点あたりの内包量 | 1000.00 |
-| `content_unit` | 単位 | `mL` |
-| `opened_remaining` | 開封中 1 点の残量 | 350.00（mL） |
+| 列                 | 意味               | 例           |
+| ------------------ | ------------------ | ------------ |
+| `units`            | 残点数             | 牛乳 3 本    |
+| `content_amount`   | 1 点あたりの内包量 | 1000.00      |
+| `content_unit`     | 単位               | `mL`         |
+| `opened_remaining` | 開封中 1 点の残量  | 350.00（mL） |
 
 - `units = 3, content_amount = 1000, content_unit = 'mL', opened_remaining = 350`
   → 「1L 牛乳 3 本うち、1 本目が 350mL 残っている」
@@ -72,13 +72,13 @@ if units < 0:
 
 ## 画面・動線
 
-| ルート | 役割 |
-| --- | --- |
-| `/_auth/` | ダッシュボード（一覧・検索・フィルタ・ソート） |
-| `/_auth/items/new` | 追加（手入力 + バーコードスキャナ起動） |
-| `/_auth/items/$itemId` | 詳細（残量・期限・操作ボタン・履歴） |
-| `/_auth/items/$itemId/edit` | 編集 |
-| `/_auth/items/$itemId/consume` | 消費フォーム（モーダルではなく独立ルート） |
+| ルート                         | 役割                                           |
+| ------------------------------ | ---------------------------------------------- |
+| `/_auth/`                      | ダッシュボード（一覧・検索・フィルタ・ソート） |
+| `/_auth/items/new`             | 追加（手入力 + バーコードスキャナ起動）        |
+| `/_auth/items/$itemId`         | 詳細（残量・期限・操作ボタン・履歴）           |
+| `/_auth/items/$itemId/edit`    | 編集                                           |
+| `/_auth/items/$itemId/consume` | 消費フォーム（モーダルではなく独立ルート）     |
 
 ## コンポーネント
 
@@ -93,14 +93,14 @@ if units < 0:
 
 ## API（hook）
 
-| hook | 機能 |
-| --- | --- |
+| hook                 | 機能                     |
+| -------------------- | ------------------------ |
 | `useItems(filters?)` | 一覧（filter/sort 適用） |
-| `useItem(id)` | 詳細 |
-| `useCreateItem` | 追加 |
-| `useUpdateItem(id)` | 編集 |
-| `useDeleteItem` | 削除 |
-| `useConsumeItem(id)` | 消費（楽観更新） |
+| `useItem(id)`        | 詳細                     |
+| `useCreateItem`      | 追加                     |
+| `useUpdateItem(id)`  | 編集                     |
+| `useDeleteItem`      | 削除                     |
+| `useConsumeItem(id)` | 消費（楽観更新）         |
 
 実装は `src/hooks/useItems.ts` を中心に、消費は `src/hooks/useConsumeItem.ts`、純粋ロジックは `src/lib/consume.ts`。
 

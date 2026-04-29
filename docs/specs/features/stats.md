@@ -7,11 +7,11 @@
 
 ## グラフ一覧
 
-| グラフ | 元データ | 形式 |
-| --- | --- | --- |
-| カテゴリ別在庫件数 | `items` を `category_id` で group | 横棒 |
-| 期限ステータス分布 | `items` を `getExpiryStatus()` で group | ドーナツ |
-| 月別消費量 | `consumption_logs` を `occurred_at` 月で group、`delta_amount * 単位換算` の合計 | 縦棒（直近 6 ヶ月） |
+| グラフ             | 元データ                                                                         | 形式                |
+| ------------------ | -------------------------------------------------------------------------------- | ------------------- |
+| カテゴリ別在庫件数 | `items` を `category_id` で group                                                | 横棒                |
+| 期限ステータス分布 | `items` を `getExpiryStatus()` で group                                          | ドーナツ            |
+| 月別消費量         | `consumption_logs` を `occurred_at` 月で group、`delta_amount * 単位換算` の合計 | 縦棒（直近 6 ヶ月） |
 
 ## ユーザーストーリー
 
@@ -30,11 +30,11 @@
 
 ## API（hook）
 
-| hook | 機能 |
-| --- | --- |
-| `useCategoryStats()` | カテゴリ別件数 |
-| `useExpiryDistribution()` | 期限ステータス分布 |
-| `useMonthlyConsumption(months = 6)` | 月別消費 |
+| hook                                | 機能               |
+| ----------------------------------- | ------------------ |
+| `useCategoryStats()`                | カテゴリ別件数     |
+| `useExpiryDistribution()`           | 期限ステータス分布 |
+| `useMonthlyConsumption(months = 6)` | 月別消費           |
 
 ## エラー
 

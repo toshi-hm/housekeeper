@@ -18,16 +18,16 @@ Supabase (Postgres 15+)
 
 ## テーブル一覧
 
-| テーブル | 役割 | MVP | 削除動作（参照元 → 自身） |
-| --- | --- | --- | --- |
-| `items` | 在庫アイテム | ✅ | カテゴリ/場所マスタ削除で SET NULL |
-| `categories` | カテゴリマスタ | ✅ | items.category_id = NULL |
-| `storage_locations` | 保管場所マスタ | ✅ | items.storage_location_id = NULL |
-| `consumption_logs` | 消費イベント履歴 | ✅ | item 削除で CASCADE |
-| `user_settings` | ユーザー設定（言語/閾値/通知時刻 など） | ✅ | user 削除で CASCADE |
-| `shopping_list_items` | 買い物リスト | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに） |
-| `notification_preferences` | 通知 ON/OFF | v1.2 | user 削除で CASCADE |
-| `push_subscriptions` | Web Push 購読 | v1.2 | user 削除で CASCADE |
+| テーブル                   | 役割                                    | MVP  | 削除動作（参照元 → 自身）                     |
+| -------------------------- | --------------------------------------- | ---- | --------------------------------------------- |
+| `items`                    | 在庫アイテム                            | ✅   | カテゴリ/場所マスタ削除で SET NULL            |
+| `categories`               | カテゴリマスタ                          | ✅   | items.category_id = NULL                      |
+| `storage_locations`        | 保管場所マスタ                          | ✅   | items.storage_location_id = NULL              |
+| `consumption_logs`         | 消費イベント履歴                        | ✅   | item 削除で CASCADE                           |
+| `user_settings`            | ユーザー設定（言語/閾値/通知時刻 など） | ✅   | user 削除で CASCADE                           |
+| `shopping_list_items`      | 買い物リスト                            | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに） |
+| `notification_preferences` | 通知 ON/OFF                             | v1.2 | user 削除で CASCADE                           |
+| `push_subscriptions`       | Web Push 購読                           | v1.2 | user 削除で CASCADE                           |
 
 ---
 
@@ -258,4 +258,4 @@ create policy "item_images_owner_write"
   1. `units` カラム追加（default 1）
   2. `update items set units = quantity`
   3. `quantity` を drop
-  この順で安全に移行
+     この順で安全に移行

@@ -14,8 +14,8 @@
 
 ## 画面
 
-| ルート | 役割 |
-| --- | --- |
+| ルート            | 役割                             |
+| ----------------- | -------------------------------- |
 | `/_auth/shopping` | 一覧（planned / purchased タブ） |
 
 主要 organism: `ShoppingList`, `ShoppingForm`, `PurchaseDialog`
@@ -27,14 +27,15 @@
 
 ## API（hook）
 
-| hook | 機能 |
-| --- | --- |
-| `useShoppingList(status)` | 一覧 |
-| `useUpsertShoppingItem()` | 追加 / 編集 |
-| `useDeleteShoppingItem(id)` | 削除 |
+| hook                          | 機能                                        |
+| ----------------------------- | ------------------------------------------- |
+| `useShoppingList(status)`     | 一覧                                        |
+| `useUpsertShoppingItem()`     | 追加 / 編集                                 |
+| `useDeleteShoppingItem(id)`   | 削除                                        |
 | `usePurchaseShoppingItem(id)` | 購入完了（item 作成 + 行を `purchased` に） |
 
 `usePurchaseShoppingItem` は **トランザクション的に**:
+
 1. `items` に行を作成（フォーム入力値）
 2. `shopping_list_items` を `status='purchased'`, `purchased_at=now()`, `created_item_id=新id` に更新
 

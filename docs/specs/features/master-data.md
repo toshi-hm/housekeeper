@@ -16,10 +16,10 @@
 
 ## 画面
 
-| ルート | 役割 |
-| --- | --- |
+| ルート                       | 役割                           |
+| ---------------------------- | ------------------------------ |
 | `/_auth/settings/categories` | カテゴリ一覧・追加・編集・削除 |
-| `/_auth/settings/locations` | 保管場所一覧・追加・編集・削除 |
+| `/_auth/settings/locations`  | 保管場所一覧・追加・編集・削除 |
 
 `MasterDataList` / `MasterDataForm` を共通コンポーネントとして実装し、画面は薄いラッパとする。
 
@@ -30,12 +30,12 @@
 
 ## API（hook）
 
-| hook | 機能 |
-| --- | --- |
-| `useCategories()` | 一覧 |
-| `useUpsertCategory()` | 追加・編集 |
-| `useDeleteCategory(id)` | 削除（FK は SET NULL） |
-| `useStorageLocations()` / `useUpsertStorageLocation()` / `useDeleteStorageLocation(id)` | 同上 |
+| hook                                                                                    | 機能                   |
+| --------------------------------------------------------------------------------------- | ---------------------- |
+| `useCategories()`                                                                       | 一覧                   |
+| `useUpsertCategory()`                                                                   | 追加・編集             |
+| `useDeleteCategory(id)`                                                                 | 削除（FK は SET NULL） |
+| `useStorageLocations()` / `useUpsertStorageLocation()` / `useDeleteStorageLocation(id)` | 同上                   |
 
 ## バリデーション
 

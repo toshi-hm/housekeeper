@@ -7,12 +7,12 @@
 
 ## ステータス定義
 
-| 状態 | 条件 |
-| --- | --- |
-| `expired` | `expiry_date < today` |
+| 状態            | 条件                                              |
+| --------------- | ------------------------------------------------- |
+| `expired`       | `expiry_date < today`                             |
 | `expiring-soon` | `0 <= today - expiry_date` の `今日〜閾値日` 以内 |
-| `ok` | それ以降の日付 |
-| `unknown` | `expiry_date` が未設定 |
+| `ok`            | それ以降の日付                                    |
+| `unknown`       | `expiry_date` が未設定                            |
 
 閾値は `user_settings.expiry_warning_days`（デフォルト 3）。
 ロジックは `src/types/item.ts:getExpiryStatus` を **`expiry_warning_days` を引数に取る形に拡張** する。

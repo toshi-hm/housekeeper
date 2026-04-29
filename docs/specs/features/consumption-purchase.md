@@ -19,12 +19,13 @@
 
 ## API（hook）
 
-| hook | 機能 |
-| --- | --- |
-| `useConsumeItem(id)` | 消費アクション（item 更新 + log 追加） |
-| `useConsumptionLogs(itemId?)` | 履歴一覧 |
+| hook                          | 機能                                   |
+| ----------------------------- | -------------------------------------- |
+| `useConsumeItem(id)`          | 消費アクション（item 更新 + log 追加） |
+| `useConsumptionLogs(itemId?)` | 履歴一覧                               |
 
 `useConsumeItem` は楽観更新:
+
 1. キャッシュ上で item の `units` / `opened_remaining` を即時更新
 2. 並列で `consumption_logs` を invalidate
 3. 失敗時はキャッシュをロールバックし、トーストで通知
