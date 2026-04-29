@@ -32,13 +32,33 @@ Read the relevant spec file before implementing any feature.
 
 - Overview: docs/specs/overview.md
 - Database: docs/specs/database.md
-- Architecture: docs/specs/architecture.md
-- Barcode: docs/specs/features/barcode.md
-- Inventory: docs/specs/features/inventory.md
-- Auth: docs/specs/features/auth.md
-- Expiry alerts: docs/specs/features/expiry-alert.md
 - Architecture: docs/specs/architecture.md (Atomic Design)
 - Storybook: docs/specs/storybook.md
+- Auth: docs/specs/features/auth.md
+- Inventory: docs/specs/features/inventory.md
+- Barcode: docs/specs/features/barcode.md
+- Expiry alerts: docs/specs/features/expiry-alert.md
+- Master data (categories/locations): docs/specs/features/master-data.md
+- Image storage: docs/specs/features/storage.md
+- Shopping list: docs/specs/features/shopping-list.md
+- Consumption & purchase history: docs/specs/features/consumption-purchase.md
+- Notifications: docs/specs/features/notifications.md
+- PWA / Offline: docs/specs/features/pwa.md
+- i18n: docs/specs/features/i18n.md
+- Stats: docs/specs/features/stats.md
+
+## TODO / Progress
+
+- PLANS.md is the single source of truth for roadmap and TODO.
+- Phases: v1 (MVP) → v1.1 → v1.2 → v1.3 → Backlog.
+
+### issue-sync Skill（自動発動）
+
+以下のいずれかに該当するときは **必ず** `.claude/skills/issue-sync/SKILL.md` を読み込んで実行すること:
+
+- 「PLANS.md を GitHub と同期」「issue を起票して」「未起票タスクを Issue 化」など、PLANS.md と GitHub Issues の同期を求められた
+- 「issue-sync」「issue sync」という言葉が出た
+- PLANS.md のチェックボックスを更新した後に「Issues に反映して」と言われた
 
 ## Commands
 
