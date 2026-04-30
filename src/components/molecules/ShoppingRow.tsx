@@ -25,7 +25,9 @@ export const ShoppingRow = ({
   const { t } = useTranslation("shopping");
 
   return (
-    <div className={`flex items-center gap-3 rounded-lg border p-3 ${isPurchased ? "opacity-60" : ""}`}>
+    <div
+      className={`flex items-center gap-3 rounded-lg border p-3 ${isPurchased ? "opacity-60" : ""}`}
+    >
       {isPurchased ? (
         <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
       ) : (
@@ -40,11 +42,7 @@ export const ShoppingRow = ({
       </div>
       <div className="flex shrink-0 gap-1">
         {!isPurchased && onPurchase && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPurchase(id)}
-          >
+          <Button variant="outline" size="sm" onClick={() => onPurchase(id)}>
             {t("markPurchased")}
           </Button>
         )}

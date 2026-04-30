@@ -1,6 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, Edit, Hash, History, MapPin, Package, RefreshCw, StickyNote, Trash2, Zap } from "lucide-react";
-import { type ReactNode,useState } from "react";
+import {
+  ArrowLeft,
+  Calendar,
+  Edit,
+  Hash,
+  History,
+  MapPin,
+  Package,
+  RefreshCw,
+  StickyNote,
+  Trash2,
+  Zap,
+} from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
@@ -67,7 +79,11 @@ const ItemDetailPage = () => {
   };
 
   if (isLoading) {
-    return <div className="flex min-h-[200px] items-center justify-center"><Spinner /></div>;
+    return (
+      <div className="flex min-h-[200px] items-center justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   if (error || !item) {
@@ -84,9 +100,10 @@ const ItemDetailPage = () => {
   }
 
   const isEmpty = item.units === 0;
-  const totalDisplay = item.opened_remaining !== null && item.opened_remaining !== undefined
-    ? `${item.units}点（開封中: ${item.opened_remaining}${item.content_unit}）`
-    : `${item.units}点 × ${item.content_amount}${item.content_unit}`;
+  const totalDisplay =
+    item.opened_remaining !== null && item.opened_remaining !== undefined
+      ? `${item.units}点（開封中: ${item.opened_remaining}${item.content_unit}）`
+      : `${item.units}点 × ${item.content_amount}${item.content_unit}`;
 
   return (
     <div className="space-y-4">
@@ -95,7 +112,9 @@ const ItemDetailPage = () => {
         title="在庫を削除"
         message={t("deleteConfirm")}
         confirmLabel="削除"
-        onConfirm={() => { void handleDelete(); }}
+        onConfirm={() => {
+          void handleDelete();
+        }}
         onCancel={() => setShowDeleteConfirm(false)}
       />
 
@@ -114,7 +133,9 @@ const ItemDetailPage = () => {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => { void handleRestock(); }}
+            onClick={() => {
+              void handleRestock();
+            }}
             disabled={upsertShopping.isPending}
             title={t("shopping:restock")}
           >
@@ -137,19 +158,22 @@ const ItemDetailPage = () => {
       </div>
 
       {/* Item image */}
-      <ItemImage
-        imagePath={item.image_path}
-        alt={item.name}
-        className="h-40 w-full rounded-lg"
-      />
+      <ItemImage imagePath={item.image_path} alt={item.name} className="h-40 w-full rounded-lg" />
 
       {/* Name + badges */}
       <div>
         <h1 className="text-2xl font-bold">{item.name}</h1>
         <div className="mt-1 flex flex-wrap gap-2">
           {category && <Badge variant="secondary">{category.name}</Badge>}
-          {isEmpty && <Badge variant="outline" className="text-muted-foreground">使い切り</Badge>}
-          <ExpiryBadge expiryDate={item.expiry_date} warningDays={userSettings?.expiry_warning_days} />
+          {isEmpty && (
+            <Badge variant="outline" className="text-muted-foreground">
+              使い切り
+            </Badge>
+          )}
+          <ExpiryBadge
+            expiryDate={item.expiry_date}
+            warningDays={userSettings?.expiry_warning_days}
+          />
         </div>
       </div>
 
@@ -168,7 +192,9 @@ const ItemDetailPage = () => {
         >
           <History className="h-4 w-4" />
           {t("consumeHistory")}
-          {logs.length > 0 && <span className="ml-1 rounded-full bg-primary/20 px-1.5 text-xs">{logs.length}</span>}
+          {logs.length > 0 && (
+            <span className="ml-1 rounded-full bg-primary/20 px-1.5 text-xs">{logs.length}</span>
+          )}
         </button>
       </div>
 
@@ -181,7 +207,11 @@ const ItemDetailPage = () => {
               value={totalDisplay}
             />
             {item.barcode && (
-              <DetailRow icon={<Hash className="h-4 w-4" />} label={t("barcode")} value={item.barcode} />
+              <DetailRow
+                icon={<Hash className="h-4 w-4" />}
+                label={t("barcode")}
+                value={item.barcode}
+              />
             )}
             {location && (
               <DetailRow
@@ -205,7 +235,11 @@ const ItemDetailPage = () => {
               />
             )}
             {item.notes && (
-              <DetailRow icon={<StickyNote className="h-4 w-4" />} label={t("notes")} value={item.notes} />
+              <DetailRow
+                icon={<StickyNote className="h-4 w-4" />}
+                label={t("notes")}
+                value={item.notes}
+              />
             )}
           </CardContent>
         </Card>
@@ -220,7 +254,8 @@ const ItemDetailPage = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">
-                        −{log.delta_amount}{log.delta_unit}
+                        −{log.delta_amount}
+                        {log.delta_unit}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {log.units_before} → {log.units_after} {t("units")}

@@ -50,8 +50,12 @@ describe("ExpiryBadge", () => {
     const soon = new Date();
     soon.setDate(soon.getDate() + 5);
     const date = soon.toISOString().slice(0, 10);
-    const { container: c1 } = render(<ExpiryBadge expiryDate={date} warningDays={3} />, { wrapper });
-    const { container: c2 } = render(<ExpiryBadge expiryDate={date} warningDays={7} />, { wrapper });
+    const { container: c1 } = render(<ExpiryBadge expiryDate={date} warningDays={3} />, {
+      wrapper,
+    });
+    const { container: c2 } = render(<ExpiryBadge expiryDate={date} warningDays={7} />, {
+      wrapper,
+    });
     expect(c1.innerHTML).not.toEqual(c2.innerHTML);
   });
 });

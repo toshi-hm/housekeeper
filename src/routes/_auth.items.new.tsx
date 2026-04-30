@@ -22,7 +22,9 @@ const NewItemPage = () => {
     try {
       const item = await createItem.mutateAsync(values);
       if (pendingFileRef.current && item) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           await uploadItemImage({ itemId: item.id, userId: user.id, file: pendingFileRef.current });
         }
@@ -43,9 +45,13 @@ const NewItemPage = () => {
         <h1 className="text-xl font-bold">{t("addItem")}</h1>
       </div>
       <ItemForm
-        onSubmit={(values) => { void handleSubmit(values); }}
+        onSubmit={(values) => {
+          void handleSubmit(values);
+        }}
         isSubmitting={createItem.isPending}
-        onPendingFileChange={(file) => { pendingFileRef.current = file; }}
+        onPendingFileChange={(file) => {
+          pendingFileRef.current = file;
+        }}
       />
     </div>
   );

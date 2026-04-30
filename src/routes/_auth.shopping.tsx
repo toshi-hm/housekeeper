@@ -9,7 +9,12 @@ import { ShoppingRow } from "@/components/molecules/ShoppingRow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useDeleteShoppingItem, usePurchaseShoppingItem, useShoppingList, useUpsertShoppingItem } from "@/hooks/useShoppingList";
+import {
+  useDeleteShoppingItem,
+  usePurchaseShoppingItem,
+  useShoppingList,
+  useUpsertShoppingItem,
+} from "@/hooks/useShoppingList";
 import { useToast } from "@/lib/toast";
 import type { ItemFormValues } from "@/types/item";
 
@@ -73,14 +78,18 @@ const ShoppingPage = () => {
         title={t("common:confirmDeleteTitle")}
         message={t("deleteConfirm")}
         confirmLabel={t("common:delete")}
-        onConfirm={() => { void handleDelete(); }}
+        onConfirm={() => {
+          void handleDelete();
+        }}
         onCancel={() => setDeleteId(null)}
       />
 
       {pendingPurchaseId && (
         <PurchaseDialog
           open={!!pendingPurchaseId}
-          onSubmit={(values) => { void handlePurchase(values); }}
+          onSubmit={(values) => {
+            void handlePurchase(values);
+          }}
           onClose={() => setPendingPurchaseId(null)}
           isSubmitting={purchase.isPending}
         />
@@ -108,7 +117,9 @@ const ShoppingPage = () => {
               value={addName}
               onChange={(e) => setAddName(e.target.value)}
               placeholder={t("itemNamePlaceholder")}
-              onKeyDown={(e) => { if (e.key === "Enter") void handleAdd(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleAdd();
+              }}
               autoFocus
             />
           </div>
@@ -124,7 +135,9 @@ const ShoppingPage = () => {
           <div className="flex gap-2">
             <Button
               className="flex-1"
-              onClick={() => { void handleAdd(); }}
+              onClick={() => {
+                void handleAdd();
+              }}
               disabled={!addName.trim() || upsert.isPending}
             >
               {t("addItem")}
@@ -142,18 +155,26 @@ const ShoppingPage = () => {
           <button
             key={s}
             className={`flex-1 rounded py-1.5 text-sm font-medium transition-colors ${
-              tab === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              tab === s
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => setTab(s)}
           >
-            {t(`status${s.charAt(0).toUpperCase()}${s.slice(1)}` as "statusPlanned" | "statusPurchased")}
+            {t(
+              `status${s.charAt(0).toUpperCase()}${s.slice(1)}` as
+                | "statusPlanned"
+                | "statusPurchased",
+            )}
           </button>
         ))}
       </div>
 
       {/* List */}
       {isLoading ? (
-        <div className="flex justify-center py-8"><Spinner /></div>
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
       ) : items.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">
           {tab === "planned" ? t("noItems") : t("noPurchased")}

@@ -55,7 +55,11 @@ export const ItemCard = ({ item, locationName, warningDays }: ItemCardProps) => 
             {isEmpty ? (
               <span className="text-muted-foreground">{t("emptyStock")}</span>
             ) : (
-              <span>{item.units}{t("common:all") ? "" : ""} <span className="text-xs text-muted-foreground">{item.content_unit}</span></span>
+              <span>
+                {item.units}
+                {t("common:all") ? "" : ""}{" "}
+                <span className="text-xs text-muted-foreground">{item.content_unit}</span>
+              </span>
             )}
           </span>
           <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />

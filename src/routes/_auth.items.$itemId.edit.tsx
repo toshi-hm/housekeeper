@@ -25,7 +25,9 @@ const EditItemPage = () => {
     try {
       await updateItem.mutateAsync(values);
       if (pendingFileRef.current) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           await uploadItemImage({ itemId, userId: user.id, file: pendingFileRef.current });
         }
@@ -38,7 +40,11 @@ const EditItemPage = () => {
   };
 
   if (isLoading) {
-    return <div className="flex min-h-[200px] items-center justify-center"><Spinner /></div>;
+    return (
+      <div className="flex min-h-[200px] items-center justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   if (!item) {
@@ -81,9 +87,13 @@ const EditItemPage = () => {
           notes: item.notes ?? undefined,
           image_path: item.image_path ?? undefined,
         }}
-        onSubmit={(values) => { void handleSubmit(values); }}
+        onSubmit={(values) => {
+          void handleSubmit(values);
+        }}
         isSubmitting={updateItem.isPending}
-        onPendingFileChange={(file) => { pendingFileRef.current = file; }}
+        onPendingFileChange={(file) => {
+          pendingFileRef.current = file;
+        }}
       />
     </div>
   );

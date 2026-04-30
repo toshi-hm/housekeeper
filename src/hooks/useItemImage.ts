@@ -25,7 +25,11 @@ interface UploadImageParams {
   file: File;
 }
 
-export const uploadItemImage = async ({ itemId, userId, file }: UploadImageParams): Promise<string> => {
+export const uploadItemImage = async ({
+  itemId,
+  userId,
+  file,
+}: UploadImageParams): Promise<string> => {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
   const path = `${userId}/${itemId}.${ext}`;
 

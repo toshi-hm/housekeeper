@@ -150,7 +150,9 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
               onChange={(e) => setManualValue(e.target.value)}
               placeholder={t("scannerManualPlaceholder")}
               className="bg-white/10 text-white placeholder:text-white/40"
-              onKeyDown={(e) => { if (e.key === "Enter") handleManualSubmit(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleManualSubmit();
+              }}
               autoFocus
             />
             <Button onClick={handleManualSubmit} disabled={!manualValue.trim()}>
@@ -161,9 +163,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
       )}
 
       {!showManual && !error && (
-        <div className="p-4 text-center text-sm text-white/70">
-          {t("scannerHint")}
-        </div>
+        <div className="p-4 text-center text-sm text-white/70">{t("scannerHint")}</div>
       )}
     </div>
   );

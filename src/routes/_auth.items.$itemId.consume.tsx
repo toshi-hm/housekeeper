@@ -23,9 +23,8 @@ const ItemConsumePage = () => {
   const [validationError, setValidationError] = useState("");
 
   const deltaNum = parseFloat(delta);
-  const preview = item && !isNaN(deltaNum) && deltaNum > 0
-    ? computeConsumption(item, deltaNum)
-    : null;
+  const preview =
+    item && !isNaN(deltaNum) && deltaNum > 0 ? computeConsumption(item, deltaNum) : null;
 
   const handleSubmit = async () => {
     if (!item) return;
@@ -49,7 +48,11 @@ const ItemConsumePage = () => {
   };
 
   if (isLoading) {
-    return <div className="flex min-h-[200px] items-center justify-center"><Spinner /></div>;
+    return (
+      <div className="flex min-h-[200px] items-center justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   if (!item) {
@@ -65,9 +68,10 @@ const ItemConsumePage = () => {
     );
   }
 
-  const currentDisplay = item.opened_remaining !== null && item.opened_remaining !== undefined
-    ? `開封中: ${item.opened_remaining}${item.content_unit} + 未開封${item.units > 0 ? item.units - 1 : 0}点`
-    : `${item.units}点 × ${item.content_amount}${item.content_unit}`;
+  const currentDisplay =
+    item.opened_remaining !== null && item.opened_remaining !== undefined
+      ? `開封中: ${item.opened_remaining}${item.content_unit} + 未開封${item.units > 0 ? item.units - 1 : 0}点`
+      : `${item.units}点 × ${item.content_amount}${item.content_unit}`;
 
   return (
     <div className="space-y-6">
@@ -121,13 +125,13 @@ const ItemConsumePage = () => {
           </p>
         </div>
       )}
-      {preview?.error && (
-        <p className="text-sm text-destructive">{preview.error}</p>
-      )}
+      {preview?.error && <p className="text-sm text-destructive">{preview.error}</p>}
 
       <Button
         className="w-full"
-        onClick={() => { void handleSubmit(); }}
+        onClick={() => {
+          void handleSubmit();
+        }}
         disabled={consumeItem.isPending || !delta || parseFloat(delta) <= 0}
       >
         {consumeItem.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}

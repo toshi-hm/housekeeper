@@ -69,7 +69,9 @@ const CategoriesPage = () => {
         title={t("deleteCategory")}
         message={t("deleteCategoryConfirm")}
         confirmLabel="削除"
-        onConfirm={() => { void handleDelete(); }}
+        onConfirm={() => {
+          void handleDelete();
+        }}
         onCancel={() => setDeleteId(null)}
       />
 
@@ -86,10 +88,14 @@ const CategoriesPage = () => {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t("categoryName")}
-          onKeyDown={(e) => { if (e.key === "Enter") void handleCreate(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void handleCreate();
+          }}
         />
         <Button
-          onClick={() => { void handleCreate(); }}
+          onClick={() => {
+            void handleCreate();
+          }}
           disabled={createCategory.isPending || !newName.trim()}
           size="icon"
         >
@@ -99,7 +105,9 @@ const CategoriesPage = () => {
 
       {/* List */}
       {isLoading ? (
-        <div className="flex justify-center py-8"><Spinner /></div>
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
       ) : categories.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">{t("noCategories")}</p>
       ) : (
@@ -113,9 +121,18 @@ const CategoriesPage = () => {
                     onChange={(e) => setEditName(e.target.value)}
                     className="flex-1"
                     autoFocus
-                    onKeyDown={(e) => { if (e.key === "Enter") void handleUpdate(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleUpdate();
+                    }}
                   />
-                  <Button size="sm" onClick={() => { void handleUpdate(); }}>保存</Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      void handleUpdate();
+                    }}
+                  >
+                    保存
+                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>
                     キャンセル
                   </Button>
@@ -126,7 +143,10 @@ const CategoriesPage = () => {
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => { setEditId(c.id); setEditName(c.name); }}
+                    onClick={() => {
+                      setEditId(c.id);
+                      setEditName(c.name);
+                    }}
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>

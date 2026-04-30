@@ -1,5 +1,5 @@
 import { Camera, Trash2, Upload } from "lucide-react";
-import { type DragEvent,useRef, useState } from "react";
+import { type DragEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,12 @@ interface ImageUploaderProps {
   onDelete?: () => void;
 }
 
-export const ImageUploader = ({ previewUrl, isUploading, onFile, onDelete }: ImageUploaderProps) => {
+export const ImageUploader = ({
+  previewUrl,
+  isUploading,
+  onFile,
+  onDelete,
+}: ImageUploaderProps) => {
   const { t } = useTranslation("items");
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -28,7 +33,10 @@ export const ImageUploader = ({ previewUrl, isUploading, onFile, onDelete }: Ima
 
   const handleFile = (file: File) => {
     const err = validate(file);
-    if (err) { setError(err); return; }
+    if (err) {
+      setError(err);
+      return;
+    }
     setError("");
     onFile(file);
   };
@@ -50,11 +58,7 @@ export const ImageUploader = ({ previewUrl, isUploading, onFile, onDelete }: Ima
     <div className="space-y-2">
       {previewUrl ? (
         <div className="relative">
-          <img
-            src={previewUrl}
-            alt=""
-            className="h-40 w-full rounded-lg object-cover"
-          />
+          <img src={previewUrl} alt="" className="h-40 w-full rounded-lg object-cover" />
           <div className="absolute right-2 top-2 flex gap-1">
             <Button
               type="button"
@@ -91,7 +95,10 @@ export const ImageUploader = ({ previewUrl, isUploading, onFile, onDelete }: Ima
             isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/30"
           }`}
           onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
         >
@@ -101,7 +108,10 @@ export const ImageUploader = ({ previewUrl, isUploading, onFile, onDelete }: Ima
             type="button"
             variant="outline"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              inputRef.current?.click();
+            }}
           >
             <Camera className="mr-1 h-4 w-4" />
             {t("imageCapture")}

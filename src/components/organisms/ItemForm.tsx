@@ -1,5 +1,5 @@
 import { Barcode, Loader2 } from "lucide-react";
-import { type FormEvent,useState } from "react";
+import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ImageUploader } from "@/components/molecules/ImageUploader";
@@ -53,7 +53,7 @@ export const ItemForm = ({
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
 
   const { data: existingImageUrl } = useSignedItemImage(
-    localPreviewUrl ? null : (values.image_path || null),
+    localPreviewUrl ? null : values.image_path || null,
   );
 
   const set = <K extends keyof ItemFormValues>(field: K, value: ItemFormValues[K]) => {
@@ -102,7 +102,9 @@ export const ItemForm = ({
     <>
       {showScanner && (
         <BarcodeScanner
-          onScan={(barcode) => { void handleBarcodeScan(barcode); }}
+          onScan={(barcode) => {
+            void handleBarcodeScan(barcode);
+          }}
           onClose={() => setShowScanner(false)}
         />
       )}
@@ -157,7 +159,9 @@ export const ItemForm = ({
           >
             <option value="">{t("categoryPlaceholder")}</option>
             {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
             ))}
           </Select>
         </div>
@@ -172,7 +176,9 @@ export const ItemForm = ({
           >
             <option value="">{t("storageLocationPlaceholder")}</option>
             {locations.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
             ))}
           </Select>
         </div>
@@ -212,7 +218,9 @@ export const ItemForm = ({
               onChange={(e) => set("content_unit", e.target.value)}
             >
               {CONTENT_UNITS.map((u) => (
-                <option key={u} value={u}>{u}</option>
+                <option key={u} value={u}>
+                  {u}
+                </option>
               ))}
             </Select>
           </div>

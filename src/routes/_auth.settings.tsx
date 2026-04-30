@@ -45,7 +45,9 @@ const SettingsPage = () => {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-8"><Spinner /></div>
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
       ) : (
         <div className="space-y-6">
           {/* Language */}
@@ -56,7 +58,9 @@ const SettingsPage = () => {
             </h2>
             <LanguageToggle
               value={settings?.language ?? "ja"}
-              onChange={(lang) => { void handleLanguageChange(lang as "ja" | "en"); }}
+              onChange={(lang) => {
+                void handleLanguageChange(lang as "ja" | "en");
+              }}
             />
           </section>
 
@@ -73,7 +77,9 @@ const SettingsPage = () => {
                 max={30}
                 defaultValue={settings?.expiry_warning_days ?? 3}
                 className="w-24"
-                onBlur={(e) => { void handleWarningDaysChange(parseInt(e.target.value, 10)); }}
+                onBlur={(e) => {
+                  void handleWarningDaysChange(parseInt(e.target.value, 10));
+                }}
               />
               <Label>日前</Label>
             </div>
@@ -81,18 +87,22 @@ const SettingsPage = () => {
 
           {/* Master data links */}
           <section>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-              {t("masterData")}
-            </h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{t("masterData")}</h2>
             <div className="divide-y rounded-lg border">
-              <Link to="/settings/categories" className="flex items-center justify-between p-4 hover:bg-muted/50">
+              <Link
+                to="/settings/categories"
+                className="flex items-center justify-between p-4 hover:bg-muted/50"
+              >
                 <div className="flex items-center gap-3">
                   <Tag className="h-5 w-5 text-muted-foreground" />
                   <span>{t("categories")}</span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </Link>
-              <Link to="/settings/locations" className="flex items-center justify-between p-4 hover:bg-muted/50">
+              <Link
+                to="/settings/locations"
+                className="flex items-center justify-between p-4 hover:bg-muted/50"
+              >
                 <div className="flex items-center gap-3">
                   <MapPin className="h-5 w-5 text-muted-foreground" />
                   <span>{t("storageLocations")}</span>

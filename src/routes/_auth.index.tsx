@@ -8,7 +8,7 @@ import { ItemCard } from "@/components/molecules/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { type ItemFilters, type ItemSortKey,useItems } from "@/hooks/useItems";
+import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { getExpiryStatus } from "@/types/item";
@@ -112,27 +112,37 @@ const DashboardPage = () => {
         <div className="space-y-3 rounded-lg border p-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">{t("filterByCategory")}</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                {t("filterByCategory")}
+              </label>
               <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">すべて</option>
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
                 ))}
               </Select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">{t("filterByLocation")}</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                {t("filterByLocation")}
+              </label>
               <Select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
                 <option value="">すべて</option>
                 {locations.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
                 ))}
               </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">{t("filterByExpiry")}</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                {t("filterByExpiry")}
+              </label>
               <Select value={expiryFilter} onChange={(e) => setExpiryFilter(e.target.value)}>
                 <option value="">すべて</option>
                 <option value="expired">期限切れ</option>
@@ -195,7 +205,9 @@ const DashboardPage = () => {
               key={item.id}
               item={item}
               categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
-              locationName={item.storage_location_id ? locationMap[item.storage_location_id] : undefined}
+              locationName={
+                item.storage_location_id ? locationMap[item.storage_location_id] : undefined
+              }
               warningDays={warningDays}
             />
           ))}

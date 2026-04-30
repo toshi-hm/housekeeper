@@ -69,7 +69,9 @@ const LocationsPage = () => {
         title={t("deleteLocation")}
         message={t("deleteLocationConfirm")}
         confirmLabel="削除"
-        onConfirm={() => { void handleDelete(); }}
+        onConfirm={() => {
+          void handleDelete();
+        }}
         onCancel={() => setDeleteId(null)}
       />
 
@@ -86,10 +88,14 @@ const LocationsPage = () => {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t("locationName")}
-          onKeyDown={(e) => { if (e.key === "Enter") void handleCreate(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void handleCreate();
+          }}
         />
         <Button
-          onClick={() => { void handleCreate(); }}
+          onClick={() => {
+            void handleCreate();
+          }}
           disabled={createLocation.isPending || !newName.trim()}
           size="icon"
         >
@@ -99,7 +105,9 @@ const LocationsPage = () => {
 
       {/* List */}
       {isLoading ? (
-        <div className="flex justify-center py-8"><Spinner /></div>
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
       ) : locations.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">{t("noLocations")}</p>
       ) : (
@@ -113,9 +121,18 @@ const LocationsPage = () => {
                     onChange={(e) => setEditName(e.target.value)}
                     className="flex-1"
                     autoFocus
-                    onKeyDown={(e) => { if (e.key === "Enter") void handleUpdate(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleUpdate();
+                    }}
                   />
-                  <Button size="sm" onClick={() => { void handleUpdate(); }}>保存</Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      void handleUpdate();
+                    }}
+                  >
+                    保存
+                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>
                     キャンセル
                   </Button>
@@ -126,7 +143,10 @@ const LocationsPage = () => {
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => { setEditId(l.id); setEditName(l.name); }}
+                    onClick={() => {
+                      setEditId(l.id);
+                      setEditName(l.name);
+                    }}
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>

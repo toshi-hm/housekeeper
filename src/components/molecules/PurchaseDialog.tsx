@@ -13,7 +13,13 @@ interface PurchaseDialogProps {
   isSubmitting?: boolean;
 }
 
-export const PurchaseDialog = ({ open, itemName, onSubmit, onClose, isSubmitting }: PurchaseDialogProps) => {
+export const PurchaseDialog = ({
+  open,
+  itemName,
+  onSubmit,
+  onClose,
+  isSubmitting,
+}: PurchaseDialogProps) => {
   const { t } = useTranslation("shopping");
 
   if (!open) return null;

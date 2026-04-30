@@ -54,19 +54,24 @@ export const useUpsertShoppingItem = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: UpsertShoppingItemInput) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
       const { data, error } = await supabase
         .from("shopping_list_items")
-        .upsert({
-          id: input.id,
-          user_id: user.id,
-          name: input.name,
-          desired_units: input.desired_units ?? 1,
-          note: input.note ?? null,
-          linked_item_id: input.linked_item_id ?? null,
-        }, { onConflict: "id" })
+        .upsert(
+          {
+            id: input.id,
+            user_id: user.id,
+            name: input.name,
+            desired_units: input.desired_units ?? 1,
+            note: input.note ?? null,
+            linked_item_id: input.linked_item_id ?? null,
+          },
+          { onConflict: "id" },
+        )
         .select()
         .single();
       if (error) throw new Error(error.message);
@@ -95,7 +100,9 @@ export const usePurchaseShoppingItem = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ shoppingItemId, itemValues }: PurchaseInput) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
       const { data: newItem, error: itemError } = await supabase
