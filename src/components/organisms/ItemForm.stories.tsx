@@ -20,27 +20,28 @@ export const Default: Story = {};
 export const WithDefaultValues: Story = {
   args: {
     defaultValues: {
-      name: "Organic Milk",
+      name: "有機牛乳",
       barcode: "4901234567890",
-      category: "Food",
-      quantity: 2,
-      storage_location: "Fridge",
+      category_id: null,
+      storage_location_id: null,
+      units: 2,
+      content_amount: 500,
+      content_unit: "mL",
       purchase_date: "2024-01-01",
       expiry_date: "2099-12-31",
-      notes: "From local farm",
+      notes: "地元農家から",
     },
-    submitLabel: "Save Changes",
   },
 };
 
 export const Submitting: Story = {
   args: {
     defaultValues: {
-      name: "Shampoo",
-      category: "Personal Care",
-      quantity: 1,
+      name: "シャンプー",
+      units: 1,
+      content_amount: 400,
+      content_unit: "mL",
     },
     isSubmitting: true,
-    submitLabel: "Saving…",
   },
 };

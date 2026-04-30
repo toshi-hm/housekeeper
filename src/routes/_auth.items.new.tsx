@@ -1,18 +1,27 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { useCreateItem } from "@/hooks/useItems";
+import { useToast } from "@/lib/toast";
 import type { ItemFormValues } from "@/types/item";
 
 const NewItemPage = () => {
+  const { t } = useTranslation("items");
   const navigate = useNavigate();
   const createItem = useCreateItem();
+  const { toast } = useToast();
 
   const handleSubmit = async (values: ItemFormValues) => {
-    await createItem.mutateAsync(values);
-    void navigate({ to: "/" });
+    try {
+      await createItem.mutateAsync(values);
+      toast(t("createSuccess"), "success");
+      void navigate({ to: "/" });
+    } catch {
+      toast(t("common:unknownError"), "error");
+    }
   };
 
   return (
@@ -21,19 +30,11 @@ const NewItemPage = () => {
         <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold">Add New Item</h1>
+        <h1 className="text-xl font-bold">{t("addItem")}</h1>
       </div>
-      {createItem.error && (
-        <div className="rounded-lg border border-destructive p-3 text-sm text-destructive">
-          {createItem.error instanceof Error ? createItem.error.message : "Failed to create item"}
-        </div>
-      )}
       <ItemForm
-        onSubmit={(values) => {
-          void handleSubmit(values);
-        }}
+        onSubmit={(values) => { void handleSubmit(values); }}
         isSubmitting={createItem.isPending}
-        submitLabel="Add Item"
       />
     </div>
   );

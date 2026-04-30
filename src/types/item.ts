@@ -119,12 +119,17 @@ export const computeConsumption = (
     return { units_after: 0, opened_remaining_after: 0, error: "在庫が不足しています" };
   }
 
-  if (units === 0 && remaining >= contentAmount) {
-    return { units_after: 0, opened_remaining_after: 0 };
+  // opened unit fully consumed → decrement units
+  if (remaining === 0) {
+    units -= 1;
+    if (units < 0) {
+      return { units_after: 0, opened_remaining_after: 0, error: "在庫が不足しています" };
+    }
+    return { units_after: units, opened_remaining_after: null };
   }
 
   return {
     units_after: units,
-    opened_remaining_after: remaining === contentAmount ? null : remaining,
+    opened_remaining_after: remaining,
   };
 };

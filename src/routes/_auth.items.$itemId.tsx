@@ -1,20 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, Edit, Hash, MapPin, Package, StickyNote, Trash2 } from "lucide-react";
-import React from "react";
+import { ArrowLeft, Calendar, Edit, Hash, MapPin, Package, StickyNote, Trash2, Zap } from "lucide-react";
+import { type ReactNode,useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
+import { Spinner } from "@/components/atoms/Spinner";
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useDeleteItem, useItem } from "@/hooks/useItems";
+import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useToast } from "@/lib/toast";
 
-interface DetailRowProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}
-
-const DetailRow = ({ icon, label, value }: DetailRowProps) => (
+const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
   <div className="flex items-start gap-3">
     <span className="mt-0.5 text-muted-foreground">{icon}</span>
     <div>
@@ -25,23 +24,32 @@ const DetailRow = ({ icon, label, value }: DetailRowProps) => (
 );
 
 const ItemDetailPage = () => {
+  const { t } = useTranslation("items");
   const { itemId } = Route.useParams();
   const navigate = useNavigate();
   const { data: item, isLoading, error } = useItem(itemId);
+  const { data: categories = [] } = useCategories();
+  const { data: locations = [] } = useStorageLocations();
   const deleteItem = useDeleteItem();
+  const { toast } = useToast();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const category = categories.find((c) => c.id === item?.category_id);
+  const location = locations.find((l) => l.id === item?.storage_location_id);
 
   const handleDelete = async () => {
-    if (!confirm("Delete this item?")) return;
-    await deleteItem.mutateAsync(itemId);
-    void navigate({ to: "/" });
+    setShowDeleteConfirm(false);
+    try {
+      await deleteItem.mutateAsync(itemId);
+      toast(t("deleteSuccess"), "success");
+      void navigate({ to: "/" });
+    } catch {
+      toast(t("common:unknownError"), "error");
+    }
   };
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <div className="flex min-h-[200px] items-center justify-center"><Spinner /></div>;
   }
 
   if (error || !item) {
@@ -51,20 +59,40 @@ const ItemDetailPage = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="rounded-lg border border-destructive p-4 text-destructive">
-          Item not found.
+          アイテムが見つかりません
         </div>
       </div>
     );
   }
 
+  const isEmpty = item.units === 0;
+  const totalDisplay = item.opened_remaining !== null && item.opened_remaining !== undefined
+    ? `${item.units}点（開封中: ${item.opened_remaining}${item.content_unit}）`
+    : `${item.units}点 × ${item.content_amount}${item.content_unit}`;
+
   return (
     <div className="space-y-4">
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="在庫を削除"
+        message={t("deleteConfirm")}
+        confirmLabel="削除"
+        onConfirm={() => { void handleDelete(); }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex gap-2">
+          <Link to="/items/$itemId/consume" params={{ itemId }}>
+            <Button variant="outline" size="sm" disabled={isEmpty}>
+              <Zap className="mr-1 h-4 w-4" />
+              {t("consume")}
+            </Button>
+          </Link>
           <Link to="/items/$itemId/edit" params={{ itemId }}>
             <Button variant="outline" size="icon">
               <Edit className="h-4 w-4" />
@@ -73,9 +101,7 @@ const ItemDetailPage = () => {
           <Button
             variant="destructive"
             size="icon"
-            onClick={() => {
-              void handleDelete();
-            }}
+            onClick={() => setShowDeleteConfirm(true)}
             disabled={deleteItem.isPending}
           >
             <Trash2 className="h-4 w-4" />
@@ -83,65 +109,55 @@ const ItemDetailPage = () => {
         </div>
       </div>
 
-      {/* Product image */}
-      {item.image_url ? (
-        <div className="overflow-hidden rounded-lg">
-          <img
-            src={item.image_url}
-            alt={item.name}
-            className="w-full object-contain"
-            style={{ maxHeight: 240 }}
-          />
-        </div>
-      ) : (
-        <div className="flex h-40 items-center justify-center rounded-lg bg-muted">
-          <Package className="h-16 w-16 text-muted-foreground" />
-        </div>
-      )}
+      {/* Image placeholder */}
+      <div className="flex h-40 items-center justify-center rounded-lg bg-muted">
+        <Package className="h-16 w-16 text-muted-foreground" />
+      </div>
 
-      {/* Name + category */}
+      {/* Name + badges */}
       <div>
         <h1 className="text-2xl font-bold">{item.name}</h1>
         <div className="mt-1 flex flex-wrap gap-2">
-          {item.category && <Badge variant="secondary">{item.category}</Badge>}
+          {category && <Badge variant="secondary">{category.name}</Badge>}
+          {isEmpty && <Badge variant="outline" className="text-muted-foreground">使い切り</Badge>}
           <ExpiryBadge expiryDate={item.expiry_date} />
         </div>
       </div>
 
       {/* Details */}
       <Card>
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="space-y-3 p-4">
           <DetailRow
-            icon={<Hash className="h-4 w-4" />}
-            label="Quantity"
-            value={String(item.quantity)}
+            icon={<Package className="h-4 w-4" />}
+            label={t("units")}
+            value={totalDisplay}
           />
           {item.barcode && (
-            <DetailRow icon={<Hash className="h-4 w-4" />} label="Barcode" value={item.barcode} />
+            <DetailRow icon={<Hash className="h-4 w-4" />} label={t("barcode")} value={item.barcode} />
           )}
-          {item.storage_location && (
+          {location && (
             <DetailRow
               icon={<MapPin className="h-4 w-4" />}
-              label="Location"
-              value={item.storage_location}
+              label={t("storageLocation")}
+              value={location.name}
             />
           )}
           {item.purchase_date && (
             <DetailRow
               icon={<Calendar className="h-4 w-4" />}
-              label="Purchased"
-              value={new Date(item.purchase_date).toLocaleDateString()}
+              label={t("purchaseDate")}
+              value={new Date(item.purchase_date).toLocaleDateString("ja-JP")}
             />
           )}
           {item.expiry_date && (
             <DetailRow
               icon={<Calendar className="h-4 w-4" />}
-              label="Expires"
-              value={new Date(item.expiry_date).toLocaleDateString()}
+              label={t("expiryDate")}
+              value={new Date(item.expiry_date).toLocaleDateString("ja-JP")}
             />
           )}
           {item.notes && (
-            <DetailRow icon={<StickyNote className="h-4 w-4" />} label="Notes" value={item.notes} />
+            <DetailRow icon={<StickyNote className="h-4 w-4" />} label={t("notes")} value={item.notes} />
           )}
         </CardContent>
       </Card>
