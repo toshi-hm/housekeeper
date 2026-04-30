@@ -10,6 +10,7 @@ const meta = {
   component: ErrorBoundary,
   tags: ["autodocs"],
   parameters: { layout: "padded" },
+  args: { children: null },
 } satisfies Meta<typeof ErrorBoundary>;
 
 export default meta;

@@ -51,7 +51,7 @@ export const CategoryChart = ({ stats }: CategoryChartProps) => {
           axisLine={false}
         />
         <Tooltip
-          formatter={(value: number) => [`${value}${t("itemCount")}`, ti("units")]}
+          formatter={(value) => [`${value ?? 0}${t("itemCount")}`, ti("units")]}
           contentStyle={{ fontSize: 12 }}
         />
         <Bar dataKey="count" radius={[0, 4, 4, 0]}>

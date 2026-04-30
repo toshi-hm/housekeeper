@@ -91,7 +91,7 @@ export const computeMonthlyConsumption = (
     if (unitTotals.size === 0) {
       result.push({ month: label, total: 0, unit: "" });
     } else {
-      const [dominantUnit, total] = [...unitTotals.entries()].sort((a, b) => b[1] - a[1])[0];
+      const [dominantUnit, total] = [...unitTotals.entries()].sort((a, b) => b[1] - a[1])[0]!;
       result.push({ month: label, total: Math.round(total * 100) / 100, unit: dominantUnit });
     }
   }
