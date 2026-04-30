@@ -1,4 +1,4 @@
-import { getExpiryStatus, type ExpiryStatus, type Item } from "@/types/item";
+import { type ExpiryStatus, getExpiryStatus, type Item } from "@/types/item";
 
 export interface CategoryStat {
   categoryId: string | null;
