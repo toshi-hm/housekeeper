@@ -97,7 +97,9 @@ const ItemConsumePage = () => {
       {/* Current state */}
       <div className="rounded-lg bg-muted p-4">
         <p className="font-semibold">{item.name}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{t("currentStock")}: {currentDisplay}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t("currentStock")}: {currentDisplay}
+        </p>
       </div>
 
       {/* Input */}
@@ -128,7 +130,10 @@ const ItemConsumePage = () => {
           <p className="mt-1">
             {t("consumeUnitsDisplay", { units: preview.units_after })}
             {preview.opened_remaining_after !== null && preview.opened_remaining_after !== undefined
-              ? t("consumeOpenedSuffix", { remaining: preview.opened_remaining_after, unit: item.content_unit })
+              ? t("consumeOpenedSuffix", {
+                  remaining: preview.opened_remaining_after,
+                  unit: item.content_unit,
+                })
               : ""}
           </p>
         </div>

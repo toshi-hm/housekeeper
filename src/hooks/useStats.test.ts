@@ -25,11 +25,7 @@ describe("computeCategoryStats", () => {
   });
 
   test("groups by category_id and resolves names", () => {
-    const items = [
-      { category_id: "cat-1" },
-      { category_id: "cat-1" },
-      { category_id: "cat-2" },
-    ];
+    const items = [{ category_id: "cat-1" }, { category_id: "cat-1" }, { category_id: "cat-2" }];
     const categoryMap = { "cat-1": "Food", "cat-2": "Drink" };
     const result = computeCategoryStats(items, categoryMap);
     expect(result).toHaveLength(2);

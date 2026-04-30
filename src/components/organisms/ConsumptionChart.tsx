@@ -26,12 +26,7 @@ export const ConsumptionChart = ({ data }: ConsumptionChartProps) => {
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-        <XAxis
-          dataKey="month"
-          tick={{ fontSize: 11 }}
-          tickLine={false}
-          axisLine={false}
-        />
+        <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
         <YAxis
           tick={{ fontSize: 11 }}
           tickLine={false}

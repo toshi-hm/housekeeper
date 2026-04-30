@@ -49,10 +49,7 @@ export const ExpiryChart = ({ distribution }: ExpiryChartProps) => {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number, name: string) => [
-            `${value}${t("itemCount")}`,
-            name,
-          ]}
+          formatter={(value: number, name: string) => [`${value}${t("itemCount")}`, name]}
           contentStyle={{ fontSize: 12 }}
         />
         <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
