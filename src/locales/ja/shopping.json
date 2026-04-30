@@ -1,0 +1,14 @@
+{
+  "title": "買い物リスト",
+  "addItem": "追加",
+  "itemName": "商品名",
+  "desiredUnits": "希望数量",
+  "note": "メモ",
+  "statusPlanned": "予定",
+  "statusPurchased": "購入済み",
+  "markPurchased": "購入完了",
+  "noItems": "買い物リストは空です",
+  "restock": "補充",
+  "purchaseComplete": "購入完了にする",
+  "createItemFromPurchase": "在庫に追加"
+}

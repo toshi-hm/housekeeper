@@ -1,0 +1,14 @@
+{
+  "title": "Shopping List",
+  "addItem": "Add",
+  "itemName": "Item name",
+  "desiredUnits": "Desired qty",
+  "note": "Note",
+  "statusPlanned": "Planned",
+  "statusPurchased": "Purchased",
+  "markPurchased": "Mark Purchased",
+  "noItems": "Shopping list is empty",
+  "restock": "Restock",
+  "purchaseComplete": "Mark as purchased",
+  "createItemFromPurchase": "Add to inventory"
+}

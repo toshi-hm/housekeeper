@@ -1,0 +1,7 @@
+{
+  "title": "統計",
+  "categoryBreakdown": "カテゴリ別在庫",
+  "expiryBreakdown": "期限ステータス分布",
+  "consumptionTrend": "月別消費量",
+  "noData": "データがありません"
+}
