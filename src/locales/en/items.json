@@ -37,6 +37,12 @@
   "consumeError": "Failed to record consumption",
   "insufficientStock": "Insufficient stock",
   "scanBarcode": "Scan Barcode",
+  "scannerStarting": "Starting camera...",
+  "scannerHint": "Point the camera at a barcode to scan",
+  "scannerError": "Camera Error",
+  "scannerRetry": "Retry",
+  "scannerManualInput": "Manual Input",
+  "scannerManualPlaceholder": "Type barcode and press Enter",
   "expiryStatus": {
     "expired": "Expired",
     "expiring-soon": "Expiring Soon",

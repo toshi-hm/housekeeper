@@ -37,6 +37,12 @@
   "consumeError": "消費の記録に失敗しました",
   "insufficientStock": "在庫が不足しています",
   "scanBarcode": "バーコードをスキャン",
+  "scannerStarting": "カメラを起動中...",
+  "scannerHint": "バーコードにカメラを向けてください",
+  "scannerError": "カメラエラー",
+  "scannerRetry": "再試行",
+  "scannerManualInput": "手動入力",
+  "scannerManualPlaceholder": "バーコードを入力して確定",
   "expiryStatus": {
     "expired": "期限切れ",
     "expiring-soon": "期限間近",
