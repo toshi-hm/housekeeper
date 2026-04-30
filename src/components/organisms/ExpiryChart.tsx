@@ -1,8 +1,7 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useTranslation } from "react-i18next";
 
-import { useUserSettings } from "@/hooks/useUserSettings";
-import { useExpiryDistribution } from "@/hooks/useStats";
+import type { ExpiryDistributionEntry } from "@/types/stats";
 
 const STATUS_COLORS: Record<string, string> = {
   expired: "#ef4444",
@@ -11,11 +10,13 @@ const STATUS_COLORS: Record<string, string> = {
   unknown: "#94a3b8",
 };
 
-export const ExpiryChart = () => {
+interface ExpiryChartProps {
+  distribution: ExpiryDistributionEntry[];
+}
+
+export const ExpiryChart = ({ distribution }: ExpiryChartProps) => {
   const { t } = useTranslation("stats");
   const { t: ti } = useTranslation("items");
-  const { data: userSettings } = useUserSettings();
-  const distribution = useExpiryDistribution(userSettings?.expiry_warning_days);
 
   if (distribution.length === 0) {
     return (

@@ -1,11 +1,14 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTranslation } from "react-i18next";
 
-import { useMonthlyConsumption } from "@/hooks/useStats";
+import type { MonthlyConsumptionEntry } from "@/types/stats";
 
-export const ConsumptionChart = () => {
+interface ConsumptionChartProps {
+  data: MonthlyConsumptionEntry[];
+}
+
+export const ConsumptionChart = ({ data }: ConsumptionChartProps) => {
   const { t } = useTranslation("stats");
-  const data = useMonthlyConsumption(6);
 
   const hasData = data.some((d) => d.total > 0);
 
