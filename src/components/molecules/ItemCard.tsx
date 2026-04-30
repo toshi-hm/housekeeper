@@ -11,11 +11,12 @@ interface ItemCardProps {
   item: Item;
   categoryName?: string | undefined;
   locationName?: string | undefined;
+  warningDays?: number;
 }
 
-export const ItemCard = ({ item, locationName }: ItemCardProps) => {
+export const ItemCard = ({ item, locationName, warningDays }: ItemCardProps) => {
   const { t } = useTranslation("items");
-  const expiryStatus = getExpiryStatus(item.expiry_date);
+  const expiryStatus = getExpiryStatus(item.expiry_date, warningDays);
   const isUrgent = expiryStatus === "expired" || expiryStatus === "expiring-soon";
   const isEmpty = item.units === 0;
 
@@ -57,7 +58,7 @@ export const ItemCard = ({ item, locationName }: ItemCardProps) => {
               <span>{item.units}{t("common:all") ? "" : ""} <span className="text-xs text-muted-foreground">{item.content_unit}</span></span>
             )}
           </span>
-          <ExpiryBadge expiryDate={item.expiry_date} />
+          <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />
         </CardFooter>
       </Card>
     </Link>

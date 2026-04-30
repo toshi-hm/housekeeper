@@ -10,12 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { type ItemFilters, type ItemSortKey,useItems } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useUserSettings } from "@/hooks/useUserSettings";
 import { getExpiryStatus } from "@/types/item";
 
 const DashboardPage = () => {
   const { t } = useTranslation("items");
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
+  const { data: userSettings } = useUserSettings();
+  const warningDays = userSettings?.expiry_warning_days;
 
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -46,7 +49,7 @@ const DashboardPage = () => {
   });
 
   const urgentCount = items.filter((item) => {
-    const status = getExpiryStatus(item.expiry_date);
+    const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
   }).length;
 
@@ -193,6 +196,7 @@ const DashboardPage = () => {
               item={item}
               categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
               locationName={item.storage_location_id ? locationMap[item.storage_location_id] : undefined}
+              warningDays={warningDays}
             />
           ))}
         </div>

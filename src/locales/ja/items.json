@@ -30,7 +30,7 @@
   "scanBarcode": "バーコードをスキャン",
   "expiryStatus": {
     "expired": "期限切れ",
-    "expiringSoon": "期限間近",
+    "expiring-soon": "期限間近",
     "ok": "期限内",
     "unknown": "期限不明"
   },

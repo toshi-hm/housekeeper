@@ -2,11 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChevronRight, Globe, MapPin, Tag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { LanguageToggle } from "@/components/atoms/LanguageToggle";
 import { Spinner } from "@/components/atoms/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { useToast } from "@/lib/toast";
 
@@ -54,13 +54,10 @@ const SettingsPage = () => {
               <Globe className="h-4 w-4" />
               {t("language")}
             </h2>
-            <Select
+            <LanguageToggle
               value={settings?.language ?? "ja"}
-              onChange={(e) => { void handleLanguageChange(e.target.value as "ja" | "en"); }}
-            >
-              <option value="ja">{t("languageJa")}</option>
-              <option value="en">{t("languageEn")}</option>
-            </Select>
+              onChange={(lang) => { void handleLanguageChange(lang as "ja" | "en"); }}
+            />
           </section>
 
           {/* Expiry warning days */}

@@ -30,7 +30,7 @@
   "scanBarcode": "Scan Barcode",
   "expiryStatus": {
     "expired": "Expired",
-    "expiringSoon": "Expiring Soon",
+    "expiring-soon": "Expiring Soon",
     "ok": "Good",
     "unknown": "No Expiry"
   },

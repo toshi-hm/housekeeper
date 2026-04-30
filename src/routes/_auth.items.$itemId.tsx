@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useDeleteItem, useItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useUserSettings } from "@/hooks/useUserSettings";
 import { useToast } from "@/lib/toast";
 
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
@@ -30,6 +31,7 @@ const ItemDetailPage = () => {
   const { data: item, isLoading, error } = useItem(itemId);
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
+  const { data: userSettings } = useUserSettings();
   const deleteItem = useDeleteItem();
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -120,7 +122,7 @@ const ItemDetailPage = () => {
         <div className="mt-1 flex flex-wrap gap-2">
           {category && <Badge variant="secondary">{category.name}</Badge>}
           {isEmpty && <Badge variant="outline" className="text-muted-foreground">使い切り</Badge>}
-          <ExpiryBadge expiryDate={item.expiry_date} />
+          <ExpiryBadge expiryDate={item.expiry_date} warningDays={userSettings?.expiry_warning_days} />
         </div>
       </div>
 
