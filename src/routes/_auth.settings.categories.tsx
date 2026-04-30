@@ -17,6 +17,7 @@ import { useToast } from "@/lib/toast";
 
 const CategoriesPage = () => {
   const { t } = useTranslation("settings");
+  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const { data: categories = [], isLoading } = useCategories();
   const createCategory = useCreateCategory();
@@ -68,7 +69,7 @@ const CategoriesPage = () => {
         open={!!deleteId}
         title={t("deleteCategory")}
         message={t("deleteCategoryConfirm")}
-        confirmLabel="削除"
+        confirmLabel={tc("delete")}
         onConfirm={() => {
           void handleDelete();
         }}
@@ -131,10 +132,10 @@ const CategoriesPage = () => {
                       void handleUpdate();
                     }}
                   >
-                    保存
+                    {tc("save")}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>
-                    キャンセル
+                    {tc("cancel")}
                   </Button>
                 </>
               ) : (

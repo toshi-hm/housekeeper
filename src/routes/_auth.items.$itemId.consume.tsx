@@ -30,7 +30,7 @@ const ItemConsumePage = () => {
     if (!item) return;
     const amount = parseFloat(delta);
     if (isNaN(amount) || amount <= 0) {
-      setValidationError("0より大きい値を入力してください");
+      setValidationError(t("consumeValidationError"));
       return;
     }
     const result = computeConsumption(item, amount);
@@ -62,7 +62,7 @@ const ItemConsumePage = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="rounded-lg border border-destructive p-4 text-destructive">
-          アイテムが見つかりません
+          {t("itemNotFound")}
         </div>
       </div>
     );
@@ -70,8 +70,16 @@ const ItemConsumePage = () => {
 
   const currentDisplay =
     item.opened_remaining !== null && item.opened_remaining !== undefined
-      ? `開封中: ${item.opened_remaining}${item.content_unit} + 未開封${item.units > 0 ? item.units - 1 : 0}点`
-      : `${item.units}点 × ${item.content_amount}${item.content_unit}`;
+      ? t("openedDisplay", {
+          remaining: item.opened_remaining,
+          unit: item.content_unit,
+          count: item.units > 0 ? item.units - 1 : 0,
+        })
+      : t("totalDisplaySealed", {
+          units: item.units,
+          amount: item.content_amount,
+          unit: item.content_unit,
+        });
 
   return (
     <div className="space-y-6">
@@ -89,7 +97,7 @@ const ItemConsumePage = () => {
       {/* Current state */}
       <div className="rounded-lg bg-muted p-4">
         <p className="font-semibold">{item.name}</p>
-        <p className="mt-1 text-sm text-muted-foreground">現在の在庫: {currentDisplay}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("currentStock")}: {currentDisplay}</p>
       </div>
 
       {/* Input */}
@@ -116,11 +124,11 @@ const ItemConsumePage = () => {
       {/* Preview */}
       {preview && !preview.error && (
         <div className="rounded-lg border p-4 text-sm">
-          <p className="font-medium text-muted-foreground">消費後の在庫（プレビュー）</p>
+          <p className="font-medium text-muted-foreground">{t("consumePreviewTitle")}</p>
           <p className="mt-1">
-            {preview.units_after}点
+            {t("consumeUnitsDisplay", { units: preview.units_after })}
             {preview.opened_remaining_after !== null && preview.opened_remaining_after !== undefined
-              ? `（開封中: ${preview.opened_remaining_after}${item.content_unit}）`
+              ? t("consumeOpenedSuffix", { remaining: preview.opened_remaining_after, unit: item.content_unit })
               : ""}
           </p>
         </div>

@@ -41,6 +41,7 @@ const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; val
 
 const ItemDetailPage = () => {
   const { t } = useTranslation("items");
+  const { t: tc } = useTranslation("common");
   const { itemId } = Route.useParams();
   const navigate = useNavigate();
   const { data: item, isLoading, error } = useItem(itemId);
@@ -93,7 +94,7 @@ const ItemDetailPage = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="rounded-lg border border-destructive p-4 text-destructive">
-          アイテムが見つかりません
+          {t("itemNotFound")}
         </div>
       </div>
     );
@@ -102,16 +103,24 @@ const ItemDetailPage = () => {
   const isEmpty = item.units === 0;
   const totalDisplay =
     item.opened_remaining !== null && item.opened_remaining !== undefined
-      ? `${item.units}点（開封中: ${item.opened_remaining}${item.content_unit}）`
-      : `${item.units}点 × ${item.content_amount}${item.content_unit}`;
+      ? t("totalDisplayOpened", {
+          units: item.units,
+          remaining: item.opened_remaining,
+          unit: item.content_unit,
+        })
+      : t("totalDisplaySealed", {
+          units: item.units,
+          amount: item.content_amount,
+          unit: item.content_unit,
+        });
 
   return (
     <div className="space-y-4">
       <ConfirmDialog
         open={showDeleteConfirm}
-        title="在庫を削除"
+        title={t("deleteItemTitle")}
         message={t("deleteConfirm")}
-        confirmLabel="削除"
+        confirmLabel={tc("delete")}
         onConfirm={() => {
           void handleDelete();
         }}
@@ -167,7 +176,7 @@ const ItemDetailPage = () => {
           {category && <Badge variant="secondary">{category.name}</Badge>}
           {isEmpty && (
             <Badge variant="outline" className="text-muted-foreground">
-              使い切り
+              {t("emptyStock")}
             </Badge>
           )}
           <ExpiryBadge
@@ -224,14 +233,14 @@ const ItemDetailPage = () => {
               <DetailRow
                 icon={<Calendar className="h-4 w-4" />}
                 label={t("purchaseDate")}
-                value={new Date(item.purchase_date).toLocaleDateString("ja-JP")}
+                value={new Date(item.purchase_date).toLocaleDateString()}
               />
             )}
             {item.expiry_date && (
               <DetailRow
                 icon={<Calendar className="h-4 w-4" />}
                 label={t("expiryDate")}
-                value={new Date(item.expiry_date).toLocaleDateString("ja-JP")}
+                value={new Date(item.expiry_date).toLocaleDateString()}
               />
             )}
             {item.notes && (
@@ -262,7 +271,7 @@ const ItemDetailPage = () => {
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(log.occurred_at).toLocaleDateString("ja-JP")}
+                      {new Date(log.occurred_at).toLocaleDateString()}
                     </p>
                   </div>
                 </CardContent>

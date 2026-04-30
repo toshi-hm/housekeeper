@@ -54,7 +54,7 @@ const EditItemPage = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="rounded-lg border border-destructive p-4 text-destructive">
-          アイテムが見つかりません
+          {t("itemNotFound")}
         </div>
       </div>
     );

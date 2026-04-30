@@ -17,6 +17,7 @@ import { useToast } from "@/lib/toast";
 
 const LocationsPage = () => {
   const { t } = useTranslation("settings");
+  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const { data: locations = [], isLoading } = useStorageLocations();
   const createLocation = useCreateStorageLocation();
@@ -68,7 +69,7 @@ const LocationsPage = () => {
         open={!!deleteId}
         title={t("deleteLocation")}
         message={t("deleteLocationConfirm")}
-        confirmLabel="削除"
+        confirmLabel={tc("delete")}
         onConfirm={() => {
           void handleDelete();
         }}
@@ -131,10 +132,10 @@ const LocationsPage = () => {
                       void handleUpdate();
                     }}
                   >
-                    保存
+                    {tc("save")}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>
-                    キャンセル
+                    {tc("cancel")}
                   </Button>
                 </>
               ) : (

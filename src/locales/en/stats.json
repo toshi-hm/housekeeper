@@ -3,5 +3,10 @@
   "categoryBreakdown": "Items by Category",
   "expiryBreakdown": "Expiry Status",
   "consumptionTrend": "Monthly Consumption",
-  "noData": "No data available"
+  "noData": "No data available",
+  "historyHint": "Stats will appear as you track items",
+  "itemCount": "items",
+  "uncategorized": "Uncategorized",
+  "last6Months": "Last 6 months",
+  "totalItems": "Total {{count}} items"
 }

@@ -66,5 +66,20 @@
   "updateSuccess": "Item updated",
   "restockSuccess": "Added to shopping list",
   "consumeHistory": "History",
-  "noHistory": "No consumption history"
+  "noHistory": "No consumption history",
+  "itemNotFound": "Item not found",
+  "loadError": "Failed to load. Please refresh.",
+  "hideEmpty": "Hide empty items",
+  "urgentBanner": "{{count}} items are expired or expiring soon",
+  "firstAddHint": "Add your first item",
+  "noMatchingItems": "No matching items",
+  "deleteItemTitle": "Delete Item",
+  "currentStock": "Current stock",
+  "totalDisplayOpened": "{{units}} units (opened: {{remaining}}{{unit}})",
+  "totalDisplaySealed": "{{units}} × {{amount}}{{unit}}",
+  "openedDisplay": "Opened: {{remaining}}{{unit}} + Sealed {{count}}",
+  "consumePreviewTitle": "Stock after consumption (preview)",
+  "consumeUnitsDisplay": "{{units}} units",
+  "consumeOpenedSuffix": " (opened: {{remaining}}{{unit}})",
+  "consumeValidationError": "Enter a value greater than 0"
 }

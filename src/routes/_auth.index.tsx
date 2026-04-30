@@ -15,6 +15,7 @@ import { getExpiryStatus } from "@/types/item";
 
 const DashboardPage = () => {
   const { t } = useTranslation("items");
+  const { t: tc } = useTranslation("common");
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
   const { data: userSettings } = useUserSettings();
@@ -63,7 +64,7 @@ const DashboardPage = () => {
         </div>
         <div className="flex items-center gap-2">
           <Link to="/settings">
-            <Button variant="ghost" size="icon" aria-label="設定">
+            <Button variant="ghost" size="icon" aria-label={tc("settings" as never) ?? "Settings"}>
               <Settings className="h-5 w-5" />
             </Button>
           </Link>
@@ -81,7 +82,7 @@ const DashboardPage = () => {
         <div className="flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">
           <AlertTriangle className="h-5 w-5 shrink-0" />
           <p className="text-sm">
-            <span className="font-medium">{urgentCount}件</span>の在庫が期限切れまたは期限間近です
+            <span className="font-medium">{t("urgentBanner", { count: urgentCount })}</span>
           </p>
         </div>
       )}
@@ -101,7 +102,7 @@ const DashboardPage = () => {
           variant={showFilters ? "default" : "outline"}
           size="icon"
           onClick={() => setShowFilters((v) => !v)}
-          aria-label={t("common:filter")}
+          aria-label={tc("filter")}
         >
           <SlidersHorizontal className="h-4 w-4" />
         </Button>
@@ -116,7 +117,7 @@ const DashboardPage = () => {
                 {t("filterByCategory")}
               </label>
               <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                <option value="">すべて</option>
+                <option value="">{tc("all")}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -129,13 +130,13 @@ const DashboardPage = () => {
                 {t("filterByLocation")}
               </label>
               <Select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-                <option value="">すべて</option>
+                <option value="">{tc("all")}</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
                   </option>
                 ))}
-              </Select>
+            </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -144,15 +145,15 @@ const DashboardPage = () => {
                 {t("filterByExpiry")}
               </label>
               <Select value={expiryFilter} onChange={(e) => setExpiryFilter(e.target.value)}>
-                <option value="">すべて</option>
-                <option value="expired">期限切れ</option>
-                <option value="expiring-soon">期限間近</option>
-                <option value="ok">期限内</option>
-                <option value="unknown">期限不明</option>
+                <option value="">{tc("all")}</option>
+                <option value="expired">{t("expiryStatus.expired")}</option>
+                <option value="expiring-soon">{t("expiryStatus.expiring-soon")}</option>
+                <option value="ok">{t("expiryStatus.ok")}</option>
+                <option value="unknown">{t("expiryStatus.unknown")}</option>
               </Select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">並び替え</label>
+              <label className="mb-1 block text-xs text-muted-foreground">{tc("sort")}</label>
               <Select value={sort} onChange={(e) => setSort(e.target.value as ItemSortKey)}>
                 <option value="created_at">{t("sortByCreatedAt")}</option>
                 <option value="expiry_date">{t("sortByExpiry")}</option>
@@ -167,7 +168,7 @@ const DashboardPage = () => {
               onChange={(e) => setHideEmpty(e.target.checked)}
               className="rounded"
             />
-            使い切り在庫を隠す
+            {t("hideEmpty")}
           </label>
         </div>
       )}
@@ -179,14 +180,14 @@ const DashboardPage = () => {
         </div>
       ) : error ? (
         <div className="rounded-lg border border-destructive p-4 text-sm text-destructive">
-          読み込みに失敗しました。再読み込みしてください。
+          {t("loadError")}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
           {items.length === 0 ? (
             <>
               <p className="text-lg font-medium">{t("noItems")}</p>
-              <p className="mt-1 text-sm">最初の在庫を追加しましょう</p>
+              <p className="mt-1 text-sm">{t("firstAddHint")}</p>
               <Link to="/items/new" className="mt-4">
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -195,7 +196,7 @@ const DashboardPage = () => {
               </Link>
             </>
           ) : (
-            <p className="text-lg font-medium">該当する在庫がありません</p>
+            <p className="text-lg font-medium">{t("noMatchingItems")}</p>
           )}
         </div>
       ) : (
