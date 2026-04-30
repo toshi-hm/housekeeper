@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AuthIndexRouteImport } from './routes/_auth.index'
+import { Route as AuthShoppingRouteImport } from './routes/_auth.shopping'
 import { Route as AuthSettingsRouteImport } from './routes/_auth.settings'
 import { Route as AuthSettingsLocationsRouteImport } from './routes/_auth.settings.locations'
 import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
@@ -32,6 +33,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthIndexRoute = AuthIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthShoppingRoute = AuthShoppingRouteImport.update({
+  id: '/shopping',
+  path: '/shopping',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthSettingsRoute = AuthSettingsRouteImport.update({
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthIndexRoute
   '/login': typeof LoginRoute
   '/settings': typeof AuthSettingsRouteWithChildren
+  '/shopping': typeof AuthShoppingRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
@@ -84,6 +91,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/settings': typeof AuthSettingsRouteWithChildren
+  '/shopping': typeof AuthShoppingRoute
   '/': typeof AuthIndexRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
   '/_auth/settings': typeof AuthSettingsRouteWithChildren
+  '/_auth/shopping': typeof AuthShoppingRoute
   '/_auth/': typeof AuthIndexRoute
   '/_auth/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/_auth/items/new': typeof AuthItemsNewRoute
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/settings'
+    | '/shopping'
     | '/items/$itemId'
     | '/items/new'
     | '/settings/categories'
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/settings'
+    | '/shopping'
     | '/'
     | '/items/$itemId'
     | '/items/new'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/login'
     | '/_auth/settings'
+    | '/_auth/shopping'
     | '/_auth/'
     | '/_auth/items/$itemId'
     | '/_auth/items/new'
@@ -168,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthIndexRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/shopping': {
+      id: '/_auth/shopping'
+      path: '/shopping'
+      fullPath: '/shopping'
+      preLoaderRoute: typeof AuthShoppingRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/settings': {
@@ -252,6 +271,7 @@ const AuthItemsItemIdRouteWithChildren = AuthItemsItemIdRoute._addFileChildren(
 
 interface AuthRouteChildren {
   AuthSettingsRoute: typeof AuthSettingsRouteWithChildren
+  AuthShoppingRoute: typeof AuthShoppingRoute
   AuthIndexRoute: typeof AuthIndexRoute
   AuthItemsItemIdRoute: typeof AuthItemsItemIdRouteWithChildren
   AuthItemsNewRoute: typeof AuthItemsNewRoute
@@ -259,6 +279,7 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthSettingsRoute: AuthSettingsRouteWithChildren,
+  AuthShoppingRoute: AuthShoppingRoute,
   AuthIndexRoute: AuthIndexRoute,
   AuthItemsItemIdRoute: AuthItemsItemIdRouteWithChildren,
   AuthItemsNewRoute: AuthItemsNewRoute,

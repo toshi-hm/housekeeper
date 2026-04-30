@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, Edit, Hash, MapPin, Package, StickyNote, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, Calendar, Edit, Hash, History, MapPin, Package, RefreshCw, StickyNote, Trash2, Zap } from "lucide-react";
 import { type ReactNode,useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,8 +10,10 @@ import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useConsumptionLogs } from "@/hooks/useConsumptionLogs";
 import { useDeleteItem, useItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useToast } from "@/lib/toast";
 
@@ -34,8 +36,21 @@ const ItemDetailPage = () => {
   const { data: locations = [] } = useStorageLocations();
   const { data: userSettings } = useUserSettings();
   const deleteItem = useDeleteItem();
+  const upsertShopping = useUpsertShoppingItem();
+  const { data: logs = [] } = useConsumptionLogs(itemId);
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [detailTab, setDetailTab] = useState<"info" | "history">("info");
+
+  const handleRestock = async () => {
+    if (!item) return;
+    try {
+      await upsertShopping.mutateAsync({ name: item.name, linked_item_id: item.id });
+      toast(t("restockSuccess"), "success");
+    } catch {
+      toast(t("common:unknownError"), "error");
+    }
+  };
 
   const category = categories.find((c) => c.id === item?.category_id);
   const location = locations.find((l) => l.id === item?.storage_location_id);
@@ -96,6 +111,15 @@ const ItemDetailPage = () => {
               {t("consume")}
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => { void handleRestock(); }}
+            disabled={upsertShopping.isPending}
+            title={t("shopping:restock")}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
           <Link to="/items/$itemId/edit" params={{ itemId }}>
             <Button variant="outline" size="icon">
               <Edit className="h-4 w-4" />
@@ -129,43 +153,89 @@ const ItemDetailPage = () => {
         </div>
       </div>
 
-      {/* Details */}
-      <Card>
-        <CardContent className="space-y-3 p-4">
-          <DetailRow
-            icon={<Package className="h-4 w-4" />}
-            label={t("units")}
-            value={totalDisplay}
-          />
-          {item.barcode && (
-            <DetailRow icon={<Hash className="h-4 w-4" />} label={t("barcode")} value={item.barcode} />
-          )}
-          {location && (
+      {/* Tab navigation */}
+      <div className="flex rounded-lg border p-1">
+        <button
+          className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "info" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+          onClick={() => setDetailTab("info")}
+        >
+          <Package className="h-4 w-4" />
+          {t("itemDetail")}
+        </button>
+        <button
+          className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "history" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+          onClick={() => setDetailTab("history")}
+        >
+          <History className="h-4 w-4" />
+          {t("consumeHistory")}
+          {logs.length > 0 && <span className="ml-1 rounded-full bg-primary/20 px-1.5 text-xs">{logs.length}</span>}
+        </button>
+      </div>
+
+      {detailTab === "info" ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
             <DetailRow
-              icon={<MapPin className="h-4 w-4" />}
-              label={t("storageLocation")}
-              value={location.name}
+              icon={<Package className="h-4 w-4" />}
+              label={t("units")}
+              value={totalDisplay}
             />
+            {item.barcode && (
+              <DetailRow icon={<Hash className="h-4 w-4" />} label={t("barcode")} value={item.barcode} />
+            )}
+            {location && (
+              <DetailRow
+                icon={<MapPin className="h-4 w-4" />}
+                label={t("storageLocation")}
+                value={location.name}
+              />
+            )}
+            {item.purchase_date && (
+              <DetailRow
+                icon={<Calendar className="h-4 w-4" />}
+                label={t("purchaseDate")}
+                value={new Date(item.purchase_date).toLocaleDateString("ja-JP")}
+              />
+            )}
+            {item.expiry_date && (
+              <DetailRow
+                icon={<Calendar className="h-4 w-4" />}
+                label={t("expiryDate")}
+                value={new Date(item.expiry_date).toLocaleDateString("ja-JP")}
+              />
+            )}
+            {item.notes && (
+              <DetailRow icon={<StickyNote className="h-4 w-4" />} label={t("notes")} value={item.notes} />
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {logs.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("noHistory")}</p>
+          ) : (
+            logs.map((log) => (
+              <Card key={log.id}>
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">
+                        −{log.delta_amount}{log.delta_unit}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {log.units_before} → {log.units_after} {t("units")}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(log.occurred_at).toLocaleDateString("ja-JP")}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
           )}
-          {item.purchase_date && (
-            <DetailRow
-              icon={<Calendar className="h-4 w-4" />}
-              label={t("purchaseDate")}
-              value={new Date(item.purchase_date).toLocaleDateString("ja-JP")}
-            />
-          )}
-          {item.expiry_date && (
-            <DetailRow
-              icon={<Calendar className="h-4 w-4" />}
-              label={t("expiryDate")}
-              value={new Date(item.expiry_date).toLocaleDateString("ja-JP")}
-            />
-          )}
-          {item.notes && (
-            <DetailRow icon={<StickyNote className="h-4 w-4" />} label={t("notes")} value={item.notes} />
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 };

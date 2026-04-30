@@ -63,5 +63,8 @@
   "deleteConfirm": "この在庫アイテムを削除しますか？消費履歴も削除されます。",
   "deleteSuccess": "在庫を削除しました",
   "createSuccess": "在庫を追加しました",
-  "updateSuccess": "在庫を更新しました"
+  "updateSuccess": "在庫を更新しました",
+  "restockSuccess": "買い物リストに追加しました",
+  "consumeHistory": "消費履歴",
+  "noHistory": "消費履歴がありません"
 }

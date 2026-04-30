@@ -63,5 +63,8 @@
   "deleteConfirm": "Delete this item? Consumption history will also be deleted.",
   "deleteSuccess": "Item deleted",
   "createSuccess": "Item added",
-  "updateSuccess": "Item updated"
+  "updateSuccess": "Item updated",
+  "restockSuccess": "Added to shopping list",
+  "consumeHistory": "History",
+  "noHistory": "No consumption history"
 }
