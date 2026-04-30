@@ -1,11 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
+import { uploadItemImage } from "@/hooks/useItemImage";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast";
 import type { ItemFormValues } from "@/types/item";
 
@@ -16,10 +19,17 @@ const EditItemPage = () => {
   const { data: item, isLoading } = useItem(itemId);
   const updateItem = useUpdateItem(itemId);
   const { toast } = useToast();
+  const pendingFileRef = useRef<File | null>(null);
 
   const handleSubmit = async (values: ItemFormValues) => {
     try {
       await updateItem.mutateAsync(values);
+      if (pendingFileRef.current) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await uploadItemImage({ itemId, userId: user.id, file: pendingFileRef.current });
+        }
+      }
       toast(t("updateSuccess"), "success");
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
@@ -73,6 +83,7 @@ const EditItemPage = () => {
         }}
         onSubmit={(values) => { void handleSubmit(values); }}
         isSubmitting={updateItem.isPending}
+        onPendingFileChange={(file) => { pendingFileRef.current = file; }}
       />
     </div>
   );

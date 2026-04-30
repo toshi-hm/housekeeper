@@ -4,6 +4,7 @@ import { type ReactNode,useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
+import { ItemImage } from "@/components/atoms/ItemImage";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
@@ -111,10 +112,12 @@ const ItemDetailPage = () => {
         </div>
       </div>
 
-      {/* Image placeholder */}
-      <div className="flex h-40 items-center justify-center rounded-lg bg-muted">
-        <Package className="h-16 w-16 text-muted-foreground" />
-      </div>
+      {/* Item image */}
+      <ItemImage
+        imagePath={item.image_path}
+        alt={item.name}
+        className="h-40 w-full rounded-lg"
+      />
 
       {/* Name + badges */}
       <div>

@@ -2,6 +2,7 @@ import { Barcode, Loader2 } from "lucide-react";
 import { type FormEvent,useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
+import { useSignedItemImage } from "@/hooks/useItemImage";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
 
@@ -17,6 +19,7 @@ interface ItemFormProps {
   onSubmit: (values: ItemFormValues) => void;
   isSubmitting?: boolean;
   submitLabel?: string;
+  onPendingFileChange?: (file: File | null) => void;
 }
 
 export const ItemForm = ({
@@ -24,6 +27,7 @@ export const ItemForm = ({
   onSubmit,
   isSubmitting,
   submitLabel,
+  onPendingFileChange,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
   const { data: categories = [] } = useCategories();
@@ -46,6 +50,11 @@ export const ItemForm = ({
   });
   const [showScanner, setShowScanner] = useState(false);
   const [nameError, setNameError] = useState("");
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+
+  const { data: existingImageUrl } = useSignedItemImage(
+    localPreviewUrl ? null : (values.image_path || null),
+  );
 
   const set = <K extends keyof ItemFormValues>(field: K, value: ItemFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -57,6 +66,20 @@ export const ItemForm = ({
     set("barcode", barcode);
     const info = await lookup(barcode);
     if (info?.name) set("name", info.name);
+  };
+
+  const handleImageFile = (file: File) => {
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    const url = URL.createObjectURL(file);
+    setLocalPreviewUrl(url);
+    onPendingFileChange?.(file);
+  };
+
+  const handleImageDelete = () => {
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    setLocalPreviewUrl(null);
+    set("image_path", "");
+    onPendingFileChange?.(null);
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -226,6 +249,16 @@ export const ItemForm = ({
             onChange={(e) => set("notes", e.target.value)}
             placeholder={t("notesPlaceholder")}
             rows={3}
+          />
+        </div>
+
+        {/* Image */}
+        <div className="space-y-2">
+          <Label>{t("image")}</Label>
+          <ImageUploader
+            previewUrl={localPreviewUrl ?? existingImageUrl}
+            onFile={handleImageFile}
+            onDelete={values.image_path || localPreviewUrl ? handleImageDelete : undefined}
           />
         </div>
 
