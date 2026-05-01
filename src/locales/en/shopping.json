@@ -1,0 +1,23 @@
+{
+  "title": "Shopping List",
+  "addItem": "Add",
+  "itemName": "Item name",
+  "itemNamePlaceholder": "Enter item name",
+  "desiredUnits": "Desired qty",
+  "note": "Note",
+  "notePlaceholder": "Note (optional)",
+  "statusPlanned": "Planned",
+  "statusPurchased": "Purchased",
+  "markPurchased": "Mark Purchased",
+  "noItems": "Shopping list is empty",
+  "noPurchased": "No purchased items",
+  "restock": "Restock",
+  "purchaseComplete": "Mark as purchased",
+  "purchaseDialog": "Mark Purchased — Add to Inventory",
+  "createItemFromPurchase": "Add to inventory",
+  "addSuccess": "Added",
+  "deleteSuccess": "Deleted",
+  "purchaseSuccess": "Added to inventory",
+  "purchaseError": "Failed to add to inventory",
+  "deleteConfirm": "Remove this item from the shopping list?"
+}

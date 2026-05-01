@@ -12,9 +12,15 @@ import { Route as rootRouteImport } from "./routes/__root";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as AuthRouteImport } from "./routes/_auth";
 import { Route as AuthIndexRouteImport } from "./routes/_auth.index";
+import { Route as AuthStatsRouteImport } from "./routes/_auth.stats";
+import { Route as AuthShoppingRouteImport } from "./routes/_auth.shopping";
+import { Route as AuthSettingsRouteImport } from "./routes/_auth.settings";
+import { Route as AuthSettingsLocationsRouteImport } from "./routes/_auth.settings.locations";
+import { Route as AuthSettingsCategoriesRouteImport } from "./routes/_auth.settings.categories";
 import { Route as AuthItemsNewRouteImport } from "./routes/_auth.items.new";
 import { Route as AuthItemsItemIdRouteImport } from "./routes/_auth.items.$itemId";
 import { Route as AuthItemsItemIdEditRouteImport } from "./routes/_auth.items.$itemId.edit";
+import { Route as AuthItemsItemIdConsumeRouteImport } from "./routes/_auth.items.$itemId.consume";
 
 const LoginRoute = LoginRouteImport.update({
   id: "/login",
@@ -29,6 +35,31 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => AuthRoute,
+} as any);
+const AuthStatsRoute = AuthStatsRouteImport.update({
+  id: "/stats",
+  path: "/stats",
+  getParentRoute: () => AuthRoute,
+} as any);
+const AuthShoppingRoute = AuthShoppingRouteImport.update({
+  id: "/shopping",
+  path: "/shopping",
+  getParentRoute: () => AuthRoute,
+} as any);
+const AuthSettingsRoute = AuthSettingsRouteImport.update({
+  id: "/settings",
+  path: "/settings",
+  getParentRoute: () => AuthRoute,
+} as any);
+const AuthSettingsLocationsRoute = AuthSettingsLocationsRouteImport.update({
+  id: "/locations",
+  path: "/locations",
+  getParentRoute: () => AuthSettingsRoute,
+} as any);
+const AuthSettingsCategoriesRoute = AuthSettingsCategoriesRouteImport.update({
+  id: "/categories",
+  path: "/categories",
+  getParentRoute: () => AuthSettingsRoute,
 } as any);
 const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
   id: "/items/new",
@@ -45,42 +76,93 @@ const AuthItemsItemIdEditRoute = AuthItemsItemIdEditRouteImport.update({
   path: "/edit",
   getParentRoute: () => AuthItemsItemIdRoute,
 } as any);
+const AuthItemsItemIdConsumeRoute = AuthItemsItemIdConsumeRouteImport.update({
+  id: "/consume",
+  path: "/consume",
+  getParentRoute: () => AuthItemsItemIdRoute,
+} as any);
 
 export interface FileRoutesByFullPath {
   "/": typeof AuthIndexRoute;
   "/login": typeof LoginRoute;
+  "/settings": typeof AuthSettingsRouteWithChildren;
+  "/shopping": typeof AuthShoppingRoute;
+  "/stats": typeof AuthStatsRoute;
   "/items/$itemId": typeof AuthItemsItemIdRouteWithChildren;
   "/items/new": typeof AuthItemsNewRoute;
+  "/settings/categories": typeof AuthSettingsCategoriesRoute;
+  "/settings/locations": typeof AuthSettingsLocationsRoute;
+  "/items/$itemId/consume": typeof AuthItemsItemIdConsumeRoute;
   "/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
 }
 export interface FileRoutesByTo {
   "/login": typeof LoginRoute;
+  "/settings": typeof AuthSettingsRouteWithChildren;
+  "/shopping": typeof AuthShoppingRoute;
+  "/stats": typeof AuthStatsRoute;
   "/": typeof AuthIndexRoute;
   "/items/$itemId": typeof AuthItemsItemIdRouteWithChildren;
   "/items/new": typeof AuthItemsNewRoute;
+  "/settings/categories": typeof AuthSettingsCategoriesRoute;
+  "/settings/locations": typeof AuthSettingsLocationsRoute;
+  "/items/$itemId/consume": typeof AuthItemsItemIdConsumeRoute;
   "/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/_auth": typeof AuthRouteWithChildren;
   "/login": typeof LoginRoute;
+  "/_auth/settings": typeof AuthSettingsRouteWithChildren;
+  "/_auth/shopping": typeof AuthShoppingRoute;
+  "/_auth/stats": typeof AuthStatsRoute;
   "/_auth/": typeof AuthIndexRoute;
   "/_auth/items/$itemId": typeof AuthItemsItemIdRouteWithChildren;
   "/_auth/items/new": typeof AuthItemsNewRoute;
+  "/_auth/settings/categories": typeof AuthSettingsCategoriesRoute;
+  "/_auth/settings/locations": typeof AuthSettingsLocationsRoute;
+  "/_auth/items/$itemId/consume": typeof AuthItemsItemIdConsumeRoute;
   "/_auth/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/login" | "/items/$itemId" | "/items/new" | "/items/$itemId/edit";
+  fullPaths:
+    | "/"
+    | "/login"
+    | "/settings"
+    | "/shopping"
+    | "/stats"
+    | "/items/$itemId"
+    | "/items/new"
+    | "/settings/categories"
+    | "/settings/locations"
+    | "/items/$itemId/consume"
+    | "/items/$itemId/edit";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/login" | "/" | "/items/$itemId" | "/items/new" | "/items/$itemId/edit";
+  to:
+    | "/login"
+    | "/settings"
+    | "/shopping"
+    | "/stats"
+    | "/"
+    | "/items/$itemId"
+    | "/items/new"
+    | "/settings/categories"
+    | "/settings/locations"
+    | "/items/$itemId/consume"
+    | "/items/$itemId/edit";
   id:
     | "__root__"
     | "/_auth"
     | "/login"
+    | "/_auth/settings"
+    | "/_auth/shopping"
+    | "/_auth/stats"
     | "/_auth/"
     | "/_auth/items/$itemId"
     | "/_auth/items/new"
+    | "/_auth/settings/categories"
+    | "/_auth/settings/locations"
+    | "/_auth/items/$itemId/consume"
     | "/_auth/items/$itemId/edit";
   fileRoutesById: FileRoutesById;
 }
@@ -112,6 +194,41 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AuthIndexRouteImport;
       parentRoute: typeof AuthRoute;
     };
+    "/_auth/stats": {
+      id: "/_auth/stats";
+      path: "/stats";
+      fullPath: "/stats";
+      preLoaderRoute: typeof AuthStatsRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    "/_auth/shopping": {
+      id: "/_auth/shopping";
+      path: "/shopping";
+      fullPath: "/shopping";
+      preLoaderRoute: typeof AuthShoppingRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    "/_auth/settings": {
+      id: "/_auth/settings";
+      path: "/settings";
+      fullPath: "/settings";
+      preLoaderRoute: typeof AuthSettingsRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    "/_auth/settings/locations": {
+      id: "/_auth/settings/locations";
+      path: "/locations";
+      fullPath: "/settings/locations";
+      preLoaderRoute: typeof AuthSettingsLocationsRouteImport;
+      parentRoute: typeof AuthSettingsRoute;
+    };
+    "/_auth/settings/categories": {
+      id: "/_auth/settings/categories";
+      path: "/categories";
+      fullPath: "/settings/categories";
+      preLoaderRoute: typeof AuthSettingsCategoriesRouteImport;
+      parentRoute: typeof AuthSettingsRoute;
+    };
     "/_auth/items/new": {
       id: "/_auth/items/new";
       path: "/items/new";
@@ -133,14 +250,35 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AuthItemsItemIdEditRouteImport;
       parentRoute: typeof AuthItemsItemIdRoute;
     };
+    "/_auth/items/$itemId/consume": {
+      id: "/_auth/items/$itemId/consume";
+      path: "/consume";
+      fullPath: "/items/$itemId/consume";
+      preLoaderRoute: typeof AuthItemsItemIdConsumeRouteImport;
+      parentRoute: typeof AuthItemsItemIdRoute;
+    };
   }
 }
 
+interface AuthSettingsRouteChildren {
+  AuthSettingsCategoriesRoute: typeof AuthSettingsCategoriesRoute;
+  AuthSettingsLocationsRoute: typeof AuthSettingsLocationsRoute;
+}
+
+const AuthSettingsRouteChildren: AuthSettingsRouteChildren = {
+  AuthSettingsCategoriesRoute: AuthSettingsCategoriesRoute,
+  AuthSettingsLocationsRoute: AuthSettingsLocationsRoute,
+};
+
+const AuthSettingsRouteWithChildren = AuthSettingsRoute._addFileChildren(AuthSettingsRouteChildren);
+
 interface AuthItemsItemIdRouteChildren {
+  AuthItemsItemIdConsumeRoute: typeof AuthItemsItemIdConsumeRoute;
   AuthItemsItemIdEditRoute: typeof AuthItemsItemIdEditRoute;
 }
 
 const AuthItemsItemIdRouteChildren: AuthItemsItemIdRouteChildren = {
+  AuthItemsItemIdConsumeRoute: AuthItemsItemIdConsumeRoute,
   AuthItemsItemIdEditRoute: AuthItemsItemIdEditRoute,
 };
 
@@ -149,12 +287,18 @@ const AuthItemsItemIdRouteWithChildren = AuthItemsItemIdRoute._addFileChildren(
 );
 
 interface AuthRouteChildren {
+  AuthSettingsRoute: typeof AuthSettingsRouteWithChildren;
+  AuthShoppingRoute: typeof AuthShoppingRoute;
+  AuthStatsRoute: typeof AuthStatsRoute;
   AuthIndexRoute: typeof AuthIndexRoute;
   AuthItemsItemIdRoute: typeof AuthItemsItemIdRouteWithChildren;
   AuthItemsNewRoute: typeof AuthItemsNewRoute;
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthSettingsRoute: AuthSettingsRouteWithChildren,
+  AuthShoppingRoute: AuthShoppingRoute,
+  AuthStatsRoute: AuthStatsRoute,
   AuthIndexRoute: AuthIndexRoute,
   AuthItemsItemIdRoute: AuthItemsItemIdRouteWithChildren,
   AuthItemsNewRoute: AuthItemsNewRoute,

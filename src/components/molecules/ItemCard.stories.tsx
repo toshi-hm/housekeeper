@@ -16,6 +16,10 @@ type Story = StoryObj<typeof meta>;
 const baseItem = {
   id: "1",
   user_id: "u1",
+  units: 2,
+  content_amount: 500,
+  content_unit: "mL",
+  opened_remaining: null,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
 };
@@ -25,15 +29,16 @@ export const Default: Story = {
     item: {
       ...baseItem,
       name: "Organic Milk",
-      category: "Food",
-      quantity: 2,
+      category_id: null,
       barcode: "4901234567890",
-      storage_location: "Fridge",
+      storage_location_id: null,
       expiry_date: "2099-12-31",
       purchase_date: "2024-01-01",
       notes: null,
-      image_url: null,
+      image_path: null,
     },
+    categoryName: "食品",
+    locationName: "冷蔵庫",
   },
 };
 
@@ -41,15 +46,15 @@ export const ExpiringSoon: Story = {
   args: {
     item: {
       ...baseItem,
-      name: "Yogurt",
-      category: "Food",
-      quantity: 1,
+      name: "ヨーグルト",
+      units: 1,
+      category_id: null,
       barcode: null,
-      storage_location: "Fridge",
+      storage_location_id: null,
       expiry_date: new Date(Date.now() + 2 * 86400000).toISOString().split("T")[0],
       purchase_date: null,
       notes: null,
-      image_url: null,
+      image_path: null,
     },
   },
 };
@@ -58,49 +63,51 @@ export const Expired: Story = {
   args: {
     item: {
       ...baseItem,
-      name: "Old Cheese",
-      category: "Food",
-      quantity: 1,
+      name: "古いチーズ",
+      units: 1,
+      category_id: null,
       barcode: null,
-      storage_location: null,
+      storage_location_id: null,
       expiry_date: "2020-01-01",
       purchase_date: null,
       notes: null,
-      image_url: null,
+      image_path: null,
     },
   },
 };
 
-export const NoImage: Story = {
+export const EmptyStock: Story = {
   args: {
     item: {
       ...baseItem,
-      name: "Shampoo",
-      category: "Personal Care",
-      quantity: 3,
+      name: "シャンプー",
+      units: 0,
+      content_amount: 400,
+      content_unit: "mL",
+      category_id: null,
       barcode: null,
-      storage_location: "Bathroom shelf",
+      storage_location_id: null,
       expiry_date: null,
       purchase_date: null,
       notes: null,
-      image_url: null,
+      image_path: null,
     },
   },
 };
 
-export const WithImage: Story = {
+export const NoExpiry: Story = {
   args: {
     item: {
       ...baseItem,
-      name: "Orange Juice",
-      category: "Beverages",
-      quantity: 1,
+      name: "オレンジジュース",
+      units: 1,
+      category_id: null,
       barcode: null,
-      storage_location: "Fridge",
+      storage_location_id: null,
       expiry_date: "2099-06-01",
       purchase_date: null,
       notes: null,
-      image_url: "https://placehold.co/400x400/orange/white?text=OJ",
+      image_path: null,
     },
   },
 };

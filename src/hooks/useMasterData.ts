@@ -1,0 +1,161 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { supabase } from "@/lib/supabase";
+import type { Category, StorageLocation } from "@/types/item";
+
+const CATEGORIES_KEY = ["categories"] as const;
+const LOCATIONS_KEY = ["locations"] as const;
+
+// --- Categories ---
+
+const fetchCategories = async (): Promise<Category[]> => {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Category[];
+};
+
+const createCategory = async (name: string): Promise<Category> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+  const { data, error } = await supabase
+    .from("categories")
+    .insert({ name, user_id: userData.user.id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Category;
+};
+
+const updateCategory = async (id: string, name: string): Promise<Category> => {
+  const { data, error } = await supabase
+    .from("categories")
+    .update({ name, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Category;
+};
+
+const deleteCategory = async (id: string): Promise<void> => {
+  const { error } = await supabase.from("categories").delete().eq("id", id);
+  if (error) throw error;
+};
+
+export const useCategories = () =>
+  useQuery({
+    queryKey: CATEGORIES_KEY,
+    queryFn: fetchCategories,
+    staleTime: 5 * 60_000,
+  });
+
+export const useCreateCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createCategory,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
+    },
+  });
+};
+
+export const useUpdateCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => updateCategory(id, name),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
+    },
+  });
+};
+
+export const useDeleteCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
+      void qc.invalidateQueries({ queryKey: ["items"] });
+    },
+  });
+};
+
+// --- Storage Locations ---
+
+const fetchStorageLocations = async (): Promise<StorageLocation[]> => {
+  const { data, error } = await supabase
+    .from("storage_locations")
+    .select("*")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as StorageLocation[];
+};
+
+const createStorageLocation = async (name: string): Promise<StorageLocation> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+  const { data, error } = await supabase
+    .from("storage_locations")
+    .insert({ name, user_id: userData.user.id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as StorageLocation;
+};
+
+const updateStorageLocation = async (id: string, name: string): Promise<StorageLocation> => {
+  const { data, error } = await supabase
+    .from("storage_locations")
+    .update({ name, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as StorageLocation;
+};
+
+const deleteStorageLocation = async (id: string): Promise<void> => {
+  const { error } = await supabase.from("storage_locations").delete().eq("id", id);
+  if (error) throw error;
+};
+
+export const useStorageLocations = () =>
+  useQuery({
+    queryKey: LOCATIONS_KEY,
+    queryFn: fetchStorageLocations,
+    staleTime: 5 * 60_000,
+  });
+
+export const useCreateStorageLocation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createStorageLocation,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: LOCATIONS_KEY });
+    },
+  });
+};
+
+export const useUpdateStorageLocation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => updateStorageLocation(id, name),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: LOCATIONS_KEY });
+    },
+  });
+};
+
+export const useDeleteStorageLocation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteStorageLocation,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: LOCATIONS_KEY });
+      void qc.invalidateQueries({ queryKey: ["items"] });
+    },
+  });
+};

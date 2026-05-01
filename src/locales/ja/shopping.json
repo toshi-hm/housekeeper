@@ -1,0 +1,23 @@
+{
+  "title": "買い物リスト",
+  "addItem": "追加",
+  "itemName": "商品名",
+  "itemNamePlaceholder": "商品名を入力",
+  "desiredUnits": "希望数量",
+  "note": "メモ",
+  "notePlaceholder": "メモを入力（任意）",
+  "statusPlanned": "予定",
+  "statusPurchased": "購入済み",
+  "markPurchased": "購入完了",
+  "noItems": "買い物リストは空です",
+  "noPurchased": "購入済みアイテムはありません",
+  "restock": "補充",
+  "purchaseComplete": "購入完了にする",
+  "purchaseDialog": "購入完了 — 在庫に追加",
+  "createItemFromPurchase": "在庫に追加",
+  "addSuccess": "追加しました",
+  "deleteSuccess": "削除しました",
+  "purchaseSuccess": "在庫に追加しました",
+  "purchaseError": "在庫への追加に失敗しました",
+  "deleteConfirm": "このアイテムを買い物リストから削除しますか？"
+}

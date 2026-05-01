@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
-import { Home, LogOut, Package, Plus } from "lucide-react";
+import { BarChart2, Home, LogOut, Package, Plus, ShoppingCart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -58,6 +58,20 @@ const AuthLayout = () => {
           >
             <Plus className="h-5 w-5" />
             <span>Add Item</span>
+          </Link>
+          <Link
+            to="/shopping"
+            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            <span>Shopping</span>
+          </Link>
+          <Link
+            to="/stats"
+            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+          >
+            <BarChart2 className="h-5 w-5" />
+            <span>Stats</span>
           </Link>
         </div>
       </nav>

@@ -1,0 +1,8 @@
+{
+  "title": "Notification Settings",
+  "pushEnabled": "Push Notifications",
+  "emailEnabled": "Email Notifications",
+  "thresholdDays": "Days before to notify",
+  "notifyAt": "Notification time",
+  "saveSuccess": "Notification settings saved"
+}

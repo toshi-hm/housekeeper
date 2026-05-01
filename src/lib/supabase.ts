@@ -12,19 +12,77 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export interface Database {
   public: {
     Tables: {
+      categories: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          color: string | null;
+          icon: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          color?: string | null;
+          icon?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          color?: string | null;
+          icon?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      storage_locations: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          icon: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          icon?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          icon?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       items: {
         Row: {
           id: string;
           user_id: string;
           name: string;
           barcode: string | null;
-          category: string | null;
-          quantity: number;
-          storage_location: string | null;
+          category_id: string | null;
+          storage_location_id: string | null;
+          units: number;
+          content_amount: number;
+          content_unit: string;
+          opened_remaining: number | null;
           purchase_date: string | null;
           expiry_date: string | null;
           notes: string | null;
-          image_url: string | null;
+          image_path: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -33,13 +91,16 @@ export interface Database {
           user_id: string;
           name: string;
           barcode?: string | null;
-          category?: string | null;
-          quantity?: number;
-          storage_location?: string | null;
+          category_id?: string | null;
+          storage_location_id?: string | null;
+          units?: number;
+          content_amount?: number;
+          content_unit?: string;
+          opened_remaining?: number | null;
           purchase_date?: string | null;
           expiry_date?: string | null;
           notes?: string | null;
-          image_url?: string | null;
+          image_path?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -48,14 +109,138 @@ export interface Database {
           user_id?: string;
           name?: string;
           barcode?: string | null;
-          category?: string | null;
-          quantity?: number;
-          storage_location?: string | null;
+          category_id?: string | null;
+          storage_location_id?: string | null;
+          units?: number;
+          content_amount?: number;
+          content_unit?: string;
+          opened_remaining?: number | null;
           purchase_date?: string | null;
           expiry_date?: string | null;
           notes?: string | null;
-          image_url?: string | null;
+          image_path?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "items_category_id_fkey";
+            columns: ["category_id"];
+            referencedRelation: "categories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "items_storage_location_id_fkey";
+            columns: ["storage_location_id"];
+            referencedRelation: "storage_locations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      consumption_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          item_id: string;
+          delta_amount: number;
+          delta_unit: string;
+          units_before: number;
+          units_after: number;
+          opened_remaining_before: number | null;
+          opened_remaining_after: number | null;
+          occurred_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          item_id: string;
+          delta_amount: number;
+          delta_unit: string;
+          units_before: number;
+          units_after: number;
+          opened_remaining_before?: number | null;
+          opened_remaining_after?: number | null;
+          occurred_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          item_id?: string;
+          delta_amount?: number;
+          delta_unit?: string;
+          units_before?: number;
+          units_after?: number;
+          opened_remaining_before?: number | null;
+          opened_remaining_after?: number | null;
+          occurred_at?: string;
+        };
+        Relationships: [];
+      };
+      user_settings: {
+        Row: {
+          user_id: string;
+          language: "ja" | "en";
+          expiry_warning_days: number;
+          default_unit: string;
+          notify_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          language?: "ja" | "en";
+          expiry_warning_days?: number;
+          default_unit?: string;
+          notify_at?: string;
           created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          language?: "ja" | "en";
+          expiry_warning_days?: number;
+          default_unit?: string;
+          notify_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      shopping_list_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          desired_units: number;
+          note: string | null;
+          linked_item_id: string | null;
+          status: "planned" | "purchased";
+          purchased_at: string | null;
+          created_item_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          desired_units?: number;
+          note?: string | null;
+          linked_item_id?: string | null;
+          status?: "planned" | "purchased";
+          purchased_at?: string | null;
+          created_item_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          desired_units?: number;
+          note?: string | null;
+          linked_item_id?: string | null;
+          status?: "planned" | "purchased";
+          purchased_at?: string | null;
+          created_item_id?: string | null;
           updated_at?: string;
         };
         Relationships: [];

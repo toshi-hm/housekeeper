@@ -1,0 +1,8 @@
+{
+  "title": "通知設定",
+  "pushEnabled": "プッシュ通知",
+  "emailEnabled": "メール通知",
+  "thresholdDays": "通知する日数前",
+  "notifyAt": "通知時刻",
+  "saveSuccess": "通知設定を保存しました"
+}
