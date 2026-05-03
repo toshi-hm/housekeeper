@@ -1,26 +1,42 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 
+import { Spinner } from "@/components/atoms/Spinner";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
+import { uploadItemImage } from "@/hooks/useItemImage";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
+import { useToast } from "@/lib/toast";
 import type { ItemFormValues } from "@/types/item";
 
 const EditItemPage = () => {
+  const { t } = useTranslation("items");
   const { itemId } = Route.useParams();
   const navigate = useNavigate();
   const { data: item, isLoading } = useItem(itemId);
   const updateItem = useUpdateItem(itemId);
+  const { toast } = useToast();
+  const pendingFileRef = useRef<File | null>(null);
 
   const handleSubmit = async (values: ItemFormValues) => {
-    await updateItem.mutateAsync(values);
-    void navigate({ to: "/items/$itemId", params: { itemId } });
+    try {
+      await updateItem.mutateAsync(values);
+      if (pendingFileRef.current) {
+        await uploadItemImage({ itemId, file: pendingFileRef.current });
+      }
+      toast(t("updateSuccess"), "success");
+      void navigate({ to: "/items/$itemId", params: { itemId } });
+    } catch {
+      toast(t("common:unknownError"), "error");
+    }
   };
 
   if (isLoading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <Spinner />
       </div>
     );
   }
@@ -32,7 +48,7 @@ const EditItemPage = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="rounded-lg border border-destructive p-4 text-destructive">
-          Item not found.
+          {t("itemNotFound")}
         </div>
       </div>
     );
@@ -48,30 +64,30 @@ const EditItemPage = () => {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold">Edit Item</h1>
+        <h1 className="text-xl font-bold">{t("editItem")}</h1>
       </div>
-      {updateItem.error && (
-        <div className="rounded-lg border border-destructive p-3 text-sm text-destructive">
-          {updateItem.error instanceof Error ? updateItem.error.message : "Failed to update item"}
-        </div>
-      )}
       <ItemForm
         defaultValues={{
           name: item.name,
           barcode: item.barcode ?? undefined,
-          category: item.category ?? undefined,
-          quantity: item.quantity,
-          storage_location: item.storage_location ?? undefined,
+          category_id: item.category_id,
+          storage_location_id: item.storage_location_id,
+          units: item.units,
+          content_amount: item.content_amount,
+          content_unit: item.content_unit,
+          opened_remaining: item.opened_remaining,
           purchase_date: item.purchase_date ?? undefined,
           expiry_date: item.expiry_date ?? undefined,
           notes: item.notes ?? undefined,
-          image_url: item.image_url ?? undefined,
+          image_path: item.image_path ?? undefined,
         }}
         onSubmit={(values) => {
           void handleSubmit(values);
         }}
         isSubmitting={updateItem.isPending}
-        submitLabel="Save Changes"
+        onPendingFileChange={(file) => {
+          pendingFileRef.current = file;
+        }}
       />
     </div>
   );

@@ -1,0 +1,12 @@
+{
+  "title": "統計",
+  "categoryBreakdown": "カテゴリ別在庫",
+  "expiryBreakdown": "期限ステータス分布",
+  "consumptionTrend": "月別消費量",
+  "noData": "データがありません",
+  "historyHint": "履歴が貯まると表示されます",
+  "itemCount": "件",
+  "uncategorized": "未分類",
+  "last6Months": "直近6ヶ月",
+  "totalItems": "合計 {{count}} 件"
+}

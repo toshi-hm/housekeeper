@@ -1,25 +1,25 @@
+import { useTranslation } from "react-i18next";
+
 import { Badge } from "@/components/ui/badge";
 import { type ExpiryStatus, getExpiryStatus } from "@/types/item";
 
 interface ExpiryBadgeProps {
   expiryDate: string | null | undefined;
+  warningDays?: number;
 }
 
-const statusConfig: Record<
-  ExpiryStatus,
-  { label: string; variant: "destructive" | "warning" | "secondary" | "outline" }
-> = {
-  expired: { label: "Expired", variant: "destructive" },
-  "expiring-soon": { label: "Expiring soon", variant: "warning" },
-  ok: { label: "Good", variant: "secondary" },
-  unknown: { label: "No expiry", variant: "outline" },
+const statusVariant: Record<ExpiryStatus, "destructive" | "warning" | "secondary" | "outline"> = {
+  expired: "destructive",
+  "expiring-soon": "warning",
+  ok: "secondary",
+  unknown: "outline",
 };
 
-export const ExpiryBadge = ({ expiryDate }: ExpiryBadgeProps) => {
-  const status = getExpiryStatus(expiryDate);
-  const { label, variant } = statusConfig[status];
+export const ExpiryBadge = ({ expiryDate, warningDays }: ExpiryBadgeProps) => {
+  const { t } = useTranslation("items");
+  const status = getExpiryStatus(expiryDate, warningDays);
 
   if (status === "unknown") return null;
 
-  return <Badge variant={variant}>{label}</Badge>;
+  return <Badge variant={statusVariant[status]}>{t(`expiryStatus.${status}`)}</Badge>;
 };

@@ -1,0 +1,59 @@
+import { useTranslation } from "react-i18next";
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+
+import type { ExpiryDistributionEntry } from "@/types/stats";
+
+const STATUS_COLORS: Record<string, string> = {
+  expired: "#ef4444",
+  "expiring-soon": "#f97316",
+  ok: "#22c55e",
+  unknown: "#94a3b8",
+};
+
+interface ExpiryChartProps {
+  distribution: ExpiryDistributionEntry[];
+}
+
+export const ExpiryChart = ({ distribution }: ExpiryChartProps) => {
+  const { t } = useTranslation("stats");
+  const { t: ti } = useTranslation("items");
+
+  if (distribution.length === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+        {t("noData")}
+      </div>
+    );
+  }
+
+  const data = distribution.map((entry) => ({
+    name: ti(`expiryStatus.${entry.status}`),
+    value: entry.count,
+    status: entry.status,
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <PieChart>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          innerRadius={50}
+          outerRadius={80}
+          dataKey="value"
+          paddingAngle={2}
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status] ?? "#94a3b8"} />
+          ))}
+        </Pie>
+        <Tooltip
+          formatter={(value, name) => [`${value ?? 0}${t("itemCount")}`, String(name)]}
+          contentStyle={{ fontSize: 12 }}
+        />
+        <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+};

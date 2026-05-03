@@ -17,6 +17,7 @@ export const Fresh: Story = {
 export const ExpiringSoon: Story = {
   args: {
     expiryDate: new Date(Date.now() + 2 * 86400000).toISOString().split("T")[0],
+    warningDays: 3,
   },
 };
 
