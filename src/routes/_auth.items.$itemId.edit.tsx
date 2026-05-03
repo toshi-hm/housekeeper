@@ -8,7 +8,6 @@ import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { uploadItemImage } from "@/hooks/useItemImage";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast";
 import type { ItemFormValues } from "@/types/item";
 
@@ -25,12 +24,7 @@ const EditItemPage = () => {
     try {
       await updateItem.mutateAsync(values);
       if (pendingFileRef.current) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          await uploadItemImage({ itemId, userId: user.id, file: pendingFileRef.current });
-        }
+        await uploadItemImage({ itemId, file: pendingFileRef.current });
       }
       toast(t("updateSuccess"), "success");
       void navigate({ to: "/items/$itemId", params: { itemId } });

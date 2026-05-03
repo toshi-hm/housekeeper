@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useConsumeItem } from "@/hooks/useConsumeItem";
 import { useItem } from "@/hooks/useItems";
 import { useToast } from "@/lib/toast";
-import { computeConsumption } from "@/types/item";
+import { computeConsumption } from "@/types/item"; // used for live preview only
 
 const ItemConsumePage = () => {
   const { t } = useTranslation("items");
@@ -33,9 +33,9 @@ const ItemConsumePage = () => {
       setValidationError(t("consumeValidationError"));
       return;
     }
-    const result = computeConsumption(item, amount);
-    if (result.error) {
-      setValidationError(result.error);
+    // preview already holds the computation result; re-use it instead of recalculating
+    if (!preview || preview.error) {
+      setValidationError(preview?.error ?? t("consumeValidationError"));
       return;
     }
     try {

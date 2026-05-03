@@ -7,7 +7,6 @@ import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { uploadItemImage } from "@/hooks/useItemImage";
 import { useCreateItem } from "@/hooks/useItems";
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast";
 import type { ItemFormValues } from "@/types/item";
 
@@ -22,12 +21,7 @@ const NewItemPage = () => {
     try {
       const item = await createItem.mutateAsync(values);
       if (pendingFileRef.current && item) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          await uploadItemImage({ itemId: item.id, userId: user.id, file: pendingFileRef.current });
-        }
+        await uploadItemImage({ itemId: item.id, file: pendingFileRef.current });
       }
       toast(t("createSuccess"), "success");
       void navigate({ to: "/" });

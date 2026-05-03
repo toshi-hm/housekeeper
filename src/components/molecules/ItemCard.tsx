@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { Calendar, MapPin, Package } from "lucide-react";
+import { Calendar, MapPin, Tag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { ItemImage } from "@/components/atoms/ItemImage";
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -14,8 +15,8 @@ interface ItemCardProps {
   warningDays?: number;
 }
 
-export const ItemCard = ({ item, locationName, warningDays }: ItemCardProps) => {
-  const { t } = useTranslation("items");
+export const ItemCard = ({ item, categoryName, locationName, warningDays }: ItemCardProps) => {
+  const { t, i18n } = useTranslation("items");
   const expiryStatus = getExpiryStatus(item.expiry_date, warningDays);
   const isUrgent = expiryStatus === "expired" || expiryStatus === "expiring-soon";
   const isEmpty = item.units === 0;
@@ -30,12 +31,20 @@ export const ItemCard = ({ item, locationName, warningDays }: ItemCardProps) => 
           isEmpty && "opacity-50",
         )}
       >
-        <div className="flex aspect-square items-center justify-center rounded-t-lg bg-muted">
-          <Package className="h-12 w-12 text-muted-foreground" />
-        </div>
+        <ItemImage
+          imagePath={item.image_path}
+          alt={item.name}
+          className="aspect-square rounded-t-lg"
+        />
         <CardContent className="p-3">
           <h3 className="line-clamp-2 font-semibold leading-tight">{item.name}</h3>
           <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+            {categoryName && (
+              <div className="flex items-center gap-1">
+                <Tag className="h-3 w-3" />
+                <span>{categoryName}</span>
+              </div>
+            )}
             {locationName && (
               <div className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
@@ -45,7 +54,7 @@ export const ItemCard = ({ item, locationName, warningDays }: ItemCardProps) => 
             {item.expiry_date && (
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                <span>{new Date(item.expiry_date).toLocaleDateString("ja-JP")}</span>
+                <span>{new Date(item.expiry_date).toLocaleDateString(i18n.language)}</span>
               </div>
             )}
           </div>

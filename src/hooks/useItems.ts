@@ -3,12 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Item, ItemFormValues } from "@/types/item";
 
+/** Filters applied server-side (Supabase query). Client-only filters such as
+ *  expiryStatus and hideEmpty are handled by the caller after fetching. */
 export interface ItemFilters {
   search?: string;
   categoryId?: string;
   storageLocationId?: string;
-  expiryStatus?: "expired" | "expiring-soon" | "ok" | "unknown" | "all";
-  hideEmpty?: boolean;
 }
 
 export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";

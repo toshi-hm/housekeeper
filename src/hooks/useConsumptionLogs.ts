@@ -1,19 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
+import type { Database } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 
-interface ConsumptionLog {
-  id: string;
-  user_id: string;
-  item_id: string;
-  delta_amount: number;
-  delta_unit: string;
-  units_before: number;
-  units_after: number;
-  opened_remaining_before: number | null;
-  opened_remaining_after: number | null;
-  occurred_at: string;
-}
+type ConsumptionLog = Database["public"]["Tables"]["consumption_logs"]["Row"];
 
 export const useConsumptionLogs = (itemId: string) =>
   useQuery<ConsumptionLog[]>({

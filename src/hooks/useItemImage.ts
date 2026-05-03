@@ -21,17 +21,18 @@ export const useSignedItemImage = (imagePath: string | null | undefined) =>
 
 interface UploadImageParams {
   itemId: string;
-  userId: string;
   file: File;
 }
 
-export const uploadItemImage = async ({
-  itemId,
-  userId,
-  file,
-}: UploadImageParams): Promise<string> => {
+export const uploadItemImage = async ({ itemId, file }: UploadImageParams): Promise<string> => {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Not authenticated");
+
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const path = `${userId}/${itemId}.${ext}`;
+  const path = `${user.id}/${itemId}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
@@ -50,8 +51,7 @@ export const uploadItemImage = async ({
 export const useUploadItemImage = (itemId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: Omit<UploadImageParams, "itemId">) =>
-      uploadItemImage({ ...params, itemId }),
+    mutationFn: (file: File) => uploadItemImage({ itemId, file }),
     onSuccess: (path) => {
       void qc.invalidateQueries({ queryKey: ["items"] });
       void qc.invalidateQueries({ queryKey: ["item-image", path] });

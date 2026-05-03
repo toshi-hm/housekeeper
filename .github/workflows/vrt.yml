@@ -17,7 +17,7 @@ jobs:
       (github.event_name == 'pull_request' && github.event.label.name == 'VRT')
     permissions:
       contents: read
-      issues: write
+      issues: write # required for issues.updateComment / issues.createComment (PR comments use Issues API)
       pull-requests: write
 
     steps:
