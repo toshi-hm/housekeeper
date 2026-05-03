@@ -66,6 +66,17 @@ export const ItemForm = ({
     set("barcode", barcode);
     const info = await lookup(barcode);
     if (info?.name) set("name", info.name);
+    if (info?.category_candidates?.length && categories.length) {
+      for (const candidate of info.category_candidates) {
+        const match = categories.find(
+          (c) => c.name.toLowerCase() === candidate.toLowerCase(),
+        );
+        if (match) {
+          set("category_id", match.id);
+          break;
+        }
+      }
+    }
   };
 
   const handleImageFile = (file: File) => {

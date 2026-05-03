@@ -4,14 +4,14 @@ import { supabase } from "@/lib/supabase";
 
 export interface ProductInfo {
   name: string;
-  category?: string;
+  category_candidates?: string[];
   image_url?: string;
 }
 
 interface LookupResult {
   product: {
     name: string;
-    category: string | null;
+    category_candidates: string[];
     image_url: string | null;
   } | null;
 }
@@ -32,7 +32,7 @@ export const useBarcodeLookup = () => {
       if (!data?.product) return null;
       return {
         name: data.product.name,
-        category: data.product.category ?? undefined,
+        category_candidates: data.product.category_candidates,
         image_url: data.product.image_url ?? undefined,
       };
     } catch {

@@ -13,6 +13,12 @@ interface OpenFoodFactsResponse {
   };
 }
 
+const cleanCategoryTag = (tag: string): string =>
+  tag
+    .replace(/^[a-z]{2}:/, "")
+    .replace(/-/g, " ")
+    .trim();
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -46,13 +52,16 @@ Deno.serve(async (req: Request) => {
     }
 
     const product = json.product;
-    const category = product.categories_tags?.[0]?.replace(/^en:/, "") ?? null;
+    const category_candidates = (product.categories_tags ?? [])
+      .map(cleanCategoryTag)
+      .filter((c) => c.length > 0)
+      .slice(0, 10);
 
     return new Response(
       JSON.stringify({
         product: {
           name: product.product_name ?? "",
-          category,
+          category_candidates,
           image_url: product.image_url ?? null,
         },
       }),
