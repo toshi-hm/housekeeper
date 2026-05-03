@@ -29,5 +29,8 @@
   "deleteSuccess": "削除しました",
   "saveSuccess": "保存しました",
   "networkError": "ネットワークエラーが発生しました",
-  "unknownError": "エラーが発生しました"
+  "unknownError": "エラーが発生しました",
+  "offlineError": "オフラインのため操作できません",
+  "enabled": "有効",
+  "disabled": "無効"
 }

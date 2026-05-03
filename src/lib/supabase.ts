@@ -204,6 +204,65 @@ export interface Database {
         };
         Relationships: [];
       };
+      notification_preferences: {
+        Row: {
+          user_id: string;
+          push_enabled: boolean;
+          email_enabled: boolean;
+          email_address: string | null;
+          threshold_days: number;
+          notify_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          push_enabled?: boolean;
+          email_enabled?: boolean;
+          email_address?: string | null;
+          threshold_days?: number;
+          notify_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          push_enabled?: boolean;
+          email_enabled?: boolean;
+          email_address?: string | null;
+          threshold_days?: number;
+          notify_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          user_agent?: string | null;
+        };
+        Relationships: [];
+      };
       shopping_list_items: {
         Row: {
           id: string;

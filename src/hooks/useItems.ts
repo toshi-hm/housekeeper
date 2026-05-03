@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
+import { requireOnline, OfflineError } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast";
 import type { Item, ItemFormValues } from "@/types/item";
 
 /** Filters applied server-side (Supabase query). Client-only filters such as
@@ -67,6 +70,7 @@ const normalizeFormValues = (values: Partial<ItemFormValues>) => ({
 });
 
 const createItem = async (values: ItemFormValues): Promise<Item> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const normalized = normalizeFormValues(values);
@@ -80,6 +84,7 @@ const createItem = async (values: ItemFormValues): Promise<Item> => {
 };
 
 const updateItem = async (id: string, values: Partial<ItemFormValues>): Promise<Item> => {
+  requireOnline();
   const { data, error } = await supabase
     .from("items")
     .update({ ...normalizeFormValues(values), updated_at: new Date().toISOString() })
@@ -91,6 +96,7 @@ const updateItem = async (id: string, values: Partial<ItemFormValues>): Promise<
 };
 
 const deleteItem = async (id: string): Promise<void> => {
+  requireOnline();
   const { error } = await supabase.from("items").delete().eq("id", id);
   if (error) throw error;
 };
@@ -111,30 +117,45 @@ export const useItem = (id: string) =>
 
 export const useCreateItem = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: createItem,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ITEMS_KEY });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
 
 export const useUpdateItem = (id: string) => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: (values: Partial<ItemFormValues>) => updateItem(id, values),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ITEMS_KEY });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
 
 export const useDeleteItem = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: deleteItem,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ITEMS_KEY });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
