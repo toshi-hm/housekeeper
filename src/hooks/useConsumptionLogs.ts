@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import type { Database } from "@/lib/supabase";
-import { supabase } from "@/lib/supabase";
+import { type Database, supabase } from "@/lib/supabase";
 
 type ConsumptionLog = Database["public"]["Tables"]["consumption_logs"]["Row"];
 
