@@ -106,7 +106,7 @@ export const supabase = {
   functions: {
     invoke: invokeMockFunction,
   },
-  from: (_table: string) => makeQueryBuilder([]),
+  from: (() => makeQueryBuilder([])) as (table: string) => ReturnType<typeof makeQueryBuilder>,
   auth: {
     getUser: () =>
       Promise.resolve({
