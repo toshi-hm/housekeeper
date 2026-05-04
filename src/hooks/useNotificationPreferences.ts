@@ -16,10 +16,7 @@ type UpdatePrefs = Partial<Omit<NotificationPreferences, "user_id">>;
 const PREFS_KEY = ["notification-preferences"] as const;
 
 const fetchPreferences = async (): Promise<NotificationPreferences | null> => {
-  const { data, error } = await supabase
-    .from("notification_preferences")
-    .select("*")
-    .maybeSingle();
+  const { data, error } = await supabase.from("notification_preferences").select("*").maybeSingle();
   if (error) throw error;
   return data as NotificationPreferences | null;
 };

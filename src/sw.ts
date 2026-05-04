@@ -1,7 +1,7 @@
+import { ExpirationPlugin } from "workbox-expiration";
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { StaleWhileRevalidate } from "workbox-strategies";
-import { ExpirationPlugin } from "workbox-expiration";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -41,7 +41,5 @@ self.addEventListener("push", (event: PushEvent) => {
 
 self.addEventListener("notificationclick", (event: NotificationEvent) => {
   event.notification.close();
-  event.waitUntil(
-    (self.clients as Clients).openWindow("/"),
-  );
+  event.waitUntil((self.clients as Clients).openWindow("/"));
 });

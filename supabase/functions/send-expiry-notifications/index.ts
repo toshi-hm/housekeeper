@@ -138,7 +138,10 @@ Deno.serve(async (req: Request) => {
   }
 
   return new Response(
-    JSON.stringify({ processed: (prefs as NotificationPreference[]).length, errors: errors.length }),
+    JSON.stringify({
+      processed: (prefs as NotificationPreference[]).length,
+      errors: errors.length,
+    }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });
