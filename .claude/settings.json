@@ -13,8 +13,6 @@
     ]
   },
   "permissions": {
-    "deny": [
-      "Read(./.env)"
-    ]
+    "deny": ["Read(./.env)"]
   }
 }
