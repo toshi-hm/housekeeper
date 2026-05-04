@@ -66,8 +66,7 @@ export const unsubscribePush = async (): Promise<void> => {
   if (!subscription) return;
 
   await supabase.functions.invoke("subscribe-push", {
-    body: { endpoint: subscription.endpoint },
-    headers: { "X-HTTP-Method-Override": "DELETE" },
+    body: { action: "unsubscribe", endpoint: subscription.endpoint },
   });
   await subscription.unsubscribe();
 };

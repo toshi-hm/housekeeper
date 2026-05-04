@@ -3,12 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 interface SubscribeBody {
+  action?: "unsubscribe";
   endpoint: string;
-  keys: {
+  keys?: {
     p256dh: string;
     auth: string;
   };
@@ -18,6 +19,13 @@ interface SubscribeBody {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const authHeader = req.headers.get("Authorization");
@@ -45,42 +53,14 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (req.method === "POST") {
-    const body = (await req.json()) as SubscribeBody;
-    const { endpoint, keys, user_agent } = body;
+  const body = (await req.json()) as SubscribeBody;
 
-    const { error } = await supabase.from("push_subscriptions").upsert(
-      {
-        user_id: user.id,
-        endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        user_agent: user_agent ?? req.headers.get("User-Agent") ?? null,
-      },
-      { onConflict: "endpoint" },
-    );
-
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Expose VAPID public key so the client can use it to subscribe
-    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
-    return new Response(JSON.stringify({ ok: true, vapid_public_key: vapidPublicKey }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  if (req.method === "DELETE") {
-    const { endpoint } = (await req.json()) as { endpoint: string };
+  if (body.action === "unsubscribe") {
     const { error } = await supabase
       .from("push_subscriptions")
       .delete()
       .eq("user_id", user.id)
-      .eq("endpoint", endpoint);
+      .eq("endpoint", body.endpoint);
 
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
@@ -93,8 +73,34 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  return new Response(JSON.stringify({ error: "Method not allowed" }), {
-    status: 405,
+  // Subscribe: upsert push subscription
+  if (!body.keys) {
+    return new Response(JSON.stringify({ error: "Missing keys" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const { error } = await supabase.from("push_subscriptions").upsert(
+    {
+      user_id: user.id,
+      endpoint: body.endpoint,
+      p256dh: body.keys.p256dh,
+      auth: body.keys.auth,
+      user_agent: body.user_agent ?? req.headers.get("User-Agent") ?? null,
+    },
+    { onConflict: "endpoint" },
+  );
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
+  return new Response(JSON.stringify({ ok: true, vapid_public_key: vapidPublicKey }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });

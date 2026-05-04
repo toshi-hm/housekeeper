@@ -33,13 +33,8 @@ Deno.serve(async (req: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY")!;
-  const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
-  const vapidSubject = Deno.env.get("VAPID_SUBJECT")!;
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const resendFrom = Deno.env.get("RESEND_FROM_ADDRESS") ?? "housekeeper <noreply@example.com>";
-
-  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   const today = new Date().toISOString().split("T")[0];
@@ -86,28 +81,38 @@ Deno.serve(async (req: Request) => {
 
       // Send push notifications
       if (pref.push_enabled) {
-        const { data: subs } = await supabase
-          .from("push_subscriptions")
-          .select("id, endpoint, p256dh, auth")
-          .eq("user_id", pref.user_id);
+        const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+        const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+        const vapidSubject = Deno.env.get("VAPID_SUBJECT");
 
-        await Promise.allSettled(
-          (subs as PushSubscription[]).map(async (sub) => {
-            try {
-              await webpush.sendNotification(
-                { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-                JSON.stringify({ title, body }),
-              );
-            } catch (err: unknown) {
-              const status = (err as { statusCode?: number }).statusCode;
-              if (status === 410 || status === 404) {
-                // Subscription expired — remove it
-                await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+        if (vapidPublicKey && vapidPrivateKey && vapidSubject) {
+          webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+
+          const { data: subs } = await supabase
+            .from("push_subscriptions")
+            .select("id, endpoint, p256dh, auth")
+            .eq("user_id", pref.user_id);
+
+          await Promise.allSettled(
+            (subs as PushSubscription[]).map(async (sub) => {
+              try {
+                await webpush.sendNotification(
+                  { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                  JSON.stringify({ title, body }),
+                );
+              } catch (err: unknown) {
+                const status = (err as { statusCode?: number }).statusCode;
+                if (status === 410 || status === 404) {
+                  // Subscription expired — remove it
+                  await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+                }
+                console.error("Push failed:", err);
               }
-              console.error("Push failed:", err);
-            }
-          }),
-        );
+            }),
+          );
+        } else {
+          console.warn("VAPID secrets not configured, skipping push for user", pref.user_id);
+        }
       }
 
       // Send email notifications via Resend

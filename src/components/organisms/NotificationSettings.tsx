@@ -59,9 +59,8 @@ export const NotificationSettings = () => {
   };
 
   const handleEmailAddressBlur = async (address: string) => {
-    if (!address.trim()) return;
     try {
-      await updatePrefs.mutateAsync({ email_address: address.trim() });
+      await updatePrefs.mutateAsync({ email_address: address.trim() || null });
     } catch {
       toast(t("common:unknownError"), "error");
     }
@@ -86,8 +85,9 @@ export const NotificationSettings = () => {
     }
   };
 
+  // key forces re-mount of uncontrolled inputs when prefs load
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" key={prefs?.user_id ?? "loading"}>
       {/* Push */}
       <div className="rounded-lg border p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -130,7 +130,7 @@ export const NotificationSettings = () => {
             <Input
               id="email_address"
               type="email"
-              defaultValue={prefs?.email_address ?? ""}
+              defaultValue={prefs.email_address ?? ""}
               placeholder="you@example.com"
               onBlur={(e) => void handleEmailAddressBlur(e.target.value)}
             />
