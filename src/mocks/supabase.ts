@@ -77,8 +77,41 @@ const invokeMockFunction = async <TResponse = unknown>(
   };
 };
 
+const makeQueryBuilder = (data: unknown) => {
+  const builder = {
+    select: () => builder,
+    insert: () => builder,
+    update: () => builder,
+    delete: () => builder,
+    upsert: () => builder,
+    eq: () => builder,
+    neq: () => builder,
+    not: () => builder,
+    is: () => builder,
+    lte: () => builder,
+    gte: () => builder,
+    gt: () => builder,
+    lt: () => builder,
+    or: () => builder,
+    order: () => builder,
+    limit: () => builder,
+    range: () => builder,
+    single: () => Promise.resolve({ data, error: null }),
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+  };
+  return builder;
+};
+
 export const supabase = {
   functions: {
     invoke: invokeMockFunction,
+  },
+  from: (() => makeQueryBuilder([])) as (table: string) => ReturnType<typeof makeQueryBuilder>,
+  auth: {
+    getUser: () =>
+      Promise.resolve({
+        data: { user: null },
+        error: null,
+      }),
   },
 };

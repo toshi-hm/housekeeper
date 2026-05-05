@@ -1,8 +1,12 @@
 {
   "title": "Notification Settings",
   "pushEnabled": "Push Notifications",
+  "pushNotSupported": "Push notifications are not supported in this browser. Please use email notifications instead.",
+  "pushPermissionDenied": "Push notification permission denied",
   "emailEnabled": "Email Notifications",
+  "emailAddress": "Email Address",
   "thresholdDays": "Days before to notify",
+  "daysBefore": "days",
   "notifyAt": "Notification time",
   "saveSuccess": "Notification settings saved"
 }

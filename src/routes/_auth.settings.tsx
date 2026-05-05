@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ChevronRight, Globe, MapPin, Tag } from "lucide-react";
+import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Tag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { LanguageToggle } from "@/components/atoms/LanguageToggle";
 import { Spinner } from "@/components/atoms/Spinner";
+import { NotificationSettings } from "@/components/organisms/NotificationSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,6 +84,15 @@ const SettingsPage = () => {
               />
               <Label>日前</Label>
             </div>
+          </section>
+
+          {/* Notification Settings */}
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Bell className="h-4 w-4" />
+              {t("notifications")}
+            </h2>
+            <NotificationSettings />
           </section>
 
           {/* Master data links */}

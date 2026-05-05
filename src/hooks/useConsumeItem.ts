@@ -1,6 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast";
 import { computeConsumption, type Item } from "@/types/item";
 
 interface ConsumeParams {
@@ -9,6 +12,7 @@ interface ConsumeParams {
 }
 
 const consumeItem = async ({ item, deltaAmount }: ConsumeParams): Promise<Item> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
@@ -44,11 +48,16 @@ const consumeItem = async ({ item, deltaAmount }: ConsumeParams): Promise<Item> 
 
 export const useConsumeItem = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: consumeItem,
     onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: ["items"] });
       void qc.setQueryData(["items", data.id], data);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };

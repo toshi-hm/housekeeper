@@ -23,6 +23,9 @@ storybook-static
 # VRT screenshots
 __screenshots__
 
+# Supabase CLI temp files
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

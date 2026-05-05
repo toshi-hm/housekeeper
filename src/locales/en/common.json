@@ -29,5 +29,8 @@
   "deleteSuccess": "Deleted",
   "saveSuccess": "Saved",
   "networkError": "Network error occurred",
-  "unknownError": "An error occurred"
+  "unknownError": "An error occurred",
+  "offlineError": "Cannot perform this action while offline",
+  "enabled": "Enabled",
+  "disabled": "Disabled"
 }

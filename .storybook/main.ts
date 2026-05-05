@@ -11,6 +11,11 @@ const config: StorybookConfig = {
   staticDirs: ["../public"],
   viteFinal: async (config) => {
     const { mergeConfig } = await import("vite");
+    // PWA plugin causes build errors in Storybook (sb-manager files exceed 2MB cache limit)
+    config.plugins = (config.plugins ?? []).filter((plugin) => {
+      if (!plugin || typeof plugin !== "object" || !("name" in plugin)) return true;
+      return !String(plugin.name).startsWith("vite-plugin-pwa");
+    });
     return mergeConfig(config, {
       resolve: {
         alias: [
