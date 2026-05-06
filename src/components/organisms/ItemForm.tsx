@@ -3,13 +3,14 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ImageUploader } from "@/components/molecules/ImageUploader";
+import { ProductLookupResult } from "@/components/molecules/ProductLookupResult";
 import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
+import { type ProductInfo, useBarcodeLookup } from "@/hooks/useBarcodeLookup";
 import { useSignedItemImage } from "@/hooks/useItemImage";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
@@ -51,6 +52,7 @@ export const ItemForm = ({
   const [showScanner, setShowScanner] = useState(false);
   const [nameError, setNameError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+  const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
 
   const { data: existingImageUrl } = useSignedItemImage(
     localPreviewUrl ? null : values.image_path || null,
@@ -64,17 +66,10 @@ export const ItemForm = ({
   const handleBarcodeScan = async (barcode: string) => {
     setShowScanner(false);
     set("barcode", barcode);
+    setLookupResult(undefined);
     const info = await lookup(barcode);
+    setLookupResult(info);
     if (info?.name) set("name", info.name);
-    if (info?.category_candidates?.length && categories.length) {
-      for (const candidate of info.category_candidates) {
-        const match = categories.find((c) => c.name.toLowerCase() === candidate.toLowerCase());
-        if (match) {
-          set("category_id", match.id);
-          break;
-        }
-      }
-    }
   };
 
   const handleImageFile = (file: File) => {
@@ -145,6 +140,9 @@ export const ItemForm = ({
             </Button>
           </div>
         </div>
+
+        {/* Product lookup result */}
+        <ProductLookupResult isLoading={isLookingUp} product={lookupResult} />
 
         {/* Name */}
         <div className="space-y-2">

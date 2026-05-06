@@ -1,6 +1,6 @@
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { NotFoundException } from "@zxing/library";
-import { Camera, Keyboard, X } from "lucide-react";
+import { Camera, Keyboard, SwitchCamera, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -20,54 +20,84 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   const [isStarting, setIsStarting] = useState(true);
   const [showManual, setShowManual] = useState(false);
   const [manualValue, setManualValue] = useState("");
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [deviceIndex, setDeviceIndex] = useState(0);
 
-  const startScanning = useCallback(async () => {
-    try {
-      const reader = new BrowserMultiFormatReader();
-      const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
-      const rearCamera = videoInputDevices.find(
-        (d) =>
-          d.label.toLowerCase().includes("back") ||
-          d.label.toLowerCase().includes("rear") ||
-          d.label.toLowerCase().includes("environment"),
-      );
-      const deviceId = rearCamera?.deviceId ?? videoInputDevices[0]?.deviceId ?? undefined;
-
-      if (!videoRef.current) return;
-
-      const controls = await reader.decodeFromVideoDevice(
-        deviceId,
-        videoRef.current,
-        (result, err) => {
-          if (result) {
-            onScan(result.getText());
-          }
-          if (err && !(err instanceof NotFoundException)) {
-            // ignore NotFoundException (no barcode in frame yet)
-          }
-        },
-      );
-      controlsRef.current = controls;
-      setIsStarting(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Camera access denied");
-      setIsStarting(false);
-    }
-  }, [onScan]);
+  const startScanning = useCallback(
+    async (deviceId?: string) => {
+      controlsRef.current?.stop();
+      setError(null);
+      setIsStarting(true);
+      try {
+        const reader = new BrowserMultiFormatReader();
+        if (!videoRef.current) return;
+        const controls = await reader.decodeFromVideoDevice(
+          deviceId,
+          videoRef.current,
+          (result, err) => {
+            if (result) {
+              onScan(result.getText());
+            }
+            if (err && !(err instanceof NotFoundException)) {
+              // ignore NotFoundException (no barcode in frame yet)
+            }
+          },
+        );
+        controlsRef.current = controls;
+        setIsStarting(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Camera access denied");
+        setIsStarting(false);
+      }
+    },
+    [onScan],
+  );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void startScanning();
+    let cancelled = false;
+
+    const init = async () => {
+      try {
+        const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
+        if (cancelled) return;
+
+        setDevices(videoInputDevices);
+
+        const rearIdx = videoInputDevices.findIndex(
+          (d) =>
+            d.label.toLowerCase().includes("back") ||
+            d.label.toLowerCase().includes("rear") ||
+            d.label.toLowerCase().includes("environment"),
+        );
+        const idx = rearIdx >= 0 ? rearIdx : 0;
+        setDeviceIndex(idx);
+
+        await startScanning(videoInputDevices[idx]?.deviceId);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Camera access denied");
+          setIsStarting(false);
+        }
+      }
+    };
+
+    void init();
+
     return () => {
+      cancelled = true;
       controlsRef.current?.stop();
     };
   }, [startScanning]);
 
+  const handleSwitchCamera = () => {
+    if (devices.length <= 1) return;
+    const nextIndex = (deviceIndex + 1) % devices.length;
+    setDeviceIndex(nextIndex);
+    void startScanning(devices[nextIndex]?.deviceId);
+  };
+
   const handleRetry = () => {
-    controlsRef.current?.stop();
-    setError(null);
-    setIsStarting(true);
-    void startScanning();
+    void startScanning(devices[deviceIndex]?.deviceId);
   };
 
   const handleManualSubmit = () => {
@@ -83,6 +113,17 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
           <span className="font-medium">{t("scanBarcode")}</span>
         </div>
         <div className="flex items-center gap-2">
+          {devices.length > 1 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSwitchCamera}
+              className="text-white hover:bg-white/20"
+              title={t("scannerSwitchCamera")}
+            >
+              <SwitchCamera className="h-5 w-5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"

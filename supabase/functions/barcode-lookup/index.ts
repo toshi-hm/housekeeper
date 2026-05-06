@@ -4,20 +4,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-interface OpenFoodFactsResponse {
-  status: string;
-  product?: {
-    product_name?: string;
-    categories_tags?: string[];
-    image_url?: string;
-  };
+interface YahooShoppingHit {
+  name?: string;
+  description?: string;
+  image?: { medium?: string };
+  brand?: { name?: string };
 }
 
-const cleanCategoryTag = (tag: string): string =>
-  tag
-    .replace(/^[a-z]{2}:/, "")
-    .replace(/-/g, " ")
-    .trim();
+interface YahooShoppingResponse {
+  totalResultsReturned?: number;
+  hits?: YahooShoppingHit[];
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -33,9 +30,21 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const res = await fetch(
-      `https://world.openfoodfacts.org/api/v3/product/${encodeURIComponent(barcode)}.json`,
-    );
+    const appId = Deno.env.get("YAHOO_SHOPPING_APP_ID");
+    if (!appId) {
+      console.error("YAHOO_SHOPPING_APP_ID is not set");
+      return new Response(JSON.stringify({ product: null }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const url = new URL("https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch");
+    url.searchParams.set("appid", appId);
+    url.searchParams.set("jan_code", barcode);
+    url.searchParams.set("results", "1");
+
+    const res = await fetch(url.toString());
 
     if (!res.ok) {
       return new Response(JSON.stringify({ product: null }), {
@@ -43,26 +52,23 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const json = (await res.json()) as OpenFoodFactsResponse;
+    const json = (await res.json()) as YahooShoppingResponse;
 
-    if (json.status !== "success" || !json.product) {
+    if (!json.hits || json.hits.length === 0) {
       return new Response(JSON.stringify({ product: null }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const product = json.product;
-    const category_candidates = (product.categories_tags ?? [])
-      .map(cleanCategoryTag)
-      .filter((c) => c.length > 0)
-      .slice(0, 10);
+    const hit = json.hits[0];
 
     return new Response(
       JSON.stringify({
         product: {
-          name: product.product_name ?? "",
-          category_candidates,
-          image_url: product.image_url ?? null,
+          name: hit.name ?? "",
+          description: hit.description ?? null,
+          image_url: hit.image?.medium ?? null,
+          brand: hit.brand?.name ?? null,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
