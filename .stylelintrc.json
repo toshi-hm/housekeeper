@@ -1,0 +1,22 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "at-rule-no-unknown": [
+      true,
+      {
+        "ignoreAtRules": [
+          "theme",
+          "source",
+          "utility",
+          "variant",
+          "custom-variant",
+          "plugin",
+          "config"
+        ]
+      }
+    ],
+    "import-notation": "string",
+    "value-keyword-case": ["lower", { "camelCaseSvgKeywords": true }],
+    "no-empty-source": null
+  }
+}

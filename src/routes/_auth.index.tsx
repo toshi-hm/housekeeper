@@ -111,7 +111,7 @@ const DashboardPage = () => {
       {/* Filter panel */}
       {showFilters && (
         <div className="space-y-3 rounded-lg border p-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
                 {t("filterByCategory")}
@@ -138,8 +138,6 @@ const DashboardPage = () => {
                 ))}
               </Select>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
                 {t("filterByExpiry")}
@@ -200,7 +198,7 @@ const DashboardPage = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map((item) => (
             <ItemCard
               key={item.id}
