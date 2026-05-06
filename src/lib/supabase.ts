@@ -263,6 +263,32 @@ export interface Database {
         };
         Relationships: [];
       };
+      user_security_questions: {
+        Row: {
+          user_id: string;
+          email: string;
+          question: string;
+          answer_hash: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          email: string;
+          question: string;
+          answer_hash: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          email?: string;
+          question?: string;
+          answer_hash?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       shopping_list_items: {
         Row: {
           id: string;

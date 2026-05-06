@@ -62,10 +62,14 @@ Read the relevant spec file before implementing any feature.
 
 ## Commands
 
-- Dev: bun run dev
-- Build: bun run build
-- Lint: bunx oxlint .
-- Format: bunx oxfmt .
+- Dev: `bun run dev`
+- Build: `bun run build`
+- Lint: `bun run lint` (oxlint + eslint)
+- Typecheck: `bun run typecheck` (tsc --noEmit)
+- Format check: `bun run format:check` (oxfmt --check)
+- Format (fix): `bun run format` (oxfmt .)
+- **全チェック（コミット前に必ず実行）**: `bun run format:check && bun run check`
+  - `bun run check` は lint + typecheck をまとめて実行する
 
 ## Code Style
 
