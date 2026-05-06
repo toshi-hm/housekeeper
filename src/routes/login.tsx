@@ -72,10 +72,7 @@ const loginSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const sha256hex = async (text: string): Promise<string> => {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -122,8 +119,9 @@ const PasswordStrength = ({ password }: PasswordStrengthProps) => {
     number: /[0-9]/.test(password),
     symbol: /[-_!?#@$%^&*()+={}[\]|;:'",.<>\\/~`]/.test(password),
   };
-  const typeCount = [checks.lower, checks.upper, checks.number, checks.symbol].filter(Boolean)
-    .length;
+  const typeCount = [checks.lower, checks.upper, checks.number, checks.symbol].filter(
+    Boolean,
+  ).length;
 
   return (
     <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
@@ -131,7 +129,8 @@ const PasswordStrength = ({ password }: PasswordStrengthProps) => {
         {checks.length ? "✓" : "✗"} 8文字以上
       </li>
       <li className={typeCount >= 3 ? "text-green-600" : "text-destructive"}>
-        {typeCount >= 3 ? "✓" : "✗"} 大文字・小文字・数字・記号のうち3種類以上（現在: {typeCount}種類）
+        {typeCount >= 3 ? "✓" : "✗"} 大文字・小文字・数字・記号のうち3種類以上（現在: {typeCount}
+        種類）
       </li>
     </ul>
   );
@@ -293,9 +292,7 @@ const LoginPage = () => {
                 required
                 autoComplete="email"
               />
-              {fieldErrors.email && (
-                <p className="text-xs text-destructive">{fieldErrors.email}</p>
-              )}
+              {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
             </div>
 
             {/* Password */}

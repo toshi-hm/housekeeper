@@ -75,9 +75,7 @@ const Step1 = ({ onNext }: Step1Props) => {
     <>
       <CardHeader className="pb-4">
         <CardTitle>パスワードをリセット</CardTitle>
-        <CardDescription>
-          登録済みのメールアドレスを入力してください
-        </CardDescription>
+        <CardDescription>登録済みのメールアドレスを入力してください</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -210,9 +208,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
               autoComplete="off"
               required
             />
-            {fieldErrors.answer && (
-              <p className="text-xs text-destructive">{fieldErrors.answer}</p>
-            )}
+            {fieldErrors.answer && <p className="text-xs text-destructive">{fieldErrors.answer}</p>}
           </div>
 
           {/* New password */}
