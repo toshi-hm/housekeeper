@@ -1,12 +1,12 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Eye, EyeOff, Loader2, Package } from "lucide-react";
 import { useState } from "react";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { passwordSchema } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 // ---------------------------------------------------------------------------
@@ -25,21 +25,6 @@ const callEdge = async <T,>(fn: string, body: unknown): Promise<T> => {
   if (!res.ok) throw new Error((data as { error?: string }).error ?? "エラーが発生しました");
   return data;
 };
-
-const ALLOWED_CHARS = /^[a-zA-Z0-9\-_!?#@$%^&*()+={}[\]|;:'",.<>\\/~`]+$/;
-
-const newPasswordSchema = z
-  .string()
-  .min(8, "8文字以上で入力してください")
-  .regex(ALLOWED_CHARS, "半角英数字と記号のみ使用できます")
-  .refine((val) => {
-    let types = 0;
-    if (/[a-z]/.test(val)) types++;
-    if (/[A-Z]/.test(val)) types++;
-    if (/[0-9]/.test(val)) types++;
-    if (/[-_!?#@$%^&*()+={}[\]|;:'",.<>\\/~`]/.test(val)) types++;
-    return types >= 3;
-  }, "大文字・小文字・数字・記号のうち3種類以上を使用してください");
 
 // ---------------------------------------------------------------------------
 // Step 1: Email entry
@@ -139,7 +124,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
     setError(null);
     setFieldErrors({});
 
-    const pwResult = newPasswordSchema.safeParse(newPassword);
+    const pwResult = passwordSchema.safeParse(newPassword);
     if (!pwResult.success) {
       setFieldErrors({ newPassword: pwResult.error.issues[0]?.message ?? "バリデーションエラー" });
       return;
