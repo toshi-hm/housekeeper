@@ -20,8 +20,7 @@ export const Found: Story = {
     product: {
       name: "明治ブルガリアヨーグルト LB81 プレーン 450g",
       brand: "明治",
-      description:
-        "乳酸菌LB81を使用した、なめらかでコクのある味わいのプレーンヨーグルトです。",
+      description: "乳酸菌LB81を使用した、なめらかでコクのある味わいのプレーンヨーグルトです。",
       image_url: "https://placehold.co/64x64?text=YG",
     },
   },
