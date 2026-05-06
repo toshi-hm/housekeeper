@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Eye, EyeOff, Loader2, Package } from "lucide-react";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,11 +14,16 @@ import { supabase } from "@/lib/supabase";
 // ---------------------------------------------------------------------------
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 const callEdge = async <T,>(fn: string, body: unknown): Promise<T> => {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
     body: JSON.stringify(body),
   });
   const data = (await res.json()) as T & { error?: string };
@@ -39,15 +44,19 @@ const Step1 = ({ onNext }: Step1Props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email) return;
     setError(null);
     setIsLoading(true);
     try {
-      const { question } = await callEdge<{ question: string }>("get-security-question", {
+      const { question } = await callEdge<{ question: string | null }>("get-security-question", {
         email,
       });
+      if (!question) {
+        setError("登録情報が見つかりません");
+        return;
+      }
       onNext(email, question);
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
@@ -119,7 +128,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
   const confirmMismatch = confirmPassword.length > 0 && confirmPassword !== newPassword;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setFieldErrors({});
@@ -214,7 +223,6 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
                 type="button"
                 onClick={() => setShowNew((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                tabIndex={-1}
                 aria-label={showNew ? "パスワードを隠す" : "パスワードを表示"}
               >
                 {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -243,7 +251,6 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                tabIndex={-1}
                 aria-label={showConfirm ? "パスワードを隠す" : "パスワードを表示"}
               >
                 {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

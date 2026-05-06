@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, Loader2, Package } from "lucide-react";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import { PasswordStrength } from "@/components/atoms/PasswordStrength";
 import { Button } from "@/components/ui/button";
@@ -96,18 +96,24 @@ const LoginPage = () => {
     }
 
     // Store security question (user is now authenticated)
-    const answerHash = await sha256hex(securityAnswer.toLowerCase().trim());
-    await supabase.from("user_security_questions").upsert({
+    const answerHash = await sha256hex(
+      data.session.user.id + ":" + securityAnswer.toLowerCase().trim(),
+    );
+    const { error: sqError } = await supabase.from("user_security_questions").upsert({
       user_id: data.session.user.id,
       email: email.toLowerCase().trim(),
       question: securityQuestion,
       answer_hash: answerHash,
     });
+    if (sqError) {
+      await supabase.auth.signOut();
+      throw new Error("アカウントの初期設定に失敗しました。もう一度お試しください。");
+    }
 
     void navigate({ to: "/" });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     clearErrors();
     setIsLoading(true);
@@ -193,7 +199,6 @@ const LoginPage = () => {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
                   aria-label={showPassword ? "パスワードを隠す" : "パスワードを表示"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -226,7 +231,6 @@ const LoginPage = () => {
                       type="button"
                       onClick={() => setShowConfirmPassword((v) => !v)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      tabIndex={-1}
                       aria-label={showConfirmPassword ? "パスワードを隠す" : "パスワードを表示"}
                     >
                       {showConfirmPassword ? (

@@ -24,13 +24,19 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { email, answer, new_password } = (await req.json()) as {
-      email?: string;
-      answer?: string;
-      new_password?: string;
+      email?: unknown;
+      answer?: unknown;
+      new_password?: unknown;
     };
 
-    if (!email || !answer || !new_password) {
-      return json({ error: "email, answer, new_password are required" }, 400);
+    if (typeof email !== "string" || !email) {
+      return json({ error: "email is required" }, 400);
+    }
+    if (typeof answer !== "string" || !answer) {
+      return json({ error: "answer is required" }, 400);
+    }
+    if (typeof new_password !== "string" || !new_password) {
+      return json({ error: "new_password is required" }, 400);
     }
 
     const supabase = createClient(
@@ -45,10 +51,11 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (fetchError || !row) {
-      return json({ error: "登録情報が見つかりません" }, 404);
+      // Return 401 (same as wrong answer) to avoid email enumeration
+      return json({ error: "秘密の質問の答えが正しくありません" }, 401);
     }
 
-    const hash = await sha256hex(answer.toLowerCase().trim());
+    const hash = await sha256hex(row.user_id + ":" + answer.toLowerCase().trim());
     if (hash !== row.answer_hash) {
       return json({ error: "秘密の質問の答えが正しくありません" }, 401);
     }

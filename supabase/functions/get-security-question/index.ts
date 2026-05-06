@@ -16,9 +16,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { email } = (await req.json()) as { email?: string };
+    const { email } = (await req.json()) as { email?: unknown };
 
-    if (!email) return json({ error: "email is required" }, 400);
+    if (typeof email !== "string" || !email) return json({ error: "email is required" }, 400);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -32,8 +32,8 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (error || !data) {
-      // Intentionally vague to avoid email enumeration
-      return json({ error: "登録情報が見つかりません" }, 404);
+      // Return null question instead of 404 to avoid email enumeration
+      return json({ question: null });
     }
 
     return json({ question: data.question });
