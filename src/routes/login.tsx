@@ -7,13 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
 
 // ---------------------------------------------------------------------------
@@ -367,17 +361,18 @@ const LoginPage = () => {
                 {/* Secret question */}
                 <div className="space-y-1">
                   <Label htmlFor="securityQuestion">秘密の質問</Label>
-                  <Select value={securityQuestion} onValueChange={setSecurityQuestion}>
-                    <SelectTrigger id="securityQuestion">
-                      <SelectValue placeholder="質問を選択してください" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SECURITY_QUESTIONS.map((q) => (
-                        <SelectItem key={q} value={q}>
-                          {q}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select
+                    id="securityQuestion"
+                    value={securityQuestion}
+                    onChange={(e) => setSecurityQuestion(e.target.value)}
+                    required
+                  >
+                    <option value="">質問を選択してください</option>
+                    {SECURITY_QUESTIONS.map((q) => (
+                      <option key={q} value={q}>
+                        {q}
+                      </option>
+                    ))}
                   </Select>
                   {fieldErrors.securityQuestion && (
                     <p className="text-xs text-destructive">{fieldErrors.securityQuestion}</p>

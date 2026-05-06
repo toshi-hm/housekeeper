@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root";
+import { Route as ForgotPasswordRouteImport } from "./routes/forgot-password";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as AuthRouteImport } from "./routes/_auth";
 import { Route as AuthIndexRouteImport } from "./routes/_auth.index";
@@ -22,6 +23,11 @@ import { Route as AuthItemsItemIdRouteImport } from "./routes/_auth.items.$itemI
 import { Route as AuthItemsItemIdEditRouteImport } from "./routes/_auth.items.$itemId.edit";
 import { Route as AuthItemsItemIdConsumeRouteImport } from "./routes/_auth.items.$itemId.consume";
 
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: "/forgot-password",
+  path: "/forgot-password",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const LoginRoute = LoginRouteImport.update({
   id: "/login",
   path: "/login",
@@ -84,6 +90,7 @@ const AuthItemsItemIdConsumeRoute = AuthItemsItemIdConsumeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   "/": typeof AuthIndexRoute;
+  "/forgot-password": typeof ForgotPasswordRoute;
   "/login": typeof LoginRoute;
   "/settings": typeof AuthSettingsRouteWithChildren;
   "/shopping": typeof AuthShoppingRoute;
@@ -96,6 +103,7 @@ export interface FileRoutesByFullPath {
   "/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
 }
 export interface FileRoutesByTo {
+  "/forgot-password": typeof ForgotPasswordRoute;
   "/login": typeof LoginRoute;
   "/settings": typeof AuthSettingsRouteWithChildren;
   "/shopping": typeof AuthShoppingRoute;
@@ -111,6 +119,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/_auth": typeof AuthRouteWithChildren;
+  "/forgot-password": typeof ForgotPasswordRoute;
   "/login": typeof LoginRoute;
   "/_auth/settings": typeof AuthSettingsRouteWithChildren;
   "/_auth/shopping": typeof AuthShoppingRoute;
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | "/"
+    | "/forgot-password"
     | "/login"
     | "/settings"
     | "/shopping"
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | "/items/$itemId/edit";
   fileRoutesByTo: FileRoutesByTo;
   to:
+    | "/forgot-password"
     | "/login"
     | "/settings"
     | "/shopping"
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
   id:
     | "__root__"
     | "/_auth"
+    | "/forgot-password"
     | "/login"
     | "/_auth/settings"
     | "/_auth/shopping"
@@ -168,11 +180,19 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren;
+  ForgotPasswordRoute: typeof ForgotPasswordRoute;
   LoginRoute: typeof LoginRoute;
 }
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/forgot-password": {
+      id: "/forgot-password";
+      path: "/forgot-password";
+      fullPath: "/forgot-password";
+      preLoaderRoute: typeof ForgotPasswordRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/login": {
       id: "/login";
       path: "/login";
@@ -308,6 +328,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
 };
 export const routeTree = rootRouteImport

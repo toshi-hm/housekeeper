@@ -141,7 +141,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
     const pwResult = newPasswordSchema.safeParse(newPassword);
     if (!pwResult.success) {
-      setFieldErrors({ newPassword: pwResult.error.issues[0].message });
+      setFieldErrors({ newPassword: pwResult.error.issues[0]?.message ?? "バリデーションエラー" });
       return;
     }
     if (newPassword !== confirmPassword) {
