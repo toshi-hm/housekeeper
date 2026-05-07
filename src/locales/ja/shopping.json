@@ -11,7 +11,7 @@
   "markPurchased": "購入完了",
   "noItems": "買い物リストは空です",
   "noPurchased": "購入済みアイテムはありません",
-  "restock": "補充",
+  "restock": "再購入",
   "purchaseComplete": "購入完了にする",
   "purchaseDialog": "購入完了 — 在庫に追加",
   "createItemFromPurchase": "在庫に追加",

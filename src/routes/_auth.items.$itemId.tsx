@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Calendar,
@@ -129,35 +129,45 @@ const ItemDetailPage = () => {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={tc("back")}
+          onClick={() => void navigate({ to: "/" })}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex gap-2">
-          <Link to="/items/$itemId/consume" params={{ itemId }}>
-            <Button variant="outline" size="sm" disabled={isEmpty}>
-              <Zap className="mr-1 h-4 w-4" />
-              {t("consume")}
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isEmpty}
+            onClick={() => void navigate({ to: "/items/$itemId/consume", params: { itemId } })}
+          >
+            <Zap className="h-4 w-4" />
+            {t("consume")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleRestock()}
+            disabled={upsertShopping.isPending}
+          >
+            <RefreshCw className="h-4 w-4" />
+            {t("shopping:restock")}
+          </Button>
           <Button
             variant="outline"
             size="icon"
-            onClick={() => {
-              void handleRestock();
-            }}
-            disabled={upsertShopping.isPending}
-            title={t("shopping:restock")}
+            aria-label={tc("edit")}
+            onClick={() => void navigate({ to: "/items/$itemId/edit", params: { itemId } })}
           >
-            <RefreshCw className="h-4 w-4" />
+            <Edit className="h-4 w-4" />
           </Button>
-          <Link to="/items/$itemId/edit" params={{ itemId }}>
-            <Button variant="outline" size="icon">
-              <Edit className="h-4 w-4" />
-            </Button>
-          </Link>
           <Button
             variant="destructive"
             size="icon"
+            aria-label={tc("delete")}
             onClick={() => setShowDeleteConfirm(true)}
             disabled={deleteItem.isPending}
           >
