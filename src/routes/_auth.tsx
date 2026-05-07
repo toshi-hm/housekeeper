@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 
 const NAV_ITEMS = [
-  { to: "/" as const, icon: Home, labelKey: "Home" },
-  { to: "/items/new" as const, icon: Plus, labelKey: "Add Item" },
-  { to: "/shopping" as const, icon: ShoppingCart, labelKey: "Shopping" },
-  { to: "/stats" as const, icon: BarChart2, labelKey: "Stats" },
-  { to: "/settings" as const, icon: Settings, labelKey: "Settings" },
+  { to: "/" as const, icon: Home, label: "Home" },
+  { to: "/items/new" as const, icon: Plus, label: "Add Item" },
+  { to: "/shopping" as const, icon: ShoppingCart, label: "Shopping" },
+  { to: "/stats" as const, icon: BarChart2, label: "Stats" },
+  { to: "/settings" as const, icon: Settings, label: "Settings" },
 ] as const;
 
 const AuthLayout = () => {
@@ -30,14 +30,14 @@ const AuthLayout = () => {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-4">
-          {NAV_ITEMS.map(({ to, icon: Icon, labelKey }) => (
+          {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
             <Link
               key={to}
               to={to}
               className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&.active]:bg-accent [&.active]:text-primary"
             >
               <Icon className="h-5 w-5 shrink-0" />
-              {labelKey}
+              {label}
             </Link>
           ))}
         </nav>
@@ -87,14 +87,14 @@ const AuthLayout = () => {
       {/* Mobile bottom navigation */}
       <nav className="sticky bottom-0 border-t bg-background lg:hidden">
         <div className="mx-auto flex max-w-2xl items-center justify-around px-4 py-2">
-          {NAV_ITEMS.map(({ to, icon: Icon, labelKey }) => (
+          {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
             <Link
               key={to}
               to={to}
               className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
             >
               <Icon className="h-5 w-5" />
-              <span>{labelKey}</span>
+              <span>{label}</span>
             </Link>
           ))}
         </div>
