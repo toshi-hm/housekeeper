@@ -61,6 +61,7 @@ export const ItemForm = ({
   const set = <K extends keyof ItemFormValues>(field: K, value: ItemFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
     if (field === "name") setNameError("");
+    if (field === "barcode") setLookupResult(undefined);
   };
 
   const handleBarcodeScan = async (barcode: string) => {

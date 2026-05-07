@@ -29,7 +29,7 @@ export const ProductLookupResult = ({ isLoading, product }: ProductLookupResultP
     );
   }
 
-  if (!product) return null;
+  if (product === undefined) return null;
 
   return (
     <div className="flex gap-3 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/30">
