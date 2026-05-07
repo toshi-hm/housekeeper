@@ -9,8 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root";
-import { Route as ForgotPasswordRouteImport } from "./routes/forgot-password";
 import { Route as LoginRouteImport } from "./routes/login";
+import { Route as ForgotPasswordRouteImport } from "./routes/forgot-password";
 import { Route as AuthRouteImport } from "./routes/_auth";
 import { Route as AuthIndexRouteImport } from "./routes/_auth.index";
 import { Route as AuthStatsRouteImport } from "./routes/_auth.stats";
@@ -23,14 +23,14 @@ import { Route as AuthItemsItemIdRouteImport } from "./routes/_auth.items.$itemI
 import { Route as AuthItemsItemIdEditRouteImport } from "./routes/_auth.items.$itemId.edit";
 import { Route as AuthItemsItemIdConsumeRouteImport } from "./routes/_auth.items.$itemId.consume";
 
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: "/forgot-password",
-  path: "/forgot-password",
-  getParentRoute: () => rootRouteImport,
-} as any);
 const LoginRoute = LoginRouteImport.update({
   id: "/login",
   path: "/login",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: "/forgot-password",
+  path: "/forgot-password",
   getParentRoute: () => rootRouteImport,
 } as any);
 const AuthRoute = AuthRouteImport.update({
@@ -186,18 +186,18 @@ export interface RootRouteChildren {
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    "/forgot-password": {
-      id: "/forgot-password";
-      path: "/forgot-password";
-      fullPath: "/forgot-password";
-      preLoaderRoute: typeof ForgotPasswordRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     "/login": {
       id: "/login";
       path: "/login";
       fullPath: "/login";
       preLoaderRoute: typeof LoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/forgot-password": {
+      id: "/forgot-password";
+      path: "/forgot-password";
+      fullPath: "/forgot-password";
+      preLoaderRoute: typeof ForgotPasswordRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/_auth": {

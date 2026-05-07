@@ -19,23 +19,25 @@ const StatsPage = () => {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t("categoryBreakdown")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CategoryChart stats={stats} />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{t("categoryBreakdown")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CategoryChart stats={stats} />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t("expiryBreakdown")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ExpiryChart distribution={distribution} />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{t("expiryBreakdown")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ExpiryChart distribution={distribution} />
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader className="pb-2">

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Plus, Search, Settings, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -63,11 +63,6 @@ const DashboardPage = () => {
           <p className="text-sm text-muted-foreground">{items.length}件</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/settings">
-            <Button variant="ghost" size="icon" aria-label={tc("settings" as never) ?? "Settings"}>
-              <Settings className="h-5 w-5" />
-            </Button>
-          </Link>
           <Link to="/items/new">
             <Button size="sm">
               <Plus className="mr-1 h-4 w-4" />
@@ -111,7 +106,7 @@ const DashboardPage = () => {
       {/* Filter panel */}
       {showFilters && (
         <div className="space-y-3 rounded-lg border p-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
                 {t("filterByCategory")}
@@ -138,8 +133,6 @@ const DashboardPage = () => {
                 ))}
               </Select>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
                 {t("filterByExpiry")}
@@ -200,7 +193,7 @@ const DashboardPage = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map((item) => (
             <ItemCard
               key={item.id}
