@@ -39,11 +39,11 @@ _auth.calendar.tsx  →  /calendar
 
 ### 上部サマリー（2カラム）
 
-| 位置 | 内容 | 文字色 |
-|------|------|--------|
-| 左上 | 期限切れアイテム一覧 | `text-destructive`（赤） |
-| 左下 | 今週（今日〜7日後）に期限が切れるアイテム | `text-yellow-600`（黄） |
-| 右   | 今月期限切れ（上記2グループ以外）| デフォルト |
+| 位置 | 内容                                      | 文字色                   |
+| ---- | ----------------------------------------- | ------------------------ |
+| 左上 | 期限切れアイテム一覧                      | `text-destructive`（赤） |
+| 左下 | 今週（今日〜7日後）に期限が切れるアイテム | `text-yellow-600`（黄）  |
+| 右   | 今月期限切れ（上記2グループ以外）         | デフォルト               |
 
 各アイテム行の構成:
 
@@ -52,6 +52,7 @@ _auth.calendar.tsx  →  /calendar
 ```
 
 チェックボックスを押すと:
+
 1. 該当行に `line-through text-muted-foreground` を適用（即時）
 2. `useSoftDeleteItem` を呼び出し `items.deleted_at = now()` を設定
 3. 確認なしで実行（誤操作は復活機能でリカバー）
@@ -79,12 +80,12 @@ CREATE INDEX items_deleted_at_idx ON items (user_id, deleted_at)
 
 ### 影響範囲
 
-| 変更箇所 | 内容 |
-|----------|------|
-| `useItems` | `.is('deleted_at', null)` フィルタを追加 |
-| `useItem(id)` | ソフトデリート品は 404 扱い（詳細画面への直アクセス保護） |
-| `itemSchema` | `deleted_at: z.string().nullable().optional()` を追加 |
-| RLS | 既存の `user_id = auth.uid()` に変更なし（削除済みも参照できるがUIでは非表示） |
+| 変更箇所      | 内容                                                                           |
+| ------------- | ------------------------------------------------------------------------------ |
+| `useItems`    | `.is('deleted_at', null)` フィルタを追加                                       |
+| `useItem(id)` | ソフトデリート品は 404 扱い（詳細画面への直アクセス保護）                      |
+| `itemSchema`  | `deleted_at: z.string().nullable().optional()` を追加                          |
+| RLS           | 既存の `user_id = auth.uid()` に変更なし（削除済みも参照できるがUIでは非表示） |
 
 ### 復活ロジック
 
@@ -131,12 +132,12 @@ CREATE INDEX items_deleted_at_idx ON items (user_id, deleted_at)
 
 ## Atomic Design 配置
 
-| コンポーネント | 分類 | パス |
-|----------------|------|------|
-| `ColorDot` | atom | `src/components/atoms/ColorDot.tsx` |
+| コンポーネント    | 分類     | パス                                           |
+| ----------------- | -------- | ---------------------------------------------- |
+| `ColorDot`        | atom     | `src/components/atoms/ColorDot.tsx`            |
 | `ExpiryCheckItem` | molecule | `src/components/molecules/ExpiryCheckItem.tsx` |
-| `ExpiryCalendar` | organism | `src/components/organisms/ExpiryCalendar.tsx` |
-| `ExpirySummary` | organism | `src/components/organisms/ExpirySummary.tsx` |
+| `ExpiryCalendar`  | organism | `src/components/organisms/ExpiryCalendar.tsx`  |
+| `ExpirySummary`   | organism | `src/components/organisms/ExpirySummary.tsx`   |
 
 ---
 

@@ -37,10 +37,7 @@ export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckIte
       />
       <ColorDot color={categoryColor} />
       <span
-        className={cn(
-          "flex-1 truncate text-sm",
-          checked && "text-muted-foreground line-through",
-        )}
+        className={cn("flex-1 truncate text-sm", checked && "text-muted-foreground line-through")}
       >
         {item.name}
       </span>

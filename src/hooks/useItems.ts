@@ -104,9 +104,7 @@ const tryReviveItem = async (
   return revived as Item;
 };
 
-const createItem = async (
-  values: ItemFormValues,
-): Promise<Item & { _revived?: boolean }> => {
+const createItem = async (values: ItemFormValues): Promise<Item & { _revived?: boolean }> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
