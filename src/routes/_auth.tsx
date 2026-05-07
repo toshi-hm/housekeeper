@@ -1,5 +1,14 @@
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
-import { BarChart2, Home, LogOut, Package, Plus, Settings, ShoppingCart } from "lucide-react";
+import {
+  BarChart2,
+  CalendarDays,
+  Home,
+  LogOut,
+  Package,
+  Plus,
+  Settings,
+  ShoppingCart,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -10,6 +19,7 @@ const NAV_ITEMS = [
   { to: "/shopping" as const, icon: ShoppingCart, label: "Shopping" },
   { to: "/stats" as const, icon: BarChart2, label: "Stats" },
   { to: "/settings" as const, icon: Settings, label: "Settings" },
+  { to: "/calendar" as const, icon: CalendarDays, label: "Calendar" },
 ] as const;
 
 const AuthLayout = () => {
@@ -94,7 +104,7 @@ const AuthLayout = () => {
         </div>
       </main>
 
-      {/* Mobile bottom navigation */}
+      {/* Mobile bottom navigation — 5 items, Add Item centered */}
       <nav className="sticky bottom-0 border-t bg-background lg:hidden">
         <div className="mx-auto flex max-w-2xl items-center justify-around px-4 py-2">
           <Link
@@ -111,7 +121,7 @@ const AuthLayout = () => {
             <ShoppingCart className="h-5 w-5" />
             <span>Shopping</span>
           </Link>
-          {/* Add Item — centered blue circle button */}
+          {/* Add Item — center (position 3/5 with justify-around = exactly 50%) */}
           <Link
             to="/items/new"
             className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
@@ -128,8 +138,13 @@ const AuthLayout = () => {
             <BarChart2 className="h-5 w-5" />
             <span>Stats</span>
           </Link>
-          {/* Invisible spacer to keep Add Item centered (5th element = 50% with justify-around) */}
-          <div className="w-10 opacity-0" aria-hidden="true" />
+          <Link
+            to="/calendar"
+            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+          >
+            <CalendarDays className="h-5 w-5" />
+            <span>Calendar</span>
+          </Link>
         </div>
       </nav>
     </div>

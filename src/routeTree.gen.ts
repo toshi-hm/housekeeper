@@ -22,6 +22,7 @@ import { Route as AuthItemsNewRouteImport } from "./routes/_auth.items.new";
 import { Route as AuthItemsItemIdRouteImport } from "./routes/_auth.items.$itemId";
 import { Route as AuthItemsItemIdEditRouteImport } from "./routes/_auth.items.$itemId.edit";
 import { Route as AuthItemsItemIdConsumeRouteImport } from "./routes/_auth.items.$itemId.consume";
+import { Route as AuthCalendarRouteImport } from "./routes/_auth.calendar";
 
 const LoginRoute = LoginRouteImport.update({
   id: "/login",
@@ -72,6 +73,12 @@ const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
   path: "/items/new",
   getParentRoute: () => AuthRoute,
 } as any);
+const AuthCalendarRoute = AuthCalendarRouteImport.update({
+  id: "/calendar",
+  path: "/calendar",
+  getParentRoute: () => AuthRoute,
+} as any);
+
 const AuthItemsItemIdRoute = AuthItemsItemIdRouteImport.update({
   id: "/items/$itemId",
   path: "/items/$itemId",
@@ -101,6 +108,7 @@ export interface FileRoutesByFullPath {
   "/settings/locations": typeof AuthSettingsLocationsRoute;
   "/items/$itemId/consume": typeof AuthItemsItemIdConsumeRoute;
   "/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
+  "/calendar": typeof AuthCalendarRoute;
 }
 export interface FileRoutesByTo {
   "/forgot-password": typeof ForgotPasswordRoute;
@@ -115,6 +123,7 @@ export interface FileRoutesByTo {
   "/settings/locations": typeof AuthSettingsLocationsRoute;
   "/items/$itemId/consume": typeof AuthItemsItemIdConsumeRoute;
   "/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
+  "/calendar": typeof AuthCalendarRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
@@ -131,6 +140,7 @@ export interface FileRoutesById {
   "/_auth/settings/locations": typeof AuthSettingsLocationsRoute;
   "/_auth/items/$itemId/consume": typeof AuthItemsItemIdConsumeRoute;
   "/_auth/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
+  "/_auth/calendar": typeof AuthCalendarRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
@@ -146,7 +156,8 @@ export interface FileRouteTypes {
     | "/settings/categories"
     | "/settings/locations"
     | "/items/$itemId/consume"
-    | "/items/$itemId/edit";
+    | "/items/$itemId/edit"
+    | "/calendar";
   fileRoutesByTo: FileRoutesByTo;
   to:
     | "/forgot-password"
@@ -160,7 +171,8 @@ export interface FileRouteTypes {
     | "/settings/categories"
     | "/settings/locations"
     | "/items/$itemId/consume"
-    | "/items/$itemId/edit";
+    | "/items/$itemId/edit"
+    | "/calendar";
   id:
     | "__root__"
     | "/_auth"
@@ -175,7 +187,8 @@ export interface FileRouteTypes {
     | "/_auth/settings/categories"
     | "/_auth/settings/locations"
     | "/_auth/items/$itemId/consume"
-    | "/_auth/items/$itemId/edit";
+    | "/_auth/items/$itemId/edit"
+    | "/_auth/calendar";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -277,6 +290,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AuthItemsItemIdConsumeRouteImport;
       parentRoute: typeof AuthItemsItemIdRoute;
     };
+    "/_auth/calendar": {
+      id: "/_auth/calendar";
+      path: "/calendar";
+      fullPath: "/calendar";
+      preLoaderRoute: typeof AuthCalendarRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
   }
 }
 
@@ -313,6 +333,7 @@ interface AuthRouteChildren {
   AuthIndexRoute: typeof AuthIndexRoute;
   AuthItemsItemIdRoute: typeof AuthItemsItemIdRouteWithChildren;
   AuthItemsNewRoute: typeof AuthItemsNewRoute;
+  AuthCalendarRoute: typeof AuthCalendarRoute;
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
@@ -322,6 +343,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthIndexRoute: AuthIndexRoute,
   AuthItemsItemIdRoute: AuthItemsItemIdRouteWithChildren,
   AuthItemsNewRoute: AuthItemsNewRoute,
+  AuthCalendarRoute: AuthCalendarRoute,
 };
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren);
