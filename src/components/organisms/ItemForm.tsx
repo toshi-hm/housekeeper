@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { ProductLookupResult } from "@/components/molecules/ProductLookupResult";
+import { QuickAddSelect } from "@/components/molecules/QuickAddSelect";
 import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,12 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type ProductInfo, useBarcodeLookup } from "@/hooks/useBarcodeLookup";
 import { useSignedItemImage } from "@/hooks/useItemImage";
-import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import {
+  useCategories,
+  useCreateCategory,
+  useCreateStorageLocation,
+  useStorageLocations,
+} from "@/hooks/useMasterData";
 import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
 
 interface ItemFormProps {
@@ -34,6 +40,8 @@ export const ItemForm = ({
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
   const { lookup, isLoading: isLookingUp } = useBarcodeLookup();
+  const { mutateAsync: addCategory } = useCreateCategory();
+  const { mutateAsync: addLocation } = useCreateStorageLocation();
 
   const [values, setValues] = useState<ItemFormValues>({
     name: defaultValues?.name ?? "",
@@ -71,6 +79,16 @@ export const ItemForm = ({
     const info = await lookup(barcode);
     setLookupResult(info);
     if (info?.name) set("name", info.name);
+  };
+
+  const handleAddCategory = async (name: string) => {
+    const category = await addCategory(name);
+    set("category_id", category.id);
+  };
+
+  const handleAddLocation = async (name: string) => {
+    const location = await addLocation(name);
+    set("storage_location_id", location.id);
   };
 
   const handleImageFile = (file: File) => {
@@ -148,22 +166,37 @@ export const ItemForm = ({
         {/* Name */}
         <div className="space-y-2">
           <Label htmlFor="name">{t("name")} *</Label>
-          <Input
-            id="name"
-            value={values.name}
-            onChange={(e) => set("name", e.target.value)}
-            placeholder={t("namePlaceholder")}
-          />
+          <div className="flex items-center gap-2">
+            {lookupResult?.image_url && (
+              <div className="w-1/4 shrink-0">
+                <img
+                  src={lookupResult.image_url}
+                  alt={lookupResult.name}
+                  className="h-10 w-full rounded border object-contain"
+                />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <Input
+                id="name"
+                value={values.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder={t("namePlaceholder")}
+              />
+            </div>
+          </div>
           {nameError && <p className="text-sm text-destructive">{nameError}</p>}
         </div>
 
         {/* Category */}
         <div className="space-y-2">
           <Label htmlFor="category_id">{t("category")}</Label>
-          <Select
+          <QuickAddSelect
             id="category_id"
             value={values.category_id ?? ""}
             onChange={(e) => set("category_id", e.target.value || null)}
+            onAdd={handleAddCategory}
+            addLabel={t("addCategory")}
           >
             <option value="">{t("categoryPlaceholder")}</option>
             {categories.map((c) => (
@@ -171,16 +204,18 @@ export const ItemForm = ({
                 {c.name}
               </option>
             ))}
-          </Select>
+          </QuickAddSelect>
         </div>
 
         {/* Storage Location */}
         <div className="space-y-2">
           <Label htmlFor="storage_location_id">{t("storageLocation")}</Label>
-          <Select
+          <QuickAddSelect
             id="storage_location_id"
             value={values.storage_location_id ?? ""}
             onChange={(e) => set("storage_location_id", e.target.value || null)}
+            onAdd={handleAddLocation}
+            addLabel={t("addStorageLocation")}
           >
             <option value="">{t("storageLocationPlaceholder")}</option>
             {locations.map((l) => (
@@ -188,7 +223,7 @@ export const ItemForm = ({
                 {l.name}
               </option>
             ))}
-          </Select>
+          </QuickAddSelect>
         </div>
 
         {/* Quantity (units × content_amount content_unit) */}
