@@ -25,3 +25,34 @@ export const Default: Story = {
     );
   },
 };
+
+export const MultipleDevices: Story = {
+  beforeEach() {
+    spyOn(ZxingBrowser.BrowserMultiFormatReader, "listVideoInputDevices").mockResolvedValue([
+      {
+        deviceId: "camera-front",
+        label: "Front Camera",
+        kind: "videoinput",
+        groupId: "",
+      } as MediaDeviceInfo,
+      {
+        deviceId: "camera-back",
+        label: "Back Camera (environment)",
+        kind: "videoinput",
+        groupId: "",
+      } as MediaDeviceInfo,
+    ]);
+    // decodeFromVideoDevice never resolves → stays in starting state, switch button visible
+    spyOn(ZxingBrowser.BrowserMultiFormatReader.prototype, "decodeFromVideoDevice").mockReturnValue(
+      new Promise(() => {}),
+    );
+  },
+};
+
+export const CameraError: Story = {
+  beforeEach() {
+    spyOn(ZxingBrowser.BrowserMultiFormatReader, "listVideoInputDevices").mockRejectedValue(
+      new Error("Permission denied"),
+    );
+  },
+};
