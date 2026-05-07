@@ -106,106 +106,110 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black">
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-2 text-white">
-          <Camera className="h-5 w-5" />
-          <span className="font-medium">{t("scanBarcode")}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {devices.length > 1 && (
+    <div className="fixed inset-0 z-50 flex flex-col bg-black lg:items-center lg:justify-center lg:bg-black/70">
+      <div className="flex h-full flex-col bg-black lg:h-[580px] lg:w-[480px] lg:overflow-hidden lg:rounded-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-2 text-white">
+            <Camera className="h-5 w-5" />
+            <span className="font-medium">{t("scanBarcode")}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {devices.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSwitchCamera}
+                className="text-white hover:bg-white/20"
+                title={t("scannerSwitchCamera")}
+              >
+                <SwitchCamera className="h-5 w-5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleSwitchCamera}
+              onClick={() => setShowManual((v) => !v)}
               className="text-white hover:bg-white/20"
-              title={t("scannerSwitchCamera")}
+              title={t("scannerManualInput")}
             >
-              <SwitchCamera className="h-5 w-5" />
+              <Keyboard className="h-5 w-5" />
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowManual((v) => !v)}
-            className="text-white hover:bg-white/20"
-            title={t("scannerManualInput")}
-          >
-            <Keyboard className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="text-white hover:bg-white/20"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="text-white hover:bg-white/20"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <div className="relative flex-1">
-        {error ? (
-          <div className="flex h-full items-center justify-center p-8 text-center text-white">
-            <div>
-              <p className="text-lg font-medium">{t("scannerError")}</p>
-              <p className="mt-2 text-sm text-white/70">{error}</p>
-              <div className="mt-4 flex justify-center gap-3">
-                <Button onClick={handleRetry} variant="outline">
-                  {t("scannerRetry")}
-                </Button>
-                <Button onClick={onClose} variant="ghost" className="text-white">
-                  {t("common:cancel")}
-                </Button>
+        {/* Camera / error area */}
+        <div className="relative flex-1">
+          {error ? (
+            <div className="flex h-full items-center justify-center p-8 text-center text-white">
+              <div>
+                <p className="text-lg font-medium">{t("scannerError")}</p>
+                <p className="mt-2 text-sm text-white/70">{error}</p>
+                <div className="mt-4 flex justify-center gap-3">
+                  <Button onClick={handleRetry} variant="outline">
+                    {t("scannerRetry")}
+                  </Button>
+                  <Button onClick={onClose} variant="ghost" className="text-white">
+                    {t("common:cancel")}
+                  </Button>
+                </div>
               </div>
+            </div>
+          ) : (
+            <>
+              <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
+              {isStarting && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                  <span className="text-white">{t("scannerStarting")}</span>
+                </div>
+              )}
+              {/* Scanning frame overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="relative h-48 w-72">
+                  <div className="absolute left-0 top-0 h-8 w-8 border-l-4 border-t-4 border-white" />
+                  <div className="absolute right-0 top-0 h-8 w-8 border-r-4 border-t-4 border-white" />
+                  <div className="absolute bottom-0 left-0 h-8 w-8 border-b-4 border-l-4 border-white" />
+                  <div className="absolute bottom-0 right-0 h-8 w-8 border-b-4 border-r-4 border-white" />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Manual input fallback */}
+        {showManual && (
+          <div className="bg-black/80 p-4">
+            <p className="mb-2 text-sm text-white/70">{t("scannerManualInput")}</p>
+            <div className="flex gap-2">
+              <Input
+                value={manualValue}
+                onChange={(e) => setManualValue(e.target.value)}
+                placeholder={t("scannerManualPlaceholder")}
+                className="bg-white/10 text-white placeholder:text-white/40"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleManualSubmit();
+                }}
+                autoFocus
+              />
+              <Button onClick={handleManualSubmit} disabled={!manualValue.trim()}>
+                {t("common:confirm")}
+              </Button>
             </div>
           </div>
-        ) : (
-          <>
-            <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
-            {isStarting && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <span className="text-white">{t("scannerStarting")}</span>
-              </div>
-            )}
-            {/* Scanning frame overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative h-48 w-72">
-                <div className="absolute left-0 top-0 h-8 w-8 border-l-4 border-t-4 border-white" />
-                <div className="absolute right-0 top-0 h-8 w-8 border-r-4 border-t-4 border-white" />
-                <div className="absolute bottom-0 left-0 h-8 w-8 border-b-4 border-l-4 border-white" />
-                <div className="absolute bottom-0 right-0 h-8 w-8 border-b-4 border-r-4 border-white" />
-              </div>
-            </div>
-          </>
+        )}
+
+        {!showManual && !error && (
+          <div className="p-4 text-center text-sm text-white/70">{t("scannerHint")}</div>
         )}
       </div>
-
-      {/* Manual input fallback */}
-      {showManual && (
-        <div className="bg-black/80 p-4">
-          <p className="mb-2 text-sm text-white/70">{t("scannerManualInput")}</p>
-          <div className="flex gap-2">
-            <Input
-              value={manualValue}
-              onChange={(e) => setManualValue(e.target.value)}
-              placeholder={t("scannerManualPlaceholder")}
-              className="bg-white/10 text-white placeholder:text-white/40"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleManualSubmit();
-              }}
-              autoFocus
-            />
-            <Button onClick={handleManualSubmit} disabled={!manualValue.trim()}>
-              {t("common:confirm")}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {!showManual && !error && (
-        <div className="p-4 text-center text-sm text-white/70">{t("scannerHint")}</div>
-      )}
     </div>
   );
 };
