@@ -4,14 +4,30 @@ import { forwardRef, type KeyboardEvent, type SelectHTMLAttributes, useRef, useS
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface QuickAddSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   onAdd: (name: string) => Promise<void>;
   addLabel?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  errorMessage?: string;
 }
 
 export const QuickAddSelect = forwardRef<HTMLSelectElement, QuickAddSelectProps>(
-  ({ onAdd, addLabel = "追加", children, ...props }, ref) => {
+  (
+    {
+      onAdd,
+      addLabel = "追加",
+      confirmLabel = "確認",
+      cancelLabel = "キャンセル",
+      errorMessage = "追加に失敗しました",
+      children,
+      className,
+      ...props
+    },
+    ref,
+  ) => {
     const [isEditing, setIsEditing] = useState(false);
     const [inputValue, setInputValue] = useState("");
     const [isAdding, setIsAdding] = useState(false);
@@ -41,7 +57,7 @@ export const QuickAddSelect = forwardRef<HTMLSelectElement, QuickAddSelectProps>
         setIsEditing(false);
         setInputValue("");
       } catch {
-        setAddError("追加に失敗しました");
+        setAddError(errorMessage);
       } finally {
         setIsAdding(false);
       }
@@ -59,7 +75,7 @@ export const QuickAddSelect = forwardRef<HTMLSelectElement, QuickAddSelectProps>
     return (
       <div>
         <div className="flex gap-2">
-          <Select ref={ref} {...props} className="flex-1">
+          <Select ref={ref} {...props} className={cn("flex-1", className)}>
             {children}
           </Select>
           <Button
@@ -69,6 +85,7 @@ export const QuickAddSelect = forwardRef<HTMLSelectElement, QuickAddSelectProps>
             onClick={handleOpen}
             disabled={isEditing || isAdding}
             title={addLabel}
+            aria-label={addLabel}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -91,6 +108,7 @@ export const QuickAddSelect = forwardRef<HTMLSelectElement, QuickAddSelectProps>
               className="h-8 w-8 shrink-0"
               onClick={() => void handleConfirm()}
               disabled={isAdding || !inputValue.trim()}
+              aria-label={confirmLabel}
             >
               {isAdding ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -105,6 +123,7 @@ export const QuickAddSelect = forwardRef<HTMLSelectElement, QuickAddSelectProps>
               className="h-8 w-8 shrink-0"
               onClick={handleCancel}
               disabled={isAdding}
+              aria-label={cancelLabel}
             >
               <X className="h-3.5 w-3.5" />
             </Button>

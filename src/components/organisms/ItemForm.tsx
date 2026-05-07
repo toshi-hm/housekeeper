@@ -197,6 +197,9 @@ export const ItemForm = ({
             onChange={(e) => set("category_id", e.target.value || null)}
             onAdd={handleAddCategory}
             addLabel={t("addCategory")}
+            confirmLabel={t("common:confirm")}
+            cancelLabel={t("common:cancel")}
+            errorMessage={t("addError")}
           >
             <option value="">{t("categoryPlaceholder")}</option>
             {categories.map((c) => (
@@ -216,6 +219,9 @@ export const ItemForm = ({
             onChange={(e) => set("storage_location_id", e.target.value || null)}
             onAdd={handleAddLocation}
             addLabel={t("addStorageLocation")}
+            confirmLabel={t("common:confirm")}
+            cancelLabel={t("common:cancel")}
+            errorMessage={t("addError")}
           >
             <option value="">{t("storageLocationPlaceholder")}</option>
             {locations.map((l) => (

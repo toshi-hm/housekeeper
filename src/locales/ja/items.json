@@ -19,6 +19,7 @@
   "expiryDate": "賞味期限/消費期限",
   "addCategory": "カテゴリを追加",
   "addStorageLocation": "保管場所を追加",
+  "addError": "追加に失敗しました",
   "notes": "メモ",
   "notesPlaceholder": "メモを入力",
   "image": "画像",
