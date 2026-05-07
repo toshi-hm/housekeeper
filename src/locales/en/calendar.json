@@ -1,0 +1,11 @@
+{
+  "title": "Expiry Calendar",
+  "expired": "Expired",
+  "thisWeek": "Expiring This Week",
+  "thisMonth": "Expiring This Month",
+  "noExpired": "No expired items",
+  "noThisWeek": "Nothing expiring this week",
+  "noThisMonth": "Nothing expiring this month",
+  "softDeleteSuccess": "Removed from inventory",
+  "reviveSuccess": "Restocked item revived from soft-delete"
+}

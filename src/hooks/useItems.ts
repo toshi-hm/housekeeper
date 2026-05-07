@@ -22,7 +22,7 @@ const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
 ): Promise<Item[]> => {
-  let query = supabase.from("items").select("*");
+  let query = supabase.from("items").select("*").is("deleted_at", null);
 
   if (filters.search) {
     query = query.or(`name.ilike.%${filters.search}%,barcode.ilike.%${filters.search}%`);
@@ -69,10 +69,53 @@ const normalizeFormValues = (values: Partial<ItemFormValues>) => ({
   image_path: values.image_path || null,
 });
 
-const createItem = async (values: ItemFormValues): Promise<Item> => {
+/**
+ * バーコードが一致するソフトデリート済みアイテムを復活させる。
+ * 復活した場合は revived item を返す。なければ null。
+ */
+const tryReviveItem = async (
+  barcode: string,
+  values: ItemFormValues,
+  userId: string,
+): Promise<Item | null> => {
+  const { data } = await supabase
+    .from("items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("barcode", barcode)
+    .not("deleted_at", "is", null)
+    .limit(1)
+    .single();
+  if (!data) return null;
+
+  const { data: revived, error } = await supabase
+    .from("items")
+    .update({
+      deleted_at: null,
+      units: values.units ?? 1,
+      expiry_date: values.expiry_date || null,
+      purchase_date: values.purchase_date || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", (data as Item).id)
+    .select()
+    .single();
+  if (error) throw error;
+  return revived as Item;
+};
+
+const createItem = async (
+  values: ItemFormValues,
+): Promise<Item & { _revived?: boolean }> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
+
+  if (values.barcode) {
+    const revived = await tryReviveItem(values.barcode, values, userData.user.id);
+    if (revived) return { ...revived, _revived: true };
+  }
+
   const normalized = normalizeFormValues(values);
   const { data, error } = await supabase
     .from("items")
@@ -101,6 +144,27 @@ const deleteItem = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
+const softDeleteItem = async (id: string): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase
+    .from("items")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+};
+
+/** カレンダー用: expiry_date を持つアクティブアイテムのみ返す */
+const fetchItemsWithExpiry = async (): Promise<Item[]> => {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .is("deleted_at", null)
+    .not("expiry_date", "is", null)
+    .order("expiry_date", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Item[];
+};
+
 export const useItems = (filters: ItemFilters = {}, sort: ItemSortKey = "created_at") =>
   useQuery({
     queryKey: [...ITEMS_KEY, filters, sort],
@@ -118,14 +182,17 @@ export const useItem = (id: string) =>
 export const useCreateItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation(["common", "calendar"]);
   return useMutation({
     mutationFn: createItem,
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
+      if ((data as Item & { _revived?: boolean })._revived) {
+        toast(t("calendar:reviveSuccess"), "success");
+      }
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
     },
   });
 };
@@ -159,3 +226,27 @@ export const useDeleteItem = () => {
     },
   });
 };
+
+export const useSoftDeleteItem = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation(["common", "calendar"]);
+  return useMutation({
+    mutationFn: softDeleteItem,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
+      toast(t("calendar:softDeleteSuccess"), "success");
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
+      else toast(t("common:unknownError"), "error");
+    },
+  });
+};
+
+export const useItemsWithExpiry = () =>
+  useQuery({
+    queryKey: [...ITEMS_KEY, "with-expiry"],
+    queryFn: fetchItemsWithExpiry,
+    staleTime: 30_000,
+  });
