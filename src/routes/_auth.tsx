@@ -63,17 +63,27 @@ const AuthLayout = () => {
             <Package className="h-5 w-5" />
             Housekeeper
           </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              void handleSignOut();
-            }}
-            title="Sign out"
-            aria-label="Sign out"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Link
+              to="/settings"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="Settings"
+              aria-label="Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                void handleSignOut();
+              }}
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -87,16 +97,39 @@ const AuthLayout = () => {
       {/* Mobile bottom navigation */}
       <nav className="sticky bottom-0 border-t bg-background lg:hidden">
         <div className="mx-auto flex max-w-2xl items-center justify-around px-4 py-2">
-          {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
-            <Link
-              key={to}
-              to={to}
-              className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
-            >
-              <Icon className="h-5 w-5" />
-              <span>{label}</span>
-            </Link>
-          ))}
+          <Link
+            to="/"
+            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+          >
+            <Home className="h-5 w-5" />
+            <span>Home</span>
+          </Link>
+          <Link
+            to="/shopping"
+            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            <span>Shopping</span>
+          </Link>
+          {/* Add Item — centered blue circle button */}
+          <Link
+            to="/items/new"
+            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+          >
+            <div className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg">
+              <Plus className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <span>Add Item</span>
+          </Link>
+          <Link
+            to="/stats"
+            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+          >
+            <BarChart2 className="h-5 w-5" />
+            <span>Stats</span>
+          </Link>
+          {/* Invisible spacer to keep Add Item centered (5th element = 50% with justify-around) */}
+          <div className="w-10 opacity-0" aria-hidden="true" />
         </div>
       </nav>
     </div>
