@@ -129,7 +129,12 @@ const ItemDetailPage = () => {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={tc("back")}
+          onClick={() => void navigate({ to: "/" })}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex gap-2">
@@ -139,7 +144,7 @@ const ItemDetailPage = () => {
             disabled={isEmpty}
             onClick={() => void navigate({ to: "/items/$itemId/consume", params: { itemId } })}
           >
-            <Zap className="mr-1 h-4 w-4" />
+            <Zap className="h-4 w-4" />
             {t("consume")}
           </Button>
           <Button
@@ -154,6 +159,7 @@ const ItemDetailPage = () => {
           <Button
             variant="outline"
             size="icon"
+            aria-label={tc("edit")}
             onClick={() => void navigate({ to: "/items/$itemId/edit", params: { itemId } })}
           >
             <Edit className="h-4 w-4" />
@@ -161,6 +167,7 @@ const ItemDetailPage = () => {
           <Button
             variant="destructive"
             size="icon"
+            aria-label={tc("delete")}
             onClick={() => setShowDeleteConfirm(true)}
             disabled={deleteItem.isPending}
           >
