@@ -43,6 +43,10 @@
   "scannerRetry": "再試行",
   "scannerManualInput": "手動入力",
   "scannerManualPlaceholder": "バーコードを入力して確定",
+  "scannerSwitchCamera": "カメラを切り替え",
+  "productSearching": "商品を検索中...",
+  "productNotFound": "該当の商品が見つかりませんでした",
+  "productBrand": "ブランド",
   "expiryStatus": {
     "expired": "期限切れ",
     "expiring-soon": "期限間近",

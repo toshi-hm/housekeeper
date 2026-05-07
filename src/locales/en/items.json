@@ -43,6 +43,10 @@
   "scannerRetry": "Retry",
   "scannerManualInput": "Manual Input",
   "scannerManualPlaceholder": "Type barcode and press Enter",
+  "scannerSwitchCamera": "Switch Camera",
+  "productSearching": "Searching for product...",
+  "productNotFound": "No matching product found",
+  "productBrand": "Brand",
   "expiryStatus": {
     "expired": "Expired",
     "expiring-soon": "Expiring Soon",
