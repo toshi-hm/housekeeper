@@ -20,8 +20,11 @@ dist-ssr
 # Storybook build output
 storybook-static
 
-# VRT screenshots
+# VRT screenshots and reports
 __screenshots__
+__diff__
+reg-report.html
+reg.json
 
 # Supabase CLI temp files
 supabase/.temp/

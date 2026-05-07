@@ -166,120 +166,131 @@ const ItemDetailPage = () => {
         </div>
       </div>
 
-      {/* Item image */}
-      <ItemImage imagePath={item.image_path} alt={item.name} className="h-40 w-full rounded-lg" />
+      {/* Desktop: image + details side-by-side */}
+      <div className="lg:flex lg:gap-6">
+        {/* Item image */}
+        <ItemImage
+          imagePath={item.image_path}
+          alt={item.name}
+          className="h-40 w-full rounded-lg lg:h-64 lg:w-64 lg:shrink-0"
+        />
 
-      {/* Name + badges */}
-      <div>
-        <h1 className="text-2xl font-bold">{item.name}</h1>
-        <div className="mt-1 flex flex-wrap gap-2">
-          {category && <Badge variant="secondary">{category.name}</Badge>}
-          {isEmpty && (
-            <Badge variant="outline" className="text-muted-foreground">
-              {t("emptyStock")}
-            </Badge>
-          )}
-          <ExpiryBadge
-            expiryDate={item.expiry_date}
-            warningDays={userSettings?.expiry_warning_days}
-          />
-        </div>
-      </div>
+        <div className="mt-4 flex flex-1 flex-col space-y-4 lg:mt-0">
+          {/* Name + badges */}
+          <div>
+            <h1 className="text-2xl font-bold">{item.name}</h1>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {category && <Badge variant="secondary">{category.name}</Badge>}
+              {isEmpty && (
+                <Badge variant="outline" className="text-muted-foreground">
+                  {t("emptyStock")}
+                </Badge>
+              )}
+              <ExpiryBadge
+                expiryDate={item.expiry_date}
+                warningDays={userSettings?.expiry_warning_days}
+              />
+            </div>
+          </div>
 
-      {/* Tab navigation */}
-      <div className="flex rounded-lg border p-1">
-        <button
-          className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "info" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-          onClick={() => setDetailTab("info")}
-        >
-          <Package className="h-4 w-4" />
-          {t("itemDetail")}
-        </button>
-        <button
-          className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "history" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-          onClick={() => setDetailTab("history")}
-        >
-          <History className="h-4 w-4" />
-          {t("consumeHistory")}
-          {logs.length > 0 && (
-            <span className="ml-1 rounded-full bg-primary/20 px-1.5 text-xs">{logs.length}</span>
-          )}
-        </button>
-      </div>
+          {/* Tab navigation */}
+          <div className="flex rounded-lg border p-1">
+            <button
+              className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "info" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              onClick={() => setDetailTab("info")}
+            >
+              <Package className="h-4 w-4" />
+              {t("itemDetail")}
+            </button>
+            <button
+              className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "history" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              onClick={() => setDetailTab("history")}
+            >
+              <History className="h-4 w-4" />
+              {t("consumeHistory")}
+              {logs.length > 0 && (
+                <span className="ml-1 rounded-full bg-primary/20 px-1.5 text-xs">
+                  {logs.length}
+                </span>
+              )}
+            </button>
+          </div>
 
-      {detailTab === "info" ? (
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <DetailRow
-              icon={<Package className="h-4 w-4" />}
-              label={t("units")}
-              value={totalDisplay}
-            />
-            {item.barcode && (
-              <DetailRow
-                icon={<Hash className="h-4 w-4" />}
-                label={t("barcode")}
-                value={item.barcode}
-              />
-            )}
-            {location && (
-              <DetailRow
-                icon={<MapPin className="h-4 w-4" />}
-                label={t("storageLocation")}
-                value={location.name}
-              />
-            )}
-            {item.purchase_date && (
-              <DetailRow
-                icon={<Calendar className="h-4 w-4" />}
-                label={t("purchaseDate")}
-                value={new Date(item.purchase_date).toLocaleDateString()}
-              />
-            )}
-            {item.expiry_date && (
-              <DetailRow
-                icon={<Calendar className="h-4 w-4" />}
-                label={t("expiryDate")}
-                value={new Date(item.expiry_date).toLocaleDateString()}
-              />
-            )}
-            {item.notes && (
-              <DetailRow
-                icon={<StickyNote className="h-4 w-4" />}
-                label={t("notes")}
-                value={item.notes}
-              />
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {logs.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">{t("noHistory")}</p>
+          {detailTab === "info" ? (
+            <Card>
+              <CardContent className="space-y-3 p-4">
+                <DetailRow
+                  icon={<Package className="h-4 w-4" />}
+                  label={t("units")}
+                  value={totalDisplay}
+                />
+                {item.barcode && (
+                  <DetailRow
+                    icon={<Hash className="h-4 w-4" />}
+                    label={t("barcode")}
+                    value={item.barcode}
+                  />
+                )}
+                {location && (
+                  <DetailRow
+                    icon={<MapPin className="h-4 w-4" />}
+                    label={t("storageLocation")}
+                    value={location.name}
+                  />
+                )}
+                {item.purchase_date && (
+                  <DetailRow
+                    icon={<Calendar className="h-4 w-4" />}
+                    label={t("purchaseDate")}
+                    value={new Date(item.purchase_date).toLocaleDateString()}
+                  />
+                )}
+                {item.expiry_date && (
+                  <DetailRow
+                    icon={<Calendar className="h-4 w-4" />}
+                    label={t("expiryDate")}
+                    value={new Date(item.expiry_date).toLocaleDateString()}
+                  />
+                )}
+                {item.notes && (
+                  <DetailRow
+                    icon={<StickyNote className="h-4 w-4" />}
+                    label={t("notes")}
+                    value={item.notes}
+                  />
+                )}
+              </CardContent>
+            </Card>
           ) : (
-            logs.map((log) => (
-              <Card key={log.id}>
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">
-                        −{log.delta_amount}
-                        {log.delta_unit}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {log.units_before} → {log.units_after} {t("units")}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(log.occurred_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            <div className="space-y-2">
+              {logs.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">{t("noHistory")}</p>
+              ) : (
+                logs.map((log) => (
+                  <Card key={log.id}>
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">
+                            −{log.delta_amount}
+                            {log.delta_unit}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {log.units_before} → {log.units_after} {t("units")}
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(log.occurred_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
