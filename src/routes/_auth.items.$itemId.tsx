@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Calendar,
@@ -44,6 +44,11 @@ const ItemDetailPage = () => {
   const { t: tc } = useTranslation("common");
   const { itemId } = Route.useParams();
   const navigate = useNavigate();
+  const matches = useRouterState({ select: (s) => s.matches });
+  const isChildActive = matches.some(
+    (m) =>
+      m.routeId === "/_auth/items/$itemId/consume" || m.routeId === "/_auth/items/$itemId/edit",
+  );
   const { data: item, isLoading, error } = useItem(itemId);
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
@@ -78,6 +83,10 @@ const ItemDetailPage = () => {
       toast(t("common:unknownError"), "error");
     }
   };
+
+  if (isChildActive) {
+    return <Outlet />;
+  }
 
   if (isLoading) {
     return (
