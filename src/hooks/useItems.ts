@@ -121,8 +121,8 @@ export const useCreateItem = () => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: createItem,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ITEMS_KEY });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
@@ -136,8 +136,8 @@ export const useUpdateItem = (id: string) => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: (values: Partial<ItemFormValues>) => updateItem(id, values),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ITEMS_KEY });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
@@ -151,8 +151,8 @@ export const useDeleteItem = () => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: deleteItem,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ITEMS_KEY });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
