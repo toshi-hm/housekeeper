@@ -21,6 +21,8 @@
   "noLocations": "No locations",
   "deleteCategory": "Delete Category",
   "deleteLocation": "Delete Location",
-  "deleteCategoryConfirm": "Delete this category? Items in this category will become uncategorized.",
-  "deleteLocationConfirm": "Delete this location? Items at this location will become unassigned."
+  "deleteCategoryConfirm": "Delete this category?",
+  "deleteLocationConfirm": "Delete this location?",
+  "categoryInUse": "Cannot delete: this category is used by existing items",
+  "locationInUse": "Cannot delete: this location is used by existing items"
 }

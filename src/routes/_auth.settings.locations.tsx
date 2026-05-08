@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  checkLocationUsage,
   useCreateStorageLocation,
   useDeleteStorageLocation,
   useStorageLocations,
@@ -55,6 +56,12 @@ const LocationsPage = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
+      const count = await checkLocationUsage(deleteId);
+      if (count > 0) {
+        toast(t("locationInUse"), "error");
+        setDeleteId(null);
+        return;
+      }
       await deleteLocation.mutateAsync(deleteId);
       setDeleteId(null);
       toast(t("common:deleteSuccess"), "success");

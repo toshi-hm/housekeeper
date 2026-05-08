@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  checkCategoryUsage,
   useCategories,
   useCreateCategory,
   useDeleteCategory,
@@ -62,6 +63,12 @@ const CategoriesPage = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
+      const count = await checkCategoryUsage(deleteId);
+      if (count > 0) {
+        toast(t("categoryInUse"), "error");
+        setDeleteId(null);
+        return;
+      }
       await deleteCategory.mutateAsync(deleteId);
       setDeleteId(null);
       toast(t("common:deleteSuccess"), "success");

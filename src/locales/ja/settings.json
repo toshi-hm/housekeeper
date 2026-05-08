@@ -21,6 +21,8 @@
   "noLocations": "保管場所がありません",
   "deleteCategory": "カテゴリを削除",
   "deleteLocation": "保管場所を削除",
-  "deleteCategoryConfirm": "このカテゴリを削除しますか？このカテゴリに属するアイテムのカテゴリは未設定になります。",
-  "deleteLocationConfirm": "この保管場所を削除しますか？この場所に属するアイテムの保管場所は未設定になります。"
+  "deleteCategoryConfirm": "このカテゴリを削除しますか？",
+  "deleteLocationConfirm": "この保管場所を削除しますか？",
+  "categoryInUse": "このカテゴリは使用中のため削除できません",
+  "locationInUse": "この保管場所は使用中のため削除できません"
 }
