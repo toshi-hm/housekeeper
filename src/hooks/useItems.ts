@@ -219,9 +219,8 @@ export const useDeleteItem = () => {
     onMutate: async (id: string) => {
       await qc.cancelQueries({ queryKey: ITEMS_KEY });
       const snapshot = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
-      qc.setQueriesData<Item[]>(
-        { queryKey: ITEMS_KEY },
-        (old) => (Array.isArray(old) ? old.filter((item) => item.id !== id) : old),
+      qc.setQueriesData<Item[]>({ queryKey: ITEMS_KEY }, (old) =>
+        Array.isArray(old) ? old.filter((item) => item.id !== id) : old,
       );
       qc.removeQueries({ queryKey: [...ITEMS_KEY, id], exact: true });
       return { snapshot };

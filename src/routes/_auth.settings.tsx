@@ -16,8 +16,7 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const matches = useRouterState({ select: (s) => s.matches });
   const isChildActive = matches.some(
-    (m) =>
-      m.routeId === "/_auth/settings/categories" || m.routeId === "/_auth/settings/locations",
+    (m) => m.routeId === "/_auth/settings/categories" || m.routeId === "/_auth/settings/locations",
   );
   const { data: settings, isLoading } = useUserSettings();
   const updateSettings = useUpdateUserSettings();

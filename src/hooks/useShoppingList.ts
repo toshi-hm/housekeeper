@@ -93,9 +93,8 @@ export const useDeleteShoppingItem = () => {
     onMutate: async (id: string) => {
       await qc.cancelQueries({ queryKey: [QUERY_KEY] });
       const snapshot = qc.getQueriesData<ShoppingItem[]>({ queryKey: [QUERY_KEY] });
-      qc.setQueriesData<ShoppingItem[]>(
-        { queryKey: [QUERY_KEY] },
-        (old) => (Array.isArray(old) ? old.filter((item) => item.id !== id) : old),
+      qc.setQueriesData<ShoppingItem[]>({ queryKey: [QUERY_KEY] }, (old) =>
+        Array.isArray(old) ? old.filter((item) => item.id !== id) : old,
       );
       return { snapshot };
     },
