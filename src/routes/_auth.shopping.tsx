@@ -50,11 +50,12 @@ const ShoppingPage = () => {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    setDeleteId(null);
     try {
       await deleteItem.mutateAsync(deleteId);
+      setDeleteId(null);
       toast(t("deleteSuccess"), "success");
     } catch {
+      setDeleteId(null);
       toast(t("common:unknownError"), "error");
     }
   };
@@ -78,6 +79,7 @@ const ShoppingPage = () => {
         title={t("common:confirmDeleteTitle")}
         message={t("deleteConfirm")}
         confirmLabel={t("common:delete")}
+        isConfirming={deleteItem.isPending}
         onConfirm={() => {
           void handleDelete();
         }}
@@ -142,7 +144,14 @@ const ShoppingPage = () => {
             >
               {t("addItem")}
             </Button>
-            <Button variant="outline" onClick={() => setShowAdd(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddName("");
+                setAddNote("");
+                setShowAdd(false);
+              }}
+            >
               {t("common:cancel")}
             </Button>
           </div>
@@ -159,7 +168,10 @@ const ShoppingPage = () => {
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
-            onClick={() => setTab(s)}
+            onClick={() => {
+              setTab(s);
+              setShowAdd(false);
+            }}
           >
             {t(
               `status${s.charAt(0).toUpperCase()}${s.slice(1)}` as

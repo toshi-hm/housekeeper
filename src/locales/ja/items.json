@@ -71,6 +71,7 @@
   "deleteSuccess": "在庫を削除しました",
   "createSuccess": "在庫を追加しました",
   "updateSuccess": "在庫を更新しました",
+  "imageUploadFailed": "在庫は保存されましたが、画像のアップロードに失敗しました",
   "restockSuccess": "買い物リストに追加しました",
   "consumeHistory": "消費履歴",
   "noHistory": "消費履歴がありません",

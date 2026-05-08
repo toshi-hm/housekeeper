@@ -14,9 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { type ProductInfo, useBarcodeLookup } from "@/hooks/useBarcodeLookup";
 import { useSignedItemImage } from "@/hooks/useItemImage";
 import {
+  checkCategoryUsage,
+  checkLocationUsage,
   useCategories,
   useCreateCategory,
   useCreateStorageLocation,
+  useDeleteCategory,
+  useDeleteStorageLocation,
   useStorageLocations,
 } from "@/hooks/useMasterData";
 import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
@@ -37,11 +41,14 @@ export const ItemForm = ({
   onPendingFileChange,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
+  const { t: ts } = useTranslation("settings");
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
-  const { lookup, isLoading: isLookingUp } = useBarcodeLookup();
+  const { lookup, isLoading: isLookingUp, error: lookupError } = useBarcodeLookup();
   const { mutateAsync: addCategory } = useCreateCategory();
   const { mutateAsync: addLocation } = useCreateStorageLocation();
+  const { mutateAsync: deleteCategoryMutate } = useDeleteCategory();
+  const { mutateAsync: deleteLocationMutate } = useDeleteStorageLocation();
 
   const [values, setValues] = useState<ItemFormValues>({
     name: defaultValues?.name ?? "",
@@ -76,6 +83,7 @@ export const ItemForm = ({
     setShowScanner(false);
     set("barcode", barcode);
     setLookupResult(undefined);
+    if (navigator.vibrate) navigator.vibrate(100);
     const info = await lookup(barcode);
     setLookupResult(info);
     if (info?.name) set("name", info.name);
@@ -89,6 +97,18 @@ export const ItemForm = ({
   const handleAddLocation = async (name: string) => {
     const location = await addLocation(name);
     set("storage_location_id", location.id);
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    const count = await checkCategoryUsage(categoryId);
+    if (count > 0) throw new Error(ts("categoryInUse"));
+    await deleteCategoryMutate(categoryId);
+  };
+
+  const handleDeleteLocation = async (locationId: string) => {
+    const count = await checkLocationUsage(locationId);
+    if (count > 0) throw new Error(ts("locationInUse"));
+    await deleteLocationMutate(locationId);
   };
 
   const handleImageFile = (file: File) => {
@@ -161,7 +181,11 @@ export const ItemForm = ({
         </div>
 
         {/* Product lookup result */}
-        <ProductLookupResult isLoading={isLookingUp} product={lookupResult} />
+        <ProductLookupResult
+          isLoading={isLookingUp}
+          product={lookupResult}
+          errorType={lookupResult === null ? lookupError : null}
+        />
 
         {/* Name */}
         <div className="space-y-2">
@@ -194,20 +218,16 @@ export const ItemForm = ({
           <QuickAddSelect
             id="category_id"
             value={values.category_id ?? ""}
-            onChange={(e) => set("category_id", e.target.value || null)}
+            onChange={(value) => set("category_id", value || null)}
+            options={categories.map((c) => ({ value: c.id, label: c.name }))}
+            placeholder={t("categoryPlaceholder")}
             onAdd={handleAddCategory}
+            onDelete={handleDeleteCategory}
             addLabel={t("addCategory")}
             confirmLabel={t("common:confirm")}
             cancelLabel={t("common:cancel")}
-            errorMessage={t("addError")}
-          >
-            <option value="">{t("categoryPlaceholder")}</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </QuickAddSelect>
+            addErrorMessage={t("addError")}
+          />
         </div>
 
         {/* Storage Location */}
@@ -216,20 +236,16 @@ export const ItemForm = ({
           <QuickAddSelect
             id="storage_location_id"
             value={values.storage_location_id ?? ""}
-            onChange={(e) => set("storage_location_id", e.target.value || null)}
+            onChange={(value) => set("storage_location_id", value || null)}
+            options={locations.map((l) => ({ value: l.id, label: l.name }))}
+            placeholder={t("storageLocationPlaceholder")}
             onAdd={handleAddLocation}
+            onDelete={handleDeleteLocation}
             addLabel={t("addStorageLocation")}
             confirmLabel={t("common:confirm")}
             cancelLabel={t("common:cancel")}
-            errorMessage={t("addError")}
-          >
-            <option value="">{t("storageLocationPlaceholder")}</option>
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </QuickAddSelect>
+            addErrorMessage={t("addError")}
+          />
         </div>
 
         {/* Quantity (units × content_amount content_unit) */}

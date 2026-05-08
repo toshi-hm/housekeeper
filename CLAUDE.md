@@ -71,6 +71,18 @@ Read the relevant spec file before implementing any feature.
 - **全チェック（コミット前に必ず実行）**: `bun run format:check && bun run check`
   - `bun run check` は lint + typecheck をまとめて実行する
 
+## セッション終了前の必須チェックリスト
+
+**毎回セッションの最後に必ず実行すること:**
+
+```bash
+npx oxfmt . && bun run check
+```
+
+- `npx oxfmt .` — フォーマット自動修正（`bun run format` が使えない場合の代替）
+- `bun run check` — lint + typecheck
+- フォーマット差分や型エラーが出たら修正してからコミット・プッシュする
+
 ## Code Style
 
 - Always use TypeScript strict mode

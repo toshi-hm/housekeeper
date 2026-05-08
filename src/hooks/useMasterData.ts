@@ -49,6 +49,16 @@ const deleteCategory = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
+export const checkCategoryUsage = async (id: string): Promise<number> => {
+  const { count, error } = await supabase
+    .from("items")
+    .select("id", { count: "exact", head: true })
+    .eq("category_id", id)
+    .is("deleted_at", null);
+  if (error) throw error;
+  return count ?? 0;
+};
+
 export const useCategories = () =>
   useQuery({
     queryKey: CATEGORIES_KEY,
@@ -61,8 +71,11 @@ export const useCreateCategory = () => {
   return useMutation({
     mutationFn: ({ name, color }: { name: string; color?: string | null }) =>
       createCategory(name, color),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
+    onSuccess: (newCategory) => {
+      qc.setQueryData<Category[]>(CATEGORIES_KEY, (old) => {
+        if (!old) return [newCategory];
+        return [...old, newCategory].sort((a, b) => a.name.localeCompare(b.name));
+      });
     },
   });
 };
@@ -128,6 +141,16 @@ const deleteStorageLocation = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
+export const checkLocationUsage = async (id: string): Promise<number> => {
+  const { count, error } = await supabase
+    .from("items")
+    .select("id", { count: "exact", head: true })
+    .eq("storage_location_id", id)
+    .is("deleted_at", null);
+  if (error) throw error;
+  return count ?? 0;
+};
+
 export const useStorageLocations = () =>
   useQuery({
     queryKey: LOCATIONS_KEY,
@@ -139,8 +162,11 @@ export const useCreateStorageLocation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createStorageLocation,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: LOCATIONS_KEY });
+    onSuccess: (newLocation) => {
+      qc.setQueryData<StorageLocation[]>(LOCATIONS_KEY, (old) => {
+        if (!old) return [newLocation];
+        return [...old, newLocation].sort((a, b) => a.name.localeCompare(b.name));
+      });
     },
   });
 };

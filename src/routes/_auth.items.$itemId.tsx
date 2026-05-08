@@ -74,12 +74,13 @@ const ItemDetailPage = () => {
   const location = locations.find((l) => l.id === item?.storage_location_id);
 
   const handleDelete = async () => {
-    setShowDeleteConfirm(false);
     try {
       await deleteItem.mutateAsync(itemId);
+      setShowDeleteConfirm(false);
       toast(t("deleteSuccess"), "success");
       void navigate({ to: "/" });
     } catch {
+      setShowDeleteConfirm(false);
       toast(t("common:unknownError"), "error");
     }
   };
@@ -130,6 +131,7 @@ const ItemDetailPage = () => {
         title={t("deleteItemTitle")}
         message={t("deleteConfirm")}
         confirmLabel={tc("delete")}
+        isConfirming={deleteItem.isPending}
         onConfirm={() => {
           void handleDelete();
         }}

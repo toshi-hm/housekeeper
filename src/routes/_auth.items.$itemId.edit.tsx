@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
@@ -19,17 +19,32 @@ const EditItemPage = () => {
   const updateItem = useUpdateItem(itemId);
   const { toast } = useToast();
   const pendingFileRef = useRef<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (values: ItemFormValues) => {
+    setIsSubmitting(true);
     try {
+      const oldImagePath = item?.image_path ?? null;
       await updateItem.mutateAsync(values);
       if (pendingFileRef.current) {
-        await uploadItemImage({ itemId, file: pendingFileRef.current });
+        try {
+          await uploadItemImage({
+            itemId,
+            file: pendingFileRef.current,
+            oldImagePath,
+          });
+        } catch {
+          toast(t("imageUploadFailed"), "warning");
+          void navigate({ to: "/items/$itemId", params: { itemId } });
+          return;
+        }
       }
       toast(t("updateSuccess"), "success");
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
       toast(t("common:unknownError"), "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -84,7 +99,7 @@ const EditItemPage = () => {
         onSubmit={(values) => {
           void handleSubmit(values);
         }}
-        isSubmitting={updateItem.isPending}
+        isSubmitting={isSubmitting}
         onPendingFileChange={(file) => {
           pendingFileRef.current = file;
         }}

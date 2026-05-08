@@ -7,31 +7,39 @@ import type { Item } from "@/types/item";
 interface ExpiryCheckItemProps {
   item: Item;
   categoryColor?: string | null;
-  onCheck: (id: string) => void;
+  onCheck: (id: string) => Promise<void>;
 }
 
 export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckItemProps) => {
   const [checked, setChecked] = useState(false);
 
-  const handleChange = () => {
+  const handleChange = async () => {
     if (checked) return;
     setChecked(true);
-    onCheck(item.id);
+    try {
+      await onCheck(item.id);
+    } catch {
+      setChecked(false);
+    }
   };
 
-  const expiryLabel = item.expiry_date
-    ? new Date(item.expiry_date).toLocaleDateString("ja-JP", {
-        month: "short",
-        day: "numeric",
-      })
-    : "";
+  const expiryLabel = (() => {
+    if (!item.expiry_date) return "";
+    const parts = item.expiry_date.slice(0, 10).split("-").map(Number);
+    return new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1).toLocaleDateString("ja-JP", {
+      month: "short",
+      day: "numeric",
+    });
+  })();
 
   return (
     <label className="flex cursor-pointer items-center gap-2 py-1">
       <input
         type="checkbox"
         checked={checked}
-        onChange={handleChange}
+        onChange={() => {
+          void handleChange();
+        }}
         className="h-4 w-4 shrink-0 accent-primary"
         aria-label={item.name}
       />

@@ -22,22 +22,32 @@ export const useSignedItemImage = (imagePath: string | null | undefined) =>
 interface UploadImageParams {
   itemId: string;
   file: File;
+  oldImagePath?: string | null;
 }
 
-export const uploadItemImage = async ({ itemId, file }: UploadImageParams): Promise<string> => {
+export const uploadItemImage = async ({
+  itemId,
+  file,
+  oldImagePath,
+}: UploadImageParams): Promise<string> => {
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
   if (authError || !user) throw new Error("Not authenticated");
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const rawExt = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : undefined;
+  const ext = rawExt && rawExt.length <= 5 ? rawExt : "jpg";
   const path = `${user.id}/${itemId}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
     .upload(path, file, { upsert: true, contentType: file.type });
   if (uploadError) throw new Error(uploadError.message);
+
+  if (oldImagePath && oldImagePath !== path) {
+    await supabase.storage.from(BUCKET).remove([oldImagePath]);
+  }
 
   const { error: updateError } = await supabase
     .from("items")

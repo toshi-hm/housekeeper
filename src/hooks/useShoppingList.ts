@@ -90,8 +90,21 @@ export const useDeleteShoppingItem = () => {
       const { error } = await supabase.from("shopping_list_items").delete().eq("id", id);
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: [QUERY_KEY] });
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: [QUERY_KEY] });
+      const snapshot = qc.getQueriesData<ShoppingItem[]>({ queryKey: [QUERY_KEY] });
+      qc.setQueriesData<ShoppingItem[]>({ queryKey: [QUERY_KEY] }, (old) =>
+        Array.isArray(old) ? old.filter((item) => item.id !== id) : old,
+      );
+      return { snapshot };
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: [QUERY_KEY] });
+    },
+    onError: (_err, _id, context) => {
+      for (const [key, data] of context?.snapshot ?? []) {
+        qc.setQueryData(key, data);
+      }
     },
   });
 };

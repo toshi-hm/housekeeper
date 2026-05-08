@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ItemForm } from "@/components/organisms/ItemForm";
@@ -16,17 +16,27 @@ const NewItemPage = () => {
   const createItem = useCreateItem();
   const { toast } = useToast();
   const pendingFileRef = useRef<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (values: ItemFormValues) => {
+    setIsSubmitting(true);
     try {
       const item = await createItem.mutateAsync(values);
       if (pendingFileRef.current && item) {
-        await uploadItemImage({ itemId: item.id, file: pendingFileRef.current });
+        try {
+          await uploadItemImage({ itemId: item.id, file: pendingFileRef.current });
+        } catch {
+          toast(t("imageUploadFailed"), "warning");
+          void navigate({ to: "/" });
+          return;
+        }
       }
       toast(t("createSuccess"), "success");
       void navigate({ to: "/" });
     } catch {
       toast(t("common:unknownError"), "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -42,7 +52,7 @@ const NewItemPage = () => {
         onSubmit={(values) => {
           void handleSubmit(values);
         }}
-        isSubmitting={createItem.isPending}
+        isSubmitting={isSubmitting}
         onPendingFileChange={(file) => {
           pendingFileRef.current = file;
         }}

@@ -6,16 +6,21 @@ import type { ProductInfo } from "@/hooks/useBarcodeLookup";
 interface ProductLookupResultProps {
   isLoading: boolean;
   product: ProductInfo | null | undefined;
+  errorType?: "network" | "not_found" | null;
 }
 
-export const ProductLookupResult = ({ isLoading, product }: ProductLookupResultProps) => {
-  const { t } = useTranslation("items");
+export const ProductLookupResult = ({
+  isLoading,
+  product,
+  errorType,
+}: ProductLookupResultProps) => {
+  const { t } = useTranslation(["items", "common"]);
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-3 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-        <span>{t("productSearching")}</span>
+        <span>{t("items:productSearching")}</span>
       </div>
     );
   }
@@ -24,7 +29,9 @@ export const ProductLookupResult = ({ isLoading, product }: ProductLookupResultP
     return (
       <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
         <AlertCircle className="h-4 w-4 shrink-0" />
-        <span>{t("productNotFound")}</span>
+        <span>
+          {errorType === "network" ? t("common:offlineError") : t("items:productNotFound")}
+        </span>
       </div>
     );
   }
