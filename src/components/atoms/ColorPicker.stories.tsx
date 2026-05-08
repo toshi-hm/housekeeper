@@ -25,15 +25,17 @@ export const NoneSelected: Story = {
   },
 };
 
+const InteractiveDemo = () => {
+  const [color, setColor] = useState<string | null>(null);
+  return (
+    <div className="space-y-3">
+      <ColorPicker value={color} onChange={setColor} />
+      <p className="text-sm text-muted-foreground">選択中: {color ?? "なし"}</p>
+    </div>
+  );
+};
+
 export const Interactive: Story = {
   args: { value: null, onChange: () => {} },
-  render: () => {
-    const [color, setColor] = useState<string | null>(null);
-    return (
-      <div className="space-y-3">
-        <ColorPicker value={color} onChange={setColor} />
-        <p className="text-sm text-muted-foreground">選択中: {color ?? "なし"}</p>
-      </div>
-    );
-  },
+  render: () => <InteractiveDemo />,
 };
