@@ -8,7 +8,7 @@
   "notePlaceholder": "メモを入力（任意）",
   "statusPlanned": "予定",
   "statusPurchased": "購入済み",
-  "markPurchased": "購入完了",
+  "markPurchased": "在庫に追加",
   "noItems": "買い物リストは空です",
   "noPurchased": "購入済みアイテムはありません",
   "restock": "再購入",

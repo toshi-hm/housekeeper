@@ -44,7 +44,7 @@ export const ItemForm = ({
   const { t: ts } = useTranslation("settings");
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
-  const { lookup, isLoading: isLookingUp } = useBarcodeLookup();
+  const { lookup, isLoading: isLookingUp, error: lookupError } = useBarcodeLookup();
   const { mutateAsync: addCategory } = useCreateCategory();
   const { mutateAsync: addLocation } = useCreateStorageLocation();
   const { mutateAsync: deleteCategoryMutate } = useDeleteCategory();
@@ -83,6 +83,7 @@ export const ItemForm = ({
     setShowScanner(false);
     set("barcode", barcode);
     setLookupResult(undefined);
+    if (navigator.vibrate) navigator.vibrate(100);
     const info = await lookup(barcode);
     setLookupResult(info);
     if (info?.name) set("name", info.name);
@@ -180,7 +181,11 @@ export const ItemForm = ({
         </div>
 
         {/* Product lookup result */}
-        <ProductLookupResult isLoading={isLookingUp} product={lookupResult} />
+        <ProductLookupResult
+          isLoading={isLookingUp}
+          product={lookupResult}
+          errorType={lookupResult === null ? lookupError : null}
+        />
 
         {/* Name */}
         <div className="space-y-2">

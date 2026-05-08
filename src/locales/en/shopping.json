@@ -8,7 +8,7 @@
   "notePlaceholder": "Note (optional)",
   "statusPlanned": "Planned",
   "statusPurchased": "Purchased",
-  "markPurchased": "Mark Purchased",
+  "markPurchased": "Add to Inventory",
   "noItems": "Shopping list is empty",
   "noPurchased": "No purchased items",
   "restock": "Restock",

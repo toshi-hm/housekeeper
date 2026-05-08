@@ -7,5 +7,7 @@
   "noThisWeek": "今週は期限切れなし",
   "noThisMonth": "今月の期限切れなし",
   "softDeleteSuccess": "在庫から除きました",
-  "reviveSuccess": "再入荷を検出、在庫を復活しました"
+  "reviveSuccess": "再入荷を検出、在庫を復活しました",
+  "noItems": "期限日が設定されたアイテムはありません",
+  "noItemsHint": "アイテムに期限日を設定するとここに表示されます"
 }

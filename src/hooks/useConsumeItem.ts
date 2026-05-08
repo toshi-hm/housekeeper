@@ -31,7 +31,8 @@ const consumeItem = async ({ item, deltaAmount }: ConsumeParams): Promise<Item> 
     .single();
   if (error) throw error;
 
-  const { error: logError } = await supabase.from("consumption_logs").insert({
+  // Log failure is non-fatal: stock is already updated, so we skip throwing
+  await supabase.from("consumption_logs").insert({
     user_id: userData.user.id,
     item_id: item.id,
     delta_amount: deltaAmount,
@@ -41,7 +42,6 @@ const consumeItem = async ({ item, deltaAmount }: ConsumeParams): Promise<Item> 
     opened_remaining_before: item.opened_remaining ?? null,
     opened_remaining_after: result.opened_remaining_after,
   });
-  if (logError) throw new Error(`Stock updated but log failed: ${logError.message}`);
 
   return data as Item;
 };

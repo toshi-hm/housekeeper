@@ -36,6 +36,7 @@ const CategoriesPage = () => {
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -60,15 +61,25 @@ const CategoriesPage = () => {
     }
   };
 
+  const handleDeleteClick = async (id: string) => {
+    setCheckingId(id);
+    try {
+      const count = await checkCategoryUsage(id);
+      if (count > 0) {
+        toast(t("categoryInUse"), "error");
+        return;
+      }
+      setDeleteId(id);
+    } catch {
+      toast(t("common:unknownError"), "error");
+    } finally {
+      setCheckingId(null);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const count = await checkCategoryUsage(deleteId);
-      if (count > 0) {
-        toast(t("categoryInUse"), "error");
-        setDeleteId(null);
-        return;
-      }
       await deleteCategory.mutateAsync(deleteId);
       setDeleteId(null);
       toast(t("common:deleteSuccess"), "success");
@@ -84,6 +95,7 @@ const CategoriesPage = () => {
         title={t("deleteCategory")}
         message={t("deleteCategoryConfirm")}
         confirmLabel={tc("delete")}
+        isConfirming={deleteCategory.isPending}
         onConfirm={() => {
           void handleDelete();
         }}
@@ -186,9 +198,16 @@ const CategoriesPage = () => {
                     variant="ghost"
                     className="text-destructive"
                     aria-label={tc("delete")}
-                    onClick={() => setDeleteId(c.id)}
+                    disabled={checkingId === c.id}
+                    onClick={() => {
+                      void handleDeleteClick(c.id);
+                    }}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {checkingId === c.id ? (
+                      <Spinner className="h-4 w-4" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               )}

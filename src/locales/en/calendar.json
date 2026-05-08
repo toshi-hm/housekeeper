@@ -7,5 +7,7 @@
   "noThisWeek": "Nothing expiring this week",
   "noThisMonth": "Nothing expiring this month",
   "softDeleteSuccess": "Removed from inventory",
-  "reviveSuccess": "Restocked item revived from soft-delete"
+  "reviveSuccess": "Restocked item revived from soft-delete",
+  "noItems": "No items with expiry dates",
+  "noItemsHint": "Set expiry dates on your items to see them here"
 }

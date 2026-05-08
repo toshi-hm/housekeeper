@@ -62,10 +62,15 @@ const ToastContainer = ({
 }) => {
   if (toasts.length === 0) return null;
   return (
-    <div className="fixed bottom-20 left-1/2 z-50 flex -translate-x-1/2 flex-col gap-2">
+    <div
+      className="fixed bottom-20 left-1/2 z-50 flex -translate-x-1/2 flex-col gap-2"
+      aria-live="polite"
+      aria-atomic="false"
+    >
       {toasts.map((t) => (
         <div
           key={t.id}
+          role={t.variant === "error" ? "alert" : "status"}
           className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm shadow-lg ${variantClasses[t.variant]}`}
         >
           <span>{t.message}</span>

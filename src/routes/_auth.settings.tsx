@@ -35,6 +35,7 @@ const SettingsPage = () => {
     if (isNaN(days) || days < 0) return;
     try {
       await updateSettings.mutateAsync({ expiry_warning_days: days });
+      toast(t("saveSuccess"), "success");
     } catch {
       toast(t("common:unknownError"), "error");
     }

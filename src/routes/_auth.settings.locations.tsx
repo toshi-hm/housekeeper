@@ -30,6 +30,7 @@ const LocationsPage = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -53,15 +54,25 @@ const LocationsPage = () => {
     }
   };
 
+  const handleDeleteClick = async (id: string) => {
+    setCheckingId(id);
+    try {
+      const count = await checkLocationUsage(id);
+      if (count > 0) {
+        toast(t("locationInUse"), "error");
+        return;
+      }
+      setDeleteId(id);
+    } catch {
+      toast(t("common:unknownError"), "error");
+    } finally {
+      setCheckingId(null);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const count = await checkLocationUsage(deleteId);
-      if (count > 0) {
-        toast(t("locationInUse"), "error");
-        setDeleteId(null);
-        return;
-      }
       await deleteLocation.mutateAsync(deleteId);
       setDeleteId(null);
       toast(t("common:deleteSuccess"), "success");
@@ -77,6 +88,7 @@ const LocationsPage = () => {
         title={t("deleteLocation")}
         message={t("deleteLocationConfirm")}
         confirmLabel={tc("delete")}
+        isConfirming={deleteLocation.isPending}
         onConfirm={() => {
           void handleDelete();
         }}
@@ -167,9 +179,16 @@ const LocationsPage = () => {
                     size="icon"
                     variant="ghost"
                     className="text-destructive"
-                    onClick={() => setDeleteId(l.id)}
+                    disabled={checkingId === l.id}
+                    onClick={() => {
+                      void handleDeleteClick(l.id);
+                    }}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {checkingId === l.id ? (
+                      <Spinner className="h-4 w-4" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </>
               )}

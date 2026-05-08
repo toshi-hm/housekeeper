@@ -71,6 +71,7 @@
   "deleteSuccess": "Item deleted",
   "createSuccess": "Item added",
   "updateSuccess": "Item updated",
+  "imageUploadFailed": "Item saved, but the image upload failed",
   "restockSuccess": "Added to shopping list",
   "consumeHistory": "History",
   "noHistory": "No consumption history",
