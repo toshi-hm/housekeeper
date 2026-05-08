@@ -25,8 +25,8 @@ export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckIte
 
   const expiryLabel = (() => {
     if (!item.expiry_date) return "";
-    const [y, m, d] = item.expiry_date.slice(0, 10).split("-").map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString("ja-JP", {
+    const parts = item.expiry_date.slice(0, 10).split("-").map(Number);
+    return new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1).toLocaleDateString("ja-JP", {
       month: "short",
       day: "numeric",
     });
