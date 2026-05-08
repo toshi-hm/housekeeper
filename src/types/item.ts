@@ -34,6 +34,7 @@ export const itemSchema = z.object({
   expiry_date: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   image_path: z.string().nullable().optional(),
+  deleted_at: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });

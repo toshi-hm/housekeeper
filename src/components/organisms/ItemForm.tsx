@@ -82,7 +82,7 @@ export const ItemForm = ({
   };
 
   const handleAddCategory = async (name: string) => {
-    const category = await addCategory(name);
+    const category = await addCategory({ name });
     set("category_id", category.id);
   };
 

@@ -17,22 +17,26 @@ const fetchCategories = async (): Promise<Category[]> => {
   return (data ?? []) as Category[];
 };
 
-const createCategory = async (name: string): Promise<Category> => {
+const createCategory = async (name: string, color?: string | null): Promise<Category> => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
     .from("categories")
-    .insert({ name, user_id: userData.user.id })
+    .insert({ name, color: color ?? null, user_id: userData.user.id })
     .select()
     .single();
   if (error) throw error;
   return data as Category;
 };
 
-const updateCategory = async (id: string, name: string): Promise<Category> => {
+const updateCategory = async (
+  id: string,
+  name: string,
+  color?: string | null,
+): Promise<Category> => {
   const { data, error } = await supabase
     .from("categories")
-    .update({ name, updated_at: new Date().toISOString() })
+    .update({ name, color: color ?? null, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
@@ -55,7 +59,8 @@ export const useCategories = () =>
 export const useCreateCategory = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: createCategory,
+    mutationFn: ({ name, color }: { name: string; color?: string | null }) =>
+      createCategory(name, color),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
     },
@@ -65,7 +70,8 @@ export const useCreateCategory = () => {
 export const useUpdateCategory = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => updateCategory(id, name),
+    mutationFn: ({ id, name, color }: { id: string; name: string; color?: string | null }) =>
+      updateCategory(id, name, color),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
     },

@@ -3,6 +3,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 
 import enAuth from "@/locales/en/auth.json";
+import enCalendar from "@/locales/en/calendar.json";
 import enCommon from "@/locales/en/common.json";
 import enItems from "@/locales/en/items.json";
 import enNotifications from "@/locales/en/notifications.json";
@@ -10,6 +11,7 @@ import enSettings from "@/locales/en/settings.json";
 import enShopping from "@/locales/en/shopping.json";
 import enStats from "@/locales/en/stats.json";
 import jaAuth from "@/locales/ja/auth.json";
+import jaCalendar from "@/locales/ja/calendar.json";
 import jaCommon from "@/locales/ja/common.json";
 import jaItems from "@/locales/ja/items.json";
 import jaNotifications from "@/locales/ja/notifications.json";
@@ -23,7 +25,7 @@ void i18n
   .init({
     fallbackLng: "ja",
     supportedLngs: ["ja", "en"],
-    ns: ["common", "items", "auth", "settings", "shopping", "stats", "notifications"],
+    ns: ["common", "items", "auth", "settings", "shopping", "stats", "notifications", "calendar"],
     defaultNS: "common",
     interpolation: { escapeValue: false },
     resources: {
@@ -35,6 +37,7 @@ void i18n
         shopping: jaShopping,
         stats: jaStats,
         notifications: jaNotifications,
+        calendar: jaCalendar,
       },
       en: {
         common: enCommon,
@@ -44,6 +47,7 @@ void i18n
         shopping: enShopping,
         stats: enStats,
         notifications: enNotifications,
+        calendar: enCalendar,
       },
     },
   });

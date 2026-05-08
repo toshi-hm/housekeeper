@@ -1,0 +1,11 @@
+{
+  "title": "期限カレンダー",
+  "expired": "期限切れ",
+  "thisWeek": "今週期限",
+  "thisMonth": "今月その他",
+  "noExpired": "期限切れなし",
+  "noThisWeek": "今週は期限切れなし",
+  "noThisMonth": "今月の期限切れなし",
+  "softDeleteSuccess": "在庫から除きました",
+  "reviveSuccess": "再入荷を検出、在庫を復活しました"
+}
