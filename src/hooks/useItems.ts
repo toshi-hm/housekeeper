@@ -216,10 +216,23 @@ export const useDeleteItem = () => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: deleteItem,
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ITEMS_KEY });
+      const snapshot = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
+      qc.setQueriesData<Item[]>(
+        { queryKey: ITEMS_KEY },
+        (old) => (Array.isArray(old) ? old.filter((item) => item.id !== id) : old),
+      );
+      qc.removeQueries({ queryKey: [...ITEMS_KEY, id], exact: true });
+      return { snapshot };
     },
-    onError: (error) => {
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ITEMS_KEY });
+    },
+    onError: (error, _id, context) => {
+      for (const [key, data] of context?.snapshot ?? []) {
+        qc.setQueryData(key, data);
+      }
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Tag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -14,6 +14,11 @@ import { useToast } from "@/lib/toast";
 const SettingsPage = () => {
   const { t } = useTranslation("settings");
   const navigate = useNavigate();
+  const matches = useRouterState({ select: (s) => s.matches });
+  const isChildActive = matches.some(
+    (m) =>
+      m.routeId === "/_auth/settings/categories" || m.routeId === "/_auth/settings/locations",
+  );
   const { data: settings, isLoading } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
   const { toast } = useToast();
@@ -35,6 +40,10 @@ const SettingsPage = () => {
       toast(t("common:unknownError"), "error");
     }
   };
+
+  if (isChildActive) {
+    return <Outlet />;
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
