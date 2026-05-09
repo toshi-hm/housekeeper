@@ -63,16 +63,23 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
         setDevices(videoInputDevices);
 
-        const rearIdx = videoInputDevices.findIndex(
-          (d) =>
-            d.label.toLowerCase().includes("back") ||
-            d.label.toLowerCase().includes("rear") ||
-            d.label.toLowerCase().includes("environment"),
-        );
+        const rearIdx = videoInputDevices.findIndex((d) => {
+          const label = d.label.toLowerCase();
+          return (
+            label.includes("back") ||
+            label.includes("rear") ||
+            label.includes("environment") ||
+            label.includes("背面")
+          );
+        });
         const idx = rearIdx >= 0 ? rearIdx : 0;
         setDeviceIndex(idx);
 
-        await startScanning(videoInputDevices[idx]?.deviceId);
+        // ラベルで背面カメラが特定できない場合は deviceId=undefined で渡す。
+        // zxing は deviceId が undefined のとき facingMode:"environment" を使うため
+        // 背面カメラが自動選択される。
+        const deviceId = rearIdx >= 0 ? videoInputDevices[rearIdx].deviceId : undefined;
+        await startScanning(deviceId);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Camera access denied");
