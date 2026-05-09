@@ -78,7 +78,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
         // ラベルで背面カメラが特定できない場合は deviceId=undefined で渡す。
         // zxing は deviceId が undefined のとき facingMode:"environment" を使うため
         // 背面カメラが自動選択される。
-        const deviceId = rearIdx >= 0 ? videoInputDevices[rearIdx].deviceId : undefined;
+        const deviceId = rearIdx >= 0 ? videoInputDevices[rearIdx]?.deviceId : undefined;
         await startScanning(deviceId);
       } catch (err) {
         if (!cancelled) {
