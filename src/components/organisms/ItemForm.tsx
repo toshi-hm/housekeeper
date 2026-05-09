@@ -64,8 +64,14 @@ export const ItemForm = ({
     notes: defaultValues?.notes ?? "",
     image_path: defaultValues?.image_path ?? "",
   });
+  const [unitsRaw, setUnitsRaw] = useState(String(defaultValues?.units ?? 1));
+  const [contentAmountRaw, setContentAmountRaw] = useState(
+    String(defaultValues?.content_amount ?? 1),
+  );
   const [showScanner, setShowScanner] = useState(false);
   const [nameError, setNameError] = useState("");
+  const [unitsError, setUnitsError] = useState("");
+  const [contentAmountError, setContentAmountError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
 
@@ -127,12 +133,31 @@ export const ItemForm = ({
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    let hasError = false;
+
     if (!values.name.trim()) {
       setNameError(t("common:required"));
-      return;
+      hasError = true;
     }
+
+    const parsedUnits = parseInt(unitsRaw, 10);
+    if (unitsRaw.trim() === "" || isNaN(parsedUnits)) {
+      setUnitsError(t("unitsRequired"));
+      hasError = true;
+    }
+
+    const parsedContentAmount = parseFloat(contentAmountRaw);
+    if (contentAmountRaw.trim() === "" || isNaN(parsedContentAmount) || parsedContentAmount <= 0) {
+      setContentAmountError(t("contentAmountRequired"));
+      hasError = true;
+    }
+
+    if (hasError) return;
+
     onSubmit({
       ...values,
+      units: parsedUnits,
+      content_amount: parsedContentAmount,
       barcode: values.barcode || undefined,
       purchase_date: values.purchase_date || undefined,
       expiry_date: values.expiry_date || undefined,
@@ -253,14 +278,22 @@ export const ItemForm = ({
           <Label>{t("units")}</Label>
           <div className="flex items-center gap-2">
             <Input
-              type="number"
-              min={0}
-              value={values.units}
-              onChange={(e) => set("units", parseInt(e.target.value, 10) || 0)}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={unitsRaw}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (!/^\d*$/.test(raw)) return;
+                setUnitsRaw(raw);
+                setUnitsError("");
+                if (raw !== "") set("units", parseInt(raw, 10));
+              }}
               className="w-24"
             />
             <span className="text-sm text-muted-foreground">点</span>
           </div>
+          {unitsError && <p className="text-sm text-destructive">{unitsError}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -268,12 +301,19 @@ export const ItemForm = ({
             <Label htmlFor="content_amount">{t("contentAmount")}</Label>
             <Input
               id="content_amount"
-              type="number"
-              min={0.01}
-              step={0.01}
-              value={values.content_amount}
-              onChange={(e) => set("content_amount", parseFloat(e.target.value) || 1)}
+              type="text"
+              inputMode="decimal"
+              value={contentAmountRaw}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (!/^\d*\.?\d*$/.test(raw)) return;
+                setContentAmountRaw(raw);
+                setContentAmountError("");
+                const num = parseFloat(raw);
+                if (!isNaN(num) && num > 0) set("content_amount", num);
+              }}
             />
+            {contentAmountError && <p className="text-sm text-destructive">{contentAmountError}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="content_unit">{t("contentUnit")}</Label>
