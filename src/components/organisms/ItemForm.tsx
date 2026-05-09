@@ -146,7 +146,7 @@ export const ItemForm = ({
       hasError = true;
     }
 
-    const parsedContentAmount = parseFloat(contentAmountRaw);
+    const parsedContentAmount = Math.round(parseFloat(contentAmountRaw) * 100) / 100;
     if (contentAmountRaw.trim() === "" || isNaN(parsedContentAmount) || parsedContentAmount <= 0) {
       setContentAmountError(t("contentAmountRequired"));
       hasError = true;

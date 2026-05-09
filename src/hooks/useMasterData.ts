@@ -33,7 +33,8 @@ const createCategory = async (name: string, color?: string | null): Promise<Cate
         .eq("user_id", userData.user.id)
         .eq("name", name)
         .single();
-      if (findError || !existing) throw error;
+      if (findError) throw findError;
+      if (!existing) throw error;
       return existing as Category;
     }
     throw error;
@@ -144,7 +145,8 @@ const createStorageLocation = async (name: string): Promise<StorageLocation> => 
         .eq("user_id", userData.user.id)
         .eq("name", name)
         .single();
-      if (findError || !existing) throw error;
+      if (findError) throw findError;
+      if (!existing) throw error;
       return existing as StorageLocation;
     }
     throw error;

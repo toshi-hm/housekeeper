@@ -80,6 +80,24 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
         // 背面カメラが自動選択される。
         const deviceId = rearIdx >= 0 ? videoInputDevices[rearIdx]?.deviceId : undefined;
         await startScanning(deviceId);
+
+        if (rearIdx < 0 && !cancelled) {
+          // Re-enumerate after permission is granted — labels are now populated.
+          const freshDevices = await BrowserMultiFormatReader.listVideoInputDevices();
+          if (!cancelled) {
+            setDevices(freshDevices);
+            const freshRearIdx = freshDevices.findIndex((d) => {
+              const label = d.label.toLowerCase();
+              return (
+                label.includes("back") ||
+                label.includes("rear") ||
+                label.includes("environment") ||
+                label.includes("背面")
+              );
+            });
+            setDeviceIndex(freshRearIdx >= 0 ? freshRearIdx : 0);
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Camera access denied");
