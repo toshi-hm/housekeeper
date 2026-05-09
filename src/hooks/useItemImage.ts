@@ -62,9 +62,11 @@ export const useUploadItemImage = (itemId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => uploadItemImage({ itemId, file }),
-    onSuccess: (path) => {
-      void qc.invalidateQueries({ queryKey: ["items"] });
-      void qc.invalidateQueries({ queryKey: ["item-image", path] });
+    onSuccess: async (path) => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["items"] }),
+        qc.invalidateQueries({ queryKey: ["item-image", path] }),
+      ]);
     },
   });
 };
@@ -79,9 +81,9 @@ export const useDeleteItemImage = (itemId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (imagePath: string) => deleteItemImage(itemId, imagePath),
-    onSuccess: (_data, imagePath) => {
-      void qc.invalidateQueries({ queryKey: ["items"] });
+    onSuccess: async (_data, imagePath) => {
       qc.removeQueries({ queryKey: ["item-image", imagePath] });
+      await qc.invalidateQueries({ queryKey: ["items"] });
     },
   });
 };

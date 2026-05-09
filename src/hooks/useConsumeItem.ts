@@ -52,9 +52,13 @@ export const useConsumeItem = () => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: consumeItem,
-    onSuccess: (data) => {
-      void qc.invalidateQueries({ queryKey: ["items"] });
-      void qc.setQueryData(["items", data.id], data);
+    onSuccess: async (data) => {
+      qc.setQueryData(["items", data.id], data);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["items"] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs", data.id] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+      ]);
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
