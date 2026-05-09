@@ -15,7 +15,7 @@ import {
   useShoppingList,
   useUpsertShoppingItem,
 } from "@/hooks/useShoppingList";
-import { useToast } from "@/lib/toast";
+import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
 
 import { PurchaseDialog } from "../components/molecules/PurchaseDialog";

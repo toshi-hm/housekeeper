@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
-import { useToast } from "@/lib/toast";
+import { useToast } from "@/lib/toast-context";
 import { computeConsumption, type Item } from "@/types/item";
 
 interface ConsumeParams {

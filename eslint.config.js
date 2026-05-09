@@ -36,4 +36,10 @@ export default [
       "@typescript-eslint/no-empty-object-type": "off",
     },
   },
+  {
+    files: ["src/routes/**/*.tsx"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
 ];
