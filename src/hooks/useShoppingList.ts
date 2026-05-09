@@ -77,8 +77,8 @@ export const useUpsertShoppingItem = () => {
       if (error) throw new Error(error.message);
       return data;
     },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: [QUERY_KEY] });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: [QUERY_KEY] });
     },
   });
 };
@@ -150,9 +150,11 @@ export const usePurchaseShoppingItem = () => {
 
       return newItem;
     },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: [QUERY_KEY] });
-      void qc.invalidateQueries({ queryKey: ["items"] });
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: [QUERY_KEY] }),
+        qc.invalidateQueries({ queryKey: ["items"] }),
+      ]);
     },
   });
 };

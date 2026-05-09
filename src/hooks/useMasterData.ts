@@ -85,8 +85,8 @@ export const useUpdateCategory = () => {
   return useMutation({
     mutationFn: ({ id, name, color }: { id: string; name: string; color?: string | null }) =>
       updateCategory(id, name, color),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
     },
   });
 };
@@ -95,9 +95,11 @@ export const useDeleteCategory = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteCategory,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
-      void qc.invalidateQueries({ queryKey: ["items"] });
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: CATEGORIES_KEY }),
+        qc.invalidateQueries({ queryKey: ["items"] }),
+      ]);
     },
   });
 };
@@ -175,8 +177,8 @@ export const useUpdateStorageLocation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => updateStorageLocation(id, name),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: LOCATIONS_KEY });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: LOCATIONS_KEY });
     },
   });
 };
@@ -185,9 +187,11 @@ export const useDeleteStorageLocation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteStorageLocation,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: LOCATIONS_KEY });
-      void qc.invalidateQueries({ queryKey: ["items"] });
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: LOCATIONS_KEY }),
+        qc.invalidateQueries({ queryKey: ["items"] }),
+      ]);
     },
   });
 };

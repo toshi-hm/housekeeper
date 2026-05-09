@@ -8,351 +8,352 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as LoginRouteImport } from "./routes/login";
-import { Route as ForgotPasswordRouteImport } from "./routes/forgot-password";
-import { Route as AuthRouteImport } from "./routes/_auth";
-import { Route as AuthIndexRouteImport } from "./routes/_auth.index";
-import { Route as AuthStatsRouteImport } from "./routes/_auth.stats";
-import { Route as AuthShoppingRouteImport } from "./routes/_auth.shopping";
-import { Route as AuthSettingsRouteImport } from "./routes/_auth.settings";
-import { Route as AuthSettingsLocationsRouteImport } from "./routes/_auth.settings.locations";
-import { Route as AuthSettingsCategoriesRouteImport } from "./routes/_auth.settings.categories";
-import { Route as AuthItemsNewRouteImport } from "./routes/_auth.items.new";
-import { Route as AuthItemsItemIdRouteImport } from "./routes/_auth.items.$itemId";
-import { Route as AuthItemsItemIdEditRouteImport } from "./routes/_auth.items.$itemId.edit";
-import { Route as AuthItemsItemIdConsumeRouteImport } from "./routes/_auth.items.$itemId.consume";
-import { Route as AuthCalendarRouteImport } from "./routes/_auth.calendar";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as AuthIndexRouteImport } from './routes/_auth.index'
+import { Route as AuthStatsRouteImport } from './routes/_auth.stats'
+import { Route as AuthShoppingRouteImport } from './routes/_auth.shopping'
+import { Route as AuthSettingsRouteImport } from './routes/_auth.settings'
+import { Route as AuthCalendarRouteImport } from './routes/_auth.calendar'
+import { Route as AuthSettingsLocationsRouteImport } from './routes/_auth.settings.locations'
+import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
+import { Route as AuthItemsNewRouteImport } from './routes/_auth.items.new'
+import { Route as AuthItemsItemIdRouteImport } from './routes/_auth.items.$itemId'
+import { Route as AuthItemsItemIdEditRouteImport } from './routes/_auth.items.$itemId.edit'
+import { Route as AuthItemsItemIdConsumeRouteImport } from './routes/_auth.items.$itemId.consume'
 
 const LoginRoute = LoginRouteImport.update({
-  id: "/login",
-  path: "/login",
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: "/forgot-password",
-  path: "/forgot-password",
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthRoute = AuthRouteImport.update({
-  id: "/_auth",
+  id: '/_auth',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthIndexRoute = AuthIndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => AuthRoute,
-} as any);
+} as any)
 const AuthStatsRoute = AuthStatsRouteImport.update({
-  id: "/stats",
-  path: "/stats",
+  id: '/stats',
+  path: '/stats',
   getParentRoute: () => AuthRoute,
-} as any);
+} as any)
 const AuthShoppingRoute = AuthShoppingRouteImport.update({
-  id: "/shopping",
-  path: "/shopping",
+  id: '/shopping',
+  path: '/shopping',
   getParentRoute: () => AuthRoute,
-} as any);
+} as any)
 const AuthSettingsRoute = AuthSettingsRouteImport.update({
-  id: "/settings",
-  path: "/settings",
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthRoute,
-} as any);
-const AuthSettingsLocationsRoute = AuthSettingsLocationsRouteImport.update({
-  id: "/locations",
-  path: "/locations",
-  getParentRoute: () => AuthSettingsRoute,
-} as any);
-const AuthSettingsCategoriesRoute = AuthSettingsCategoriesRouteImport.update({
-  id: "/categories",
-  path: "/categories",
-  getParentRoute: () => AuthSettingsRoute,
-} as any);
-const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
-  id: "/items/new",
-  path: "/items/new",
-  getParentRoute: () => AuthRoute,
-} as any);
+} as any)
 const AuthCalendarRoute = AuthCalendarRouteImport.update({
-  id: "/calendar",
-  path: "/calendar",
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => AuthRoute,
-} as any);
-
+} as any)
+const AuthSettingsLocationsRoute = AuthSettingsLocationsRouteImport.update({
+  id: '/locations',
+  path: '/locations',
+  getParentRoute: () => AuthSettingsRoute,
+} as any)
+const AuthSettingsCategoriesRoute = AuthSettingsCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => AuthSettingsRoute,
+} as any)
+const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
+  id: '/items/new',
+  path: '/items/new',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthItemsItemIdRoute = AuthItemsItemIdRouteImport.update({
-  id: "/items/$itemId",
-  path: "/items/$itemId",
+  id: '/items/$itemId',
+  path: '/items/$itemId',
   getParentRoute: () => AuthRoute,
-} as any);
+} as any)
 const AuthItemsItemIdEditRoute = AuthItemsItemIdEditRouteImport.update({
-  id: "/edit",
-  path: "/edit",
+  id: '/edit',
+  path: '/edit',
   getParentRoute: () => AuthItemsItemIdRoute,
-} as any);
+} as any)
 const AuthItemsItemIdConsumeRoute = AuthItemsItemIdConsumeRouteImport.update({
-  id: "/consume",
-  path: "/consume",
+  id: '/consume',
+  path: '/consume',
   getParentRoute: () => AuthItemsItemIdRoute,
-} as any);
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof AuthIndexRoute;
-  "/forgot-password": typeof ForgotPasswordRoute;
-  "/login": typeof LoginRoute;
-  "/settings": typeof AuthSettingsRouteWithChildren;
-  "/shopping": typeof AuthShoppingRoute;
-  "/stats": typeof AuthStatsRoute;
-  "/items/$itemId": typeof AuthItemsItemIdRouteWithChildren;
-  "/items/new": typeof AuthItemsNewRoute;
-  "/settings/categories": typeof AuthSettingsCategoriesRoute;
-  "/settings/locations": typeof AuthSettingsLocationsRoute;
-  "/items/$itemId/consume": typeof AuthItemsItemIdConsumeRoute;
-  "/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
-  "/calendar": typeof AuthCalendarRoute;
+  '/': typeof AuthIndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/calendar': typeof AuthCalendarRoute
+  '/settings': typeof AuthSettingsRouteWithChildren
+  '/shopping': typeof AuthShoppingRoute
+  '/stats': typeof AuthStatsRoute
+  '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
+  '/items/new': typeof AuthItemsNewRoute
+  '/settings/categories': typeof AuthSettingsCategoriesRoute
+  '/settings/locations': typeof AuthSettingsLocationsRoute
+  '/items/$itemId/consume': typeof AuthItemsItemIdConsumeRoute
+  '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute
 }
 export interface FileRoutesByTo {
-  "/forgot-password": typeof ForgotPasswordRoute;
-  "/login": typeof LoginRoute;
-  "/settings": typeof AuthSettingsRouteWithChildren;
-  "/shopping": typeof AuthShoppingRoute;
-  "/stats": typeof AuthStatsRoute;
-  "/": typeof AuthIndexRoute;
-  "/items/$itemId": typeof AuthItemsItemIdRouteWithChildren;
-  "/items/new": typeof AuthItemsNewRoute;
-  "/settings/categories": typeof AuthSettingsCategoriesRoute;
-  "/settings/locations": typeof AuthSettingsLocationsRoute;
-  "/items/$itemId/consume": typeof AuthItemsItemIdConsumeRoute;
-  "/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
-  "/calendar": typeof AuthCalendarRoute;
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/calendar': typeof AuthCalendarRoute
+  '/settings': typeof AuthSettingsRouteWithChildren
+  '/shopping': typeof AuthShoppingRoute
+  '/stats': typeof AuthStatsRoute
+  '/': typeof AuthIndexRoute
+  '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
+  '/items/new': typeof AuthItemsNewRoute
+  '/settings/categories': typeof AuthSettingsCategoriesRoute
+  '/settings/locations': typeof AuthSettingsLocationsRoute
+  '/items/$itemId/consume': typeof AuthItemsItemIdConsumeRoute
+  '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/_auth": typeof AuthRouteWithChildren;
-  "/forgot-password": typeof ForgotPasswordRoute;
-  "/login": typeof LoginRoute;
-  "/_auth/settings": typeof AuthSettingsRouteWithChildren;
-  "/_auth/shopping": typeof AuthShoppingRoute;
-  "/_auth/stats": typeof AuthStatsRoute;
-  "/_auth/": typeof AuthIndexRoute;
-  "/_auth/items/$itemId": typeof AuthItemsItemIdRouteWithChildren;
-  "/_auth/items/new": typeof AuthItemsNewRoute;
-  "/_auth/settings/categories": typeof AuthSettingsCategoriesRoute;
-  "/_auth/settings/locations": typeof AuthSettingsLocationsRoute;
-  "/_auth/items/$itemId/consume": typeof AuthItemsItemIdConsumeRoute;
-  "/_auth/items/$itemId/edit": typeof AuthItemsItemIdEditRoute;
-  "/_auth/calendar": typeof AuthCalendarRoute;
+  __root__: typeof rootRouteImport
+  '/_auth': typeof AuthRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/_auth/calendar': typeof AuthCalendarRoute
+  '/_auth/settings': typeof AuthSettingsRouteWithChildren
+  '/_auth/shopping': typeof AuthShoppingRoute
+  '/_auth/stats': typeof AuthStatsRoute
+  '/_auth/': typeof AuthIndexRoute
+  '/_auth/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
+  '/_auth/items/new': typeof AuthItemsNewRoute
+  '/_auth/settings/categories': typeof AuthSettingsCategoriesRoute
+  '/_auth/settings/locations': typeof AuthSettingsLocationsRoute
+  '/_auth/items/$itemId/consume': typeof AuthItemsItemIdConsumeRoute
+  '/_auth/items/$itemId/edit': typeof AuthItemsItemIdEditRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | "/forgot-password"
-    | "/login"
-    | "/settings"
-    | "/shopping"
-    | "/stats"
-    | "/items/$itemId"
-    | "/items/new"
-    | "/settings/categories"
-    | "/settings/locations"
-    | "/items/$itemId/consume"
-    | "/items/$itemId/edit"
-    | "/calendar";
-  fileRoutesByTo: FileRoutesByTo;
+    | '/'
+    | '/forgot-password'
+    | '/login'
+    | '/calendar'
+    | '/settings'
+    | '/shopping'
+    | '/stats'
+    | '/items/$itemId'
+    | '/items/new'
+    | '/settings/categories'
+    | '/settings/locations'
+    | '/items/$itemId/consume'
+    | '/items/$itemId/edit'
+  fileRoutesByTo: FileRoutesByTo
   to:
-    | "/forgot-password"
-    | "/login"
-    | "/settings"
-    | "/shopping"
-    | "/stats"
-    | "/"
-    | "/items/$itemId"
-    | "/items/new"
-    | "/settings/categories"
-    | "/settings/locations"
-    | "/items/$itemId/consume"
-    | "/items/$itemId/edit"
-    | "/calendar";
+    | '/forgot-password'
+    | '/login'
+    | '/calendar'
+    | '/settings'
+    | '/shopping'
+    | '/stats'
+    | '/'
+    | '/items/$itemId'
+    | '/items/new'
+    | '/settings/categories'
+    | '/settings/locations'
+    | '/items/$itemId/consume'
+    | '/items/$itemId/edit'
   id:
-    | "__root__"
-    | "/_auth"
-    | "/forgot-password"
-    | "/login"
-    | "/_auth/settings"
-    | "/_auth/shopping"
-    | "/_auth/stats"
-    | "/_auth/"
-    | "/_auth/items/$itemId"
-    | "/_auth/items/new"
-    | "/_auth/settings/categories"
-    | "/_auth/settings/locations"
-    | "/_auth/items/$itemId/consume"
-    | "/_auth/items/$itemId/edit"
-    | "/_auth/calendar";
-  fileRoutesById: FileRoutesById;
+    | '__root__'
+    | '/_auth'
+    | '/forgot-password'
+    | '/login'
+    | '/_auth/calendar'
+    | '/_auth/settings'
+    | '/_auth/shopping'
+    | '/_auth/stats'
+    | '/_auth/'
+    | '/_auth/items/$itemId'
+    | '/_auth/items/new'
+    | '/_auth/settings/categories'
+    | '/_auth/settings/locations'
+    | '/_auth/items/$itemId/consume'
+    | '/_auth/items/$itemId/edit'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthRoute: typeof AuthRouteWithChildren;
-  ForgotPasswordRoute: typeof ForgotPasswordRoute;
-  LoginRoute: typeof LoginRoute;
+  AuthRoute: typeof AuthRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  LoginRoute: typeof LoginRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/login": {
-      id: "/login";
-      path: "/login";
-      fullPath: "/login";
-      preLoaderRoute: typeof LoginRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/forgot-password": {
-      id: "/forgot-password";
-      path: "/forgot-password";
-      fullPath: "/forgot-password";
-      preLoaderRoute: typeof ForgotPasswordRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_auth": {
-      id: "/_auth";
-      path: "";
-      fullPath: "/";
-      preLoaderRoute: typeof AuthRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_auth/": {
-      id: "/_auth/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof AuthIndexRouteImport;
-      parentRoute: typeof AuthRoute;
-    };
-    "/_auth/stats": {
-      id: "/_auth/stats";
-      path: "/stats";
-      fullPath: "/stats";
-      preLoaderRoute: typeof AuthStatsRouteImport;
-      parentRoute: typeof AuthRoute;
-    };
-    "/_auth/shopping": {
-      id: "/_auth/shopping";
-      path: "/shopping";
-      fullPath: "/shopping";
-      preLoaderRoute: typeof AuthShoppingRouteImport;
-      parentRoute: typeof AuthRoute;
-    };
-    "/_auth/settings": {
-      id: "/_auth/settings";
-      path: "/settings";
-      fullPath: "/settings";
-      preLoaderRoute: typeof AuthSettingsRouteImport;
-      parentRoute: typeof AuthRoute;
-    };
-    "/_auth/settings/locations": {
-      id: "/_auth/settings/locations";
-      path: "/locations";
-      fullPath: "/settings/locations";
-      preLoaderRoute: typeof AuthSettingsLocationsRouteImport;
-      parentRoute: typeof AuthSettingsRoute;
-    };
-    "/_auth/settings/categories": {
-      id: "/_auth/settings/categories";
-      path: "/categories";
-      fullPath: "/settings/categories";
-      preLoaderRoute: typeof AuthSettingsCategoriesRouteImport;
-      parentRoute: typeof AuthSettingsRoute;
-    };
-    "/_auth/items/new": {
-      id: "/_auth/items/new";
-      path: "/items/new";
-      fullPath: "/items/new";
-      preLoaderRoute: typeof AuthItemsNewRouteImport;
-      parentRoute: typeof AuthRoute;
-    };
-    "/_auth/items/$itemId": {
-      id: "/_auth/items/$itemId";
-      path: "/items/$itemId";
-      fullPath: "/items/$itemId";
-      preLoaderRoute: typeof AuthItemsItemIdRouteImport;
-      parentRoute: typeof AuthRoute;
-    };
-    "/_auth/items/$itemId/edit": {
-      id: "/_auth/items/$itemId/edit";
-      path: "/edit";
-      fullPath: "/items/$itemId/edit";
-      preLoaderRoute: typeof AuthItemsItemIdEditRouteImport;
-      parentRoute: typeof AuthItemsItemIdRoute;
-    };
-    "/_auth/items/$itemId/consume": {
-      id: "/_auth/items/$itemId/consume";
-      path: "/consume";
-      fullPath: "/items/$itemId/consume";
-      preLoaderRoute: typeof AuthItemsItemIdConsumeRouteImport;
-      parentRoute: typeof AuthItemsItemIdRoute;
-    };
-    "/_auth/calendar": {
-      id: "/_auth/calendar";
-      path: "/calendar";
-      fullPath: "/calendar";
-      preLoaderRoute: typeof AuthCalendarRouteImport;
-      parentRoute: typeof AuthRoute;
-    };
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth/': {
+      id: '/_auth/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthIndexRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/stats': {
+      id: '/_auth/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof AuthStatsRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/shopping': {
+      id: '/_auth/shopping'
+      path: '/shopping'
+      fullPath: '/shopping'
+      preLoaderRoute: typeof AuthShoppingRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/settings': {
+      id: '/_auth/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthSettingsRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/calendar': {
+      id: '/_auth/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AuthCalendarRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/settings/locations': {
+      id: '/_auth/settings/locations'
+      path: '/locations'
+      fullPath: '/settings/locations'
+      preLoaderRoute: typeof AuthSettingsLocationsRouteImport
+      parentRoute: typeof AuthSettingsRoute
+    }
+    '/_auth/settings/categories': {
+      id: '/_auth/settings/categories'
+      path: '/categories'
+      fullPath: '/settings/categories'
+      preLoaderRoute: typeof AuthSettingsCategoriesRouteImport
+      parentRoute: typeof AuthSettingsRoute
+    }
+    '/_auth/items/new': {
+      id: '/_auth/items/new'
+      path: '/items/new'
+      fullPath: '/items/new'
+      preLoaderRoute: typeof AuthItemsNewRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/items/$itemId': {
+      id: '/_auth/items/$itemId'
+      path: '/items/$itemId'
+      fullPath: '/items/$itemId'
+      preLoaderRoute: typeof AuthItemsItemIdRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/items/$itemId/edit': {
+      id: '/_auth/items/$itemId/edit'
+      path: '/edit'
+      fullPath: '/items/$itemId/edit'
+      preLoaderRoute: typeof AuthItemsItemIdEditRouteImport
+      parentRoute: typeof AuthItemsItemIdRoute
+    }
+    '/_auth/items/$itemId/consume': {
+      id: '/_auth/items/$itemId/consume'
+      path: '/consume'
+      fullPath: '/items/$itemId/consume'
+      preLoaderRoute: typeof AuthItemsItemIdConsumeRouteImport
+      parentRoute: typeof AuthItemsItemIdRoute
+    }
   }
 }
 
 interface AuthSettingsRouteChildren {
-  AuthSettingsCategoriesRoute: typeof AuthSettingsCategoriesRoute;
-  AuthSettingsLocationsRoute: typeof AuthSettingsLocationsRoute;
+  AuthSettingsCategoriesRoute: typeof AuthSettingsCategoriesRoute
+  AuthSettingsLocationsRoute: typeof AuthSettingsLocationsRoute
 }
 
 const AuthSettingsRouteChildren: AuthSettingsRouteChildren = {
   AuthSettingsCategoriesRoute: AuthSettingsCategoriesRoute,
   AuthSettingsLocationsRoute: AuthSettingsLocationsRoute,
-};
+}
 
-const AuthSettingsRouteWithChildren = AuthSettingsRoute._addFileChildren(AuthSettingsRouteChildren);
+const AuthSettingsRouteWithChildren = AuthSettingsRoute._addFileChildren(
+  AuthSettingsRouteChildren,
+)
 
 interface AuthItemsItemIdRouteChildren {
-  AuthItemsItemIdConsumeRoute: typeof AuthItemsItemIdConsumeRoute;
-  AuthItemsItemIdEditRoute: typeof AuthItemsItemIdEditRoute;
+  AuthItemsItemIdConsumeRoute: typeof AuthItemsItemIdConsumeRoute
+  AuthItemsItemIdEditRoute: typeof AuthItemsItemIdEditRoute
 }
 
 const AuthItemsItemIdRouteChildren: AuthItemsItemIdRouteChildren = {
   AuthItemsItemIdConsumeRoute: AuthItemsItemIdConsumeRoute,
   AuthItemsItemIdEditRoute: AuthItemsItemIdEditRoute,
-};
+}
 
 const AuthItemsItemIdRouteWithChildren = AuthItemsItemIdRoute._addFileChildren(
   AuthItemsItemIdRouteChildren,
-);
+)
 
 interface AuthRouteChildren {
-  AuthSettingsRoute: typeof AuthSettingsRouteWithChildren;
-  AuthShoppingRoute: typeof AuthShoppingRoute;
-  AuthStatsRoute: typeof AuthStatsRoute;
-  AuthIndexRoute: typeof AuthIndexRoute;
-  AuthItemsItemIdRoute: typeof AuthItemsItemIdRouteWithChildren;
-  AuthItemsNewRoute: typeof AuthItemsNewRoute;
-  AuthCalendarRoute: typeof AuthCalendarRoute;
+  AuthCalendarRoute: typeof AuthCalendarRoute
+  AuthSettingsRoute: typeof AuthSettingsRouteWithChildren
+  AuthShoppingRoute: typeof AuthShoppingRoute
+  AuthStatsRoute: typeof AuthStatsRoute
+  AuthIndexRoute: typeof AuthIndexRoute
+  AuthItemsItemIdRoute: typeof AuthItemsItemIdRouteWithChildren
+  AuthItemsNewRoute: typeof AuthItemsNewRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthCalendarRoute: AuthCalendarRoute,
   AuthSettingsRoute: AuthSettingsRouteWithChildren,
   AuthShoppingRoute: AuthShoppingRoute,
   AuthStatsRoute: AuthStatsRoute,
   AuthIndexRoute: AuthIndexRoute,
   AuthItemsItemIdRoute: AuthItemsItemIdRouteWithChildren,
   AuthItemsNewRoute: AuthItemsNewRoute,
-  AuthCalendarRoute: AuthCalendarRoute,
-};
+}
 
-const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren);
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()

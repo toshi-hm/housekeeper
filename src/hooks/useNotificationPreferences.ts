@@ -82,8 +82,8 @@ export const useUpdateNotificationPreferences = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: upsertPreferences,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: PREFS_KEY });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: PREFS_KEY });
     },
   });
 };
