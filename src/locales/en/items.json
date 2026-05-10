@@ -89,5 +89,6 @@
   "consumePreviewTitle": "Stock after consumption (preview)",
   "consumeUnitsDisplay": "{{units}} units",
   "consumeOpenedSuffix": " (opened: {{remaining}}{{unit}})",
-  "consumeValidationError": "Enter a value greater than 0"
+  "consumeValidationError": "Enter a value greater than 0",
+  "lookupFromHistory": "Found a match from your previously registered items"
 }

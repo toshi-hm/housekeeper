@@ -89,5 +89,6 @@
   "consumePreviewTitle": "消費後の在庫（プレビュー）",
   "consumeUnitsDisplay": "{{units}}点",
   "consumeOpenedSuffix": "（開封中: {{remaining}}{{unit}}）",
-  "consumeValidationError": "0より大きい値を入力してください"
+  "consumeValidationError": "0より大きい値を入力してください",
+  "lookupFromHistory": "過去に登録した商品データから候補を見つけました"
 }
