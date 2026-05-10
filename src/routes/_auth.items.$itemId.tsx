@@ -27,7 +27,7 @@ import { useDeleteItem, useItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
-import { useToast } from "@/lib/toast";
+import { useToast } from "@/lib/toast-context";
 
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
   <div className="flex items-start gap-3">

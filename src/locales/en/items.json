@@ -90,5 +90,7 @@
   "consumeUnitsDisplay": "{{units}} units",
   "consumeOpenedSuffix": " (opened: {{remaining}}{{unit}})",
   "consumeValidationError": "Enter a value greater than 0",
-  "lookupFromHistory": "Found a match from your previously registered items"
+  "lookupFromHistory": "Found a match from your previously registered items",
+  "unitsRequired": "Enter a quantity",
+  "contentAmountRequired": "Enter a value greater than 0"
 }

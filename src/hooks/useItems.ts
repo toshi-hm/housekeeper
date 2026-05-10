@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
-import { useToast } from "@/lib/toast";
+import { useToast } from "@/lib/toast-context";
 import type { Item, ItemFormValues } from "@/types/item";
 
 /** Filters applied server-side (Supabase query). Client-only filters such as

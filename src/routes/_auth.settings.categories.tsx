@@ -16,7 +16,7 @@ import {
   useDeleteCategory,
   useUpdateCategory,
 } from "@/hooks/useMasterData";
-import { useToast } from "@/lib/toast";
+import { useToast } from "@/lib/toast-context";
 
 const DEFAULT_COLOR = "#6b7280";
 

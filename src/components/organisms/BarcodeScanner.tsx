@@ -30,7 +30,10 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
       setIsStarting(true);
       try {
         const reader = new BrowserMultiFormatReader();
-        if (!videoRef.current) return;
+        if (!videoRef.current) {
+          setIsStarting(false);
+          return;
+        }
         const controls = await reader.decodeFromVideoDevice(
           deviceId,
           videoRef.current,
@@ -63,16 +66,41 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
         setDevices(videoInputDevices);
 
-        const rearIdx = videoInputDevices.findIndex(
-          (d) =>
-            d.label.toLowerCase().includes("back") ||
-            d.label.toLowerCase().includes("rear") ||
-            d.label.toLowerCase().includes("environment"),
-        );
+        const rearIdx = videoInputDevices.findIndex((d) => {
+          const label = d.label.toLowerCase();
+          return (
+            label.includes("back") ||
+            label.includes("rear") ||
+            label.includes("environment") ||
+            label.includes("背面")
+          );
+        });
         const idx = rearIdx >= 0 ? rearIdx : 0;
         setDeviceIndex(idx);
 
-        await startScanning(videoInputDevices[idx]?.deviceId);
+        // ラベルで背面カメラが特定できない場合は deviceId=undefined で渡す。
+        // zxing は deviceId が undefined のとき facingMode:"environment" を使うため
+        // 背面カメラが自動選択される。
+        const deviceId = rearIdx >= 0 ? videoInputDevices[rearIdx]?.deviceId : undefined;
+        await startScanning(deviceId);
+
+        if (rearIdx < 0 && !cancelled) {
+          // Re-enumerate after permission is granted — labels are now populated.
+          const freshDevices = await BrowserMultiFormatReader.listVideoInputDevices();
+          if (!cancelled) {
+            setDevices(freshDevices);
+            const freshRearIdx = freshDevices.findIndex((d) => {
+              const label = d.label.toLowerCase();
+              return (
+                label.includes("back") ||
+                label.includes("rear") ||
+                label.includes("environment") ||
+                label.includes("背面")
+              );
+            });
+            setDeviceIndex(freshRearIdx >= 0 ? freshRearIdx : 0);
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Camera access denied");
@@ -148,8 +176,14 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
         {/* Camera / error area */}
         <div className="relative flex-1">
+          <video
+            ref={videoRef}
+            className={`h-full w-full object-cover ${error ? "opacity-0" : ""}`}
+            muted
+            playsInline
+          />
           {error ? (
-            <div className="flex h-full items-center justify-center p-8 text-center text-white">
+            <div className="absolute inset-0 flex items-center justify-center p-8 text-center text-white">
               <div>
                 <p className="text-lg font-medium">{t("scannerError")}</p>
                 <p className="mt-2 text-sm text-white/70">{error}</p>
@@ -165,7 +199,6 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
             </div>
           ) : (
             <>
-              <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
               {isStarting && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                   <span className="text-white">{t("scannerStarting")}</span>
