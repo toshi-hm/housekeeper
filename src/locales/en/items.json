@@ -76,6 +76,8 @@
   "consumeHistory": "History",
   "noHistory": "No consumption history",
   "itemNotFound": "Item not found",
+  "itemNotFoundDescription": "It may have been deleted or the URL may be invalid.",
+  "backToItems": "Back to items",
   "loadError": "Failed to load. Please refresh.",
   "hideEmpty": "Hide empty items",
   "urgentBanner": "{{count}} items are expired or expiring soon",
@@ -90,6 +92,7 @@
   "consumeUnitsDisplay": "{{units}} units",
   "consumeOpenedSuffix": " (opened: {{remaining}}{{unit}})",
   "consumeValidationError": "Enter a value greater than 0",
+  "lookupFromHistory": "Found a match from your previously registered items",
   "unitsRequired": "Enter a quantity",
   "contentAmountRequired": "Enter a value greater than 0"
 }
