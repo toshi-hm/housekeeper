@@ -275,9 +275,10 @@ export const ItemForm = ({
 
         {/* Quantity (units × content_amount content_unit) */}
         <div className="space-y-2">
-          <Label>{t("units")}</Label>
+          <Label htmlFor="units">{t("units")}</Label>
           <div className="flex items-center gap-2">
             <Input
+              id="units"
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
