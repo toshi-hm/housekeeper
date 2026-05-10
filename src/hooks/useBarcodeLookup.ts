@@ -20,6 +20,7 @@ interface LookupResult {
 
 interface ItemLookupRow {
   name: string;
+  image_path: string | null;
 }
 
 export type BarcodeLookupSource = "db" | "api";
@@ -50,7 +51,7 @@ export const useBarcodeLookup = () => {
     try {
       const { data: localData, error: localError } = await supabase
         .from("items")
-        .select("name")
+        .select("name, image_path")
         .eq("barcode", barcode)
         .is("deleted_at", null)
         .order("updated_at", { ascending: false })
