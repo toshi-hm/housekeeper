@@ -22,6 +22,17 @@ export default [
     },
   },
   {
+    files: [
+      "src/components/ui/**/*.{ts,tsx}",
+      "src/lib/toast.tsx",
+      "src/routes/*.{ts,tsx}",
+      "src/routes/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
+  {
     files: ["**/*.{ts,tsx}"],
     plugins: {
       "simple-import-sort": simpleImportSort,
