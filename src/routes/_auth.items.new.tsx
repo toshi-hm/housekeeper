@@ -7,7 +7,7 @@ import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { uploadItemImage } from "@/hooks/useItemImage";
 import { useCreateItem } from "@/hooks/useItems";
-import { useToast } from "@/lib/toast";
+import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
 
 const NewItemPage = () => {

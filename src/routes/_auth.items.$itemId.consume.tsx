@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConsumeItem } from "@/hooks/useConsumeItem";
 import { useItem } from "@/hooks/useItems";
-import { useToast } from "@/lib/toast";
+import { useToast } from "@/lib/toast-context";
 import { computeConsumption } from "@/types/item"; // used for live preview only
 
 const ItemConsumePage = () => {
