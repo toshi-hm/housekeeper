@@ -30,7 +30,10 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
       setIsStarting(true);
       try {
         const reader = new BrowserMultiFormatReader();
-        if (!videoRef.current) return;
+        if (!videoRef.current) {
+          setIsStarting(false);
+          return;
+        }
         const controls = await reader.decodeFromVideoDevice(
           deviceId,
           videoRef.current,
@@ -173,8 +176,14 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
         {/* Camera / error area */}
         <div className="relative flex-1">
+          <video
+            ref={videoRef}
+            className={`h-full w-full object-cover ${error ? "opacity-0" : ""}`}
+            muted
+            playsInline
+          />
           {error ? (
-            <div className="flex h-full items-center justify-center p-8 text-center text-white">
+            <div className="absolute inset-0 flex items-center justify-center p-8 text-center text-white">
               <div>
                 <p className="text-lg font-medium">{t("scannerError")}</p>
                 <p className="mt-2 text-sm text-white/70">{error}</p>
@@ -190,7 +199,6 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
             </div>
           ) : (
             <>
-              <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
               {isStarting && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                   <span className="text-white">{t("scannerStarting")}</span>
