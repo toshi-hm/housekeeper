@@ -75,7 +75,7 @@
   "restockSuccess": "買い物リストに追加しました",
   "consumeHistory": "消費履歴",
   "noHistory": "消費履歴がありません",
-  "itemNotFound": "アイテムが見つかりません",
+  "itemNotFound": "在庫が見つかりません",
   "loadError": "読み込みに失敗しました。再読み込みしてください。",
   "hideEmpty": "使い切り在庫を隠す",
   "urgentBanner": "{{count}}件の在庫が期限切れまたは期限間近です",
