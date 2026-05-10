@@ -90,5 +90,7 @@
   "consumeUnitsDisplay": "{{units}}点",
   "consumeOpenedSuffix": "（開封中: {{remaining}}{{unit}}）",
   "consumeValidationError": "0より大きい値を入力してください",
-  "lookupFromHistory": "過去に登録した商品データから候補を見つけました"
+  "lookupFromHistory": "過去に登録した商品データから候補を見つけました",
+  "unitsRequired": "個数を入力してください",
+  "contentAmountRequired": "0より大きい数値を入力してください"
 }

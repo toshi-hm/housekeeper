@@ -25,7 +25,20 @@ const createCategory = async (name: string, color?: string | null): Promise<Cate
     .insert({ name, color: color ?? null, user_id: userData.user.id })
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") {
+      const { data: existing, error: findError } = await supabase
+        .from("categories")
+        .select()
+        .eq("user_id", userData.user.id)
+        .eq("name", name)
+        .single();
+      if (findError) throw findError;
+      if (!existing) throw error;
+      return existing as Category;
+    }
+    throw error;
+  }
   return data as Category;
 };
 
@@ -71,10 +84,11 @@ export const useCreateCategory = () => {
   return useMutation({
     mutationFn: ({ name, color }: { name: string; color?: string | null }) =>
       createCategory(name, color),
-    onSuccess: (newCategory) => {
+    onSuccess: (category) => {
       qc.setQueryData<Category[]>(CATEGORIES_KEY, (old) => {
-        if (!old) return [newCategory];
-        return [...old, newCategory].sort((a, b) => a.name.localeCompare(b.name));
+        if (!old) return [category];
+        if (old.some((c) => c.id === category.id)) return old;
+        return [...old, category].sort((a, b) => a.name.localeCompare(b.name));
       });
     },
   });
@@ -123,7 +137,20 @@ const createStorageLocation = async (name: string): Promise<StorageLocation> => 
     .insert({ name, user_id: userData.user.id })
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") {
+      const { data: existing, error: findError } = await supabase
+        .from("storage_locations")
+        .select()
+        .eq("user_id", userData.user.id)
+        .eq("name", name)
+        .single();
+      if (findError) throw findError;
+      if (!existing) throw error;
+      return existing as StorageLocation;
+    }
+    throw error;
+  }
   return data as StorageLocation;
 };
 
@@ -164,10 +191,11 @@ export const useCreateStorageLocation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createStorageLocation,
-    onSuccess: (newLocation) => {
+    onSuccess: (location) => {
       qc.setQueryData<StorageLocation[]>(LOCATIONS_KEY, (old) => {
-        if (!old) return [newLocation];
-        return [...old, newLocation].sort((a, b) => a.name.localeCompare(b.name));
+        if (!old) return [location];
+        if (old.some((l) => l.id === location.id)) return old;
+        return [...old, location].sort((a, b) => a.name.localeCompare(b.name));
       });
     },
   });

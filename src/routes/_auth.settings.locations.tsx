@@ -14,7 +14,7 @@ import {
   useStorageLocations,
   useUpdateStorageLocation,
 } from "@/hooks/useMasterData";
-import { useToast } from "@/lib/toast";
+import { useToast } from "@/lib/toast-context";
 
 const LocationsPage = () => {
   const { t } = useTranslation("settings");

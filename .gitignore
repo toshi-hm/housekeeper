@@ -29,6 +29,9 @@ reg.json
 # Supabase CLI temp files
 supabase/.temp/
 
+# Serena MCP local metadata
+.serena/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -11,7 +11,7 @@ import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
 } from "@/hooks/useNotificationPreferences";
-import { useToast } from "@/lib/toast";
+import { useToast } from "@/lib/toast-context";
 
 export const NotificationSettings = () => {
   const { t } = useTranslation("notifications");
