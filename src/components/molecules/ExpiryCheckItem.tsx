@@ -33,7 +33,7 @@ export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckIte
   })();
 
   return (
-    <label className="flex cursor-pointer items-center gap-2 py-1">
+    <label className="flex cursor-pointer items-start gap-2 py-1">
       <input
         type="checkbox"
         checked={checked}
@@ -45,7 +45,10 @@ export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckIte
       />
       <ColorDot color={categoryColor} />
       <span
-        className={cn("flex-1 truncate text-sm", checked && "text-muted-foreground line-through")}
+        className={cn(
+          "flex-1 text-sm leading-snug",
+          checked && "text-muted-foreground line-through",
+        )}
       >
         {item.name}
       </span>

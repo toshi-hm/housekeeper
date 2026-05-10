@@ -67,7 +67,7 @@ const CalendarPage = () => {
       )}
 
       {/* Summary section */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {/* Left column: expired + this week */}
         <div className="space-y-3">
           {/* Expired */}
@@ -76,7 +76,7 @@ const CalendarPage = () => {
             {expired.length === 0 ? (
               <p className="text-xs text-muted-foreground">{t("noExpired")}</p>
             ) : (
-              <div>
+              <div className="space-y-1">
                 {expired.map((item) => (
                   <ExpiryCheckItem
                     key={item.id}
@@ -97,7 +97,7 @@ const CalendarPage = () => {
             {thisWeek.length === 0 ? (
               <p className="text-xs text-muted-foreground">{t("noThisWeek")}</p>
             ) : (
-              <div>
+              <div className="space-y-1">
                 {thisWeek.map((item) => (
                   <ExpiryCheckItem
                     key={item.id}
@@ -119,7 +119,7 @@ const CalendarPage = () => {
           {thisMonth.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t("noThisMonth")}</p>
           ) : (
-            <div>
+            <div className="space-y-1">
               {thisMonth.map((item) => (
                 <ExpiryCheckItem
                   key={item.id}
@@ -136,7 +136,15 @@ const CalendarPage = () => {
       </div>
 
       {/* Calendar */}
-      <ExpiryCalendar items={items} categories={categories} />
+      <ExpiryCalendar
+        items={items}
+        categories={categories}
+        labels={{
+          close: t("close"),
+          noItemsOnDate: t("noItemsOnDate"),
+          expiryItemsOnDate: (date) => t("expiryItemsOnDate", { date }),
+        }}
+      />
     </div>
   );
 };
