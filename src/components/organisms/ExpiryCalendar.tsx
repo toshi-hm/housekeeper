@@ -8,6 +8,11 @@ import type { Category, Item } from "@/types/item";
 interface ExpiryCalendarProps {
   items: Item[];
   categories: Category[];
+  labels: {
+    close: string;
+    noItemsOnDate: string;
+    expiryItemsOnDate: (date: string) => string;
+  };
 }
 
 const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -31,12 +36,13 @@ const MONTH_LABELS = [
   "12月",
 ];
 
-export const ExpiryCalendar = ({ items, categories }: ExpiryCalendarProps) => {
+export const ExpiryCalendar = ({ items, categories, labels }: ExpiryCalendarProps) => {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [showPicker, setShowPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(today.getFullYear());
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const prevMonth = () => {
@@ -83,6 +89,7 @@ export const ExpiryCalendar = ({ items, categories }: ExpiryCalendarProps) => {
   const firstDay = getFirstDayOfMonth(year, month);
 
   const todayKey = toDateKey(today);
+  const selectedItems = selectedDateKey ? (itemsByDate.get(selectedDateKey) ?? []) : [];
 
   const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -187,9 +194,11 @@ export const ExpiryCalendar = ({ items, categories }: ExpiryCalendarProps) => {
           const dow = (firstDay + i) % 7;
 
           return (
-            <div
+            <button
               key={day}
-              className={`flex min-h-[48px] flex-col items-center border-t pt-1 ${isToday ? "bg-primary/5" : ""}`}
+              type="button"
+              onClick={() => setSelectedDateKey(dateKey)}
+              className={`flex min-h-[56px] flex-col items-center border-t pt-1 text-left transition-colors hover:bg-muted/50 ${isToday ? "bg-primary/5" : ""}`}
             >
               <span
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${
@@ -216,10 +225,51 @@ export const ExpiryCalendar = ({ items, categories }: ExpiryCalendarProps) => {
                   )}
                 </div>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
+
+      {selectedDateKey && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center">
+          <button
+            type="button"
+            className="absolute inset-0"
+            onClick={() => setSelectedDateKey(null)}
+            aria-label={labels.close}
+          />
+          <div className="relative z-10 max-h-[70vh] w-full max-w-md overflow-y-auto rounded-xl bg-background p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">{labels.expiryItemsOnDate(selectedDateKey)}</h3>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedDateKey(null)}>
+                {labels.close}
+              </Button>
+            </div>
+            {selectedItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{labels.noItemsOnDate}</p>
+            ) : (
+              <ul className="space-y-2">
+                {selectedItems.map((item) => {
+                  const cat = item.category_id ? categoryMap.get(item.category_id) : null;
+                  return (
+                    <li key={item.id} className="flex items-start gap-2 rounded-md border p-2">
+                      <ColorDot color={cat?.color} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium leading-snug">{item.name}</p>
+                        {item.expiry_date && (
+                          <p className="text-xs text-muted-foreground">
+                            {item.expiry_date.slice(0, 10)}
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

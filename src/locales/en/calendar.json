@@ -9,5 +9,8 @@
   "softDeleteSuccess": "Removed from inventory",
   "reviveSuccess": "Restocked item revived from soft-delete",
   "noItems": "No items with expiry dates",
-  "noItemsHint": "Set expiry dates on your items to see them here"
+  "noItemsHint": "Set expiry dates on your items to see them here",
+  "close": "Close",
+  "noItemsOnDate": "No items expiring on this date",
+  "expiryItemsOnDate": "Items expiring on {{date}}"
 }
