@@ -103,8 +103,12 @@ const ItemDetailPage = () => {
         <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="rounded-lg border border-destructive p-4 text-destructive">
-          {t("itemNotFound")}
+        <div className="space-y-3 rounded-lg border border-destructive p-4 text-destructive">
+          <p className="font-medium">{t("itemNotFound")}</p>
+          <p className="text-sm text-muted-foreground">{t("itemNotFoundDescription")}</p>
+          <Button variant="outline" onClick={() => void navigate({ to: "/" })}>
+            {t("backToItems")}
+          </Button>
         </div>
       </div>
     );

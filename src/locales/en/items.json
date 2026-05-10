@@ -76,6 +76,8 @@
   "consumeHistory": "History",
   "noHistory": "No consumption history",
   "itemNotFound": "Item not found",
+  "itemNotFoundDescription": "It may have been deleted or the URL may be invalid.",
+  "backToItems": "Back to items",
   "loadError": "Failed to load. Please refresh.",
   "hideEmpty": "Hide empty items",
   "urgentBanner": "{{count}} items are expired or expiring soon",
