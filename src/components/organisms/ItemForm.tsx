@@ -68,6 +68,7 @@ export const ItemForm = ({
   const [nameError, setNameError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
+  const [lookupSource, setLookupSource] = useState<"db" | "api" | null>(null);
 
   const { data: existingImageUrl } = useSignedItemImage(
     localPreviewUrl ? null : values.image_path || null,
@@ -76,17 +77,22 @@ export const ItemForm = ({
   const set = <K extends keyof ItemFormValues>(field: K, value: ItemFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
     if (field === "name") setNameError("");
-    if (field === "barcode") setLookupResult(undefined);
+    if (field === "barcode") {
+      setLookupResult(undefined);
+      setLookupSource(null);
+    }
   };
 
   const handleBarcodeScan = async (barcode: string) => {
     setShowScanner(false);
     set("barcode", barcode);
     setLookupResult(undefined);
+    setLookupSource(null);
     if (navigator.vibrate) navigator.vibrate(100);
-    const info = await lookup(barcode);
-    setLookupResult(info);
-    if (info?.name) set("name", info.name);
+    const result = await lookup(barcode);
+    setLookupResult(result.product);
+    setLookupSource(result.source);
+    if (result.product?.name) set("name", result.product.name);
   };
 
   const handleAddCategory = async (name: string) => {
@@ -186,6 +192,9 @@ export const ItemForm = ({
           product={lookupResult}
           errorType={lookupResult === null ? lookupError : null}
         />
+        {lookupSource === "db" && lookupResult?.name && (
+          <p className="text-xs text-muted-foreground">{t("lookupFromHistory")}</p>
+        )}
 
         {/* Name */}
         <div className="space-y-2">
