@@ -33,7 +33,18 @@ export const useBarcodeLookup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<"network" | "not_found" | null>(null);
 
+  const isNetworkError = (message: string | undefined) => {
+    const normalized = message?.toLowerCase() ?? "";
+    return (
+      normalized.includes("fetch") ||
+      normalized.includes("network") ||
+      normalized.includes("failed to fetch")
+    );
+  };
+
   const lookup = async (barcode: string): Promise<BarcodeLookupResult> => {
+    if (!barcode.trim()) return { product: null, source: null };
+
     setIsLoading(true);
     setError(null);
     try {
@@ -58,10 +69,7 @@ export const useBarcodeLookup = () => {
         { body: { barcode } },
       );
       if (fnError) {
-        const isNetwork =
-          fnError.message?.toLowerCase().includes("fetch") ||
-          fnError.message?.toLowerCase().includes("network") ||
-          fnError.message?.toLowerCase().includes("failed to fetch");
+        const isNetwork = isNetworkError(fnError.message);
         setError(isNetwork ? "network" : "not_found");
         return { product: null, source: null };
       }
@@ -76,9 +84,7 @@ export const useBarcodeLookup = () => {
         source: "api",
       };
     } catch (err) {
-      const isNetwork =
-        err instanceof TypeError &&
-        (err.message.includes("fetch") || err.message.includes("network"));
+      const isNetwork = err instanceof TypeError && isNetworkError(err.message);
       setError(isNetwork ? "network" : "not_found");
       return { product: null, source: null };
     } finally {
