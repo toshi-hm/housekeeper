@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
-import { registerPwaServiceWorker } from "@/lib/pwa";
+import { createSwRegistrationHandler } from "@/lib/pwa";
 
-describe("registerPwaServiceWorker", () => {
+describe("createSwRegistrationHandler", () => {
   const originalServiceWorker = navigator.serviceWorker;
   let cleanupSW: (() => void) | undefined;
 
@@ -22,7 +22,7 @@ describe("registerPwaServiceWorker", () => {
       value: { register },
     });
 
-    cleanupSW = registerPwaServiceWorker();
+    cleanupSW = createSwRegistrationHandler();
     window.dispatchEvent(new Event("load"));
 
     await Promise.resolve();

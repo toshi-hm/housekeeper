@@ -1,6 +1,4 @@
-export const registerPwaServiceWorker = (): (() => void) | undefined => {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
-
+export const createSwRegistrationHandler = (): (() => void) => {
   const handler = () => {
     void navigator.serviceWorker.register("/sw.js").catch((err: unknown) => {
       // oxlint-disable-next-line no-console
@@ -9,4 +7,10 @@ export const registerPwaServiceWorker = (): (() => void) | undefined => {
   };
   window.addEventListener("load", handler);
   return () => window.removeEventListener("load", handler);
+};
+
+export const registerPwaServiceWorker = (): (() => void) | undefined => {
+  if (!import.meta.env.PROD || typeof window === "undefined" || !("serviceWorker" in navigator))
+    return;
+  return createSwRegistrationHandler();
 };
