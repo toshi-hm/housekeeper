@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
-import { requireOnline } from "@/lib/requireOnline";
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 
 const BUCKET = "item-images";
 const SIGNED_URL_TTL = 60 * 50; // 50 minutes
@@ -62,6 +64,8 @@ export const uploadItemImage = async ({
 
 export const useUploadItemImage = (itemId: string) => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: (file: File) => uploadItemImage({ itemId, file }),
     onSuccess: async (path) => {
@@ -69,6 +73,9 @@ export const useUploadItemImage = (itemId: string) => {
         qc.invalidateQueries({ queryKey: ["items"] }),
         qc.invalidateQueries({ queryKey: ["item-image", path] }),
       ]);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
@@ -82,11 +89,16 @@ const deleteItemImage = async (itemId: string, imagePath: string): Promise<void>
 
 export const useDeleteItemImage = (itemId: string) => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: (imagePath: string) => deleteItemImage(itemId, imagePath),
     onSuccess: async (_data, imagePath) => {
       qc.removeQueries({ queryKey: ["item-image", imagePath] });
       await qc.invalidateQueries({ queryKey: ["items"] });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };

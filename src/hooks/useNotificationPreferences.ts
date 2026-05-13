@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
-import { requireOnline } from "@/lib/requireOnline";
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 
 export interface NotificationPreferences {
   user_id: string;
@@ -84,10 +86,15 @@ export const useNotificationPreferences = () =>
 
 export const useUpdateNotificationPreferences = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: upsertPreferences,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: PREFS_KEY });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
