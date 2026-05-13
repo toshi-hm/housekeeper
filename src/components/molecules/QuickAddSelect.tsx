@@ -205,7 +205,7 @@ export const QuickAddSelect = ({
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={addLabel}
-                    className="h-8 flex-1 text-sm"
+                    className="h-8 flex-1 text-base sm:text-sm"
                     disabled={isAdding}
                   />
                   <Button
