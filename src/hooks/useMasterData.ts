@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 import type { Category, StorageLocation } from "@/types/item";
 
 const CATEGORIES_KEY = ["categories"] as const;
@@ -18,6 +21,7 @@ const fetchCategories = async (): Promise<Category[]> => {
 };
 
 const createCategory = async (name: string, color?: string | null): Promise<Category> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
@@ -47,6 +51,7 @@ const updateCategory = async (
   name: string,
   color?: string | null,
 ): Promise<Category> => {
+  requireOnline();
   const { data, error } = await supabase
     .from("categories")
     .update({ name, color: color ?? null, updated_at: new Date().toISOString() })
@@ -58,6 +63,7 @@ const updateCategory = async (
 };
 
 const deleteCategory = async (id: string): Promise<void> => {
+  requireOnline();
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) throw error;
 };
@@ -81,6 +87,8 @@ export const useCategories = () =>
 
 export const useCreateCategory = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: ({ name, color }: { name: string; color?: string | null }) =>
       createCategory(name, color),
@@ -91,22 +99,32 @@ export const useCreateCategory = () => {
         return [...old, category].sort((a, b) => a.name.localeCompare(b.name));
       });
     },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+    },
   });
 };
 
 export const useUpdateCategory = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: ({ id, name, color }: { id: string; name: string; color?: string | null }) =>
       updateCategory(id, name, color),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
     },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+    },
   });
 };
 
 export const useDeleteCategory = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: deleteCategory,
     onSuccess: async () => {
@@ -114,6 +132,9 @@ export const useDeleteCategory = () => {
         qc.invalidateQueries({ queryKey: CATEGORIES_KEY }),
         qc.invalidateQueries({ queryKey: ["items"] }),
       ]);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
@@ -130,6 +151,7 @@ const fetchStorageLocations = async (): Promise<StorageLocation[]> => {
 };
 
 const createStorageLocation = async (name: string): Promise<StorageLocation> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
@@ -155,6 +177,7 @@ const createStorageLocation = async (name: string): Promise<StorageLocation> => 
 };
 
 const updateStorageLocation = async (id: string, name: string): Promise<StorageLocation> => {
+  requireOnline();
   const { data, error } = await supabase
     .from("storage_locations")
     .update({ name, updated_at: new Date().toISOString() })
@@ -166,6 +189,7 @@ const updateStorageLocation = async (id: string, name: string): Promise<StorageL
 };
 
 const deleteStorageLocation = async (id: string): Promise<void> => {
+  requireOnline();
   const { error } = await supabase.from("storage_locations").delete().eq("id", id);
   if (error) throw error;
 };
@@ -189,6 +213,8 @@ export const useStorageLocations = () =>
 
 export const useCreateStorageLocation = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: createStorageLocation,
     onSuccess: (location) => {
@@ -198,21 +224,31 @@ export const useCreateStorageLocation = () => {
         return [...old, location].sort((a, b) => a.name.localeCompare(b.name));
       });
     },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+    },
   });
 };
 
 export const useUpdateStorageLocation = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => updateStorageLocation(id, name),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: LOCATIONS_KEY });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
 
 export const useDeleteStorageLocation = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: deleteStorageLocation,
     onSuccess: async () => {
@@ -220,6 +256,9 @@ export const useDeleteStorageLocation = () => {
         qc.invalidateQueries({ queryKey: LOCATIONS_KEY }),
         qc.invalidateQueries({ queryKey: ["items"] }),
       ]);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };

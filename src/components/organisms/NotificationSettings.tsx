@@ -11,6 +11,7 @@ import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
 } from "@/hooks/useNotificationPreferences";
+import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 
 export const NotificationSettings = () => {
@@ -43,8 +44,11 @@ export const NotificationSettings = () => {
         await updatePrefs.mutateAsync({ push_enabled: true });
         toast(t("pushEnabled"), "success");
       }
-    } catch {
-      toast(t("common:unknownError"), "error");
+    } catch (err) {
+      toast(
+        err instanceof OfflineError ? t("common:offlineError") : t("common:unknownError"),
+        "error",
+      );
     } finally {
       setIsPushLoading(false);
     }

@@ -8,6 +8,7 @@ import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { uploadItemImage } from "@/hooks/useItemImage";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
+import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
 
@@ -33,8 +34,11 @@ const EditItemPage = () => {
             file: pendingFileRef.current,
             oldImagePath,
           });
-        } catch {
-          toast(t("imageUploadFailed"), "warning");
+        } catch (err) {
+          toast(
+            err instanceof OfflineError ? t("common:offlineError") : t("imageUploadFailed"),
+            err instanceof OfflineError ? "error" : "warning",
+          );
           void navigate({ to: "/items/$itemId", params: { itemId } });
           return;
         }

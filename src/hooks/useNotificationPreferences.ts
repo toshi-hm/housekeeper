@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 
 export interface NotificationPreferences {
   user_id: string;
@@ -22,6 +25,7 @@ const fetchPreferences = async (): Promise<NotificationPreferences | null> => {
 };
 
 const upsertPreferences = async (update: UpdatePrefs): Promise<NotificationPreferences> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
@@ -42,6 +46,7 @@ const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
 };
 
 export const subscribePush = async (): Promise<void> => {
+  requireOnline();
   const registration = await navigator.serviceWorker.ready;
   const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
   if (!vapidKey) throw new Error("VITE_VAPID_PUBLIC_KEY is not set");
@@ -61,6 +66,7 @@ export const subscribePush = async (): Promise<void> => {
 };
 
 export const unsubscribePush = async (): Promise<void> => {
+  requireOnline();
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
   if (!subscription) return;
@@ -80,10 +86,15 @@ export const useNotificationPreferences = () =>
 
 export const useUpdateNotificationPreferences = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: upsertPreferences,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: PREFS_KEY });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };

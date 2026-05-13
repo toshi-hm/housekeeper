@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 import type { UserSettings } from "@/types/item";
 
 const SETTINGS_KEY = ["settings"] as const;
@@ -22,6 +24,7 @@ const fetchUserSettings = async (): Promise<UserSettings | null> => {
 const upsertUserSettings = async (
   values: Partial<Omit<UserSettings, "user_id" | "created_at" | "updated_at">>,
 ): Promise<UserSettings> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
@@ -53,11 +56,16 @@ export const useUserSettings = () => {
 export const useUpdateUserSettings = () => {
   const qc = useQueryClient();
   const { i18n } = useTranslation();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: upsertUserSettings,
     onSuccess: (data) => {
       qc.setQueryData(SETTINGS_KEY, data);
       if (data.language) void i18n.changeLanguage(data.language);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };

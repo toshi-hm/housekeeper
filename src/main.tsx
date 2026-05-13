@@ -1,12 +1,13 @@
 import "./index.css";
 import "./lib/i18n";
 
-import { QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { queryClient } from "@/lib/queryClient";
+import { registerPwaServiceWorker } from "@/lib/pwa";
+import { persister, queryClient } from "@/lib/queryClient";
 import { ToastProvider } from "@/lib/toast";
 
 import { routeTree } from "./routeTree.gen";
@@ -26,12 +27,17 @@ declare module "@tanstack/react-router" {
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Root element not found");
 
+registerPwaServiceWorker();
+
 createRoot(rootElement).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 }}
+    >
       <ToastProvider>
         <RouterProvider router={router} />
       </ToastProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </StrictMode>,
 );
