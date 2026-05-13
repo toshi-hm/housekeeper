@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
-import { requireOnline } from "@/lib/requireOnline";
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 import type { Category, StorageLocation } from "@/types/item";
 
 const CATEGORIES_KEY = ["categories"] as const;
@@ -85,6 +87,8 @@ export const useCategories = () =>
 
 export const useCreateCategory = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: ({ name, color }: { name: string; color?: string | null }) =>
       createCategory(name, color),
@@ -95,22 +99,32 @@ export const useCreateCategory = () => {
         return [...old, category].sort((a, b) => a.name.localeCompare(b.name));
       });
     },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+    },
   });
 };
 
 export const useUpdateCategory = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: ({ id, name, color }: { id: string; name: string; color?: string | null }) =>
       updateCategory(id, name, color),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
     },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+    },
   });
 };
 
 export const useDeleteCategory = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: deleteCategory,
     onSuccess: async () => {
@@ -118,6 +132,9 @@ export const useDeleteCategory = () => {
         qc.invalidateQueries({ queryKey: CATEGORIES_KEY }),
         qc.invalidateQueries({ queryKey: ["items"] }),
       ]);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
@@ -196,6 +213,8 @@ export const useStorageLocations = () =>
 
 export const useCreateStorageLocation = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: createStorageLocation,
     onSuccess: (location) => {
@@ -205,21 +224,31 @@ export const useCreateStorageLocation = () => {
         return [...old, location].sort((a, b) => a.name.localeCompare(b.name));
       });
     },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+    },
   });
 };
 
 export const useUpdateStorageLocation = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => updateStorageLocation(id, name),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: LOCATIONS_KEY });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
 
 export const useDeleteStorageLocation = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: deleteStorageLocation,
     onSuccess: async () => {
@@ -227,6 +256,9 @@ export const useDeleteStorageLocation = () => {
         qc.invalidateQueries({ queryKey: LOCATIONS_KEY }),
         qc.invalidateQueries({ queryKey: ["items"] }),
       ]);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };

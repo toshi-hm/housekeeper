@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
-import { requireOnline } from "@/lib/requireOnline";
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
 
 type ShoppingStatus = "planned" | "purchased";
@@ -53,6 +55,8 @@ export const useShoppingList = (status: ShoppingStatus = "planned") => {
 
 export const useUpsertShoppingItem = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: async (input: UpsertShoppingItemInput) => {
       requireOnline();
@@ -82,11 +86,16 @@ export const useUpsertShoppingItem = () => {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: [QUERY_KEY] });
     },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+    },
   });
 };
 
 export const useDeleteShoppingItem = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: async (id: string) => {
       requireOnline();
@@ -104,16 +113,19 @@ export const useDeleteShoppingItem = () => {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: [QUERY_KEY] });
     },
-    onError: (_err, _id, context) => {
+    onError: (error, _id, context) => {
       for (const [key, data] of context?.snapshot ?? []) {
         qc.setQueryData(key, data);
       }
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };
 
 export const usePurchaseShoppingItem = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: async ({ shoppingItemId, itemValues }: PurchaseInput) => {
       requireOnline();
@@ -159,6 +171,9 @@ export const usePurchaseShoppingItem = () => {
         qc.invalidateQueries({ queryKey: [QUERY_KEY] }),
         qc.invalidateQueries({ queryKey: ["items"] }),
       ]);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };

@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import { requireOnline } from "@/lib/requireOnline";
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 import type { UserSettings } from "@/types/item";
 
 const SETTINGS_KEY = ["settings"] as const;
@@ -55,11 +56,16 @@ export const useUserSettings = () => {
 export const useUpdateUserSettings = () => {
   const qc = useQueryClient();
   const { i18n } = useTranslation();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: upsertUserSettings,
     onSuccess: (data) => {
       qc.setQueryData(SETTINGS_KEY, data);
       if (data.language) void i18n.changeLanguage(data.language);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
 };

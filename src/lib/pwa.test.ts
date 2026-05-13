@@ -4,9 +4,11 @@ import { registerPwaServiceWorker } from "@/lib/pwa";
 
 describe("registerPwaServiceWorker", () => {
   const originalServiceWorker = navigator.serviceWorker;
+  let cleanupSW: (() => void) | undefined;
 
   afterEach(() => {
-    window.onload = null;
+    cleanupSW?.();
+    cleanupSW = undefined;
     Object.defineProperty(navigator, "serviceWorker", {
       configurable: true,
       value: originalServiceWorker,
@@ -20,7 +22,7 @@ describe("registerPwaServiceWorker", () => {
       value: { register },
     });
 
-    registerPwaServiceWorker();
+    cleanupSW = registerPwaServiceWorker();
     window.dispatchEvent(new Event("load"));
 
     await Promise.resolve();
