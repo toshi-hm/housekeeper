@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 
 export interface NotificationPreferences {
@@ -22,6 +23,7 @@ const fetchPreferences = async (): Promise<NotificationPreferences | null> => {
 };
 
 const upsertPreferences = async (update: UpdatePrefs): Promise<NotificationPreferences> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
@@ -42,6 +44,7 @@ const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
 };
 
 export const subscribePush = async (): Promise<void> => {
+  requireOnline();
   const registration = await navigator.serviceWorker.ready;
   const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
   if (!vapidKey) throw new Error("VITE_VAPID_PUBLIC_KEY is not set");
@@ -61,6 +64,7 @@ export const subscribePush = async (): Promise<void> => {
 };
 
 export const unsubscribePush = async (): Promise<void> => {
+  requireOnline();
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
   if (!subscription) return;

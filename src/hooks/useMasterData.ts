@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import type { Category, StorageLocation } from "@/types/item";
 
@@ -18,6 +19,7 @@ const fetchCategories = async (): Promise<Category[]> => {
 };
 
 const createCategory = async (name: string, color?: string | null): Promise<Category> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
@@ -47,6 +49,7 @@ const updateCategory = async (
   name: string,
   color?: string | null,
 ): Promise<Category> => {
+  requireOnline();
   const { data, error } = await supabase
     .from("categories")
     .update({ name, color: color ?? null, updated_at: new Date().toISOString() })
@@ -58,6 +61,7 @@ const updateCategory = async (
 };
 
 const deleteCategory = async (id: string): Promise<void> => {
+  requireOnline();
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) throw error;
 };
@@ -130,6 +134,7 @@ const fetchStorageLocations = async (): Promise<StorageLocation[]> => {
 };
 
 const createStorageLocation = async (name: string): Promise<StorageLocation> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
@@ -155,6 +160,7 @@ const createStorageLocation = async (name: string): Promise<StorageLocation> => 
 };
 
 const updateStorageLocation = async (id: string, name: string): Promise<StorageLocation> => {
+  requireOnline();
   const { data, error } = await supabase
     .from("storage_locations")
     .update({ name, updated_at: new Date().toISOString() })
@@ -166,6 +172,7 @@ const updateStorageLocation = async (id: string, name: string): Promise<StorageL
 };
 
 const deleteStorageLocation = async (id: string): Promise<void> => {
+  requireOnline();
   const { error } = await supabase.from("storage_locations").delete().eq("id", id);
   if (error) throw error;
 };

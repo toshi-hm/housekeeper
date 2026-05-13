@@ -6,6 +6,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { registerPwaServiceWorker } from "@/lib/pwa";
 import { queryClient } from "@/lib/queryClient";
 import { ToastProvider } from "@/lib/toast";
 
@@ -25,6 +26,8 @@ declare module "@tanstack/react-router" {
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Root element not found");
+
+registerPwaServiceWorker();
 
 createRoot(rootElement).render(
   <StrictMode>

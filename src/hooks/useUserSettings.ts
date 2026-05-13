@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
+import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import type { UserSettings } from "@/types/item";
 
@@ -22,6 +23,7 @@ const fetchUserSettings = async (): Promise<UserSettings | null> => {
 const upsertUserSettings = async (
   values: Partial<Omit<UserSettings, "user_id" | "created_at" | "updated_at">>,
 ): Promise<UserSettings> => {
+  requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 
 const BUCKET = "item-images";
@@ -30,6 +31,7 @@ export const uploadItemImage = async ({
   file,
   oldImagePath,
 }: UploadImageParams): Promise<string> => {
+  requireOnline();
   const {
     data: { user },
     error: authError,
@@ -72,6 +74,7 @@ export const useUploadItemImage = (itemId: string) => {
 };
 
 const deleteItemImage = async (itemId: string, imagePath: string): Promise<void> => {
+  requireOnline();
   await supabase.storage.from(BUCKET).remove([imagePath]);
   const { error } = await supabase.from("items").update({ image_path: null }).eq("id", itemId);
   if (error) throw new Error(error.message);

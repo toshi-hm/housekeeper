@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import type { ItemFormValues } from "@/types/item";
 
@@ -54,6 +55,7 @@ export const useUpsertShoppingItem = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: UpsertShoppingItemInput) => {
+      requireOnline();
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -87,6 +89,7 @@ export const useDeleteShoppingItem = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      requireOnline();
       const { error } = await supabase.from("shopping_list_items").delete().eq("id", id);
       if (error) throw new Error(error.message);
     },
@@ -113,6 +116,7 @@ export const usePurchaseShoppingItem = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ shoppingItemId, itemValues }: PurchaseInput) => {
+      requireOnline();
       const {
         data: { user },
       } = await supabase.auth.getUser();

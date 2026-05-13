@@ -1,6 +1,7 @@
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { QueryClient } from "@tanstack/react-query";
 import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import { createStore, del, get, set } from "idb-keyval";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,8 +16,17 @@ export const queryClient = new QueryClient({
   },
 });
 
-const persister = createSyncStoragePersister({
-  storage: typeof window !== "undefined" ? window.localStorage : undefined,
+const idbStore = createStore("housekeeper", "query-cache");
+
+const persister = createAsyncStoragePersister({
+  storage:
+    typeof window !== "undefined"
+      ? {
+          getItem: (key) => get(key, idbStore),
+          setItem: (key, value) => set(key, value, idbStore),
+          removeItem: (key) => del(key, idbStore),
+        }
+      : undefined,
   key: "housekeeper-query-cache",
 });
 
