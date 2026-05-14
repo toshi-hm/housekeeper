@@ -26,9 +26,8 @@ const consumeItem = async ({ item, deltaAmount }: ConsumeParams): Promise<Item> 
     .order("created_at", { ascending: true })
     .limit(1);
 
-  if (lots && lots.length > 0) {
-    const lot = lots[0] as Parameters<typeof consumeLotFn>[0]["lot"];
-    await consumeLotFn({ lot, item, deltaAmount });
+  if (lots && lots.length > 0 && lots[0]) {
+    await consumeLotFn({ lot: lots[0], item, deltaAmount });
   } else {
     // Fallback: no lots exist yet → update items table directly and create log
     const result = computeConsumption(item, deltaAmount);

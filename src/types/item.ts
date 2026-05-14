@@ -110,6 +110,19 @@ export const getExpiryStatus = (
   return "ok";
 };
 
+/** カードや一覧で使う「残量」の合計値を文字列として返す。 */
+export const formatRemaining = (
+  units: number,
+  contentAmount: number,
+  openedRemaining: number | null,
+): string => {
+  const total =
+    openedRemaining !== null
+      ? (units - 1) * contentAmount + openedRemaining
+      : units * contentAmount;
+  return total % 1 === 0 ? String(total) : total.toFixed(2).replace(/\.?0+$/, "");
+};
+
 export const computeConsumption = (
   item: Pick<Item, "units" | "content_amount" | "content_unit" | "opened_remaining">,
   delta: number,

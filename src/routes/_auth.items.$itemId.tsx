@@ -162,7 +162,13 @@ const ItemDetailPage = () => {
             variant="outline"
             size="sm"
             disabled={isEmpty}
-            onClick={() => void navigate({ to: "/items/$itemId/consume", params: { itemId } })}
+            onClick={() =>
+              void navigate({
+                to: "/items/$itemId/consume",
+                params: { itemId },
+                search: { lotId: undefined },
+              })
+            }
           >
             <Zap className="h-4 w-4" />
             {t("consume")}

@@ -6,7 +6,7 @@ import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getExpiryStatus, type Item } from "@/types/item";
+import { formatRemaining, getExpiryStatus, type Item } from "@/types/item";
 
 interface ItemCardProps {
   item: Item;
@@ -14,18 +14,6 @@ interface ItemCardProps {
   locationName?: string | undefined;
   warningDays?: number;
 }
-
-const formatRemaining = (
-  units: number,
-  contentAmount: number,
-  openedRemaining: number | null,
-): string => {
-  const total =
-    openedRemaining !== null
-      ? (units - 1) * contentAmount + openedRemaining
-      : units * contentAmount;
-  return total % 1 === 0 ? String(total) : total.toFixed(2).replace(/\.?0+$/, "");
-};
 
 export const ItemCard = ({ item, categoryName, locationName, warningDays }: ItemCardProps) => {
   const { t, i18n } = useTranslation("items");
