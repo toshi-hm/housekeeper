@@ -54,6 +54,18 @@ export const itemFormSchema = z.object({
   image_path: z.string().optional(),
 });
 
+export const itemLotSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  item_id: z.string().uuid(),
+  units: z.number().int().min(0).default(1),
+  opened_remaining: z.number().min(0).nullable().optional(),
+  purchase_date: z.string().nullable().optional(),
+  expiry_date: z.string().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
 export const consumeFormSchema = z.object({
   delta_amount: z.coerce.number().positive("消費量は0より大きい値を入力してください"),
 });
@@ -71,6 +83,7 @@ export const userSettingsSchema = z.object({
 export type Category = z.infer<typeof categorySchema>;
 export type StorageLocation = z.infer<typeof storageLocationSchema>;
 export type Item = z.infer<typeof itemSchema>;
+export type ItemLot = z.infer<typeof itemLotSchema>;
 export type ItemFormValues = z.infer<typeof itemFormSchema>;
 export type ConsumeFormValues = z.infer<typeof consumeFormSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;

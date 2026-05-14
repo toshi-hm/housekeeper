@@ -31,6 +31,8 @@ interface ItemFormProps {
   isSubmitting?: boolean;
   submitLabel?: string;
   onPendingFileChange?: (file: File | null) => void;
+  /** Called after a barcode is scanned or manually looked up */
+  onBarcodeScanned?: (barcode: string, source: "db" | "api" | null) => void;
 }
 
 export const ItemForm = ({
@@ -39,6 +41,7 @@ export const ItemForm = ({
   isSubmitting,
   submitLabel,
   onPendingFileChange,
+  onBarcodeScanned,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
   const { t: ts } = useTranslation("settings");
@@ -99,6 +102,7 @@ export const ItemForm = ({
     setLookupResult(result.product);
     setLookupSource(result.source);
     if (result.product?.name) set("name", result.product.name);
+    onBarcodeScanned?.(barcode, result.source);
   };
 
   const handleAddCategory = async (name: string) => {

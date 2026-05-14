@@ -5,6 +5,7 @@ import {
   Edit,
   Hash,
   History,
+  Layers,
   MapPin,
   Package,
   RefreshCw,
@@ -23,11 +24,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useConsumptionLogs } from "@/hooks/useConsumptionLogs";
+import { useItemLots } from "@/hooks/useItemLots";
 import { useDeleteItem, useItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useToast } from "@/lib/toast-context";
+import { getExpiryStatus } from "@/types/item";
 
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
   <div className="flex items-start gap-3">
@@ -50,6 +53,7 @@ const ItemDetailPage = () => {
       m.routeId === "/_auth/items/$itemId/consume" || m.routeId === "/_auth/items/$itemId/edit",
   );
   const { data: item, isLoading, error } = useItem(itemId);
+  const { data: lots = [] } = useItemLots(itemId);
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
   const { data: userSettings } = useUserSettings();
@@ -58,7 +62,7 @@ const ItemDetailPage = () => {
   const { data: logs = [] } = useConsumptionLogs(itemId);
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [detailTab, setDetailTab] = useState<"info" | "history">("info");
+  const [detailTab, setDetailTab] = useState<"info" | "lots" | "history">("info");
 
   const handleRestock = async () => {
     if (!item) return;
@@ -115,6 +119,7 @@ const ItemDetailPage = () => {
   }
 
   const isEmpty = item.units === 0;
+  const hasMultipleLots = lots.length > 1;
   const totalDisplay =
     item.opened_remaining !== null && item.opened_remaining !== undefined
       ? t("totalDisplayOpened", {
@@ -211,6 +216,12 @@ const ItemDetailPage = () => {
                   {t("emptyStock")}
                 </Badge>
               )}
+              {hasMultipleLots && (
+                <Badge variant="outline" className="gap-1">
+                  <Layers className="h-3 w-3" />
+                  {t("lotCount", { count: lots.length })}
+                </Badge>
+              )}
               <ExpiryBadge
                 expiryDate={item.expiry_date}
                 warningDays={userSettings?.expiry_warning_days}
@@ -227,6 +238,20 @@ const ItemDetailPage = () => {
               <Package className="h-4 w-4" />
               {t("itemDetail")}
             </button>
+            {lots.length > 0 && (
+              <button
+                className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "lots" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                onClick={() => setDetailTab("lots")}
+              >
+                <Layers className="h-4 w-4" />
+                {t("lots")}
+                {hasMultipleLots && (
+                  <span className="ml-1 rounded-full bg-primary/20 px-1.5 text-xs">
+                    {lots.length}
+                  </span>
+                )}
+              </button>
+            )}
             <button
               className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "history" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => setDetailTab("history")}
@@ -241,7 +266,7 @@ const ItemDetailPage = () => {
             </button>
           </div>
 
-          {detailTab === "info" ? (
+          {detailTab === "info" && (
             <Card>
               <CardContent className="space-y-3 p-4">
                 <DetailRow
@@ -286,7 +311,79 @@ const ItemDetailPage = () => {
                 )}
               </CardContent>
             </Card>
-          ) : (
+          )}
+
+          {detailTab === "lots" && (
+            <div className="space-y-2">
+              {lots.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">{t("noLots")}</p>
+              ) : (
+                lots.map((lot, index) => {
+                  const lotDisplay =
+                    lot.opened_remaining !== null && lot.opened_remaining !== undefined
+                      ? t("totalDisplayOpened", {
+                          units: lot.units,
+                          remaining: lot.opened_remaining,
+                          unit: item.content_unit,
+                        })
+                      : t("totalDisplaySealed", {
+                          units: lot.units,
+                          amount: item.content_amount,
+                          unit: item.content_unit,
+                        });
+                  const expiryStatus = getExpiryStatus(
+                    lot.expiry_date,
+                    userSettings?.expiry_warning_days,
+                  );
+                  return (
+                    <Card key={lot.id}>
+                      <CardContent className="p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-0.5">
+                            <p className="text-sm font-medium">
+                              {t("lotLabel", { index: index + 1 })} — {lotDisplay}
+                            </p>
+                            {lot.expiry_date && (
+                              <p
+                                className={`text-xs ${expiryStatus === "expired" ? "text-destructive" : expiryStatus === "expiring-soon" ? "text-warning" : "text-muted-foreground"}`}
+                              >
+                                {t("expiryDate")}: {new Date(lot.expiry_date).toLocaleDateString()}
+                              </p>
+                            )}
+                            {lot.purchase_date && (
+                              <p className="text-xs text-muted-foreground">
+                                {t("purchaseDate")}:{" "}
+                                {new Date(lot.purchase_date).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                          {!isEmpty && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="shrink-0"
+                              onClick={() =>
+                                void navigate({
+                                  to: "/items/$itemId/consume",
+                                  params: { itemId },
+                                  search: { lotId: lot.id },
+                                })
+                              }
+                            >
+                              <Zap className="h-3 w-3" />
+                              {t("consume")}
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {detailTab === "history" && (
             <div className="space-y-2">
               {logs.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">{t("noHistory")}</p>

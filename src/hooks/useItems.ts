@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
+import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -70,6 +71,38 @@ const normalizeFormValues = (values: Partial<ItemFormValues>) => ({
 });
 
 /**
+ * バーコードが一致するアクティブなアイテムを探す。
+ * 見つかった場合は新規ロットを追加してそのアイテムを返す。なければ null。
+ */
+const tryStackToActiveItem = async (
+  barcode: string,
+  values: ItemFormValues,
+  userId: string,
+): Promise<Item | null> => {
+  const { data } = await supabase
+    .from("items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("barcode", barcode)
+    .is("deleted_at", null)
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+
+  const item = data as Item;
+  await createLot(userId, item.id, {
+    units: values.units ?? 1,
+    opened_remaining: values.opened_remaining ?? null,
+    purchase_date: values.purchase_date || null,
+    expiry_date: values.expiry_date || null,
+  });
+  await syncItemAggregate(item.id);
+
+  const { data: updated } = await supabase.from("items").select("*").eq("id", item.id).single();
+  return updated as Item;
+};
+
+/**
  * バーコードが一致するソフトデリート済みアイテムを復活させる。
  * 復活した場合は revived item を返す。なければ null。
  */
@@ -88,28 +121,40 @@ const tryReviveItem = async (
     .single();
   if (!data) return null;
 
+  const item = data as Item;
   const { data: revived, error } = await supabase
     .from("items")
     .update({
       deleted_at: null,
-      units: values.units ?? 1,
-      expiry_date: values.expiry_date || null,
-      purchase_date: values.purchase_date || null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", (data as Item).id)
+    .eq("id", item.id)
     .select()
     .single();
   if (error) throw error;
+
+  await createLot(userId, item.id, {
+    units: values.units ?? 1,
+    opened_remaining: values.opened_remaining ?? null,
+    purchase_date: values.purchase_date || null,
+    expiry_date: values.expiry_date || null,
+  });
+  await syncItemAggregate(item.id);
+
   return revived as Item;
 };
 
-const createItem = async (values: ItemFormValues): Promise<Item & { _revived?: boolean }> => {
+const createItem = async (
+  values: ItemFormValues,
+): Promise<Item & { _revived?: boolean; _stacked?: boolean }> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
   if (values.barcode) {
+    const stacked = await tryStackToActiveItem(values.barcode, values, userData.user.id);
+    if (stacked) return { ...stacked, _stacked: true };
+
     const revived = await tryReviveItem(values.barcode, values, userData.user.id);
     if (revived) return { ...revived, _revived: true };
   }
@@ -121,7 +166,16 @@ const createItem = async (values: ItemFormValues): Promise<Item & { _revived?: b
     .select()
     .single();
   if (error) throw error;
-  return data as Item;
+
+  const item = data as Item;
+  await createLot(userData.user.id, item.id, {
+    units: values.units ?? 1,
+    opened_remaining: values.opened_remaining ?? null,
+    purchase_date: values.purchase_date || null,
+    expiry_date: values.expiry_date || null,
+  });
+
+  return item;
 };
 
 const updateItem = async (id: string, values: Partial<ItemFormValues>): Promise<Item> => {
@@ -180,12 +234,16 @@ export const useItem = (id: string) =>
 export const useCreateItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { t } = useTranslation(["common", "calendar"]);
+  const { t } = useTranslation(["common", "calendar", "items"]);
   return useMutation({
     mutationFn: createItem,
     onSuccess: async (data) => {
+      const result = data as Item & { _revived?: boolean; _stacked?: boolean };
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
-      if ((data as Item & { _revived?: boolean })._revived) {
+      if (result._stacked || result._revived) {
+        await qc.invalidateQueries({ queryKey: LOTS_KEY, refetchType: "all" });
+      }
+      if (result._revived) {
         toast(t("calendar:reviveSuccess"), "success");
       }
     },
