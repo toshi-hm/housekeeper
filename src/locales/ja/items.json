@@ -58,6 +58,7 @@
   },
   "totalAmount": "総量",
   "unitsDisplay": "{{units}}点",
+  "remainingDisplay": "(残: {{amount}}{{unit}})",
   "emptyStock": "使い切り",
   "noItems": "在庫がありません",
   "searchPlaceholder": "商品名・バーコードで検索",

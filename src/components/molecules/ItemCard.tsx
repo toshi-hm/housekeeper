@@ -15,6 +15,18 @@ interface ItemCardProps {
   warningDays?: number;
 }
 
+const formatRemaining = (
+  units: number,
+  contentAmount: number,
+  openedRemaining: number | null,
+): string => {
+  const total =
+    openedRemaining !== null
+      ? (units - 1) * contentAmount + openedRemaining
+      : units * contentAmount;
+  return total % 1 === 0 ? String(total) : total.toFixed(2).replace(/\.?0+$/, "");
+};
+
 export const ItemCard = ({ item, categoryName, locationName, warningDays }: ItemCardProps) => {
   const { t, i18n } = useTranslation("items");
   const expiryStatus = getExpiryStatus(item.expiry_date, warningDays);
@@ -64,7 +76,19 @@ export const ItemCard = ({ item, categoryName, locationName, warningDays }: Item
             {isEmpty ? (
               <span className="text-muted-foreground">{t("emptyStock")}</span>
             ) : (
-              <span>{t("unitsDisplay", { units: item.units })}</span>
+              <span>
+                {t("unitsDisplay", { units: item.units })}
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  {t("remainingDisplay", {
+                    amount: formatRemaining(
+                      item.units,
+                      item.content_amount,
+                      item.opened_remaining ?? null,
+                    ),
+                    unit: item.content_unit,
+                  })}
+                </span>
+              </span>
             )}
           </span>
           <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />

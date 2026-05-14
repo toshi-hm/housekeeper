@@ -43,24 +43,32 @@ export const createLot = async (
   return data as ItemLot;
 };
 
-/** Recompute and update the item aggregate (units + expiry_date) from its lots. */
+/** Recompute and update the item aggregate (units, expiry_date, opened_remaining) from its lots. */
 export const syncItemAggregate = async (itemId: string): Promise<void> => {
   const { data: lots } = await supabase
     .from("item_lots")
-    .select("units, expiry_date")
+    .select("units, expiry_date, opened_remaining")
     .eq("item_id", itemId);
 
-  const totalUnits = (lots ?? []).reduce((sum, l) => sum + (l.units as number), 0);
-  const expiryDates = (lots ?? [])
+  const rows = lots ?? [];
+  const totalUnits = rows.reduce((sum, l) => sum + (l.units as number), 0);
+
+  const expiryDates = rows
     .map((l) => l.expiry_date as string | null)
     .filter((d): d is string => d !== null);
   const earliestExpiry = expiryDates.length > 0 ? expiryDates.sort()[0] : null;
+
+  // Keep opened_remaining on items only when exactly one lot is open,
+  // so the card can display an accurate total remaining amount.
+  const openLots = rows.filter((l) => l.opened_remaining !== null);
+  const aggregateOpenedRemaining = openLots.length === 1 ? openLots[0]!.opened_remaining : null;
 
   await supabase
     .from("items")
     .update({
       units: totalUnits,
       expiry_date: earliestExpiry,
+      opened_remaining: aggregateOpenedRemaining,
       updated_at: new Date().toISOString(),
     })
     .eq("id", itemId);
@@ -72,7 +80,11 @@ interface ConsumeLotParams {
   deltaAmount: number;
 }
 
-export const consumeLot = async ({ lot, item, deltaAmount }: ConsumeLotParams): Promise<ItemLot> => {
+export const consumeLot = async ({
+  lot,
+  item,
+  deltaAmount,
+}: ConsumeLotParams): Promise<ItemLot> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");

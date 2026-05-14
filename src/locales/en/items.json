@@ -58,6 +58,7 @@
   },
   "totalAmount": "Total",
   "unitsDisplay": "{{units}} units",
+  "remainingDisplay": "({{amount}}{{unit}} left)",
   "emptyStock": "Used up",
   "noItems": "No items",
   "searchPlaceholder": "Search by name or barcode",
