@@ -2,8 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
-import type { Item, ItemLot } from "@/types/item";
-import { computeConsumption } from "@/types/item";
+import { computeConsumption, type Item, type ItemLot } from "@/types/item";
 
 export const LOTS_KEY = ["item-lots"] as const;
 

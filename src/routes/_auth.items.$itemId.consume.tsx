@@ -31,7 +31,7 @@ const ItemConsumePage = () => {
   const hasMultipleLots = activeLots.length > 1;
 
   const selectedLot: ItemLot | null =
-    selectedLotId != null
+    selectedLotId !== null
       ? (activeLots.find((l) => l.id === selectedLotId) ?? null)
       : activeLots.length === 1
         ? activeLots[0]!

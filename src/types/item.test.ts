@@ -55,7 +55,8 @@ describe("itemLotSchema", () => {
   });
 
   test("missing required fields fail", () => {
-    const { id: _id, ...withoutId } = validLot;
+    const withoutId: Record<string, unknown> = { ...validLot };
+    delete withoutId["id"];
     const result = itemLotSchema.safeParse(withoutId);
     expect(result.success).toBe(false);
   });
