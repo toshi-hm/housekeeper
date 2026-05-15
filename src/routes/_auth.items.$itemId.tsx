@@ -32,6 +32,11 @@ import { useUserSettings } from "@/hooks/useUserSettings";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus } from "@/types/item";
 
+const parseLocalDate = (dateStr: string) => {
+  const [y, m, d] = dateStr.split("-").map(Number) as [number, number, number];
+  return new Date(y, m - 1, d);
+};
+
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
   <div className="flex items-start gap-3">
     <span className="mt-0.5 text-muted-foreground">{icon}</span>
@@ -298,14 +303,14 @@ const ItemDetailPage = () => {
                   <DetailRow
                     icon={<Calendar className="h-4 w-4" />}
                     label={t("purchaseDate")}
-                    value={new Date(item.purchase_date).toLocaleDateString()}
+                    value={parseLocalDate(item.purchase_date).toLocaleDateString()}
                   />
                 )}
                 {item.expiry_date && (
                   <DetailRow
                     icon={<Calendar className="h-4 w-4" />}
                     label={t("expiryDate")}
-                    value={new Date(item.expiry_date).toLocaleDateString()}
+                    value={parseLocalDate(item.expiry_date).toLocaleDateString()}
                   />
                 )}
                 {item.notes && (
@@ -353,13 +358,14 @@ const ItemDetailPage = () => {
                               <p
                                 className={`text-xs ${expiryStatus === "expired" ? "text-destructive" : expiryStatus === "expiring-soon" ? "text-warning" : "text-muted-foreground"}`}
                               >
-                                {t("expiryDate")}: {new Date(lot.expiry_date).toLocaleDateString()}
+                                {t("expiryDate")}:{" "}
+                                {parseLocalDate(lot.expiry_date).toLocaleDateString()}
                               </p>
                             )}
                             {lot.purchase_date && (
                               <p className="text-xs text-muted-foreground">
                                 {t("purchaseDate")}:{" "}
-                                {new Date(lot.purchase_date).toLocaleDateString()}
+                                {parseLocalDate(lot.purchase_date).toLocaleDateString()}
                               </p>
                             )}
                           </div>

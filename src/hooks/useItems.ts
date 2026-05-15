@@ -205,6 +205,19 @@ const softDeleteItem = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
+/** バーコードでアクティブなアイテムを検索する (新規登録画面でのスタック検出用) */
+export const findActiveItemByBarcode = async (barcode: string): Promise<Item | null> => {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("barcode", barcode)
+    .is("deleted_at", null)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? (data as Item) : null;
+};
+
 /** カレンダー用: expiry_date を持つアクティブアイテムのみ返す */
 const fetchItemsWithExpiry = async (): Promise<Item[]> => {
   const { data, error } = await supabase

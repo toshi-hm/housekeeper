@@ -6,9 +6,8 @@ import { useTranslation } from "react-i18next";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { uploadItemImage } from "@/hooks/useItemImage";
-import { useCreateItem } from "@/hooks/useItems";
+import { findActiveItemByBarcode, useCreateItem } from "@/hooks/useItems";
 import { OfflineError } from "@/lib/requireOnline";
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 import type { Item, ItemFormValues } from "@/types/item";
 
@@ -20,22 +19,14 @@ const NewItemPage = () => {
   const pendingFileRef = useRef<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingItem, setExistingItem] = useState<Item | null>(null);
-  const [stackedItemId, setStackedItemId] = useState<string | null>(null);
 
   const handleBarcodeScanned = async (barcode: string, source: "db" | "api" | null) => {
     if (source !== "db") {
       setExistingItem(null);
       return;
     }
-    const { data } = await supabase
-      .from("items")
-      .select("*")
-      .eq("barcode", barcode)
-      .is("deleted_at", null)
-      .limit(1)
-      .maybeSingle();
-    setExistingItem(data ? (data as Item) : null);
-    if (data) setStackedItemId((data as Item).id);
+    const found = await findActiveItemByBarcode(barcode);
+    setExistingItem(found);
   };
 
   const handleSubmit = async (values: ItemFormValues) => {
@@ -61,7 +52,7 @@ const NewItemPage = () => {
         toast(t("stackSuccess"), "success");
         void navigate({
           to: "/items/$itemId",
-          params: { itemId: stackedItemId ?? item.id },
+          params: { itemId: item.id },
         });
       } else {
         toast(t("createSuccess"), "success");

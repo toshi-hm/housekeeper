@@ -44,10 +44,11 @@ export const createLot = async (
 
 /** Recompute and update the item aggregate (units, expiry_date, opened_remaining) from its lots. */
 export const syncItemAggregate = async (itemId: string): Promise<void> => {
-  const { data: lots } = await supabase
+  const { data: lots, error: lotsError } = await supabase
     .from("item_lots")
     .select("units, expiry_date, opened_remaining")
     .eq("item_id", itemId);
+  if (lotsError) throw lotsError;
 
   const rows = lots ?? [];
   const totalUnits = rows.reduce((sum, l) => sum + (l.units as number), 0);
@@ -62,7 +63,7 @@ export const syncItemAggregate = async (itemId: string): Promise<void> => {
   const openLots = rows.filter((l) => l.opened_remaining !== null);
   const aggregateOpenedRemaining = openLots.length === 1 ? openLots[0]!.opened_remaining : null;
 
-  await supabase
+  const { error: updateError } = await supabase
     .from("items")
     .update({
       units: totalUnits,
@@ -71,6 +72,7 @@ export const syncItemAggregate = async (itemId: string): Promise<void> => {
       updated_at: new Date().toISOString(),
     })
     .eq("id", itemId);
+  if (updateError) throw updateError;
 };
 
 interface ConsumeLotParams {
@@ -109,6 +111,7 @@ export const consumeLot = async ({
     .single();
   if (error) throw error;
 
+  // Log failure is non-fatal: stock is already updated above
   await supabase.from("consumption_logs").insert({
     user_id: userData.user.id,
     item_id: lot.item_id,

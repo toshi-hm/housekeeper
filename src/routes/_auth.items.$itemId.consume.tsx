@@ -1,4 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+
+const parseLocalDate = (dateStr: string) => {
+  const [y, m, d] = dateStr.split("-").map(Number) as [number, number, number];
+  return new Date(y, m - 1, d);
+};
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -171,12 +176,12 @@ const ItemConsumePage = () => {
                   </p>
                   {lot.expiry_date && (
                     <p className="text-xs text-muted-foreground">
-                      {t("expiryDate")}: {new Date(lot.expiry_date).toLocaleDateString()}
+                      {t("expiryDate")}: {parseLocalDate(lot.expiry_date).toLocaleDateString()}
                     </p>
                   )}
                   {lot.purchase_date && (
                     <p className="text-xs text-muted-foreground">
-                      {t("purchaseDate")}: {new Date(lot.purchase_date).toLocaleDateString()}
+                      {t("purchaseDate")}: {parseLocalDate(lot.purchase_date).toLocaleDateString()}
                     </p>
                   )}
                 </button>

@@ -19,12 +19,13 @@ const consumeItem = async ({ item, deltaAmount }: ConsumeParams): Promise<Item> 
   if (userError || !userData.user) throw new Error("Not authenticated");
 
   // Find the earliest-created lot to consume from (FIFO)
-  const { data: lots } = await supabase
+  const { data: lots, error: lotsError } = await supabase
     .from("item_lots")
     .select("*")
     .eq("item_id", item.id)
     .order("created_at", { ascending: true })
     .limit(1);
+  if (lotsError) throw lotsError;
 
   if (lots && lots.length > 0 && lots[0]) {
     await consumeLotFn({ lot: lots[0], item, deltaAmount });
