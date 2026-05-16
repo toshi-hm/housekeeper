@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
+import { consumeLot as consumeLotFn, LOTS_KEY } from "@/hooks/useItemLots";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -11,39 +12,57 @@ interface ConsumeParams {
   deltaAmount: number;
 }
 
+/** Consume from a single-lot item (backward compat path). */
 const consumeItem = async ({ item, deltaAmount }: ConsumeParams): Promise<Item> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
-  const result = computeConsumption(item, deltaAmount);
-  if (result.error) throw new Error(result.error);
+  // Find the earliest-created lot to consume from (FIFO)
+  const { data: lots, error: lotsError } = await supabase
+    .from("item_lots")
+    .select("*")
+    .eq("item_id", item.id)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  if (lotsError) throw lotsError;
 
-  const { data, error } = await supabase
+  if (lots && lots.length > 0 && lots[0]) {
+    await consumeLotFn({ lot: lots[0], item, deltaAmount });
+  } else {
+    // Fallback: no lots exist yet → update items table directly and create log
+    const result = computeConsumption(item, deltaAmount);
+    if (result.error) throw new Error(result.error);
+
+    await supabase
+      .from("items")
+      .update({
+        units: result.units_after,
+        opened_remaining: result.opened_remaining_after,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", item.id);
+
+    await supabase.from("consumption_logs").insert({
+      user_id: userData.user.id,
+      item_id: item.id,
+      delta_amount: deltaAmount,
+      delta_unit: item.content_unit,
+      units_before: item.units,
+      units_after: result.units_after,
+      opened_remaining_before: item.opened_remaining ?? null,
+      opened_remaining_after: result.opened_remaining_after,
+    });
+    // Skip syncItemAggregate: no lots exist, so it would reset items to units=0
+  }
+
+  const { data: updated, error } = await supabase
     .from("items")
-    .update({
-      units: result.units_after,
-      opened_remaining: result.opened_remaining_after,
-      updated_at: new Date().toISOString(),
-    })
+    .select("*")
     .eq("id", item.id)
-    .select()
     .single();
   if (error) throw error;
-
-  // Log failure is non-fatal: stock is already updated, so we skip throwing
-  await supabase.from("consumption_logs").insert({
-    user_id: userData.user.id,
-    item_id: item.id,
-    delta_amount: deltaAmount,
-    delta_unit: item.content_unit,
-    units_before: item.units,
-    units_after: result.units_after,
-    opened_remaining_before: item.opened_remaining ?? null,
-    opened_remaining_after: result.opened_remaining_after,
-  });
-
-  return data as Item;
+  return updated as Item;
 };
 
 export const useConsumeItem = () => {
@@ -56,6 +75,7 @@ export const useConsumeItem = () => {
       qc.setQueryData(["items", data.id], data);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["items"] }),
+        qc.invalidateQueries({ queryKey: [...LOTS_KEY, data.id] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs", data.id] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
       ]);

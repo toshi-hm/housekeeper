@@ -1,6 +1,100 @@
 import { describe, expect, test } from "bun:test";
 
-import { computeConsumption, DEFAULT_EXPIRY_WARNING_DAYS, getExpiryStatus } from "./item";
+import {
+  computeConsumption,
+  DEFAULT_EXPIRY_WARNING_DAYS,
+  formatRemaining,
+  getExpiryStatus,
+  itemLotSchema,
+} from "./item";
+
+// --- itemLotSchema ---
+
+describe("itemLotSchema", () => {
+  // Zod v4 requires version nibble [1-8] and variant nibble [89abAB]
+  const validLot = {
+    id: "00000000-0000-4000-8000-000000000001",
+    user_id: "00000000-0000-4000-8000-000000000002",
+    item_id: "00000000-0000-4000-8000-000000000003",
+    units: 2,
+    opened_remaining: null,
+    purchase_date: null,
+    expiry_date: "2099-12-31",
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
+  };
+
+  test("valid lot parses correctly", () => {
+    const result = itemLotSchema.safeParse(validLot);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.units).toBe(2);
+      expect(result.data.opened_remaining).toBeNull();
+    }
+  });
+
+  test("units=0 is allowed", () => {
+    const result = itemLotSchema.safeParse({ ...validLot, units: 0 });
+    expect(result.success).toBe(true);
+  });
+
+  test("negative units fail", () => {
+    const result = itemLotSchema.safeParse({ ...validLot, units: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  test("opened_remaining as number is valid", () => {
+    const result = itemLotSchema.safeParse({ ...validLot, opened_remaining: 350 });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.opened_remaining).toBe(350);
+  });
+
+  test("negative opened_remaining fails", () => {
+    const result = itemLotSchema.safeParse({ ...validLot, opened_remaining: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  test("missing required fields fail", () => {
+    const withoutId: Record<string, unknown> = { ...validLot };
+    delete withoutId["id"];
+    const result = itemLotSchema.safeParse(withoutId);
+    expect(result.success).toBe(false);
+  });
+});
+
+// --- formatRemaining ---
+
+describe("formatRemaining", () => {
+  test("all sealed: units × content_amount", () => {
+    expect(formatRemaining(3, 1000, null)).toBe("3000");
+  });
+
+  test("one opened unit: (units-1) × amount + opened_remaining", () => {
+    expect(formatRemaining(3, 1000, 350)).toBe("2350");
+  });
+
+  test("single unit fully sealed", () => {
+    expect(formatRemaining(1, 500, null)).toBe("500");
+  });
+
+  test("single unit opened", () => {
+    expect(formatRemaining(1, 500, 200)).toBe("200");
+  });
+
+  test("count unit (個) with content_amount=1", () => {
+    expect(formatRemaining(5, 1, null)).toBe("5");
+  });
+
+  test("decimal content_amount strips trailing zeros", () => {
+    // 2 × 1.5 = 3.0 → "3"
+    expect(formatRemaining(2, 1.5, null)).toBe("3");
+  });
+
+  test("decimal result keeps significant digits", () => {
+    // 1 × 1.5 opened=0.75 → (0 × 1.5) + 0.75 = 0.75
+    expect(formatRemaining(1, 1.5, 0.75)).toBe("0.75");
+  });
+});
 
 // --- getExpiryStatus ---
 
@@ -101,5 +195,11 @@ describe("computeConsumption", () => {
     expect(r.units_after).toBe(2);
     expect(r.opened_remaining_after).toBeNull();
     expect(r.error).toBeUndefined();
+  });
+
+  test("opened: consume more than opened with no sealed units left => error", () => {
+    // units=1 (the open unit), opened=200, delta=300: only 200 available, not 800
+    const r = computeConsumption({ ...baseItem, units: 1, opened_remaining: 200 }, 300);
+    expect(r.error).toBeDefined();
   });
 });

@@ -32,6 +32,8 @@ interface ItemFormProps {
   submitLabel?: string;
   onPendingFileChange?: (file: File | null) => void;
   onPendingImageUrlChange?: (url: string | null) => void;
+  /** Called after a barcode is scanned or manually looked up */
+  onBarcodeScanned?: (barcode: string, source: "db" | "api" | null) => void;
 }
 
 export const ItemForm = ({
@@ -41,6 +43,7 @@ export const ItemForm = ({
   submitLabel,
   onPendingFileChange,
   onPendingImageUrlChange,
+  onBarcodeScanned,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
   const { t: ts } = useTranslation("settings");
@@ -110,6 +113,7 @@ export const ItemForm = ({
       setBarcodeImageUrl(result.product.image_url);
       onPendingImageUrlChange?.(result.product.image_url);
     }
+    onBarcodeScanned?.(barcode, result.source);
   };
 
   const handleAddCategory = async (name: string) => {

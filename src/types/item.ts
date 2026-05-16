@@ -54,6 +54,18 @@ export const itemFormSchema = z.object({
   image_path: z.string().optional(),
 });
 
+export const itemLotSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  item_id: z.string().uuid(),
+  units: z.number().int().min(0).default(1),
+  opened_remaining: z.number().min(0).nullable().optional(),
+  purchase_date: z.string().nullable().optional(),
+  expiry_date: z.string().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
 export const consumeFormSchema = z.object({
   delta_amount: z.coerce.number().positive("消費量は0より大きい値を入力してください"),
 });
@@ -71,6 +83,7 @@ export const userSettingsSchema = z.object({
 export type Category = z.infer<typeof categorySchema>;
 export type StorageLocation = z.infer<typeof storageLocationSchema>;
 export type Item = z.infer<typeof itemSchema>;
+export type ItemLot = z.infer<typeof itemLotSchema>;
 export type ItemFormValues = z.infer<typeof itemFormSchema>;
 export type ConsumeFormValues = z.infer<typeof consumeFormSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;
@@ -97,6 +110,19 @@ export const getExpiryStatus = (
   return "ok";
 };
 
+/** カードや一覧で使う「残量」の合計値を文字列として返す。 */
+export const formatRemaining = (
+  units: number,
+  contentAmount: number,
+  openedRemaining: number | null,
+): string => {
+  const total =
+    openedRemaining !== null
+      ? (units - 1) * contentAmount + openedRemaining
+      : units * contentAmount;
+  return total % 1 === 0 ? String(total) : total.toFixed(2).replace(/\.?0+$/, "");
+};
+
 export const computeConsumption = (
   item: Pick<Item, "units" | "content_amount" | "content_unit" | "opened_remaining">,
   delta: number,
@@ -105,32 +131,36 @@ export const computeConsumption = (
   opened_remaining_after: number | null;
   error?: string;
 } => {
-  const contentAmount = item.content_amount;
-  let remaining = item.opened_remaining ?? contentAmount;
-  let units = item.units;
+  const { content_amount: contentAmount, units } = item;
+  const openedRemaining = item.opened_remaining ?? null;
 
-  remaining -= delta;
+  // Compute total available stock to detect over-consumption before mutating state.
+  // When opened_remaining is set, the open unit is already counted in `units`,
+  // so sealed units = units - 1.
+  const totalBefore =
+    units === 0
+      ? 0
+      : openedRemaining !== null
+        ? (units - 1) * contentAmount + openedRemaining
+        : units * contentAmount;
 
-  while (remaining < 0 && units > 0) {
-    units -= 1;
-    remaining += contentAmount;
-  }
-
-  if (remaining < 0) {
+  if (delta > totalBefore) {
     return { units_after: 0, opened_remaining_after: 0, error: "在庫が不足しています" };
   }
 
-  // opened unit fully consumed → decrement units
-  if (remaining === 0) {
-    units -= 1;
-    if (units < 0) {
-      return { units_after: 0, opened_remaining_after: 0, error: "在庫が不足しています" };
-    }
-    return { units_after: units, opened_remaining_after: null };
+  // Round to avoid floating-point noise (DB stores numeric(12,2))
+  const round = (n: number) => Math.round(n * 1e10) / 1e10;
+  const totalAfter = round(totalBefore - delta);
+
+  if (totalAfter === 0) {
+    return { units_after: 0, opened_remaining_after: null };
   }
 
-  return {
-    units_after: units,
-    opened_remaining_after: remaining,
-  };
+  const sealedUnits = Math.floor(round(totalAfter / contentAmount));
+  const openedAfter = round(totalAfter - sealedUnits * contentAmount);
+
+  if (openedAfter === 0) {
+    return { units_after: sealedUnits, opened_remaining_after: null };
+  }
+  return { units_after: sealedUnits + 1, opened_remaining_after: openedAfter };
 };

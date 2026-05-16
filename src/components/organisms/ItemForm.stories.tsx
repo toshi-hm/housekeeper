@@ -9,6 +9,8 @@ const meta = {
   parameters: { layout: "padded" },
   args: {
     onSubmit: fn(),
+    onBarcodeScanned: fn(),
+    onPendingFileChange: fn(),
   },
 } satisfies Meta<typeof ItemForm>;
 
@@ -43,5 +45,21 @@ export const Submitting: Story = {
       content_unit: "mL",
     },
     isSubmitting: true,
+  },
+};
+
+/** 追加購入として登録するモード（既存アイテムが検出された場合のラベル） */
+export const StackMode: Story = {
+  args: {
+    defaultValues: {
+      name: "有機牛乳",
+      barcode: "4901234567890",
+      units: 2,
+      content_amount: 1000,
+      content_unit: "mL",
+      purchase_date: "2024-01-15",
+      expiry_date: "2099-02-28",
+    },
+    submitLabel: "追加購入として登録",
   },
 };

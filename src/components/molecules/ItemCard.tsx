@@ -6,7 +6,7 @@ import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getExpiryStatus, type Item } from "@/types/item";
+import { formatRemaining, getExpiryStatus, type Item } from "@/types/item";
 
 interface ItemCardProps {
   item: Item;
@@ -64,7 +64,21 @@ export const ItemCard = ({ item, categoryName, locationName, warningDays }: Item
             {isEmpty ? (
               <span className="text-muted-foreground">{t("emptyStock")}</span>
             ) : (
-              <span>{t("unitsDisplay", { units: item.units })}</span>
+              <span>
+                {t("unitsDisplay", { units: item.units })}
+                {item.opened_remaining !== null && item.opened_remaining !== undefined && (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    {t("remainingDisplay", {
+                      amount: formatRemaining(
+                        item.units,
+                        item.content_amount,
+                        item.opened_remaining,
+                      ),
+                      unit: item.content_unit,
+                    })}
+                  </span>
+                )}
+              </span>
             )}
           </span>
           <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />

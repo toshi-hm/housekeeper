@@ -292,6 +292,48 @@ export interface Database {
         };
         Relationships: [];
       };
+      item_lots: {
+        Row: {
+          id: string;
+          user_id: string;
+          item_id: string;
+          units: number;
+          opened_remaining: number | null;
+          purchase_date: string | null;
+          expiry_date: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          item_id: string;
+          units?: number;
+          opened_remaining?: number | null;
+          purchase_date?: string | null;
+          expiry_date?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          item_id?: string;
+          units?: number;
+          opened_remaining?: number | null;
+          purchase_date?: string | null;
+          expiry_date?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "item_lots_item_id_fkey";
+            columns: ["item_id"];
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       shopping_list_items: {
         Row: {
           id: string;
