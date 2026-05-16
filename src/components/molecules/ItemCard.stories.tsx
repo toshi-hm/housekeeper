@@ -111,3 +111,66 @@ export const NoExpiry: Story = {
     },
   },
 };
+
+export const WithOpenedRemaining: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      name: "牛乳",
+      units: 3,
+      content_amount: 1000,
+      content_unit: "mL",
+      opened_remaining: 350,
+      category_id: null,
+      barcode: null,
+      storage_location_id: null,
+      expiry_date: "2099-06-01",
+      purchase_date: null,
+      notes: null,
+      image_path: null,
+    },
+    categoryName: "食品",
+    locationName: "冷蔵庫",
+  },
+};
+
+export const CountUnit: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      name: "コーヒーカプセル",
+      units: 12,
+      content_amount: 1,
+      content_unit: "個",
+      opened_remaining: null,
+      category_id: null,
+      barcode: null,
+      storage_location_id: null,
+      expiry_date: "2099-12-31",
+      purchase_date: null,
+      notes: null,
+      image_path: null,
+    },
+  },
+};
+
+export const MultiLotStacked: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      name: "シャンプー",
+      units: 5,
+      content_amount: 400,
+      content_unit: "mL",
+      opened_remaining: null,
+      category_id: null,
+      barcode: null,
+      storage_location_id: null,
+      expiry_date: "2099-06-01",
+      purchase_date: null,
+      notes: null,
+      image_path: null,
+    },
+    locationName: "洗面台",
+  },
+};

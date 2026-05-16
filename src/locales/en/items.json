@@ -58,6 +58,7 @@
   },
   "totalAmount": "Total",
   "unitsDisplay": "{{units}} units",
+  "remainingDisplay": "({{amount}}{{unit}} left)",
   "emptyStock": "Used up",
   "noItems": "No items",
   "searchPlaceholder": "Search by name or barcode",
@@ -94,5 +95,15 @@
   "consumeValidationError": "Enter a value greater than 0",
   "lookupFromHistory": "Found a match from your previously registered items",
   "unitsRequired": "Enter a quantity",
-  "contentAmountRequired": "Enter a value greater than 0"
+  "contentAmountRequired": "Enter a value greater than 0",
+  "stackSuccess": "Added as new stock to existing item",
+  "stackBannerTitle": "This item is already in your inventory",
+  "stackBannerBody": "\"{{name}}\" will have additional stock added. Enter quantity, purchase date, and expiry date. Category, location, and notes will be inherited.",
+  "stackSubmitLabel": "Add as additional stock",
+  "lots": "Lots",
+  "noLots": "No lot information",
+  "lotLabel": "Lot {{index}}",
+  "lotCount": "{{count}} lots",
+  "selectLot": "Select lot to use",
+  "selectLotHint": "Select a lot above to continue"
 }
