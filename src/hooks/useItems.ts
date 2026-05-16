@@ -5,7 +5,7 @@ import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import type { Item, ItemFormValues } from "@/types/item";
+import { type Item, type ItemFormValues, upsertItemInListCache } from "@/types/item";
 
 /** Filters applied server-side (Supabase query). Client-only filters such as
  *  expiryStatus and hideEmpty are handled by the caller after fetching. */
@@ -18,13 +18,6 @@ export interface ItemFilters {
 export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";
 
 const ITEMS_KEY = ["items"] as const;
-
-const upsertItemInListCache = (old: Item[] | undefined, incoming: Item): Item[] | undefined => {
-  if (!old) return old;
-  const index = old.findIndex((item) => item.id === incoming.id);
-  if (index === -1) return [incoming, ...old];
-  return old.map((item) => (item.id === incoming.id ? incoming : item));
-};
 
 const fetchItems = async (
   filters: ItemFilters = {},
