@@ -29,13 +29,9 @@ import { useDeleteItem, useItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus } from "@/types/item";
-
-const parseLocalDate = (dateStr: string) => {
-  const [y, m, d] = dateStr.split("-").map(Number) as [number, number, number];
-  return new Date(y, m - 1, d);
-};
 
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
   <div className="flex items-start gap-3">
@@ -369,7 +365,7 @@ const ItemDetailPage = () => {
                               </p>
                             )}
                           </div>
-                          {!isEmpty && (
+                          {(lot.units > 0 || lot.opened_remaining !== null) && (
                             <Button
                               variant="outline"
                               size="sm"

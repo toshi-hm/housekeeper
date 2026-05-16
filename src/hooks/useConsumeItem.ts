@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
-import { consumeLot as consumeLotFn, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { consumeLot as consumeLotFn, LOTS_KEY } from "@/hooks/useItemLots";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -53,8 +53,7 @@ const consumeItem = async ({ item, deltaAmount }: ConsumeParams): Promise<Item> 
       opened_remaining_before: item.opened_remaining ?? null,
       opened_remaining_after: result.opened_remaining_after,
     });
-
-    await syncItemAggregate(item.id);
+    // Skip syncItemAggregate: no lots exist, so it would reset items to units=0
   }
 
   const { data: updated, error } = await supabase

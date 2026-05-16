@@ -1,9 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-
-const parseLocalDate = (dateStr: string) => {
-  const [y, m, d] = dateStr.split("-").map(Number) as [number, number, number];
-  return new Date(y, m - 1, d);
-};
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import { useItem } from "@/hooks/useItems";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
 import { computeConsumption, type ItemLot } from "@/types/item";
 

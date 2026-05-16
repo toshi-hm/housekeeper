@@ -131,32 +131,35 @@ export const computeConsumption = (
   opened_remaining_after: number | null;
   error?: string;
 } => {
-  const contentAmount = item.content_amount;
-  let remaining = item.opened_remaining ?? contentAmount;
-  let units = item.units;
+  const { content_amount: contentAmount, units, opened_remaining: openedRemaining } = item;
 
-  remaining -= delta;
+  // Compute total available stock to detect over-consumption before mutating state.
+  // When opened_remaining is set, the open unit is already counted in `units`,
+  // so sealed units = units - 1.
+  const totalBefore =
+    units === 0
+      ? 0
+      : openedRemaining !== null
+        ? (units - 1) * contentAmount + openedRemaining
+        : units * contentAmount;
 
-  while (remaining < 0 && units > 0) {
-    units -= 1;
-    remaining += contentAmount;
-  }
-
-  if (remaining < 0) {
+  if (delta > totalBefore) {
     return { units_after: 0, opened_remaining_after: 0, error: "在庫が不足しています" };
   }
 
-  // opened unit fully consumed → decrement units
-  if (remaining === 0) {
-    units -= 1;
-    if (units < 0) {
-      return { units_after: 0, opened_remaining_after: 0, error: "在庫が不足しています" };
-    }
-    return { units_after: units, opened_remaining_after: null };
+  // Round to avoid floating-point noise (DB stores numeric(12,2))
+  const round = (n: number) => Math.round(n * 1e10) / 1e10;
+  const totalAfter = round(totalBefore - delta);
+
+  if (totalAfter === 0) {
+    return { units_after: 0, opened_remaining_after: null };
   }
 
-  return {
-    units_after: units,
-    opened_remaining_after: remaining,
-  };
+  const sealedUnits = Math.floor(round(totalAfter / contentAmount));
+  const openedAfter = round(totalAfter - sealedUnits * contentAmount);
+
+  if (openedAfter === 0) {
+    return { units_after: sealedUnits, opened_remaining_after: null };
+  }
+  return { units_after: sealedUnits + 1, opened_remaining_after: openedAfter };
 };

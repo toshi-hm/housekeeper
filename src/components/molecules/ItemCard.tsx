@@ -66,16 +66,18 @@ export const ItemCard = ({ item, categoryName, locationName, warningDays }: Item
             ) : (
               <span>
                 {t("unitsDisplay", { units: item.units })}
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  {t("remainingDisplay", {
-                    amount: formatRemaining(
-                      item.units,
-                      item.content_amount,
-                      item.opened_remaining ?? null,
-                    ),
-                    unit: item.content_unit,
-                  })}
-                </span>
+                {item.opened_remaining !== null && item.opened_remaining !== undefined && (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    {t("remainingDisplay", {
+                      amount: formatRemaining(
+                        item.units,
+                        item.content_amount,
+                        item.opened_remaining,
+                      ),
+                      unit: item.content_unit,
+                    })}
+                  </span>
+                )}
               </span>
             )}
           </span>

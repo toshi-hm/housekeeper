@@ -6,6 +6,7 @@ create table item_lots (
   item_id uuid not null references items(id) on delete cascade,
   units int not null default 1 check (units >= 0),
   opened_remaining numeric(12,2) check (opened_remaining is null or opened_remaining >= 0),
+  constraint item_lots_opened_requires_unit check (opened_remaining is null or units >= 1),
   purchase_date date,
   expiry_date date,
   created_at timestamptz not null default now(),
@@ -17,8 +18,17 @@ create index item_lots_user_idx on item_lots(user_id);
 create index item_lots_expiry_idx on item_lots(expiry_date);
 
 alter table item_lots enable row level security;
+-- Verify both user ownership and that item_id belongs to the same user,
+-- preventing cross-tenant references from malicious clients.
 create policy "item_lots_owner_all" on item_lots for all
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and exists (select 1 from items where items.id = item_lots.item_id and items.user_id = auth.uid())
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (select 1 from items where items.id = item_lots.item_id and items.user_id = auth.uid())
+  );
 
 create trigger item_lots_set_updated_at before update on item_lots
   for each row execute function public.set_updated_at();

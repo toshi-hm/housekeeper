@@ -196,4 +196,10 @@ describe("computeConsumption", () => {
     expect(r.opened_remaining_after).toBeNull();
     expect(r.error).toBeUndefined();
   });
+
+  test("opened: consume more than opened with no sealed units left => error", () => {
+    // units=1 (the open unit), opened=200, delta=300: only 200 available, not 800
+    const r = computeConsumption({ ...baseItem, units: 1, opened_remaining: 200 }, 300);
+    expect(r.error).toBeDefined();
+  });
 });

@@ -112,7 +112,7 @@ export const consumeLot = async ({
   if (error) throw error;
 
   // Log failure is non-fatal: stock is already updated above
-  await supabase.from("consumption_logs").insert({
+  const { error: logError } = await supabase.from("consumption_logs").insert({
     user_id: userData.user.id,
     item_id: lot.item_id,
     delta_amount: deltaAmount,
@@ -122,6 +122,7 @@ export const consumeLot = async ({
     opened_remaining_before: lot.opened_remaining ?? null,
     opened_remaining_after: result.opened_remaining_after,
   });
+  if (logError) console.warn("Failed to insert consumption log:", logError);
 
   await syncItemAggregate(lot.item_id);
 
