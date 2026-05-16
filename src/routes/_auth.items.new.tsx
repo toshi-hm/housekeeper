@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
-import { uploadItemImage } from "@/hooks/useItemImage";
+import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { useCreateItem } from "@/hooks/useItems";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
@@ -17,15 +17,21 @@ const NewItemPage = () => {
   const createItem = useCreateItem();
   const { toast } = useToast();
   const pendingFileRef = useRef<File | null>(null);
+  const pendingImageUrlRef = useRef<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (values: ItemFormValues) => {
     setIsSubmitting(true);
     try {
       const item = await createItem.mutateAsync(values);
-      if (pendingFileRef.current && item) {
+      const pendingFile = pendingFileRef.current;
+      const pendingImageUrl = pendingImageUrlRef.current;
+      if ((pendingFile || pendingImageUrl) && item) {
         try {
-          await uploadItemImage({ itemId: item.id, file: pendingFileRef.current });
+          const file =
+            pendingFile ??
+            (pendingImageUrl ? await downloadExternalImageAsFile(pendingImageUrl) : null);
+          if (file) await uploadItemImage({ itemId: item.id, file });
         } catch (err) {
           toast(
             err instanceof OfflineError ? t("common:offlineError") : t("imageUploadFailed"),
@@ -59,6 +65,9 @@ const NewItemPage = () => {
         isSubmitting={isSubmitting}
         onPendingFileChange={(file) => {
           pendingFileRef.current = file;
+        }}
+        onPendingImageUrlChange={(url) => {
+          pendingImageUrlRef.current = url;
         }}
       />
     </div>

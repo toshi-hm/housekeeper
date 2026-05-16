@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
-import { uploadItemImage } from "@/hooks/useItemImage";
+import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
@@ -20,6 +20,7 @@ const EditItemPage = () => {
   const updateItem = useUpdateItem(itemId);
   const { toast } = useToast();
   const pendingFileRef = useRef<File | null>(null);
+  const pendingImageUrlRef = useRef<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (values: ItemFormValues) => {
@@ -27,13 +28,14 @@ const EditItemPage = () => {
     try {
       const oldImagePath = item?.image_path ?? null;
       await updateItem.mutateAsync(values);
-      if (pendingFileRef.current) {
+      const pendingFile = pendingFileRef.current;
+      const pendingImageUrl = pendingImageUrlRef.current;
+      if (pendingFile || pendingImageUrl) {
         try {
-          await uploadItemImage({
-            itemId,
-            file: pendingFileRef.current,
-            oldImagePath,
-          });
+          const file =
+            pendingFile ??
+            (pendingImageUrl ? await downloadExternalImageAsFile(pendingImageUrl) : null);
+          if (file) await uploadItemImage({ itemId, file, oldImagePath });
         } catch (err) {
           toast(
             err instanceof OfflineError ? t("common:offlineError") : t("imageUploadFailed"),
@@ -110,6 +112,9 @@ const EditItemPage = () => {
         isSubmitting={isSubmitting}
         onPendingFileChange={(file) => {
           pendingFileRef.current = file;
+        }}
+        onPendingImageUrlChange={(url) => {
+          pendingImageUrlRef.current = url;
         }}
       />
     </div>
