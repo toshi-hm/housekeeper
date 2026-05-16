@@ -131,7 +131,8 @@ export const computeConsumption = (
   opened_remaining_after: number | null;
   error?: string;
 } => {
-  const { content_amount: contentAmount, units, opened_remaining: openedRemaining } = item;
+  const { content_amount: contentAmount, units } = item;
+  const openedRemaining = item.opened_remaining ?? null;
 
   // Compute total available stock to detect over-consumption before mutating state.
   // When opened_remaining is set, the open unit is already counted in `units`,
