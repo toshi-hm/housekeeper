@@ -13,7 +13,7 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
 import { computeConsumption, type ItemLot } from "@/types/item";
 
-const ItemConsumePage = () => {
+export const ItemConsumePage = () => {
   const { t } = useTranslation("items");
   const { itemId } = Route.useParams();
   const { lotId: preselectedLotId } = Route.useSearch();
