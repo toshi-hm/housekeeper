@@ -1,10 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { cleanup, render } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 
 import * as useItemLotsModule from "@/hooks/useItemLots";
 import * as useItemsModule from "@/hooks/useItems";
-import { ToastContext } from "@/lib/toast-context";
-import type { ToastContextValue } from "@/lib/toast-context";
+import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
 import type { Item, ItemLot } from "@/types/item";
 
 // Import routerContext via relative path (not in public package exports) to provide
@@ -12,7 +11,6 @@ import type { Item, ItemLot } from "@/types/item";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { routerContext } from "../../node_modules/@tanstack/react-router/dist/esm/routerContext.js";
-
 import { ItemConsumePage, Route } from "./_auth.items.$itemId.consume";
 
 // Minimal stub that satisfies what useNavigate reads off the router.
