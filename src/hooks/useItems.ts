@@ -19,6 +19,13 @@ export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";
 
 const ITEMS_KEY = ["items"] as const;
 
+const upsertItemInListCache = (old: Item[] | undefined, incoming: Item): Item[] | undefined => {
+  if (!old) return old;
+  const index = old.findIndex((item) => item.id === incoming.id);
+  if (index === -1) return [incoming, ...old];
+  return old.map((item) => (item.id === incoming.id ? incoming : item));
+};
+
 const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
@@ -252,6 +259,12 @@ export const useCreateItem = () => {
     mutationFn: createItem,
     onSuccess: async (data) => {
       const result = data as Item & { _revived?: boolean; _stacked?: boolean };
+
+      qc.setQueriesData<Item[]>({ queryKey: ITEMS_KEY }, (old) =>
+        upsertItemInListCache(old, result),
+      );
+      qc.setQueryData<Item>([...ITEMS_KEY, result.id], result);
+
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
       if (result._stacked || result._revived) {
         await qc.invalidateQueries({ queryKey: LOTS_KEY, refetchType: "all" });
