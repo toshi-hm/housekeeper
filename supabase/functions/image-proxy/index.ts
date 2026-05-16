@@ -4,6 +4,15 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const ALLOWED_HOSTS = [
+  /^[a-z0-9-]+\.yimg\.jp$/,
+  /^shopping\.yahoo\.co\.jp$/,
+  /^item-shopping\.c\.yimg\.jp$/,
+];
+
+const isAllowedHost = (hostname: string): boolean =>
+  ALLOWED_HOSTS.some((pattern) => pattern.test(hostname));
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,6 +30,30 @@ Deno.serve(async (req: Request) => {
     const { url } = (await req.json()) as { url: string };
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ error: "url is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid URL" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (parsed.protocol !== "https:") {
+      return new Response(JSON.stringify({ error: "Only HTTPS URLs are allowed" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!isAllowedHost(parsed.hostname)) {
+      return new Response(JSON.stringify({ error: "Host not allowed" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
