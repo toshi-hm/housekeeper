@@ -105,5 +105,8 @@
   "lotLabel": "Lot {{index}}",
   "lotCount": "{{count}} lots",
   "selectLot": "Select lot to use",
-  "selectLotHint": "Select a lot above to continue"
+  "selectLotHint": "Select a lot above to continue",
+  "lotsLoadError": "Failed to load stock lots. Please try again later.",
+  "back": "Back",
+  "noStockToConsume": "No stock available to use"
 }
