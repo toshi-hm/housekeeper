@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -18,13 +19,6 @@ export interface ItemFilters {
 export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";
 
 const ITEMS_KEY = ["items"] as const;
-
-const upsertItemInListCache = (old: Item[] | undefined, incoming: Item): Item[] | undefined => {
-  if (!old) return old;
-  const index = old.findIndex((item) => item.id === incoming.id);
-  if (index === -1) return [incoming, ...old];
-  return old.map((item) => (item.id === incoming.id ? incoming : item));
-};
 
 const fetchItems = async (
   filters: ItemFilters = {},
