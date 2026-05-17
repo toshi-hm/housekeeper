@@ -108,5 +108,8 @@
   "selectLotHint": "Select a lot above to continue",
   "urgentBannerDetails": "Show affected items",
   "urgentBannerNoExpiredItems": "No expired items",
-  "urgentBannerNoExpiringSoonItems": "No expiring-soon items"
+  "urgentBannerNoExpiringSoonItems": "No expiring-soon items",
+  "lotsLoadError": "Failed to load stock lots. Please try again later.",
+  "back": "Back",
+  "noStockToConsume": "No stock available to use"
 }

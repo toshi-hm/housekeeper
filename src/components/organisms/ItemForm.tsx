@@ -31,6 +31,7 @@ interface ItemFormProps {
   isSubmitting?: boolean;
   submitLabel?: string;
   onPendingFileChange?: (file: File | null) => void;
+  onPendingImageUrlChange?: (url: string | null) => void;
   /** Called after a barcode is scanned or manually looked up */
   onBarcodeScanned?: (barcode: string, source: "db" | "api" | null) => void;
 }
@@ -41,6 +42,7 @@ export const ItemForm = ({
   isSubmitting,
   submitLabel,
   onPendingFileChange,
+  onPendingImageUrlChange,
   onBarcodeScanned,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
@@ -76,6 +78,7 @@ export const ItemForm = ({
   const [unitsError, setUnitsError] = useState("");
   const [contentAmountError, setContentAmountError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+  const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
   const [lookupSource, setLookupSource] = useState<"db" | "api" | null>(null);
 
@@ -89,6 +92,10 @@ export const ItemForm = ({
     if (field === "barcode") {
       setLookupResult(undefined);
       setLookupSource(null);
+      if (!localPreviewUrl) {
+        setBarcodeImageUrl(null);
+        onPendingImageUrlChange?.(null);
+      }
     }
   };
 
@@ -102,6 +109,10 @@ export const ItemForm = ({
     setLookupResult(result.product);
     setLookupSource(result.source);
     if (result.product?.name) set("name", result.product.name);
+    if (result.product?.image_url && !localPreviewUrl) {
+      setBarcodeImageUrl(result.product.image_url);
+      onPendingImageUrlChange?.(result.product.image_url);
+    }
     onBarcodeScanned?.(barcode, result.source);
   };
 
@@ -131,14 +142,18 @@ export const ItemForm = ({
     if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     const url = URL.createObjectURL(file);
     setLocalPreviewUrl(url);
+    setBarcodeImageUrl(null);
+    onPendingImageUrlChange?.(null);
     onPendingFileChange?.(file);
   };
 
   const handleImageDelete = () => {
     if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     setLocalPreviewUrl(null);
+    setBarcodeImageUrl(null);
     set("image_path", "");
     onPendingFileChange?.(null);
+    onPendingImageUrlChange?.(null);
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -383,9 +398,13 @@ export const ItemForm = ({
         <div className="space-y-2">
           <Label>{t("image")}</Label>
           <ImageUploader
-            previewUrl={localPreviewUrl ?? existingImageUrl}
+            previewUrl={localPreviewUrl ?? barcodeImageUrl ?? existingImageUrl}
             onFile={handleImageFile}
-            onDelete={values.image_path || localPreviewUrl ? handleImageDelete : undefined}
+            onDelete={
+              values.image_path || localPreviewUrl || barcodeImageUrl
+                ? handleImageDelete
+                : undefined
+            }
           />
         </div>
 

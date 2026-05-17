@@ -5,6 +5,22 @@ import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 
+export const downloadExternalImageAsFile = async (imageUrl: string): Promise<File> => {
+  const { data, error } = await supabase.functions.invoke<{ data: string; contentType: string }>(
+    "image-proxy",
+    { body: { url: imageUrl } },
+  );
+  if (error || !data) throw new Error(error?.message ?? "Failed to download image");
+
+  const binaryStr = atob(data.data);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) {
+    bytes[i] = binaryStr.charCodeAt(i);
+  }
+  const ext = data.contentType.split("/")[1]?.split(";")[0] ?? "jpg";
+  return new File([bytes], `product.${ext}`, { type: data.contentType });
+};
+
 const BUCKET = "item-images";
 const SIGNED_URL_TTL = 60 * 50; // 50 minutes
 

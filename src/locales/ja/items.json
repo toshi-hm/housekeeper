@@ -108,5 +108,8 @@
   "selectLotHint": "上からロットを選んでください",
   "urgentBannerDetails": "対象の商品を表示",
   "urgentBannerNoExpiredItems": "期限切れの商品はありません",
-  "urgentBannerNoExpiringSoonItems": "期限間近の商品はありません"
+  "urgentBannerNoExpiringSoonItems": "期限間近の商品はありません",
+  "lotsLoadError": "在庫ロットの読み込みに失敗しました。時間をおいて再試行してください。",
+  "back": "戻る",
+  "noStockToConsume": "使用できる在庫がありません"
 }

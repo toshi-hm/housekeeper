@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -252,6 +253,12 @@ export const useCreateItem = () => {
     mutationFn: createItem,
     onSuccess: async (data) => {
       const result = data as Item & { _revived?: boolean; _stacked?: boolean };
+
+      qc.setQueriesData<Item[]>({ queryKey: ITEMS_KEY }, (old) =>
+        upsertItemInListCache(old, result),
+      );
+      qc.setQueryData<Item>([...ITEMS_KEY, result.id], result);
+
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
       if (result._stacked || result._revived) {
         await qc.invalidateQueries({ queryKey: LOTS_KEY, refetchType: "all" });

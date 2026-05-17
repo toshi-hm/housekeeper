@@ -13,13 +13,13 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
 import { computeConsumption, type ItemLot } from "@/types/item";
 
-const ItemConsumePage = () => {
+export const ItemConsumePage = () => {
   const { t } = useTranslation("items");
   const { itemId } = Route.useParams();
   const { lotId: preselectedLotId } = Route.useSearch();
   const navigate = useNavigate();
   const { data: item, isLoading: itemLoading } = useItem(itemId);
-  const { data: lots = [], isLoading: lotsLoading } = useItemLots(itemId);
+  const { data: lots = [], isLoading: lotsLoading, isError: lotsError } = useItemLots(itemId);
   const consumeLot = useConsumeLot();
   const { toast } = useToast();
   const [selectedLotId, setSelectedLotId] = useState<string | null>(preselectedLotId ?? null);
@@ -76,6 +76,29 @@ const ItemConsumePage = () => {
     return (
       <div className="flex min-h-[200px] items-center justify-center">
         <Spinner />
+      </div>
+    );
+  }
+
+  if (lotsError) {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => void navigate({ to: "/items/$itemId", params: { itemId } })}
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="space-y-3 rounded-lg border border-destructive p-4 text-destructive">
+          <p className="font-medium">{t("lotsLoadError")}</p>
+          <Button
+            variant="outline"
+            onClick={() => void navigate({ to: "/items/$itemId", params: { itemId } })}
+          >
+            {t("back")}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -239,6 +262,10 @@ const ItemConsumePage = () => {
             {t("consume")}
           </Button>
         </>
+      )}
+
+      {activeLots.length === 0 && (
+        <p className="text-center text-sm text-muted-foreground">{t("noStockToConsume")}</p>
       )}
 
       {hasMultipleLots && !selectedLot && (
