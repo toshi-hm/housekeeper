@@ -90,10 +90,7 @@ export type UserSettings = z.infer<typeof userSettingsSchema>;
 
 export type ExpiryStatus = "expired" | "expiring-soon" | "ok" | "unknown";
 
-export const upsertItemInListCache = (
-  old: unknown,
-  incoming: Item,
-): Item[] | undefined => {
+export const upsertItemInListCache = (old: unknown, incoming: Item): Item[] | undefined => {
   if (!Array.isArray(old)) return undefined;
   const list = old as Item[];
   const index = list.findIndex((item) => item.id === incoming.id);
