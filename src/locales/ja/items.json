@@ -105,5 +105,8 @@
   "lotLabel": "ロット{{index}}",
   "lotCount": "{{count}}ロット",
   "selectLot": "使うロットを選択",
-  "selectLotHint": "上からロットを選んでください"
+  "selectLotHint": "上からロットを選んでください",
+  "lotsLoadError": "在庫ロットの読み込みに失敗しました。時間をおいて再試行してください。",
+  "back": "戻る",
+  "noStockToConsume": "使用できる在庫がありません"
 }
