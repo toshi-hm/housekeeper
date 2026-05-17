@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import { type Item, type ItemFormValues, upsertItemInListCache } from "@/types/item";
+import type { Item, ItemFormValues } from "@/types/item";
 
 /** Filters applied server-side (Supabase query). Client-only filters such as
  *  expiryStatus and hideEmpty are handled by the caller after fetching. */

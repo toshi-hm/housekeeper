@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { type Item, upsertItemInListCache } from "@/types/item";
+import { upsertItemInListCache } from "@/lib/itemCache";
+import type { Item } from "@/types/item";
 
 const makeItem = (overrides: Partial<Item> = {}): Item => ({
   id: "item-1",
