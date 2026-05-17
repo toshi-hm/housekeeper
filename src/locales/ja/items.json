@@ -105,5 +105,8 @@
   "lotLabel": "ロット{{index}}",
   "lotCount": "{{count}}ロット",
   "selectLot": "使うロットを選択",
-  "selectLotHint": "上からロットを選んでください"
+  "selectLotHint": "上からロットを選んでください",
+  "urgentBannerDetails": "対象の商品を表示",
+  "urgentBannerNoExpiredItems": "期限切れの商品はありません",
+  "urgentBannerNoExpiringSoonItems": "期限間近の商品はありません"
 }

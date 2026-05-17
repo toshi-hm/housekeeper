@@ -105,5 +105,8 @@
   "lotLabel": "Lot {{index}}",
   "lotCount": "{{count}} lots",
   "selectLot": "Select lot to use",
-  "selectLotHint": "Select a lot above to continue"
+  "selectLotHint": "Select a lot above to continue",
+  "urgentBannerDetails": "Show affected items",
+  "urgentBannerNoExpiredItems": "No expired items",
+  "urgentBannerNoExpiringSoonItems": "No expiring-soon items"
 }
