@@ -29,12 +29,12 @@ describe("upsertItemInListCache", () => {
     expect(result).toBeUndefined();
   });
 
-  test("non-array cache (single Item object) → returns as-is without error", () => {
+  test("non-array cache (single Item object) → returns undefined without error", () => {
     const singleItem = makeItem({ id: "other-item" });
     // Simulates the case where a per-item query cache (Item, not Item[]) is hit
     // by setQueriesData({ queryKey: ITEMS_KEY })
-    const result = upsertItemInListCache(singleItem as unknown as Item[], makeItem());
-    expect(result).toBe(singleItem);
+    const result = upsertItemInListCache(singleItem, makeItem());
+    expect(result).toBeUndefined();
   });
 
   test("empty list → prepends incoming item", () => {

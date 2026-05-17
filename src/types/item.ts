@@ -91,13 +91,14 @@ export type UserSettings = z.infer<typeof userSettingsSchema>;
 export type ExpiryStatus = "expired" | "expiring-soon" | "ok" | "unknown";
 
 export const upsertItemInListCache = (
-  old: Item[] | undefined,
+  old: unknown,
   incoming: Item,
 ): Item[] | undefined => {
-  if (!old || !Array.isArray(old)) return old;
-  const index = old.findIndex((item) => item.id === incoming.id);
-  if (index === -1) return [incoming, ...old];
-  return old.map((item) => (item.id === incoming.id ? incoming : item));
+  if (!Array.isArray(old)) return undefined;
+  const list = old as Item[];
+  const index = list.findIndex((item) => item.id === incoming.id);
+  if (index === -1) return [incoming, ...list];
+  return list.map((item) => (item.id === incoming.id ? incoming : item));
 };
 
 export const DEFAULT_EXPIRY_WARNING_DAYS = 3;
