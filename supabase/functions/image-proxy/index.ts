@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
     const matchedType =
       matchedTypeFromHeader ??
       (canInferContentTypeFromPath(contentType)
-        ? inferContentTypeFromPath(finalUrl.pathname) ?? inferContentTypeFromPath(parsed.pathname)
+        ? (inferContentTypeFromPath(finalUrl.pathname) ?? inferContentTypeFromPath(parsed.pathname))
         : null);
     if (!matchedType) {
       return new Response(JSON.stringify({ error: "Unsupported content type" }), {
