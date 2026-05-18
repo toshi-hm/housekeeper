@@ -49,10 +49,17 @@ const DashboardPage = () => {
     return true;
   });
 
-  const urgentCount = items.filter((item) => {
+  const urgentItems = items.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
-  }).length;
+  });
+  const urgentCount = urgentItems.length;
+  const expiredItems = urgentItems.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
+  );
+  const expiringSoonItems = urgentItems.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
+  );
 
   return (
     <div className="space-y-4">
@@ -74,11 +81,60 @@ const DashboardPage = () => {
 
       {/* Expiry alert banner */}
       {urgentCount > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">
-          <AlertTriangle className="h-5 w-5 shrink-0" />
-          <p className="text-sm">
-            <span className="font-medium">{t("urgentBanner", { count: urgentCount })}</span>
-          </p>
+        <div className="space-y-3 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p className="text-sm">
+              <span className="font-medium">{t("urgentBanner", { count: urgentCount })}</span>
+            </p>
+          </div>
+          <details className="rounded-md border border-yellow-200 bg-yellow-100/50 p-2">
+            <summary className="cursor-pointer text-sm font-medium">
+              {t("urgentBannerDetails")}
+            </summary>
+            <div className="mt-3 space-y-3 text-sm">
+              <div>
+                <p className="mb-1 font-medium">{t("expiryStatus.expired")}</p>
+                {expiredItems.length === 0 ? (
+                  <p className="text-xs text-yellow-700">{t("urgentBannerNoExpiredItems")}</p>
+                ) : (
+                  <ul className="list-inside list-disc space-y-1">
+                    {expiredItems.map((item) => (
+                      <li key={item.id}>
+                        <Link
+                          className="underline decoration-yellow-800 underline-offset-2 hover:opacity-80"
+                          to="/items/$itemId"
+                          params={{ itemId: item.id }}
+                        >
+                          {item.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <p className="mb-1 font-medium">{t("expiryStatus.expiring-soon")}</p>
+                {expiringSoonItems.length === 0 ? (
+                  <p className="text-xs text-yellow-700">{t("urgentBannerNoExpiringSoonItems")}</p>
+                ) : (
+                  <ul className="list-inside list-disc space-y-1">
+                    {expiringSoonItems.map((item) => (
+                      <li key={item.id}>
+                        <Link
+                          className="underline decoration-yellow-800 underline-offset-2 hover:opacity-80"
+                          to="/items/$itemId"
+                          params={{ itemId: item.id }}
+                        >
+                          {item.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </details>
         </div>
       )}
 
