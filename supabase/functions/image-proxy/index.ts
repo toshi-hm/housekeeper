@@ -11,6 +11,7 @@ const ALLOWED_HOSTS = [
 ];
 
 const ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const GENERIC_CONTENT_TYPES = ["application/octet-stream", "binary/octet-stream"];
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -26,6 +27,16 @@ const inferContentTypeFromPath = (path: string): string | null => {
   if (normalized.endsWith(".png")) return "image/png";
   if (normalized.endsWith(".webp")) return "image/webp";
   return null;
+};
+
+const getMatchedTypeFromHeader = (contentType: string): string | null => {
+  const normalized = contentType.split(";")[0]?.trim().toLowerCase() ?? "";
+  return ALLOWED_CONTENT_TYPES.find((t) => normalized === t) ?? null;
+};
+
+const canInferContentTypeFromPath = (contentType: string): boolean => {
+  const normalized = contentType.split(";")[0]?.trim().toLowerCase() ?? "";
+  return !normalized || GENERIC_CONTENT_TYPES.includes(normalized);
 };
 
 Deno.serve(async (req: Request) => {
@@ -87,11 +98,12 @@ Deno.serve(async (req: Request) => {
 
     // Validate Content-Type before reading body
     const contentType = res.headers.get("Content-Type") ?? "";
-    const matchedTypeFromHeader = ALLOWED_CONTENT_TYPES.find((t) => contentType.startsWith(t));
+    const matchedTypeFromHeader = getMatchedTypeFromHeader(contentType);
     const matchedType =
       matchedTypeFromHeader ??
-      inferContentTypeFromPath(finalUrl.pathname) ??
-      inferContentTypeFromPath(parsed.pathname);
+      (canInferContentTypeFromPath(contentType)
+        ? inferContentTypeFromPath(finalUrl.pathname) ?? inferContentTypeFromPath(parsed.pathname)
+        : null);
     if (!matchedType) {
       return new Response(JSON.stringify({ error: "Unsupported content type" }), {
         status: 400,
