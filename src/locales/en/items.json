@@ -111,5 +111,13 @@
   "urgentBannerNoExpiringSoonItems": "No expiring-soon items",
   "lotsLoadError": "Failed to load stock lots. Please try again later.",
   "back": "Back",
-  "noStockToConsume": "No stock available to use"
+  "noStockToConsume": "No stock available to use",
+  "quickFiltersLabel": "Quick filters",
+  "quickFilterAll": "All",
+  "quickFilterUrgent": "Needs attention",
+  "clearFilters": "Clear filters",
+  "activeFilterResult": "Showing {{count}} items",
+  "countLabel": "Showing {{count}} / {{total}} items",
+  "showExpiredOnly": "Expired only",
+  "showExpiringSoonOnly": "Expiring soon only"
 }

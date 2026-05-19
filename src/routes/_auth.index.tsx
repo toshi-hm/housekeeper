@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -25,6 +25,9 @@ const DashboardPage = () => {
   const [categoryId, setCategoryId] = useState("");
   const [locationId, setLocationId] = useState("");
   const [expiryFilter, setExpiryFilter] = useState("");
+  const [quickFilter, setQuickFilter] = useState<
+    "all" | "urgent" | "expired" | "expiring-soon" | "ok"
+  >("all");
   const [sort, setSort] = useState<ItemSortKey>("created_at");
   const [showFilters, setShowFilters] = useState(false);
   const [hideEmpty, setHideEmpty] = useState(true);
@@ -40,26 +43,53 @@ const DashboardPage = () => {
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   const locationMap = Object.fromEntries(locations.map((l) => [l.id, l.name]));
 
-  const filtered = items.filter((item) => {
-    if (hideEmpty && item.units === 0) return false;
-    if (expiryFilter && expiryFilter !== "all") {
-      const status = getExpiryStatus(item.expiry_date);
-      if (status !== expiryFilter) return false;
-    }
-    return true;
-  });
+  const itemsWithStatus = items.map((item) => ({
+    item,
+    status: getExpiryStatus(item.expiry_date, warningDays),
+  }));
 
-  const urgentItems = items.filter((item) => {
-    const status = getExpiryStatus(item.expiry_date, warningDays);
-    return (status === "expired" || status === "expiring-soon") && item.units > 0;
-  });
+  const visibleItemsWithStatus = itemsWithStatus.filter(({ item }) => !hideEmpty || item.units > 0);
+
+  const filtered = visibleItemsWithStatus
+    .filter(({ status }) => {
+      if (quickFilter === "urgent") return status === "expired" || status === "expiring-soon";
+      if (quickFilter === "all") return true;
+      return status === quickFilter;
+    })
+    .filter(({ status }) => !expiryFilter || expiryFilter === "all" || status === expiryFilter)
+    .map(({ item }) => item);
+
+  const urgentItems = visibleItemsWithStatus
+    .filter(({ status }) => status === "expired" || status === "expiring-soon")
+    .map(({ item }) => item);
   const urgentCount = urgentItems.length;
-  const expiredItems = urgentItems.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
+  const expiredItems = visibleItemsWithStatus
+    .filter(({ status }) => status === "expired")
+    .map(({ item }) => item);
+  const expiringSoonItems = visibleItemsWithStatus
+    .filter(({ status }) => status === "expiring-soon")
+    .map(({ item }) => item);
+
+  const quickFilterCounts = {
+    all: visibleItemsWithStatus.length,
+    urgent: urgentItems.length,
+    expired: expiredItems.length,
+    "expiring-soon": expiringSoonItems.length,
+    ok: visibleItemsWithStatus.filter(({ status }) => status === "ok").length,
+  } as const;
+
+  const hasActiveFilters = Boolean(
+    search || categoryId || locationId || expiryFilter || quickFilter !== "all" || !hideEmpty,
   );
-  const expiringSoonItems = urgentItems.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
-  );
+
+  const clearFilters = () => {
+    setSearch("");
+    setCategoryId("");
+    setLocationId("");
+    setExpiryFilter("");
+    setQuickFilter("all");
+    setHideEmpty(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -67,7 +97,9 @@ const DashboardPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{items.length}件</p>
+          <p className="text-sm text-muted-foreground">
+            {t("countLabel", { count: filtered.length, total: visibleItemsWithStatus.length })}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/items/new">
@@ -90,8 +122,26 @@ const DashboardPage = () => {
           </div>
           <details className="rounded-md border border-yellow-200 bg-yellow-100/50 p-2">
             <summary className="cursor-pointer text-sm font-medium">
-              {t("urgentBannerDetails")}
+              {t("urgentBannerDetails")} ({urgentCount})
             </summary>
+            <div className="mt-2 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 border-yellow-400 text-yellow-900"
+                onClick={() => setQuickFilter("expired")}
+              >
+                {t("showExpiredOnly")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 border-yellow-400 text-yellow-900"
+                onClick={() => setQuickFilter("expiring-soon")}
+              >
+                {t("showExpiringSoonOnly")}
+              </Button>
+            </div>
             <div className="mt-3 space-y-3 text-sm">
               <div>
                 <p className="mb-1 font-medium">{t("expiryStatus.expired")}</p>
@@ -158,6 +208,41 @@ const DashboardPage = () => {
           <SlidersHorizontal className="h-4 w-4" />
         </Button>
       </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">{t("quickFiltersLabel")}</p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: "all", label: t("quickFilterAll") },
+            { key: "urgent", label: t("quickFilterUrgent") },
+            { key: "expired", label: t("expiryStatus.expired") },
+            { key: "expiring-soon", label: t("expiryStatus.expiring-soon") },
+            { key: "ok", label: t("expiryStatus.ok") },
+          ].map((chip) => (
+            <Button
+              key={chip.key}
+              variant={quickFilter === chip.key ? "default" : "outline"}
+              size="sm"
+              className="h-8 rounded-full px-3 text-xs"
+              onClick={() => setQuickFilter(chip.key as typeof quickFilter)}
+            >
+              {chip.label} ({quickFilterCounts[chip.key as keyof typeof quickFilterCounts]})
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {hasActiveFilters && (
+        <div className="flex items-center justify-between rounded-lg border border-dashed p-2 text-xs">
+          <span className="text-muted-foreground">
+            {t("activeFilterResult", { count: filtered.length })}
+          </span>
+          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={clearFilters}>
+            <X className="mr-1 h-3.5 w-3.5" />
+            {t("clearFilters")}
+          </Button>
+        </div>
+      )}
 
       {/* Filter panel */}
       {showFilters && (
