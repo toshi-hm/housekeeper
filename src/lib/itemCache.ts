@@ -1,18 +1,23 @@
+import type { ItemSortKey } from "@/hooks/useItems";
 import type { Item } from "@/types/item";
 
-import type { ItemSortKey } from "@/hooks/useItems";
-
-const compareNullableDatesAsc = (a: string | null, b: string | null): number => {
+const compareNullableDatesAsc = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+): number => {
   if (a === b) return 0;
-  if (a === null) return 1;
-  if (b === null) return -1;
+  if (!a) return 1;
+  if (!b) return -1;
   return a.localeCompare(b);
 };
 
-const compareNullableDatesDesc = (a: string | null, b: string | null): number => {
+const compareNullableDatesDesc = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+): number => {
   if (a === b) return 0;
-  if (a === null) return 1;
-  if (b === null) return -1;
+  if (!a) return 1;
+  if (!b) return -1;
   return b.localeCompare(a);
 };
 

@@ -37,7 +37,11 @@ const matchesItemFilters = (item: Item, filters: ItemFilters): boolean => {
   if (filters.categoryId && item.category_id !== filters.categoryId) return false;
   if (filters.storageLocationId && item.storage_location_id !== filters.storageLocationId)
     return false;
-  if (filters.search && !matchesSearch(item.name, filters.search) && !matchesSearch(item.barcode, filters.search)) {
+  if (
+    filters.search &&
+    !matchesSearch(item.name, filters.search) &&
+    !matchesSearch(item.barcode, filters.search)
+  ) {
     return false;
   }
   return true;
@@ -309,12 +313,14 @@ export const useUpdateItem = (id: string) => {
       for (const [queryKey, cachedItems] of listQueries) {
         if (!Array.isArray(cachedItems) || !Array.isArray(queryKey)) continue;
         const [, rawFilters, rawSort] = queryKey;
-        const sort = rawSort === "expiry_date" || rawSort === "purchase_date" ? rawSort : "created_at";
+        const sort =
+          rawSort === "expiry_date" || rawSort === "purchase_date" ? rawSort : "created_at";
 
         if (rawFilters === "with-expiry") {
-          const next = !updatedItem.deleted_at && updatedItem.expiry_date
-            ? upsertItemInListCache(cachedItems, updatedItem, "expiry_date")
-            : cachedItems.filter((item) => item.id !== updatedItem.id);
+          const next =
+            !updatedItem.deleted_at && updatedItem.expiry_date
+              ? upsertItemInListCache(cachedItems, updatedItem, "expiry_date")
+              : cachedItems.filter((item) => item.id !== updatedItem.id);
           qc.setQueryData(queryKey, next);
           continue;
         }
