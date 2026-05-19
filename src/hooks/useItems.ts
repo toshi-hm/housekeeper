@@ -20,6 +20,22 @@ export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";
 
 const ITEMS_KEY = ["items"] as const;
 
+const normalizeSearch = (value: string) => value.toLowerCase();
+
+const matchesItemFilters = (item: Item, filters: ItemFilters): boolean => {
+  if (item.deleted_at) return false;
+  if (filters.categoryId && item.category_id !== filters.categoryId) return false;
+  if (filters.storageLocationId && item.storage_location_id !== filters.storageLocationId)
+    return false;
+  if (filters.search) {
+    const needle = normalizeSearch(filters.search);
+    const name = normalizeSearch(item.name);
+    const barcode = normalizeSearch(item.barcode ?? "");
+    if (!name.includes(needle) && !barcode.includes(needle)) return false;
+  }
+  return true;
+};
+
 const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
@@ -279,7 +295,36 @@ export const useUpdateItem = (id: string) => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: (values: Partial<ItemFormValues>) => updateItem(id, values),
-    onSuccess: async () => {
+    onSuccess: async (updatedItem) => {
+      qc.setQueryData<Item>([...ITEMS_KEY, updatedItem.id], updatedItem);
+
+      const listQueries = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
+      for (const [queryKey, cachedItems] of listQueries) {
+        if (!Array.isArray(cachedItems) || !Array.isArray(queryKey)) continue;
+        const [, rawFilters] = queryKey;
+        if (rawFilters === "with-expiry") {
+          const next = updatedItem.expiry_date
+            ? upsertItemInListCache(cachedItems, updatedItem)
+            : cachedItems.filter((item) => item.id !== updatedItem.id);
+          qc.setQueryData(queryKey, next);
+          continue;
+        }
+
+        const filters =
+          rawFilters && typeof rawFilters === "object"
+            ? (rawFilters as ItemFilters)
+            : ({} as ItemFilters);
+
+        if (matchesItemFilters(updatedItem, filters)) {
+          qc.setQueryData(queryKey, upsertItemInListCache(cachedItems, updatedItem));
+        } else {
+          qc.setQueryData(
+            queryKey,
+            cachedItems.filter((item) => item.id !== updatedItem.id),
+          );
+        }
+      }
+
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
     onError: (error) => {
