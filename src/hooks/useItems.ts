@@ -20,6 +20,57 @@ export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";
 
 const ITEMS_KEY = ["items"] as const;
 
+const normalizeSearch = (value: string): string => value.trim().toLocaleLowerCase();
+
+const containsSearch = (target: string | null, search: string): boolean => {
+  if (!target) return false;
+  return target.toLocaleLowerCase().includes(search);
+};
+
+const matchesItemFilters = (item: Item, filters: ItemFilters): boolean => {
+  if (item.deleted_at) return false;
+
+  if (filters.search) {
+    const normalizedSearch = normalizeSearch(filters.search);
+    if (normalizedSearch.length > 0) {
+      const matchName = containsSearch(item.name, normalizedSearch);
+      const matchBarcode = containsSearch(item.barcode ?? null, normalizedSearch);
+      if (!matchName && !matchBarcode) return false;
+    }
+  }
+
+  if (filters.categoryId && item.category_id !== filters.categoryId) return false;
+  if (filters.storageLocationId && item.storage_location_id !== filters.storageLocationId)
+    return false;
+
+  return true;
+};
+
+const compareNullableDate = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+): number => {
+  if (a === b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  return a.localeCompare(b);
+};
+
+const sortItems = (items: Item[], sort: ItemSortKey): Item[] => {
+  const list = [...items];
+  if (sort === "expiry_date") {
+    list.sort((a, b) => compareNullableDate(a.expiry_date, b.expiry_date));
+    return list;
+  }
+
+  list.sort((a, b) => {
+    const av = a[sort] ?? "";
+    const bv = b[sort] ?? "";
+    return bv.localeCompare(av);
+  });
+  return list;
+};
+
 const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
@@ -279,7 +330,39 @@ export const useUpdateItem = (id: string) => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: (values: Partial<ItemFormValues>) => updateItem(id, values),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      qc.setQueryData<Item>([...ITEMS_KEY, result.id], result);
+
+      const listCaches = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
+      for (const [key, data] of listCaches) {
+        if (!Array.isArray(data)) continue;
+
+        const second = key[1];
+
+        if (typeof second === "string") {
+          if (second === "with-expiry") {
+            const next =
+              result.deleted_at || !result.expiry_date
+                ? data.filter((item) => item.id !== result.id)
+                : sortItems(upsertItemInListCache(data, result) ?? data, "expiry_date");
+            qc.setQueryData<Item[]>(key, next);
+          }
+          continue;
+        }
+
+        if (second && typeof second === "object") {
+          const filters = second as ItemFilters;
+          const sort = (key[2] as ItemSortKey | undefined) ?? "created_at";
+          const next = matchesItemFilters(result, filters)
+            ? sortItems(upsertItemInListCache(data, result) ?? data, sort)
+            : data.filter((item) => item.id !== result.id);
+          qc.setQueryData<Item[]>(key, next);
+          continue;
+        }
+
+        qc.setQueryData<Item[]>(key, upsertItemInListCache(data, result) ?? data);
+      }
+
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
     onError: (error) => {
