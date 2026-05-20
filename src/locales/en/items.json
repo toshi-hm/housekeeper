@@ -119,5 +119,6 @@
   "activeFilterResult": "Showing {{count}} items",
   "countLabel": "Showing {{count}} / {{total}} items",
   "showExpiredOnly": "Expired only",
-  "showExpiringSoonOnly": "Expiring soon only"
+  "showExpiringSoonOnly": "Expiring soon only",
+  "sortShortcutsLabel": "Sort shortcuts"
 }

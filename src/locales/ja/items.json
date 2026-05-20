@@ -119,5 +119,6 @@
   "activeFilterResult": "{{count}}件を表示中",
   "countLabel": "{{count}}件を表示 / 全{{total}}件",
   "showExpiredOnly": "期限切れのみ",
-  "showExpiringSoonOnly": "期限間近のみ"
+  "showExpiringSoonOnly": "期限間近のみ",
+  "sortShortcutsLabel": "並び替えショートカット"
 }

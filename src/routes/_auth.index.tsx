@@ -232,6 +232,36 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">{t("sortShortcutsLabel")}</p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={sort === "expiry_date" ? "default" : "outline"}
+            size="sm"
+            className="h-8 rounded-full px-3 text-xs"
+            onClick={() => setSort("expiry_date")}
+          >
+            {t("sortByExpiry")}
+          </Button>
+          <Button
+            variant={sort === "purchase_date" ? "default" : "outline"}
+            size="sm"
+            className="h-8 rounded-full px-3 text-xs"
+            onClick={() => setSort("purchase_date")}
+          >
+            {t("sortByPurchaseDate")}
+          </Button>
+          <Button
+            variant={sort === "created_at" ? "default" : "outline"}
+            size="sm"
+            className="h-8 rounded-full px-3 text-xs"
+            onClick={() => setSort("created_at")}
+          >
+            {t("sortByCreatedAt")}
+          </Button>
+        </div>
+      </div>
+
       {hasActiveFilters && (
         <div className="flex items-center justify-between rounded-lg border border-dashed p-2 text-xs">
           <span className="text-muted-foreground">
@@ -330,7 +360,12 @@ const DashboardPage = () => {
               </Link>
             </>
           ) : (
-            <p className="text-lg font-medium">{t("noMatchingItems")}</p>
+            <>
+              <p className="text-lg font-medium">{t("noMatchingItems")}</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={clearFilters}>
+                {t("clearFilters")}
+              </Button>
+            </>
           )}
         </div>
       ) : (
