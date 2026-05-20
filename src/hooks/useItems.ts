@@ -80,8 +80,8 @@ const fetchItem = async (id: string): Promise<Item> => {
   return data as Item;
 };
 
-const normalizeFormValues = (values: Partial<ItemFormValues>) => ({
-  ...(values.name !== undefined && { name: values.name }),
+const normalizeCreateValues = (values: ItemFormValues) => ({
+  name: values.name,
   barcode: values.barcode || null,
   category_id: values.category_id || null,
   storage_location_id: values.storage_location_id || null,
@@ -96,6 +96,23 @@ const normalizeFormValues = (values: Partial<ItemFormValues>) => ({
   expiry_date: values.expiry_date || null,
   notes: values.notes || null,
   image_path: values.image_path || null,
+});
+
+const normalizeUpdateValues = (values: Partial<ItemFormValues>) => ({
+  ...(values.name !== undefined && { name: values.name }),
+  ...(values.barcode !== undefined && { barcode: values.barcode || null }),
+  ...(values.category_id !== undefined && { category_id: values.category_id || null }),
+  ...(values.storage_location_id !== undefined && {
+    storage_location_id: values.storage_location_id || null,
+  }),
+  ...(values.units !== undefined && { units: values.units }),
+  ...(values.content_amount !== undefined && { content_amount: values.content_amount }),
+  ...(values.content_unit !== undefined && { content_unit: values.content_unit }),
+  ...(values.opened_remaining !== undefined && { opened_remaining: values.opened_remaining }),
+  ...(values.purchase_date !== undefined && { purchase_date: values.purchase_date || null }),
+  ...(values.expiry_date !== undefined && { expiry_date: values.expiry_date || null }),
+  ...(values.notes !== undefined && { notes: values.notes || null }),
+  ...(values.image_path !== undefined && { image_path: values.image_path || null }),
 });
 
 /**
@@ -187,10 +204,10 @@ const createItem = async (
     if (revived) return { ...revived, _revived: true };
   }
 
-  const normalized = normalizeFormValues(values);
+  const normalized = normalizeCreateValues(values);
   const { data, error } = await supabase
     .from("items")
-    .insert({ ...normalized, name: values.name, user_id: userData.user.id })
+    .insert({ ...normalized, user_id: userData.user.id })
     .select()
     .single();
   if (error) throw error;
@@ -210,7 +227,7 @@ const updateItem = async (id: string, values: Partial<ItemFormValues>): Promise<
   requireOnline();
   const { data, error } = await supabase
     .from("items")
-    .update({ ...normalizeFormValues(values), updated_at: new Date().toISOString() })
+    .update({ ...normalizeUpdateValues(values), updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
