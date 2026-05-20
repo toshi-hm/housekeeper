@@ -20,6 +20,33 @@ export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";
 
 const ITEMS_KEY = ["items"] as const;
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const likePatternToRegExp = (value: string) => {
+  const escaped = escapeRegExp(value);
+  const pattern = escaped.replaceAll("%", ".*").replaceAll("_", ".");
+  return new RegExp(pattern, "i");
+};
+
+const matchesSearch = (value: string | null | undefined, search: string): boolean => {
+  return likePatternToRegExp(`%${search}%`).test(value ?? "");
+};
+
+const matchesItemFilters = (item: Item, filters: ItemFilters): boolean => {
+  if (item.deleted_at) return false;
+  if (filters.categoryId && item.category_id !== filters.categoryId) return false;
+  if (filters.storageLocationId && item.storage_location_id !== filters.storageLocationId)
+    return false;
+  if (
+    filters.search &&
+    !matchesSearch(item.name, filters.search) &&
+    !matchesSearch(item.barcode, filters.search)
+  ) {
+    return false;
+  }
+  return true;
+};
+
 const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
@@ -279,7 +306,40 @@ export const useUpdateItem = (id: string) => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: (values: Partial<ItemFormValues>) => updateItem(id, values),
-    onSuccess: async () => {
+    onSuccess: async (updatedItem) => {
+      qc.setQueryData<Item>([...ITEMS_KEY, updatedItem.id], updatedItem);
+
+      const listQueries = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
+      for (const [queryKey, cachedItems] of listQueries) {
+        if (!Array.isArray(cachedItems) || !Array.isArray(queryKey)) continue;
+        const [, rawFilters, rawSort] = queryKey;
+        const sort =
+          rawSort === "expiry_date" || rawSort === "purchase_date" ? rawSort : "created_at";
+
+        if (rawFilters === "with-expiry") {
+          const next =
+            !updatedItem.deleted_at && updatedItem.expiry_date
+              ? upsertItemInListCache(cachedItems, updatedItem, "expiry_date")
+              : cachedItems.filter((item) => item.id !== updatedItem.id);
+          qc.setQueryData(queryKey, next);
+          continue;
+        }
+
+        const filters =
+          rawFilters && typeof rawFilters === "object"
+            ? (rawFilters as ItemFilters)
+            : ({} as ItemFilters);
+
+        if (matchesItemFilters(updatedItem, filters)) {
+          qc.setQueryData(queryKey, upsertItemInListCache(cachedItems, updatedItem, sort));
+        } else {
+          qc.setQueryData(
+            queryKey,
+            cachedItems.filter((item) => item.id !== updatedItem.id),
+          );
+        }
+      }
+
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
     onError: (error) => {

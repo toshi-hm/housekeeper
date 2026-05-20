@@ -38,37 +38,41 @@ describe("upsertItemInListCache", () => {
     expect(result).toBeUndefined();
   });
 
-  test("empty list → prepends incoming item", () => {
+  test("empty list → returns incoming item", () => {
     const incoming = makeItem({ id: "new-item" });
     const result = upsertItemInListCache([], incoming);
     expect(result).toEqual([incoming]);
   });
 
-  test("item not in list → prepends at head", () => {
-    const existing = makeItem({ id: "existing-item" });
-    const incoming = makeItem({ id: "new-item" });
-    const result = upsertItemInListCache([existing], incoming);
+  test("created_at sort keeps newest item first when inserting", () => {
+    const existing = makeItem({ id: "existing-item", created_at: "2026-01-01T00:00:00Z" });
+    const incoming = makeItem({ id: "new-item", created_at: "2026-01-02T00:00:00Z" });
+    const result = upsertItemInListCache([existing], incoming, "created_at");
     expect(result).toEqual([incoming, existing]);
   });
 
-  test("item already in list → updates in-place (does not duplicate)", () => {
+  test("expiry_date sort reorders updated item ascending with nulls last", () => {
+    const milk = makeItem({ id: "milk", expiry_date: "2026-01-05" });
+    const bread = makeItem({ id: "bread", expiry_date: "2026-01-10" });
+    const updatedBread = makeItem({ id: "bread", expiry_date: "2026-01-03" });
+    const result = upsertItemInListCache([milk, bread], updatedBread, "expiry_date");
+    expect(result).toEqual([updatedBread, milk]);
+  });
+
+  test("purchase_date sort reorders updated item descending", () => {
+    const older = makeItem({ id: "older", purchase_date: "2026-01-01" });
+    const newer = makeItem({ id: "newer", purchase_date: "2026-01-03" });
+    const updatedOlder = makeItem({ id: "older", purchase_date: "2026-01-04" });
+    const result = upsertItemInListCache([newer, older], updatedOlder, "purchase_date");
+    expect(result).toEqual([updatedOlder, newer]);
+  });
+
+  test("item already in list → updates without duplication", () => {
     const old = makeItem({ id: "item-1", name: "Old Name" });
     const updated = makeItem({ id: "item-1", name: "New Name" });
     const result = upsertItemInListCache([old], updated);
     expect(result).toHaveLength(1);
     expect(result?.[0]?.name).toBe("New Name");
-  });
-
-  test("item in middle of list → updates correct entry, preserves order", () => {
-    const a = makeItem({ id: "a" });
-    const b = makeItem({ id: "b", name: "Old B" });
-    const c = makeItem({ id: "c" });
-    const updatedB = makeItem({ id: "b", name: "New B" });
-    const result = upsertItemInListCache([a, b, c], updatedB);
-    expect(result).toHaveLength(3);
-    expect(result?.[0]?.id).toBe("a");
-    expect(result?.[1]?.name).toBe("New B");
-    expect(result?.[2]?.id).toBe("c");
   });
 
   test("does not mutate the original array", () => {
