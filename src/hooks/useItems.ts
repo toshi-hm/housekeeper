@@ -80,7 +80,7 @@ const fetchItem = async (id: string): Promise<Item> => {
   return data as Item;
 };
 
-const normalizeCreateValues = (values: ItemFormValues) => ({
+export const normalizeCreateValues = (values: ItemFormValues) => ({
   name: values.name,
   barcode: values.barcode || null,
   category_id: values.category_id || null,
@@ -98,7 +98,7 @@ const normalizeCreateValues = (values: ItemFormValues) => ({
   image_path: values.image_path || null,
 });
 
-const normalizeUpdateValues = (values: Partial<ItemFormValues>) => ({
+export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => ({
   ...(values.name !== undefined && { name: values.name }),
   ...(values.barcode !== undefined && { barcode: values.barcode || null }),
   ...(values.category_id !== undefined && { category_id: values.category_id || null }),
