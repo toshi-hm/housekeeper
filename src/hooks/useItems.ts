@@ -98,22 +98,38 @@ export const normalizeCreateValues = (values: ItemFormValues) => ({
   image_path: values.image_path || null,
 });
 
-export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => ({
-  ...(values.name !== undefined && { name: values.name }),
-  ...(values.barcode !== undefined && { barcode: values.barcode || null }),
-  ...(values.category_id !== undefined && { category_id: values.category_id || null }),
-  ...(values.storage_location_id !== undefined && {
-    storage_location_id: values.storage_location_id || null,
-  }),
-  ...(values.units !== undefined && { units: values.units }),
-  ...(values.content_amount !== undefined && { content_amount: values.content_amount }),
-  ...(values.content_unit !== undefined && { content_unit: values.content_unit }),
-  ...(values.opened_remaining !== undefined && { opened_remaining: values.opened_remaining }),
-  ...(values.purchase_date !== undefined && { purchase_date: values.purchase_date || null }),
-  ...(values.expiry_date !== undefined && { expiry_date: values.expiry_date || null }),
-  ...(values.notes !== undefined && { notes: values.notes || null }),
-  ...(values.image_path !== undefined && { image_path: values.image_path || null }),
-});
+const hasOwn = <K extends PropertyKey>(obj: object, key: K): obj is Record<K, unknown> =>
+  Object.prototype.hasOwnProperty.call(obj, key);
+
+export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
+  const normalized: Record<string, unknown> = {};
+
+  if (hasOwn(values, "name") && values.name !== undefined) normalized.name = values.name;
+
+  if (hasOwn(values, "barcode")) normalized.barcode = values.barcode || null;
+  if (hasOwn(values, "category_id")) normalized.category_id = values.category_id || null;
+  if (hasOwn(values, "storage_location_id")) {
+    normalized.storage_location_id = values.storage_location_id || null;
+  }
+
+  if (hasOwn(values, "units") && values.units !== undefined) normalized.units = values.units;
+  if (hasOwn(values, "content_amount") && values.content_amount !== undefined) {
+    normalized.content_amount = values.content_amount;
+  }
+  if (hasOwn(values, "content_unit") && values.content_unit !== undefined) {
+    normalized.content_unit = values.content_unit;
+  }
+  if (hasOwn(values, "opened_remaining") && values.opened_remaining !== undefined) {
+    normalized.opened_remaining = values.opened_remaining;
+  }
+
+  if (hasOwn(values, "purchase_date")) normalized.purchase_date = values.purchase_date || null;
+  if (hasOwn(values, "expiry_date")) normalized.expiry_date = values.expiry_date || null;
+  if (hasOwn(values, "notes")) normalized.notes = values.notes || null;
+  if (hasOwn(values, "image_path")) normalized.image_path = values.image_path || null;
+
+  return normalized;
+};
 
 /**
  * バーコードが一致するアクティブなアイテムを探す。

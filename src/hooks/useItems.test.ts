@@ -116,4 +116,26 @@ describe("normalizeUpdateValues", () => {
     const result = normalizeUpdateValues({ opened_remaining: null });
     expect(result).toEqual({ opened_remaining: null });
   });
+
+  test("treats present undefined on nullable fields as clear (null)", () => {
+    const result = normalizeUpdateValues({
+      barcode: undefined,
+      category_id: undefined,
+      storage_location_id: undefined,
+      purchase_date: undefined,
+      expiry_date: undefined,
+      notes: undefined,
+      image_path: undefined,
+    });
+
+    expect(result).toEqual({
+      barcode: null,
+      category_id: null,
+      storage_location_id: null,
+      purchase_date: null,
+      expiry_date: null,
+      notes: null,
+      image_path: null,
+    });
+  });
 });
