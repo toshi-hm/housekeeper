@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, Plus, Search, SlidersHorizontal, X } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
@@ -12,6 +12,19 @@ import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { getExpiryStatus } from "@/types/item";
+
+type QuickFilterKey = "all" | "urgent" | "expired" | "expiring-soon" | "ok";
+
+const QUICK_FILTER_OPTIONS: ReadonlyArray<{
+  key: QuickFilterKey;
+  labelKey: string;
+}> = [
+  { key: "all", labelKey: "quickFilterAll" },
+  { key: "urgent", labelKey: "quickFilterUrgent" },
+  { key: "expired", labelKey: "expiryStatus.expired" },
+  { key: "expiring-soon", labelKey: "expiryStatus.expiring-soon" },
+  { key: "ok", labelKey: "expiryStatus.ok" },
+];
 
 const DashboardPage = () => {
   const { t } = useTranslation("items");
@@ -25,9 +38,7 @@ const DashboardPage = () => {
   const [categoryId, setCategoryId] = useState("");
   const [locationId, setLocationId] = useState("");
   const [expiryFilter, setExpiryFilter] = useState("");
-  const [quickFilter, setQuickFilter] = useState<
-    "all" | "urgent" | "expired" | "expiring-soon" | "ok"
-  >("all");
+  const [quickFilter, setQuickFilter] = useState<QuickFilterKey>("all");
   const [sort, setSort] = useState<ItemSortKey>("created_at");
   const [showFilters, setShowFilters] = useState(false);
   const [hideEmpty, setHideEmpty] = useState(true);
@@ -43,40 +54,61 @@ const DashboardPage = () => {
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   const locationMap = Object.fromEntries(locations.map((l) => [l.id, l.name]));
 
-  const itemsWithStatus = items.map((item) => ({
-    item,
-    status: getExpiryStatus(item.expiry_date, warningDays),
-  }));
+  const {
+    visibleItemsWithStatus,
+    filtered,
+    urgentItems,
+    expiredItems,
+    expiringSoonItems,
+    quickFilterCounts,
+  } = useMemo(() => {
+    const itemsWithStatus = items.map((item) => ({
+      item,
+      status: getExpiryStatus(item.expiry_date, warningDays),
+    }));
 
-  const visibleItemsWithStatus = itemsWithStatus.filter(({ item }) => !hideEmpty || item.units > 0);
+    const visibleItemsWithStatus = itemsWithStatus.filter(
+      ({ item }) => !hideEmpty || item.units > 0,
+    );
 
-  const filtered = visibleItemsWithStatus
-    .filter(({ status }) => {
-      if (quickFilter === "urgent") return status === "expired" || status === "expiring-soon";
-      if (quickFilter === "all") return true;
-      return status === quickFilter;
-    })
-    .filter(({ status }) => !expiryFilter || expiryFilter === "all" || status === expiryFilter)
-    .map(({ item }) => item);
+    const filtered = visibleItemsWithStatus
+      .filter(({ status }) => {
+        if (quickFilter === "urgent") return status === "expired" || status === "expiring-soon";
+        if (quickFilter === "all") return true;
+        return status === quickFilter;
+      })
+      .filter(({ status }) => !expiryFilter || expiryFilter === "all" || status === expiryFilter)
+      .map(({ item }) => item);
 
-  const urgentItems = visibleItemsWithStatus
-    .filter(({ status }) => status === "expired" || status === "expiring-soon")
-    .map(({ item }) => item);
+    const urgentItems = visibleItemsWithStatus
+      .filter(({ status }) => status === "expired" || status === "expiring-soon")
+      .map(({ item }) => item);
+    const expiredItems = visibleItemsWithStatus
+      .filter(({ status }) => status === "expired")
+      .map(({ item }) => item);
+    const expiringSoonItems = visibleItemsWithStatus
+      .filter(({ status }) => status === "expiring-soon")
+      .map(({ item }) => item);
+
+    const quickFilterCounts = {
+      all: visibleItemsWithStatus.length,
+      urgent: urgentItems.length,
+      expired: expiredItems.length,
+      "expiring-soon": expiringSoonItems.length,
+      ok: visibleItemsWithStatus.filter(({ status }) => status === "ok").length,
+    } as const;
+
+    return {
+      visibleItemsWithStatus,
+      filtered,
+      urgentItems,
+      expiredItems,
+      expiringSoonItems,
+      quickFilterCounts,
+    };
+  }, [expiryFilter, hideEmpty, items, quickFilter, warningDays]);
+
   const urgentCount = urgentItems.length;
-  const expiredItems = visibleItemsWithStatus
-    .filter(({ status }) => status === "expired")
-    .map(({ item }) => item);
-  const expiringSoonItems = visibleItemsWithStatus
-    .filter(({ status }) => status === "expiring-soon")
-    .map(({ item }) => item);
-
-  const quickFilterCounts = {
-    all: visibleItemsWithStatus.length,
-    urgent: urgentItems.length,
-    expired: expiredItems.length,
-    "expiring-soon": expiringSoonItems.length,
-    ok: visibleItemsWithStatus.filter(({ status }) => status === "ok").length,
-  } as const;
 
   const hasActiveFilters = Boolean(
     search || categoryId || locationId || expiryFilter || quickFilter !== "all" || !hideEmpty,
@@ -212,21 +244,16 @@ const DashboardPage = () => {
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground">{t("quickFiltersLabel")}</p>
         <div className="flex flex-wrap gap-2">
-          {[
-            { key: "all", label: t("quickFilterAll") },
-            { key: "urgent", label: t("quickFilterUrgent") },
-            { key: "expired", label: t("expiryStatus.expired") },
-            { key: "expiring-soon", label: t("expiryStatus.expiring-soon") },
-            { key: "ok", label: t("expiryStatus.ok") },
-          ].map((chip) => (
+          {QUICK_FILTER_OPTIONS.map((chip) => (
             <Button
               key={chip.key}
               variant={quickFilter === chip.key ? "default" : "outline"}
+              aria-pressed={quickFilter === chip.key}
               size="sm"
               className="h-8 rounded-full px-3 text-xs"
-              onClick={() => setQuickFilter(chip.key as typeof quickFilter)}
+              onClick={() => setQuickFilter(chip.key)}
             >
-              {chip.label} ({quickFilterCounts[chip.key as keyof typeof quickFilterCounts]})
+              {t(chip.labelKey)} ({quickFilterCounts[chip.key]})
             </Button>
           ))}
         </div>
