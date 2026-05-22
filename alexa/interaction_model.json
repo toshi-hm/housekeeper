@@ -1,0 +1,160 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "ハウスキーパー",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": ["キャンセル", "やめる", "終了"]
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": ["ヘルプ", "使い方を教えて", "何ができる"]
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": ["ストップ", "終わり", "閉じて"]
+        },
+        {
+          "name": "AMAZON.YesIntent",
+          "samples": ["はい", "うん", "そう", "そうして", "お願い", "追加して"]
+        },
+        {
+          "name": "AMAZON.NoIntent",
+          "samples": ["いいえ", "違う", "やめて", "しない", "結構です"]
+        },
+        {
+          "name": "CheckInventoryIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery}はある",
+            "{ItemQuery}はあります",
+            "{ItemQuery}は在庫にある",
+            "{ItemQuery}はストックしてある",
+            "{ItemQuery}はまだある",
+            "{ItemQuery}の在庫はある",
+            "{ItemQuery}は残ってる",
+            "{ItemQuery}はありますか",
+            "{ItemQuery}は買ってある",
+            "{ItemQuery}はストックある",
+            "{ItemQuery}の在庫を確認して",
+            "{ItemQuery}の在庫は"
+          ]
+        },
+        {
+          "name": "CheckExpiryIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery}の賞味期限",
+            "{ItemQuery}の賞味期限は",
+            "{ItemQuery}の賞味期限を教えて",
+            "{ItemQuery}はいつまで",
+            "{ItemQuery}はいつまで食べられる",
+            "{ItemQuery}の期限は",
+            "{ItemQuery}の消費期限",
+            "{ItemQuery}の消費期限を教えて",
+            "{ItemQuery}いつまで大丈夫",
+            "{ItemQuery}の期限を教えて"
+          ]
+        },
+        {
+          "name": "ListByLocationIntent",
+          "slots": [
+            {
+              "name": "LocationQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{LocationQuery}に何がある",
+            "{LocationQuery}には何がある",
+            "{LocationQuery}にあるものを教えて",
+            "{LocationQuery}の中身",
+            "{LocationQuery}の中身を教えて",
+            "{LocationQuery}に何を入れてある",
+            "{LocationQuery}に入ってるもの",
+            "{LocationQuery}の在庫",
+            "{LocationQuery}の在庫を教えて",
+            "{LocationQuery}にあるものを確認して",
+            "{LocationQuery}の一覧"
+          ]
+        },
+        {
+          "name": "CheckLocationIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery}はどこにある",
+            "{ItemQuery}はどこ",
+            "{ItemQuery}はどこにしまってある",
+            "{ItemQuery}の場所",
+            "{ItemQuery}の場所を教えて",
+            "{ItemQuery}どこに置いてある",
+            "{ItemQuery}はどこに保管してある",
+            "{ItemQuery}の保管場所",
+            "{ItemQuery}はどこに入ってる",
+            "{ItemQuery}はどこ収納してある"
+          ]
+        },
+        {
+          "name": "CheckRemainingIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery}はあとどれくらい",
+            "{ItemQuery}はあとどのくらい残ってる",
+            "{ItemQuery}の残量",
+            "{ItemQuery}の残量を教えて",
+            "{ItemQuery}はどのくらい残ってる",
+            "{ItemQuery}はあとどれくらい残ってる",
+            "{ItemQuery}残りはどのくらい",
+            "{ItemQuery}はあとどれだけある",
+            "{ItemQuery}の残りを教えて",
+            "{ItemQuery}はいくら残ってる"
+          ]
+        },
+        {
+          "name": "AddToShoppingListIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery}を買い物リストに追加して",
+            "{ItemQuery}を買い物リストに入れて",
+            "{ItemQuery}を買い物リストに加えて",
+            "{ItemQuery}を買い物リストへ",
+            "{ItemQuery}を買い物リストに",
+            "{ItemQuery}を買っておいて",
+            "{ItemQuery}を買い足して",
+            "{ItemQuery}を補充して",
+            "{ItemQuery}を次の買い物に入れて",
+            "{ItemQuery}を購入リストに追加して",
+            "{ItemQuery}を買い物メモに追加して"
+          ]
+        }
+      ],
+      "types": []
+    }
+  }
+}
