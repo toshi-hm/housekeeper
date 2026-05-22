@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { normalizeUpdateValues } from "@/hooks/useItems";
 import { upsertItemInListCache } from "@/lib/itemCache";
 import type { Item } from "@/types/item";
 
@@ -81,5 +82,60 @@ describe("upsertItemInListCache", () => {
     upsertItemInListCache(original, makeItem({ id: "new-item" }));
     expect(original).toBe(originalRef);
     expect(original).toHaveLength(1);
+  });
+});
+
+describe("normalizeUpdateValues", () => {
+  test("omits undefined fields to keep updates partial", () => {
+    const result = normalizeUpdateValues({ name: "Updated name" });
+    expect(result).toEqual({ name: "Updated name" });
+    expect("units" in result).toBe(false);
+    expect("content_amount" in result).toBe(false);
+    expect("barcode" in result).toBe(false);
+  });
+
+  test("converts explicit empty strings to null for nullable text fields", () => {
+    const result = normalizeUpdateValues({
+      barcode: "",
+      purchase_date: "",
+      expiry_date: "",
+      notes: "",
+      image_path: "",
+    });
+
+    expect(result).toEqual({
+      barcode: null,
+      purchase_date: null,
+      expiry_date: null,
+      notes: null,
+      image_path: null,
+    });
+  });
+
+  test("keeps explicit null for opened_remaining", () => {
+    const result = normalizeUpdateValues({ opened_remaining: null });
+    expect(result).toEqual({ opened_remaining: null });
+  });
+
+  test("treats present undefined on nullable fields as clear (null)", () => {
+    const result = normalizeUpdateValues({
+      barcode: undefined,
+      category_id: undefined,
+      storage_location_id: undefined,
+      purchase_date: undefined,
+      expiry_date: undefined,
+      notes: undefined,
+      image_path: undefined,
+    });
+
+    expect(result).toEqual({
+      barcode: null,
+      category_id: null,
+      storage_location_id: null,
+      purchase_date: null,
+      expiry_date: null,
+      notes: null,
+      image_path: null,
+    });
   });
 });
