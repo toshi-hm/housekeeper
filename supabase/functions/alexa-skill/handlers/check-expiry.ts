@@ -1,8 +1,15 @@
 import type { AlexaResponse } from "../types.ts";
-import { buildErrorResponse } from "../response.ts";
+import { buildErrorResponse, buildTellResponse, buildTimeoutResponse } from "../response.ts";
+import { fetchAllItems } from "../inventory.ts";
+import { buildCheckExpiryPrompt, queryGemini } from "../gemini.ts";
 
-// TODO: implement in feature/alexa-inventory-intents (#150)
 export const handleCheckExpiry = async (query: string): Promise<AlexaResponse> => {
   if (!query) return buildErrorResponse("何の賞味期限を確認しますか？");
-  return buildErrorResponse(`${query}の賞味期限確認は準備中です。`);
+
+  const items = await fetchAllItems();
+  const result = await queryGemini(buildCheckExpiryPrompt(query), items);
+
+  if (!result) return buildTimeoutResponse();
+
+  return buildTellResponse(result.speech);
 };
