@@ -141,3 +141,9 @@ export interface SessionAttributes extends Record<string, unknown> {
   pendingItem?: PendingShoppingItem;
   pendingQuery?: string;
 }
+
+// Discriminated union for Gemini query results
+export type GeminiResult =
+  | { kind: "ok"; data: GeminiMatchResult }
+  | { kind: "timeout" }
+  | { kind: "error" };

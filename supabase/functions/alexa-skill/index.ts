@@ -8,16 +8,26 @@ import {
 const ALEXA_SKILL_ID = Deno.env.get("ALEXA_SKILL_ID") ?? "";
 
 const verifyApplicationId = (req: AlexaRequest): boolean => {
-  if (!ALEXA_SKILL_ID) return true; // skip check if not configured
+  if (!ALEXA_SKILL_ID) {
+    console.error("[alexa-skill] ALEXA_SKILL_ID is not configured — rejecting request");
+    return false;
+  }
   const appId =
     req.session?.application?.applicationId ??
     req.context?.System?.application?.applicationId;
   return appId === ALEXA_SKILL_ID;
 };
 
+const verifyTimestamp = (req: AlexaRequest): boolean => {
+  const timestamp = req.request.timestamp;
+  if (!timestamp) return false;
+  const diffSeconds = Math.abs(Date.now() - new Date(timestamp).getTime()) / 1000;
+  return diffSeconds <= 150;
+};
+
 const handleLaunch = (): AlexaResponse =>
   buildAskResponse(
-    "ハウスキーパーを開きました。在庫について何でも聞いてください。たとえば「牛乳はある？」や「賞味期限を教えて」などと話しかけてみてください。",
+    "ハウスキーパーを開きました。在庫について何でも聞いてください。たとえば「牛乳はある？」などと話しかけてみてください。",
     "何を確認しますか？",
     {},
   );
@@ -27,7 +37,7 @@ const handleSessionEnded = (): AlexaResponse =>
 
 const handleHelp = (): AlexaResponse =>
   buildAskResponse(
-    "在庫の確認ができます。「牛乳はある？」「賞味期限は？」「冷蔵庫に何がある？」「どこにある？」「あとどれくらい残ってる？」「買い物リストに追加して」などと話しかけてください。",
+    "在庫の確認ができます。「牛乳はある？」「賞味期限は？」「冷蔵庫に何がある？」「どこにある？」「あとどれくらい残ってる？」などと話しかけてください。",
     "何を確認しますか？",
     {},
   );
@@ -104,8 +114,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const body = (await req.json()) as AlexaRequest;
 
     if (!verifyApplicationId(body)) {
-      return new Response(JSON.stringify({ error: "Invalid application ID" }), {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (!verifyTimestamp(body)) {
+      return new Response(JSON.stringify({ error: "Request timestamp out of range" }), {
+        status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -113,14 +130,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const sessionAttributes = (body.session?.attributes ?? {}) as SessionAttributes;
     let alexaResponse: AlexaResponse;
 
-    const requestType = body.request.type;
-
-    if (requestType === "LaunchRequest") {
+    if (body.request.type === "LaunchRequest") {
       alexaResponse = handleLaunch();
-    } else if (requestType === "SessionEndedRequest") {
+    } else if (body.request.type === "SessionEndedRequest") {
       alexaResponse = handleSessionEnded();
-    } else if (requestType === "IntentRequest") {
-      const intent = (body.request as { type: "IntentRequest"; intent: { name: string; slots?: Record<string, { name: string; value?: string }> } }).intent;
+    } else if (body.request.type === "IntentRequest") {
+      const { intent } = body.request;
       alexaResponse = await routeIntent(
         intent.name,
         intent.slots ?? {},
@@ -135,8 +150,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     });
   } catch (err) {
     console.error("[alexa-skill] Error:", err);
-    const errResponse = buildErrorResponse();
-    return new Response(JSON.stringify(errResponse), {
+    return new Response(JSON.stringify(buildErrorResponse()), {
       headers: { "Content-Type": "application/json" },
     });
   }
