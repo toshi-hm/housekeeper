@@ -1,16 +1,13 @@
 import type {
-  GeminiMatchResult,
   GeminiRequest,
   GeminiResponse,
+  GeminiResult,
   InventoryItem,
 } from "./types.ts";
 import { formatTotalRemaining } from "./inventory.ts";
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_TIMEOUT_MS = 5000;
-
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
 const SYSTEM_PROMPT = `あなたは家庭の在庫管理アシスタントです。
 ユーザーの問いかけに対して、以下の在庫リストから最適なアイテムを見つけ、
@@ -75,7 +72,14 @@ const RESPONSE_SCHEMA = {
 export const queryGemini = async (
   userMessage: string,
   items: InventoryItem[],
-): Promise<GeminiMatchResult | null> => {
+): Promise<GeminiResult> => {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) {
+    console.error("[gemini] GEMINI_API_KEY is not configured");
+    return { kind: "error" };
+  }
+
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
   const inventoryContext = buildInventoryContext(items);
 
   const body: GeminiRequest = {
@@ -103,7 +107,7 @@ export const queryGemini = async (
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
   try {
-    const res = await fetch(GEMINI_URL, {
+    const res = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -115,25 +119,25 @@ export const queryGemini = async (
     if (!res.ok) {
       const errText = await res.text();
       console.error("[gemini] API error:", res.status, errText);
-      return null;
+      return { kind: "error" };
     }
 
     const json = (await res.json()) as GeminiResponse;
     const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       console.error("[gemini] Empty response");
-      return null;
+      return { kind: "error" };
     }
 
-    return JSON.parse(text) as GeminiMatchResult;
+    return { kind: "ok", data: JSON.parse(text) };
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === "AbortError") {
       console.error("[gemini] Timeout after", GEMINI_TIMEOUT_MS, "ms");
-    } else {
-      console.error("[gemini] Fetch error:", err);
+      return { kind: "timeout" };
     }
-    return null;
+    console.error("[gemini] Fetch error:", err);
+    return { kind: "error" };
   }
 };
 

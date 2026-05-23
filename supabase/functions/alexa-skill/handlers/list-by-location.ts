@@ -1,15 +1,28 @@
 import type { AlexaResponse } from "../types.ts";
-import { buildErrorResponse, buildTellResponse, buildTimeoutResponse } from "../response.ts";
+import {
+  buildAskResponse,
+  buildErrorResponse,
+  buildTellResponse,
+  buildTimeoutResponse,
+} from "../response.ts";
 import { fetchAllItems } from "../inventory.ts";
 import { buildListByLocationPrompt, queryGemini } from "../gemini.ts";
 
 export const handleListByLocation = async (location: string): Promise<AlexaResponse> => {
-  if (!location) return buildErrorResponse("どこの在庫を確認しますか？");
+  if (!location) {
+    return buildAskResponse(
+      "どこの在庫を確認しますか？場所を教えてください。",
+      "確認したい場所を教えてください。",
+      {},
+    );
+  }
 
   const items = await fetchAllItems();
-  const result = await queryGemini(buildListByLocationPrompt(location), items);
+  if (!items) return buildErrorResponse("在庫情報の取得に失敗しました。");
 
-  if (!result) return buildTimeoutResponse();
+  const geminiResult = await queryGemini(buildListByLocationPrompt(location), items);
+  if (geminiResult.kind === "timeout") return buildTimeoutResponse();
+  if (geminiResult.kind === "error") return buildErrorResponse();
 
-  return buildTellResponse(result.speech);
+  return buildTellResponse(geminiResult.data.speech);
 };

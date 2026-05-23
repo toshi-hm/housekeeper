@@ -1,13 +1,18 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import type { InventoryItem } from "./types.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const userId = Deno.env.get("USER_ID")!;
+export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const userId = Deno.env.get("USER_ID");
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  if (!supabaseUrl || !supabaseServiceKey || !userId) {
+    console.error("[inventory] Missing required environment variables");
+    return null;
+  }
 
-export const fetchAllItems = async (): Promise<InventoryItem[]> => {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
   const { data, error } = await supabase
     .from("items")
     .select(
@@ -18,7 +23,7 @@ export const fetchAllItems = async (): Promise<InventoryItem[]> => {
 
   if (error) {
     console.error("[inventory] fetchAllItems error:", error);
-    return [];
+    return null;
   }
 
   return (data ?? []) as InventoryItem[];
@@ -28,7 +33,7 @@ export const formatTotalRemaining = (item: InventoryItem): string => {
   const { units, content_amount, content_unit, opened_remaining } = item;
   if (units === 0 && opened_remaining === null) return `0${content_unit}`;
 
-  const closedUnits = opened_remaining !== null ? units - 1 : units;
+  const closedUnits = opened_remaining !== null ? Math.max(units - 1, 0) : units;
   const closedAmount = closedUnits * content_amount;
   const total = closedAmount + (opened_remaining ?? 0);
 
@@ -38,6 +43,7 @@ export const formatTotalRemaining = (item: InventoryItem): string => {
 
 export const formatExpiryDate = (expiryDate: string | null): string => {
   if (!expiryDate) return "未設定";
-  const d = new Date(expiryDate);
-  return `${d.getMonth() + 1}月${d.getDate()}日`;
+  const parts = expiryDate.split("-");
+  if (parts.length < 3) return expiryDate;
+  return `${parseInt(parts[1])}月${parseInt(parts[2])}日`;
 };

@@ -9,16 +9,18 @@ import {
 import { fetchAllItems, formatTotalRemaining } from "../inventory.ts";
 import { buildAddToShoppingListPrompt, queryGemini } from "../gemini.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const userId = Deno.env.get("USER_ID")!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 const addToShoppingList = async (
   name: string,
   linkedItemId: string | null,
 ): Promise<boolean> => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const userId = Deno.env.get("USER_ID");
+  if (!supabaseUrl || !supabaseServiceKey || !userId) {
+    console.error("[shopping-list] Missing required environment variables");
+    return false;
+  }
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
   const { error } = await supabase.from("shopping_list_items").insert({
     user_id: userId,
     name,
@@ -33,9 +35,14 @@ const addToShoppingList = async (
   return true;
 };
 
-const buildConfirmSpeech = (result: GeminiMatchResult, query: string): string => {
+const buildConfirmSpeech = (
+  result: GeminiMatchResult,
+  query: string,
+): { speech: string; pendingAction: "add_to_shopping_list" | "choose_alternate" } => {
   const item = result.matchedItems[0];
-  if (!item) return `${query}を買い物リストに追加しますか？`;
+  if (!item) {
+    return { speech: `${query}を買い物リストに追加しますか？`, pendingAction: "add_to_shopping_list" };
+  }
 
   const remaining = formatTotalRemaining({
     units: item.units,
@@ -52,26 +59,48 @@ const buildConfirmSpeech = (result: GeminiMatchResult, query: string): string =>
     storage_locations: null,
   });
 
-  if (result.matchedItems.length > 1) {
-    return `${query}は、自宅に${item.name}が${remaining}ありますが、同じ商品を買い物リストに追加しますか？それとも別の商品を追加しますか？`;
+  if (result.stockStatus === "out_of_stock") {
+    return {
+      speech: `${item.name}は在庫切れですが、買い物リストに追加しますか？`,
+      pendingAction: "add_to_shopping_list",
+    };
   }
 
-  return `すでに自宅に${item.name}は${remaining}ありますが、買い物リストに追加してよいですか？`;
+  if (result.matchedItems.length > 1) {
+    return {
+      speech: `自宅に${item.name}は${remaining}ありますが、同じ商品を追加しますか？`,
+      pendingAction: "choose_alternate",
+    };
+  }
+
+  return {
+    speech: `すでに自宅に${item.name}は${remaining}ありますが、買い物リストに追加してよいですか？`,
+    pendingAction: "add_to_shopping_list",
+  };
 };
 
 export const handleAddToShoppingList = async (
   query: string,
   sessionAttributes: SessionAttributes,
 ): Promise<AlexaResponse> => {
-  if (!query) return buildErrorResponse("何を買い物リストに追加しますか？");
+  if (!query) {
+    return buildAskResponse(
+      "何を買い物リストに追加しますか？商品名を教えてください。",
+      "追加したい商品名を教えてください。",
+      {},
+    );
+  }
 
   const items = await fetchAllItems();
-  const result = await queryGemini(buildAddToShoppingListPrompt(query), items);
+  if (!items) return buildErrorResponse("在庫情報の取得に失敗しました。");
 
-  if (!result) return buildTimeoutResponse();
+  const geminiResult = await queryGemini(buildAddToShoppingListPrompt(query), items);
+  if (geminiResult.kind === "timeout") return buildTimeoutResponse();
+  if (geminiResult.kind === "error") return buildErrorResponse();
+
+  const result = geminiResult.data;
 
   if (result.stockStatus === "not_found") {
-    // 在庫に一切ない → 確認なしで直接追加
     const ok = await addToShoppingList(query, null);
     return buildTellResponse(
       ok
@@ -81,12 +110,11 @@ export const handleAddToShoppingList = async (
   }
 
   const matchedItem = result.matchedItems[0];
-  const speech = buildConfirmSpeech(result, query);
-  const reprompt = "買い物リストに追加しますか？";
+  const { speech, pendingAction } = buildConfirmSpeech(result, query);
 
   const newSessionAttributes: SessionAttributes = {
     ...sessionAttributes,
-    pendingAction: "add_to_shopping_list",
+    pendingAction,
     pendingItem: {
       id: matchedItem?.id ?? null,
       name: matchedItem?.name ?? query,
@@ -98,5 +126,5 @@ export const handleAddToShoppingList = async (
     pendingQuery: query,
   };
 
-  return buildAskResponse(speech, reprompt, newSessionAttributes);
+  return buildAskResponse(speech, "買い物リストに追加しますか？", newSessionAttributes);
 };
