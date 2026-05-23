@@ -10,5 +10,9 @@ export const handleCheckLocation = async (query: string): Promise<AlexaResponse>
       {},
     );
   }
-  return buildAskResponse(`${query}の保管場所確認は準備中です。`, "他に確認することはありますか？", {});
+  return buildAskResponse(
+    `${query}の保管場所確認は準備中です。`,
+    "他に確認することはありますか？",
+    {},
+  );
 };

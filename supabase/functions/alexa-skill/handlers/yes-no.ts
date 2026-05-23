@@ -7,9 +7,7 @@ export const handleYesNo = async (
   sessionAttributes: SessionAttributes,
 ): Promise<AlexaResponse> => {
   if (!sessionAttributes.pendingAction) {
-    return buildTellResponse(
-      isYes ? "はい、わかりました。" : "わかりました。",
-    );
+    return buildTellResponse(isYes ? "はい、わかりました。" : "わかりました。");
   }
   // placeholder until #151
   return buildTellResponse("この機能は準備中です。");

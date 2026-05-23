@@ -27,11 +27,7 @@ export const buildAskResponse = (
 });
 
 export const buildErrorResponse = (message?: string): AlexaResponse =>
-  buildTellResponse(
-    message ?? "申し訳ありません。エラーが発生しました。もう一度お試しください。",
-  );
+  buildTellResponse(message ?? "申し訳ありません。エラーが発生しました。もう一度お試しください。");
 
 export const buildTimeoutResponse = (): AlexaResponse =>
-  buildTellResponse(
-    "ただいま応答に時間がかかっています。もう一度お試しください。",
-  );
+  buildTellResponse("ただいま応答に時間がかかっています。もう一度お試しください。");
