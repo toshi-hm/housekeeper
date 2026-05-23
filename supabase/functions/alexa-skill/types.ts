@@ -12,11 +12,11 @@ export interface AlexaIntent {
 
 export interface AlexaRequest {
   version: string;
-  session: {
+  session?: {
     new: boolean;
     sessionId: string;
     application: { applicationId: string };
-    attributes: Record<string, unknown>;
+    attributes?: Record<string, unknown>;
     user: { userId: string };
   };
   context: {
@@ -116,10 +116,10 @@ export interface GeminiMatchResult {
     units: number;
     content_amount: number;
     content_unit: string;
-    opened_remaining: number | null;
-    expiry_date: string | null;
-    category: string | null;
-    storage_location: string | null;
+    opened_remaining?: number | null;
+    expiry_date?: string | null;
+    category?: string | null;
+    storage_location?: string | null;
   }>;
   speech: string;
   confidence: "exact" | "fuzzy" | "none";

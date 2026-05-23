@@ -45,5 +45,5 @@ export const formatExpiryDate = (expiryDate: string | null): string => {
   if (!expiryDate) return "未設定";
   const parts = expiryDate.split("-");
   if (parts.length < 3) return expiryDate;
-  return `${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+  return `${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
 };
