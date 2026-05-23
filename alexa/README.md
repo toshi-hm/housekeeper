@@ -4,7 +4,7 @@
 
 - Amazon Developer Account（https://developer.amazon.com）
 - Alexa対応デバイスまたはAlexaアプリ
-- Supabase Edge Function `alexa-skill` がデプロイ済み
+- Supabase Edge Function `alexa-skill` がデプロイ済み（実装: `supabase/functions/alexa-skill/`）
 
 ---
 
@@ -45,7 +45,7 @@
 
 ```bash
 supabase secrets set ALEXA_SKILL_ID=amzn1.ask.skill.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-supabase secrets set GEMINI_API_KEY=AIzaSy...
+supabase secrets set GEMINI_API_KEY=<your-gemini-api-key>
 supabase secrets set USER_ID=<your-supabase-user-id>
 ```
 
