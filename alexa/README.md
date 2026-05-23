@@ -4,7 +4,8 @@
 
 - Amazon Developer Account（https://developer.amazon.com）
 - Alexa対応デバイスまたはAlexaアプリ
-- Supabase Edge Function `alexa-skill` がデプロイ済み（実装: `supabase/functions/alexa-skill/`）
+- Supabase Edge Function `alexa-skill` がデプロイ済み
+  （実装: `supabase/functions/alexa-skill/` — このリポジトリの #148〜#151 で追加）
 
 ---
 
@@ -50,6 +51,7 @@ supabase secrets set USER_ID=<your-supabase-user-id>
 ```
 
 Skill IDはAlexaスキルの **「エンドポイント」** ページの上部に表示されます。  
+`GEMINI_API_KEY` は Gemini 2.5 Flash による在庫ファジーマッチング（発話→商品名変換）に使用します。  
 User IDはSupabaseダッシュボードの **Authentication → Users** から確認できます。
 
 ---
