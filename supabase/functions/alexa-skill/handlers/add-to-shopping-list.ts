@@ -13,5 +13,9 @@ export const handleAddToShoppingList = async (
       {},
     );
   }
-  return buildAskResponse(`${query}の買い物リスト追加は準備中です。`, "他に何かできることはありますか？", {});
+  return buildAskResponse(
+    `${query}の買い物リスト追加は準備中です。`,
+    "他に何かできることはありますか？",
+    {},
+  );
 };

@@ -1,9 +1,5 @@
 import type { AlexaRequest, AlexaResponse, SessionAttributes } from "./types.ts";
-import {
-  buildAskResponse,
-  buildErrorResponse,
-  buildTellResponse,
-} from "./response.ts";
+import { buildAskResponse, buildErrorResponse, buildTellResponse } from "./response.ts";
 
 const ALEXA_SKILL_ID = Deno.env.get("ALEXA_SKILL_ID") ?? "";
 
@@ -13,8 +9,7 @@ const verifyApplicationId = (req: AlexaRequest): boolean => {
     return false;
   }
   const appId =
-    req.session?.application?.applicationId ??
-    req.context?.System?.application?.applicationId;
+    req.session?.application?.applicationId ?? req.context?.System?.application?.applicationId;
   return appId === ALEXA_SKILL_ID;
 };
 
@@ -32,8 +27,7 @@ const handleLaunch = (): AlexaResponse =>
     {},
   );
 
-const handleSessionEnded = (): AlexaResponse =>
-  buildTellResponse("またお気軽にどうぞ。");
+const handleSessionEnded = (): AlexaResponse => buildTellResponse("またお気軽にどうぞ。");
 
 const handleHelp = (): AlexaResponse =>
   buildAskResponse(
@@ -42,8 +36,7 @@ const handleHelp = (): AlexaResponse =>
     {},
   );
 
-const handleStop = (): AlexaResponse =>
-  buildTellResponse("ハウスキーパーを終了します。");
+const handleStop = (): AlexaResponse => buildTellResponse("ハウスキーパーを終了します。");
 
 const routeIntent = async (
   intentName: string,
@@ -91,10 +84,7 @@ const routeIntent = async (
 
     case "AddToShoppingListIntent": {
       const { handleAddToShoppingList } = await import("./handlers/add-to-shopping-list.ts");
-      return handleAddToShoppingList(
-        slots["ItemQuery"]?.value ?? "",
-        sessionAttributes,
-      );
+      return handleAddToShoppingList(slots["ItemQuery"]?.value ?? "", sessionAttributes);
     }
 
     default:
@@ -136,11 +126,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       alexaResponse = handleSessionEnded();
     } else if (body.request.type === "IntentRequest") {
       const { intent } = body.request;
-      alexaResponse = await routeIntent(
-        intent.name,
-        intent.slots ?? {},
-        sessionAttributes,
-      );
+      alexaResponse = await routeIntent(intent.name, intent.slots ?? {}, sessionAttributes);
     } else {
       alexaResponse = buildErrorResponse();
     }
