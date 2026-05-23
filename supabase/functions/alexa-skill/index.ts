@@ -1,20 +1,29 @@
-import type { AlexaRequest, AlexaResponse, SessionAttributes } from "./types.ts";
+import type { AlexaRequest, AlexaResponse, AlexaSlot, SessionAttributes } from "./types.ts";
 import { buildAskResponse, buildErrorResponse, buildTellResponse } from "./response.ts";
 
 const ALEXA_SKILL_ID = Deno.env.get("ALEXA_SKILL_ID") ?? "";
 
-const verifyApplicationId = (req: AlexaRequest): boolean => {
+const verifyApplicationId = (req: AlexaRequest): Response | null => {
   if (!ALEXA_SKILL_ID) {
-    console.error("[alexa-skill] ALEXA_SKILL_ID is not configured — rejecting request");
-    return false;
+    console.error("[alexa-skill] ALEXA_SKILL_ID is not configured");
+    return new Response(JSON.stringify({ error: "Server configuration error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
   const appId =
     req.session?.application?.applicationId ?? req.context?.System?.application?.applicationId;
-  return appId === ALEXA_SKILL_ID;
+  if (appId !== ALEXA_SKILL_ID) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  return null;
 };
 
 const verifyTimestamp = (req: AlexaRequest): boolean => {
-  const timestamp = req.request.timestamp;
+  const timestamp = req.request?.timestamp;
   if (!timestamp) return false;
   const diffSeconds = Math.abs(Date.now() - new Date(timestamp).getTime()) / 1000;
   return diffSeconds <= 150;
@@ -40,7 +49,7 @@ const handleStop = (): AlexaResponse => buildTellResponse("ハウスキーパー
 
 const routeIntent = async (
   intentName: string,
-  slots: Record<string, { name: string; value?: string }>,
+  slots: Record<string, AlexaSlot>,
   sessionAttributes: SessionAttributes,
 ): Promise<AlexaResponse> => {
   switch (intentName) {
@@ -103,12 +112,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     const body = (await req.json()) as AlexaRequest;
 
-    if (!verifyApplicationId(body)) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    const appIdError = verifyApplicationId(body);
+    if (appIdError) return appIdError;
 
     if (!verifyTimestamp(body)) {
       return new Response(JSON.stringify({ error: "Request timestamp out of range" }), {

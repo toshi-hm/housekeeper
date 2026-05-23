@@ -5,7 +5,7 @@ import {
   buildTellResponse,
   buildTimeoutResponse,
 } from "../response.ts";
-import { fetchAllItems } from "../inventory.ts";
+import { fetchItemsByLocation } from "../inventory.ts";
 import { buildListByLocationPrompt, queryGemini } from "../gemini.ts";
 
 export const handleListByLocation = async (location: string): Promise<AlexaResponse> => {
@@ -17,8 +17,12 @@ export const handleListByLocation = async (location: string): Promise<AlexaRespo
     );
   }
 
-  const items = await fetchAllItems();
+  const items = await fetchItemsByLocation(location);
   if (!items) return buildErrorResponse("在庫情報の取得に失敗しました。");
+
+  if (items.length === 0) {
+    return buildTellResponse(`${location}には在庫がありません。`);
+  }
 
   const geminiResult = await queryGemini(buildListByLocationPrompt(location), items);
   if (geminiResult.kind === "timeout") return buildTimeoutResponse();

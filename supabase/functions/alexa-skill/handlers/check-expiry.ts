@@ -5,7 +5,7 @@ import {
   buildTellResponse,
   buildTimeoutResponse,
 } from "../response.ts";
-import { fetchAllItems } from "../inventory.ts";
+import { fetchAllItems, formatExpiryDate } from "../inventory.ts";
 import { buildCheckExpiryPrompt, queryGemini } from "../gemini.ts";
 
 export const handleCheckExpiry = async (query: string): Promise<AlexaResponse> => {
@@ -24,5 +24,16 @@ export const handleCheckExpiry = async (query: string): Promise<AlexaResponse> =
   if (geminiResult.kind === "timeout") return buildTimeoutResponse();
   if (geminiResult.kind === "error") return buildErrorResponse();
 
-  return buildTellResponse(geminiResult.data.speech);
+  const result = geminiResult.data;
+
+  // expiry_date未設定はコード側で保証（Gemini生成文に依存しない）
+  if (result.stockStatus === "in_stock" && result.matchedItems.length > 0) {
+    const item = result.matchedItems[0];
+    if (!item.expiry_date) {
+      return buildTellResponse(`${item.name}の賞味期限は登録されていません。`);
+    }
+    return buildTellResponse(`${item.name}の賞味期限は${formatExpiryDate(item.expiry_date)}です。`);
+  }
+
+  return buildTellResponse(result.speech);
 };
