@@ -10,5 +10,9 @@ export const handleListByLocation = async (location: string): Promise<AlexaRespo
       {},
     );
   }
-  return buildAskResponse(`${location}の在庫一覧は準備中です。`, "他に確認することはありますか？", {});
+  return buildAskResponse(
+    `${location}の在庫一覧は準備中です。`,
+    "他に確認することはありますか？",
+    {},
+  );
 };

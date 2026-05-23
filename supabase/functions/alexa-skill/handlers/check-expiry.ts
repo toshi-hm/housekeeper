@@ -10,5 +10,9 @@ export const handleCheckExpiry = async (query: string): Promise<AlexaResponse> =
       {},
     );
   }
-  return buildAskResponse(`${query}の賞味期限確認は準備中です。`, "他に確認することはありますか？", {});
+  return buildAskResponse(
+    `${query}の賞味期限確認は準備中です。`,
+    "他に確認することはありますか？",
+    {},
+  );
 };
