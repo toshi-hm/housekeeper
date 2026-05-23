@@ -1,4 +1,3 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
 import type { AlexaResponse, GeminiMatchResult, SessionAttributes } from "../types.ts";
 import {
   buildAskResponse,
@@ -8,29 +7,6 @@ import {
 } from "../response.ts";
 import { fetchAllItems, formatTotalRemaining } from "../inventory.ts";
 import { buildAddToShoppingListPrompt, queryGemini } from "../gemini.ts";
-
-const addToShoppingList = async (name: string, linkedItemId: string | null): Promise<boolean> => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const userId = Deno.env.get("USER_ID");
-  if (!supabaseUrl || !supabaseServiceKey || !userId) {
-    console.error("[shopping-list] Missing required environment variables");
-    return false;
-  }
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const { error } = await supabase.from("shopping_list_items").insert({
-    user_id: userId,
-    name,
-    desired_units: 1,
-    status: "planned",
-    linked_item_id: linkedItemId,
-  });
-  if (error) {
-    console.error("[shopping-list] insert error:", error);
-    return false;
-  }
-  return true;
-};
 
 const buildConfirmSpeech = (
   result: GeminiMatchResult,
@@ -101,9 +77,24 @@ export const handleAddToShoppingList = async (
   const result = geminiResult.data;
 
   if (result.stockStatus === "not_found") {
-    const ok = await addToShoppingList(query, null);
-    return buildTellResponse(
-      ok ? `${query}を買い物リストに追加しました。` : "買い物リストへの追加に失敗しました。",
+    // 在庫になくても確認ダイアログを挟む（Issue #151 要件）
+    const newSessionAttributes: SessionAttributes = {
+      ...sessionAttributes,
+      pendingAction: "add_to_shopping_list",
+      pendingItem: {
+        id: null,
+        name: query,
+        units: 0,
+        content_amount: 1,
+        content_unit: "個",
+        opened_remaining: null,
+      },
+      pendingQuery: query,
+    };
+    return buildAskResponse(
+      `${query}は在庫に見つかりませんでした。新しいアイテムとして買い物リストに追加しますか？`,
+      "買い物リストに追加しますか？",
+      newSessionAttributes,
     );
   }
 
