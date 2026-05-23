@@ -45,9 +45,7 @@ export const handleYesNo = async (
     const item = pendingItem as PendingShoppingItem;
     const ok = await insertShoppingListItem(item);
     return buildTellResponse(
-      ok
-        ? `${item.name}を買い物リストに追加しました。`
-        : "買い物リストへの追加に失敗しました。",
+      ok ? `${item.name}を買い物リストに追加しました。` : "買い物リストへの追加に失敗しました。",
     );
   }
 
@@ -60,17 +58,15 @@ export const handleYesNo = async (
       const item = pendingItem as PendingShoppingItem;
       const ok = await insertShoppingListItem(item);
       return buildTellResponse(
-        ok
-          ? `${item.name}を買い物リストに追加しました。`
-          : "買い物リストへの追加に失敗しました。",
+        ok ? `${item.name}を買い物リストに追加しました。` : "買い物リストへの追加に失敗しました。",
       );
     }
     // No → 別の商品名を聞く
-    return buildAskResponse(
-      "別の商品名を教えてください。",
-      "追加したい商品名を教えてください。",
-      { ...sessionAttributes, pendingAction: undefined, pendingItem: undefined },
-    );
+    return buildAskResponse("別の商品名を教えてください。", "追加したい商品名を教えてください。", {
+      ...sessionAttributes,
+      pendingAction: undefined,
+      pendingItem: undefined,
+    });
   }
 
   return buildTellResponse(isYes ? "わかりました。" : "わかりました。");

@@ -9,10 +9,7 @@ import {
 import { fetchAllItems, formatTotalRemaining } from "../inventory.ts";
 import { buildAddToShoppingListPrompt, queryGemini } from "../gemini.ts";
 
-const addToShoppingList = async (
-  name: string,
-  linkedItemId: string | null,
-): Promise<boolean> => {
+const addToShoppingList = async (name: string, linkedItemId: string | null): Promise<boolean> => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const userId = Deno.env.get("USER_ID");
@@ -41,7 +38,10 @@ const buildConfirmSpeech = (
 ): { speech: string; pendingAction: "add_to_shopping_list" | "choose_alternate" } => {
   const item = result.matchedItems[0];
   if (!item) {
-    return { speech: `${query}を買い物リストに追加しますか？`, pendingAction: "add_to_shopping_list" };
+    return {
+      speech: `${query}を買い物リストに追加しますか？`,
+      pendingAction: "add_to_shopping_list",
+    };
   }
 
   const remaining = formatTotalRemaining({
@@ -103,9 +103,7 @@ export const handleAddToShoppingList = async (
   if (result.stockStatus === "not_found") {
     const ok = await addToShoppingList(query, null);
     return buildTellResponse(
-      ok
-        ? `${query}を買い物リストに追加しました。`
-        : "買い物リストへの追加に失敗しました。",
+      ok ? `${query}を買い物リストに追加しました。` : "買い物リストへの追加に失敗しました。",
     );
   }
 

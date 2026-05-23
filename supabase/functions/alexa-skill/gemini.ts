@@ -1,9 +1,4 @@
-import type {
-  GeminiRequest,
-  GeminiResponse,
-  GeminiResult,
-  InventoryItem,
-} from "./types.ts";
+import type { GeminiRequest, GeminiResponse, GeminiResult, InventoryItem } from "./types.ts";
 import { formatTotalRemaining } from "./inventory.ts";
 
 const GEMINI_MODEL = "gemini-2.5-flash";
