@@ -10,11 +10,26 @@ import { formatTotalRemaining } from "./inventory.ts";
 const CONFIDENCE_VALUES = new Set(["exact", "fuzzy", "none"]);
 const STOCK_STATUS_VALUES = new Set(["in_stock", "out_of_stock", "not_found"]);
 
+const isValidMatchedItem = (item: unknown): boolean => {
+  if (!item || typeof item !== "object") return false;
+  const it = item as Record<string, unknown>;
+  return (
+    typeof it.id === "string" &&
+    typeof it.name === "string" &&
+    typeof it.units === "number" &&
+    isFinite(it.units) &&
+    typeof it.content_amount === "number" &&
+    isFinite(it.content_amount) &&
+    typeof it.content_unit === "string"
+  );
+};
+
 const isValidGeminiResult = (data: unknown): data is GeminiMatchResult => {
   if (!data || typeof data !== "object") return false;
   const d = data as Record<string, unknown>;
   return (
     Array.isArray(d.matchedItems) &&
+    d.matchedItems.every(isValidMatchedItem) &&
     typeof d.speech === "string" &&
     CONFIDENCE_VALUES.has(d.confidence as string) &&
     STOCK_STATUS_VALUES.has(d.stockStatus as string)
@@ -29,8 +44,8 @@ const SYSTEM_PROMPT = `あなたは家庭の在庫管理アシスタントです
 簡潔な日本語で回答を生成してください。
 
 ルール:
-- アイテムが見つかり在庫がある場合: stockStatus = "in_stock"
-- アイテムが見つかったが units=0 かつ opened_remaining が null の場合: stockStatus = "out_of_stock", speech に「〇〇は在庫切れです」
+- アイテムが見つかり total_remaining が「0{単位}」でない場合: stockStatus = "in_stock"
+- アイテムが見つかったが total_remaining が「0{単位}」の場合: stockStatus = "out_of_stock", speech に「〇〇は在庫切れです」
 - アイテムが在庫リストに一切見つからない場合: stockStatus = "not_found", speech に「今までの購入記録から〇〇は見つかりませんでした」
 - 複数ヒット(3件以下): すべて列挙して読み上げる
 - 複数ヒット(4件以上): 「〇〇など△件あります」と要約する

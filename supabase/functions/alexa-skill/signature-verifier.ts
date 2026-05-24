@@ -122,12 +122,19 @@ const validateCertDates = (certDer: Uint8Array): number | null => {
   }
 };
 
-// Check dNSName against target, supporting a single leading wildcard (*.example.com)
+// Check dNSName against target, supporting a single leading wildcard (*.example.com).
+// A wildcard matches exactly one additional label: *.example.com matches sub.example.com
+// but NOT a.b.example.com (multi-label depth).
 const dnsMatches = (name: string, target: string): boolean => {
   const n = name.toLowerCase();
   const t = target.toLowerCase();
   if (n === t) return true;
-  if (n.startsWith("*.")) return t.endsWith(n.slice(1));
+  if (n.startsWith("*.")) {
+    const suffix = n.slice(1); // ".example.com"
+    if (!t.endsWith(suffix)) return false;
+    const label = t.slice(0, t.length - suffix.length);
+    return label.length > 0 && !label.includes(".");
+  }
   return false;
 };
 

@@ -66,7 +66,12 @@ export const handleYesNo = async (
     return buildAskResponse(
       "わかりました。追加したい商品は「○○を買い物リストに追加して」と話しかけてください。",
       "追加したい場合は「○○を買い物リストに追加して」と言ってください。",
-      { ...sessionAttributes, pendingAction: undefined, pendingItem: undefined },
+      {
+        ...sessionAttributes,
+        pendingAction: undefined,
+        pendingItem: undefined,
+        pendingQuery: undefined,
+      },
     );
   }
 

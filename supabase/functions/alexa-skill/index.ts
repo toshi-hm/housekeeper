@@ -69,32 +69,32 @@ const routeIntent = async (
 
     case "CheckInventoryIntent": {
       const { handleCheckInventory } = await import("./handlers/check-inventory.ts");
-      return handleCheckInventory(slots["ItemQuery"]?.value ?? "");
+      return handleCheckInventory(slots["ItemQuery"]?.value?.trim() ?? "");
     }
 
     case "CheckExpiryIntent": {
       const { handleCheckExpiry } = await import("./handlers/check-expiry.ts");
-      return handleCheckExpiry(slots["ItemQuery"]?.value ?? "");
+      return handleCheckExpiry(slots["ItemQuery"]?.value?.trim() ?? "");
     }
 
     case "ListByLocationIntent": {
       const { handleListByLocation } = await import("./handlers/list-by-location.ts");
-      return handleListByLocation(slots["LocationQuery"]?.value ?? "");
+      return handleListByLocation(slots["LocationQuery"]?.value?.trim() ?? "");
     }
 
     case "CheckLocationIntent": {
       const { handleCheckLocation } = await import("./handlers/check-location.ts");
-      return handleCheckLocation(slots["ItemQuery"]?.value ?? "");
+      return handleCheckLocation(slots["ItemQuery"]?.value?.trim() ?? "");
     }
 
     case "CheckRemainingIntent": {
       const { handleCheckRemaining } = await import("./handlers/check-remaining.ts");
-      return handleCheckRemaining(slots["ItemQuery"]?.value ?? "");
+      return handleCheckRemaining(slots["ItemQuery"]?.value?.trim() ?? "");
     }
 
     case "AddToShoppingListIntent": {
       const { handleAddToShoppingList } = await import("./handlers/add-to-shopping-list.ts");
-      return handleAddToShoppingList(slots["ItemQuery"]?.value ?? "", sessionAttributes);
+      return handleAddToShoppingList(slots["ItemQuery"]?.value?.trim() ?? "", sessionAttributes);
     }
 
     default:
