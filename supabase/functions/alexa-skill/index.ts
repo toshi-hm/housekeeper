@@ -1,5 +1,6 @@
 import type { AlexaRequest, AlexaResponse, AlexaSlot, SessionAttributes } from "./types.ts";
 import { buildAskResponse, buildErrorResponse, buildTellResponse } from "./response.ts";
+import { verifyAlexaSignature } from "./signature-verifier.ts";
 
 const ALEXA_SKILL_ID = Deno.env.get("ALEXA_SKILL_ID") ?? "";
 
@@ -133,8 +134,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const headerError = verifyAlexaHeaders(req);
   if (headerError) return headerError;
 
+  const certChainUrl = req.headers.get("SignatureCertChainUrl")!;
+  const signatureB64 = req.headers.get("Signature")!;
+
+  // Read raw bytes first — required for body signature verification
+  const rawBodyBytes = new Uint8Array(await req.arrayBuffer());
+
+  const signatureValid = await verifyAlexaSignature(rawBodyBytes, signatureB64, certChainUrl);
+  if (!signatureValid) {
+    console.error("[alexa-skill] Signature verification failed");
+    return new Response(JSON.stringify({ error: "Invalid signature" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   try {
-    const body = (await req.json()) as AlexaRequest;
+    const body = JSON.parse(new TextDecoder().decode(rawBodyBytes)) as AlexaRequest;
 
     const appIdError = verifyApplicationId(body);
     if (appIdError) return appIdError;

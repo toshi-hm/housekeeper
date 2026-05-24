@@ -5,7 +5,7 @@
 - Amazon Developer Account（https://developer.amazon.com）
 - Alexa対応デバイスまたはAlexaアプリ
 - Supabase Edge Function `alexa-skill` がデプロイ済み
-  （実装: `supabase/functions/alexa-skill/` — このリポジトリの #148〜#151 で追加）
+  （実装: `supabase/functions/alexa-skill/`）
 
 ---
 
