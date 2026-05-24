@@ -26,8 +26,9 @@ export const handleCheckExpiry = async (query: string): Promise<AlexaResponse> =
 
   const result = geminiResult.data;
 
-  // expiry_date未設定はコード側で保証（Gemini生成文に依存しない）
-  if (result.stockStatus === "in_stock" && result.matchedItems.length > 0) {
+  // Single match: override Gemini speech to guarantee null expiry_date is handled consistently.
+  // Multiple matches: fall through to result.speech so all items are listed.
+  if (result.stockStatus === "in_stock" && result.matchedItems.length === 1) {
     const item = result.matchedItems[0];
     if (!item.expiry_date) {
       return buildTellResponse(`${item.name}の賞味期限は登録されていません。`);
