@@ -101,6 +101,27 @@ const routeIntent = async (
   }
 };
 
+const CERT_CHAIN_PATTERN =
+  /^https:\/\/s3\.amazonaws\.com(\/echo\.api\/|:443\/echo\.api\/).+\.pem$/i;
+
+const verifyAlexaHeaders = (req: Request): Response | null => {
+  const certChainUrl = req.headers.get("SignatureCertChainUrl");
+  const signature = req.headers.get("Signature");
+  if (!certChainUrl || !signature) {
+    return new Response(JSON.stringify({ error: "Missing Alexa security headers" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  if (!CERT_CHAIN_PATTERN.test(certChainUrl)) {
+    return new Response(JSON.stringify({ error: "Invalid SignatureCertChainUrl" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  return null;
+};
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
@@ -108,6 +129,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  const headerError = verifyAlexaHeaders(req);
+  if (headerError) return headerError;
 
   try {
     const body = (await req.json()) as AlexaRequest;

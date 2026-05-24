@@ -25,14 +25,6 @@ const buildConfirmSpeech = (
     content_amount: item.content_amount,
     content_unit: item.content_unit,
     opened_remaining: item.opened_remaining ?? null,
-    id: item.id,
-    name: item.name,
-    category_id: null,
-    storage_location_id: null,
-    expiry_date: item.expiry_date ?? null,
-    deleted_at: null,
-    categories: null,
-    storage_locations: null,
   });
 
   if (result.stockStatus === "out_of_stock") {

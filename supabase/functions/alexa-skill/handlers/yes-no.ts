@@ -1,16 +1,14 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
 import type { AlexaResponse, PendingShoppingItem, SessionAttributes } from "../types.ts";
 import { buildAskResponse, buildErrorResponse, buildTellResponse } from "../response.ts";
+import { getSupabaseClient } from "../supabase-client.ts";
 
 const insertShoppingListItem = async (item: PendingShoppingItem): Promise<boolean> => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const userId = Deno.env.get("USER_ID");
-  if (!supabaseUrl || !supabaseServiceKey || !userId) {
+  const ctx = getSupabaseClient();
+  if (!ctx) {
     console.error("[yes-no] Missing required environment variables");
     return false;
   }
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const { supabase, userId } = ctx;
   const { error } = await supabase.from("shopping_list_items").insert({
     user_id: userId,
     name: item.name,

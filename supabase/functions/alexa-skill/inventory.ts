@@ -1,13 +1,12 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
 import type { InventoryItem } from "./types.ts";
+import { getSupabaseClient } from "./supabase-client.ts";
 
-const getSupabaseClient = () => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const userId = Deno.env.get("USER_ID");
-  if (!supabaseUrl || !supabaseServiceKey || !userId) return null;
-  return { supabase: createClient(supabaseUrl, supabaseServiceKey), userId };
-};
+export interface RemainingFields {
+  units: number;
+  content_amount: number;
+  content_unit: string;
+  opened_remaining: number | null;
+}
 
 const ITEM_SELECT =
   "id, name, category_id, storage_location_id, units, content_amount, content_unit, opened_remaining, expiry_date, deleted_at, categories(name), storage_locations(name)";
@@ -55,7 +54,7 @@ export const fetchItemsByLocation = async (
   return (data ?? []) as InventoryItem[];
 };
 
-export const formatTotalRemaining = (item: InventoryItem): string => {
+export const formatTotalRemaining = (item: RemainingFields): string => {
   const { units, content_amount, content_unit, opened_remaining } = item;
   if (units === 0 && opened_remaining === null) return `0${content_unit}`;
 

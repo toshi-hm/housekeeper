@@ -74,7 +74,7 @@ export const queryGemini = async (
     return { kind: "error" };
   }
 
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
   const inventoryContext = buildInventoryContext(items);
 
   const body: GeminiRequest = {
@@ -104,7 +104,7 @@ export const queryGemini = async (
   try {
     const res = await fetch(geminiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
