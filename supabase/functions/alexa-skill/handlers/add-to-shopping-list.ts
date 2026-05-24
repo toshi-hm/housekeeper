@@ -69,7 +69,6 @@ export const handleAddToShoppingList = async (
   const result = geminiResult.data;
 
   if (result.stockStatus === "not_found") {
-    // 在庫になくても確認ダイアログを挟む（Issue #151 要件）
     const newSessionAttributes: SessionAttributes = {
       ...sessionAttributes,
       pendingAction: "add_to_shopping_list",

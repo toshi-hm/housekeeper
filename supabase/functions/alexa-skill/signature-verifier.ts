@@ -63,14 +63,16 @@ const extractSPKI = (certDer: Uint8Array): Uint8Array | null => {
 const parseDERTime = (data: Uint8Array, pos: number, len: number, tag: number): Date | null => {
   try {
     const s = new TextDecoder("ascii").decode(data.slice(pos, pos + len));
-    if (tag === 0x17) { // UTCTime: YYMMDDHHMMSSZ — year 00-49 = 2000-2049, 50-99 = 1950-1999
+    if (tag === 0x17) {
+      // UTCTime: YYMMDDHHMMSSZ — year 00-49 = 2000-2049, 50-99 = 1950-1999
       const yr = parseInt(s.slice(0, 2), 10);
       return new Date(
         `${yr >= 50 ? 1900 + yr : 2000 + yr}-${s.slice(2, 4)}-${s.slice(4, 6)}` +
           `T${s.slice(6, 8)}:${s.slice(8, 10)}:${s.slice(10, 12)}Z`,
       );
     }
-    if (tag === 0x18) { // GeneralizedTime: YYYYMMDDHHMMSSZ
+    if (tag === 0x18) {
+      // GeneralizedTime: YYYYMMDDHHMMSSZ
       return new Date(
         `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` +
           `T${s.slice(8, 10)}:${s.slice(10, 12)}:${s.slice(12, 14)}Z`,
@@ -82,11 +84,12 @@ const parseDERTime = (data: Uint8Array, pos: number, len: number, tag: number): 
   }
 };
 
-// Validate notBefore <= now <= notAfter from the certificate Validity SEQUENCE
-const validateCertDates = (certDer: Uint8Array): boolean => {
+// Validate notBefore <= now <= notAfter from the certificate Validity SEQUENCE.
+// Returns the notAfter timestamp (ms) on success, or null if invalid/expired.
+const validateCertDates = (certDer: Uint8Array): number | null => {
   try {
     const bounds = getTBSBounds(certDer);
-    if (!bounds) return false;
+    if (!bounds) return null;
     let pos = bounds.start;
     while (pos < bounds.end) {
       const tag = certDer[pos];
@@ -104,15 +107,18 @@ const validateCertDates = (certDer: Uint8Array): boolean => {
           const notAfter = parseDERTime(certDer, naLen.end, naLen.len, naTag);
           if (notBefore && notAfter) {
             const now = Date.now();
-            return now >= notBefore.getTime() && now <= notAfter.getTime();
+            if (now >= notBefore.getTime() && now <= notAfter.getTime()) {
+              return notAfter.getTime();
+            }
+            return null;
           }
         }
       }
       pos = fieldEnd;
     }
-    return false;
+    return null;
   } catch {
-    return false;
+    return null;
   }
 };
 
@@ -173,7 +179,8 @@ const validateCertDomain = (certDer: Uint8Array): boolean => {
               while (gnPos < gnEnd) {
                 const gnTag = certDer[gnPos];
                 const gnField = readDERLen(certDer, gnPos + 1);
-                if (gnTag === 0x82) { // dNSName [2] IMPLICIT IA5String
+                if (gnTag === 0x82) {
+                  // dNSName [2] IMPLICIT IA5String
                   const name = new TextDecoder("ascii").decode(
                     certDer.slice(gnField.end, gnField.end + gnField.len),
                   );
@@ -201,8 +208,8 @@ const validateCertDomain = (certDer: Uint8Array): boolean => {
 const PEM_CERT_REGEX = /-----BEGIN CERTIFICATE-----([^-]+)-----END CERTIFICATE-----/;
 
 // Module-level cache: Alexa rotates certs infrequently; caching avoids per-request S3 fetches.
-// Validation (dates, domain) runs only on first fetch; the URL acts as cache key.
-let certCache: { url: string; spki: Uint8Array } | null = null;
+// notAfterMs is re-checked on every hit so an expired cached cert is never accepted.
+let certCache: { url: string; spki: Uint8Array; notAfterMs: number } | null = null;
 
 export const verifyAlexaSignature = async (
   rawBody: Uint8Array,
@@ -212,7 +219,7 @@ export const verifyAlexaSignature = async (
   try {
     let spki: Uint8Array;
 
-    if (certCache?.url === certChainUrl) {
+    if (certCache?.url === certChainUrl && Date.now() <= certCache.notAfterMs) {
       spki = certCache.spki;
     } else {
       const controller = new AbortController();
@@ -239,11 +246,10 @@ export const verifyAlexaSignature = async (
         return false;
       }
 
-      const certDer = Uint8Array.from(atob(pemMatch[1].replace(/\s/g, "")), (c) =>
-        c.charCodeAt(0),
-      );
+      const certDer = Uint8Array.from(atob(pemMatch[1].replace(/\s/g, "")), (c) => c.charCodeAt(0));
 
-      if (!validateCertDates(certDer)) {
+      const notAfterMs = validateCertDates(certDer);
+      if (notAfterMs === null) {
         console.error("[alexa-skill] Certificate is expired or not yet valid");
         return false;
       }
@@ -260,7 +266,7 @@ export const verifyAlexaSignature = async (
       }
 
       spki = extracted;
-      certCache = { url: certChainUrl, spki };
+      certCache = { url: certChainUrl, spki, notAfterMs };
     }
 
     const publicKey = await crypto.subtle.importKey(

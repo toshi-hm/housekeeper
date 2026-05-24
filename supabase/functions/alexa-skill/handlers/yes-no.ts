@@ -53,7 +53,6 @@ export const handleYesNo = async (
 
   if (pendingAction === "choose_alternate") {
     if (isYes) {
-      // 複数候補のうち最初のアイテムを追加
       if (!pendingItem) {
         return buildErrorResponse("追加する商品が見つかりませんでした。");
       }

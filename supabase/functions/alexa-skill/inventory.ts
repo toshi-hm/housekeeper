@@ -34,24 +34,11 @@ export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
 export const fetchItemsByLocation = async (
   locationName: string,
 ): Promise<InventoryItem[] | null> => {
-  const ctx = getSupabaseClient();
-  if (!ctx) {
-    console.error("[inventory] Missing required environment variables");
-    return null;
-  }
-  const { supabase, userId } = ctx;
-  const { data, error } = await supabase
-    .from("items")
-    .select(ITEM_SELECT)
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .eq("storage_locations.name", locationName);
-
-  if (error) {
-    console.error("[inventory] fetchItemsByLocation error:", error);
-    return null;
-  }
-  return (data ?? []) as InventoryItem[];
+  const all = await fetchAllItems();
+  if (!all) return null;
+  // PostgREST filters on embedded resources use a left join and do not exclude
+  // parent rows, so filter in application code instead.
+  return all.filter((item) => item.storage_locations?.name === locationName);
 };
 
 export const formatTotalRemaining = (item: RemainingFields): string => {
