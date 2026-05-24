@@ -1,7 +1,13 @@
 import type { AlexaResponse } from "../types.ts";
-import { buildAskResponse } from "../response.ts";
+import {
+  buildAskResponse,
+  buildErrorResponse,
+  buildTellResponse,
+  buildTimeoutResponse,
+} from "../response.ts";
+import { fetchAllItems } from "../inventory.ts";
+import { buildCheckInventoryPrompt, queryGemini } from "../gemini.ts";
 
-// TODO: implement in feature/alexa-inventory-intents (#150)
 export const handleCheckInventory = async (query: string): Promise<AlexaResponse> => {
   if (!query) {
     return buildAskResponse(
@@ -10,5 +16,13 @@ export const handleCheckInventory = async (query: string): Promise<AlexaResponse
       {},
     );
   }
-  return buildAskResponse(`${query}の在庫確認は準備中です。`, "他に確認することはありますか？", {});
+
+  const items = await fetchAllItems();
+  if (!items) return buildErrorResponse("在庫情報の取得に失敗しました。");
+
+  const geminiResult = await queryGemini(buildCheckInventoryPrompt(query), items);
+  if (geminiResult.kind === "timeout") return buildTimeoutResponse();
+  if (geminiResult.kind === "error") return buildErrorResponse();
+
+  return buildTellResponse(geminiResult.data.speech);
 };

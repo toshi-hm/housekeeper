@@ -1,23 +1,27 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import type { InventoryItem } from "./types.ts";
 
-export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
+const getSupabaseClient = () => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const userId = Deno.env.get("USER_ID");
+  if (!supabaseUrl || !supabaseServiceKey || !userId) return null;
+  return { supabase: createClient(supabaseUrl, supabaseServiceKey), userId };
+};
 
-  if (!supabaseUrl || !supabaseServiceKey || !userId) {
+const ITEM_SELECT =
+  "id, name, category_id, storage_location_id, units, content_amount, content_unit, opened_remaining, expiry_date, deleted_at, categories(name), storage_locations(name)";
+
+export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
+  const ctx = getSupabaseClient();
+  if (!ctx) {
     console.error("[inventory] Missing required environment variables");
     return null;
   }
-
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+  const { supabase, userId } = ctx;
   const { data, error } = await supabase
     .from("items")
-    .select(
-      "id, name, category_id, storage_location_id, units, content_amount, content_unit, opened_remaining, expiry_date, deleted_at, categories(name), storage_locations(name)",
-    )
+    .select(ITEM_SELECT)
     .eq("user_id", userId)
     .is("deleted_at", null);
 
@@ -25,7 +29,29 @@ export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
     console.error("[inventory] fetchAllItems error:", error);
     return null;
   }
+  return (data ?? []) as InventoryItem[];
+};
 
+export const fetchItemsByLocation = async (
+  locationName: string,
+): Promise<InventoryItem[] | null> => {
+  const ctx = getSupabaseClient();
+  if (!ctx) {
+    console.error("[inventory] Missing required environment variables");
+    return null;
+  }
+  const { supabase, userId } = ctx;
+  const { data, error } = await supabase
+    .from("items")
+    .select(ITEM_SELECT)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .eq("storage_locations.name", locationName);
+
+  if (error) {
+    console.error("[inventory] fetchItemsByLocation error:", error);
+    return null;
+  }
   return (data ?? []) as InventoryItem[];
 };
 
