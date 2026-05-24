@@ -1,5 +1,25 @@
-import type { GeminiRequest, GeminiResponse, GeminiResult, InventoryItem } from "./types.ts";
+import type {
+  GeminiMatchResult,
+  GeminiRequest,
+  GeminiResponse,
+  GeminiResult,
+  InventoryItem,
+} from "./types.ts";
 import { formatTotalRemaining } from "./inventory.ts";
+
+const CONFIDENCE_VALUES = new Set(["exact", "fuzzy", "none"]);
+const STOCK_STATUS_VALUES = new Set(["in_stock", "out_of_stock", "not_found"]);
+
+const isValidGeminiResult = (data: unknown): data is GeminiMatchResult => {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Record<string, unknown>;
+  return (
+    Array.isArray(d.matchedItems) &&
+    typeof d.speech === "string" &&
+    CONFIDENCE_VALUES.has(d.confidence as string) &&
+    STOCK_STATUS_VALUES.has(d.stockStatus as string)
+  );
+};
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_TIMEOUT_MS = 5000;
@@ -124,7 +144,12 @@ export const queryGemini = async (
       return { kind: "error" };
     }
 
-    return { kind: "ok", data: JSON.parse(text) };
+    const parsed: unknown = JSON.parse(text);
+    if (!isValidGeminiResult(parsed)) {
+      console.error("[gemini] Response schema mismatch:", JSON.stringify(parsed).slice(0, 200));
+      return { kind: "error" };
+    }
+    return { kind: "ok", data: parsed };
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === "AbortError") {
