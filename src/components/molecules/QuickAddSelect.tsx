@@ -52,8 +52,31 @@ export const QuickAddSelect = ({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  // index 0 = clear option, index 1..n = options
+  const allOptions = [{ value: "", label: placeholder }, ...options];
   const selectedOption = options.find((o) => o.value === value);
+  const listboxId = id ? `${id}-listbox` : undefined;
+
+  const openDropdown = (initialFocusIndex?: number) => {
+    setDeleteError(null);
+    setIsOpen(true);
+    const idx =
+      initialFocusIndex ??
+      Math.max(
+        0,
+        allOptions.findIndex((o) => o.value === value),
+      );
+    setTimeout(() => optionRefs.current[idx]?.focus(), 0);
+  };
+
+  const closeDropdown = () => {
+    setIsOpen(false);
+    setDeleteError(null);
+    triggerRef.current?.focus();
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -69,8 +92,7 @@ export const QuickAddSelect = ({
 
   const handleSelect = (optionValue: string) => {
     onChange(optionValue);
-    setIsOpen(false);
-    setDeleteError(null);
+    closeDropdown();
   };
 
   const handleOpenAdd = () => {
@@ -95,7 +117,7 @@ export const QuickAddSelect = ({
       await onAdd(name);
       setIsEditing(false);
       setInputValue("");
-      setIsOpen(false);
+      closeDropdown();
     } catch {
       setAddError(resolvedAddErrorMessage);
     } finally {
@@ -103,12 +125,47 @@ export const QuickAddSelect = ({
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
       void handleConfirmAdd();
     } else if (e.key === "Escape") {
       handleCancelAdd();
+    }
+  };
+
+  const handleTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      openDropdown(isOpen ? undefined : 0);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      openDropdown(isOpen ? undefined : allOptions.length - 1);
+    } else if (e.key === "Escape" && isOpen) {
+      e.preventDefault();
+      closeDropdown();
+    } else if (e.key === " ") {
+      // prevent page scroll; click event fires naturally
+      e.preventDefault();
+      if (!isOpen) openDropdown();
+      else closeDropdown();
+    }
+  };
+
+  const handleOptionKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = index + 1;
+      if (next < allOptions.length) optionRefs.current[next]?.focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (index === 0) closeDropdown();
+      else optionRefs.current[index - 1]?.focus();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeDropdown();
+    } else if (e.key === "Tab") {
+      closeDropdown();
     }
   };
 
@@ -134,14 +191,17 @@ export const QuickAddSelect = ({
       {/* Trigger */}
       <button
         id={id}
+        ref={triggerRef}
         type="button"
         className="flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         onClick={() => {
-          setIsOpen((v) => !v);
-          setDeleteError(null);
+          if (isOpen) closeDropdown();
+          else openDropdown();
         }}
+        onKeyDown={handleTriggerKeyDown}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-controls={listboxId}
       >
         <span className={selectedOption ? "text-foreground" : "text-muted-foreground"}>
           {selectedOption?.label ?? resolvedPlaceholder}
@@ -155,27 +215,47 @@ export const QuickAddSelect = ({
       {isOpen && (
         <div className="absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-md border bg-popover shadow-md">
           {/* Options list */}
-          <div className="max-h-52 overflow-y-auto">
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label={placeholder}
+            className="max-h-52 overflow-y-auto"
+          >
             {/* Empty/clear option */}
             <button
+              ref={(el) => {
+                optionRefs.current[0] = el;
+              }}
               type="button"
-              className={`w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent ${!value ? "bg-accent/50 font-medium" : ""}`}
+              role="option"
+              aria-selected={!value}
+              className={`w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${!value ? "bg-accent/50 font-medium" : ""}`}
               onClick={() => handleSelect("")}
+              onKeyDown={(e) => handleOptionKeyDown(e, 0)}
             >
               {resolvedPlaceholder}
             </button>
 
-            {options.map((option) => (
+            {options.map((option, idx) => (
               <div
                 key={option.value}
                 className={`flex items-center ${option.value === value ? "bg-accent/50" : "hover:bg-accent"}`}
               >
                 <button
+                  ref={(el) => {
+                    optionRefs.current[idx + 1] = el;
+                  }}
                   type="button"
-                  className="flex-1 px-3 py-2 text-left text-sm"
+                  role="option"
+                  aria-selected={option.value === value}
+                  className="flex flex-1 items-center justify-between px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   onClick={() => handleSelect(option.value)}
+                  onKeyDown={(e) => handleOptionKeyDown(e, idx + 1)}
                 >
                   {option.label}
+                  {option.value === value && (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  )}
                 </button>
                 {onDelete && (
                   <button
@@ -184,6 +264,7 @@ export const QuickAddSelect = ({
                     onClick={(e) => void handleDelete(e, option.value)}
                     disabled={!!deletingId}
                     aria-label={t("common:delete")}
+                    tabIndex={-1}
                   >
                     {deletingId === option.value ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -210,7 +291,7 @@ export const QuickAddSelect = ({
                     ref={inputRef}
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={handleInputKeyDown}
                     placeholder={resolvedAddLabel}
                     className="h-8 flex-1 text-base sm:text-sm"
                     disabled={isAdding}
@@ -247,7 +328,7 @@ export const QuickAddSelect = ({
             ) : (
               <button
                 type="button"
-                className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 onClick={handleOpenAdd}
               >
                 <Plus className="h-3.5 w-3.5" />
