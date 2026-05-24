@@ -34,7 +34,7 @@ export const handleYesNo = async (
   const { pendingAction, pendingItem } = sessionAttributes;
 
   if (!pendingAction) {
-    return buildTellResponse(isYes ? "わかりました。" : "わかりました。");
+    return buildTellResponse("わかりました。");
   }
 
   if (pendingAction === "add_to_shopping_list") {
@@ -75,5 +75,5 @@ export const handleYesNo = async (
     );
   }
 
-  return buildTellResponse(isYes ? "わかりました。" : "わかりました。");
+  return buildTellResponse("わかりました。");
 };

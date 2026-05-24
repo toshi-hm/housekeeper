@@ -230,7 +230,7 @@ export const verifyAlexaSignature = async (
       spki = certCache.spki;
     } else {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+      const timeout = setTimeout(() => controller.abort(), 2000);
       let certRes: Response;
       try {
         // redirect:"error" prevents 3xx chains from serving a cert from an untrusted host
