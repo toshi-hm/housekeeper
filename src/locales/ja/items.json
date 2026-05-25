@@ -111,5 +111,14 @@
   "urgentBannerNoExpiringSoonItems": "期限間近の商品はありません",
   "lotsLoadError": "在庫ロットの読み込みに失敗しました。時間をおいて再試行してください。",
   "back": "戻る",
-  "noStockToConsume": "使用できる在庫がありません"
+  "noStockToConsume": "使用できる在庫がありません",
+  "quickFiltersLabel": "クイックフィルタ",
+  "quickFilterAll": "すべて",
+  "quickFilterUrgent": "要注意",
+  "clearFilters": "フィルタをクリア",
+  "activeFilterResult": "{{count}}件を表示中",
+  "countLabel": "{{count}}件を表示 / 全{{total}}件",
+  "showExpiredOnly": "期限切れのみ",
+  "showExpiringSoonOnly": "期限間近のみ",
+  "sortShortcutsLabel": "並び替えショートカット"
 }
