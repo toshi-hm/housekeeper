@@ -16,6 +16,10 @@
           "samples": ["ストップ", "終わり", "閉じて"]
         },
         {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
           "name": "AMAZON.YesIntent",
           "samples": ["はい", "うん", "そう", "そうして", "お願い", "追加して"]
         },
@@ -32,18 +36,18 @@
             }
           ],
           "samples": [
-            "まだ{ItemQuery}はある",
-            "まだ{ItemQuery}はあります",
-            "まだ{ItemQuery}は在庫にある",
-            "まだ{ItemQuery}はストックしてある",
-            "まだ{ItemQuery}は残ってる",
-            "まだ{ItemQuery}はありますか",
-            "もう{ItemQuery}は買ってある",
-            "まだ{ItemQuery}はストックある",
-            "うちに{ItemQuery}はある",
-            "今{ItemQuery}の在庫はある",
-            "今{ItemQuery}の在庫を確認して",
-            "今{ItemQuery}の在庫は"
+            "まだ {ItemQuery} はある",
+            "まだ {ItemQuery} はあります",
+            "まだ {ItemQuery} は在庫にある",
+            "まだ {ItemQuery} はストックしてある",
+            "まだ {ItemQuery} は残ってる",
+            "まだ {ItemQuery} はありますか",
+            "もう {ItemQuery} は買ってある",
+            "まだ {ItemQuery} はストックある",
+            "うちに {ItemQuery} はある",
+            "今 {ItemQuery} の在庫はある",
+            "今 {ItemQuery} の在庫を確認して",
+            "今 {ItemQuery} の在庫は"
           ]
         },
         {
@@ -55,16 +59,16 @@
             }
           ],
           "samples": [
-            "ねえ{ItemQuery}の賞味期限",
-            "ねえ{ItemQuery}の賞味期限は",
-            "ねえ{ItemQuery}の賞味期限を教えて",
-            "ねえ{ItemQuery}はいつまで",
-            "ねえ{ItemQuery}はいつまで食べられる",
-            "ねえ{ItemQuery}の期限は",
-            "ねえ{ItemQuery}の消費期限",
-            "ねえ{ItemQuery}の消費期限を教えて",
-            "ねえ{ItemQuery}いつまで大丈夫",
-            "ねえ{ItemQuery}の期限を教えて"
+            "ねえ {ItemQuery} の賞味期限",
+            "ねえ {ItemQuery} の賞味期限は",
+            "ねえ {ItemQuery} の賞味期限を教えて",
+            "ねえ {ItemQuery} はいつまで",
+            "ねえ {ItemQuery} はいつまで食べられる",
+            "ねえ {ItemQuery} の期限は",
+            "ねえ {ItemQuery} の消費期限",
+            "ねえ {ItemQuery} の消費期限を教えて",
+            "ねえ {ItemQuery} いつまで大丈夫",
+            "ねえ {ItemQuery} の期限を教えて"
           ]
         },
         {
@@ -76,17 +80,17 @@
             }
           ],
           "samples": [
-            "今{LocationQuery}に何がある",
-            "今{LocationQuery}には何がある",
-            "今{LocationQuery}にあるものを教えて",
-            "今{LocationQuery}の中身",
-            "今{LocationQuery}の中身を教えて",
-            "今{LocationQuery}に何を入れてある",
-            "今{LocationQuery}に入ってるもの",
-            "今{LocationQuery}の在庫",
-            "今{LocationQuery}の在庫を教えて",
-            "今{LocationQuery}にあるものを確認して",
-            "今{LocationQuery}の一覧"
+            "今 {LocationQuery} に何がある",
+            "今 {LocationQuery} には何がある",
+            "今 {LocationQuery} にあるものを教えて",
+            "今 {LocationQuery} の中身",
+            "今 {LocationQuery} の中身を教えて",
+            "今 {LocationQuery} に何を入れてある",
+            "今 {LocationQuery} に入ってるもの",
+            "今 {LocationQuery} の在庫",
+            "今 {LocationQuery} の在庫を教えて",
+            "今 {LocationQuery} にあるものを確認して",
+            "今 {LocationQuery} の一覧"
           ]
         },
         {
@@ -98,16 +102,16 @@
             }
           ],
           "samples": [
-            "ねえ{ItemQuery}はどこにある",
-            "ねえ{ItemQuery}はどこ",
-            "ねえ{ItemQuery}はどこにしまってある",
-            "ねえ{ItemQuery}の場所",
-            "ねえ{ItemQuery}の場所を教えて",
-            "ねえ{ItemQuery}どこに置いてある",
-            "ねえ{ItemQuery}はどこに保管してある",
-            "ねえ{ItemQuery}の保管場所",
-            "ねえ{ItemQuery}はどこに入ってる",
-            "ねえ{ItemQuery}はどこ収納してある"
+            "ねえ {ItemQuery} はどこにある",
+            "ねえ {ItemQuery} はどこ",
+            "ねえ {ItemQuery} はどこにしまってある",
+            "ねえ {ItemQuery} の場所",
+            "ねえ {ItemQuery} の場所を教えて",
+            "ねえ {ItemQuery} どこに置いてある",
+            "ねえ {ItemQuery} はどこに保管してある",
+            "ねえ {ItemQuery} の保管場所",
+            "ねえ {ItemQuery} はどこに入ってる",
+            "ねえ {ItemQuery} はどこ収納してある"
           ]
         },
         {
@@ -119,16 +123,16 @@
             }
           ],
           "samples": [
-            "まだ{ItemQuery}はあとどれくらい",
-            "まだ{ItemQuery}はあとどのくらい残ってる",
-            "今{ItemQuery}の残量",
-            "今{ItemQuery}の残量を教えて",
-            "今{ItemQuery}はどのくらい残ってる",
-            "まだ{ItemQuery}はあとどれくらい残ってる",
-            "今{ItemQuery}残りはどのくらい",
-            "まだ{ItemQuery}はあとどれだけある",
-            "今{ItemQuery}の残りを教えて",
-            "まだ{ItemQuery}はいくら残ってる"
+            "まだ {ItemQuery} はあとどれくらい",
+            "まだ {ItemQuery} はあとどのくらい残ってる",
+            "今 {ItemQuery} の残量",
+            "今 {ItemQuery} の残量を教えて",
+            "今 {ItemQuery} はどのくらい残ってる",
+            "まだ {ItemQuery} はあとどれくらい残ってる",
+            "今 {ItemQuery} 残りはどのくらい",
+            "まだ {ItemQuery} はあとどれだけある",
+            "今 {ItemQuery} の残りを教えて",
+            "まだ {ItemQuery} はいくら残ってる"
           ]
         },
         {
@@ -140,17 +144,17 @@
             }
           ],
           "samples": [
-            "ちょっと{ItemQuery}を買い物リストに追加して",
-            "ちょっと{ItemQuery}を買い物リストに入れて",
-            "ちょっと{ItemQuery}を買い物リストに加えて",
-            "次の買い物に{ItemQuery}を入れて",
-            "次の買い物に{ItemQuery}を加えて",
-            "あとで{ItemQuery}を買って",
-            "今度{ItemQuery}を買い足して",
-            "今度{ItemQuery}を補充して",
-            "ちょっと{ItemQuery}を購入リストに追加して",
-            "ちょっと{ItemQuery}を買い物メモに追加して",
-            "次の買い物で{ItemQuery}を買っておいて"
+            "ちょっと {ItemQuery} を買い物リストに追加して",
+            "ちょっと {ItemQuery} を買い物リストに入れて",
+            "ちょっと {ItemQuery} を買い物リストに加えて",
+            "次の買い物に {ItemQuery} を入れて",
+            "次の買い物に {ItemQuery} を加えて",
+            "あとで {ItemQuery} を買って",
+            "今度 {ItemQuery} を買い足して",
+            "今度 {ItemQuery} を補充して",
+            "ちょっと {ItemQuery} を購入リストに追加して",
+            "ちょっと {ItemQuery} を買い物メモに追加して",
+            "次の買い物で {ItemQuery} を買っておいて"
           ]
         }
       ],
