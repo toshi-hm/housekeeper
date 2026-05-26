@@ -16,6 +16,10 @@
           "samples": ["ストップ", "終わり", "閉じて"]
         },
         {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
           "name": "AMAZON.YesIntent",
           "samples": ["はい", "うん", "そう", "そうして", "お願い", "追加して"]
         },
