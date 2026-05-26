@@ -123,7 +123,20 @@ const verifyAlexaHeaders = (req: Request): Response | null => {
   return null;
 };
 
+const SKIP_SIGNATURE_VERIFICATION = Deno.env.get("SKIP_SIGNATURE_VERIFICATION") === "true";
+
 Deno.serve(async (req: Request): Promise<Response> => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST",
+        "Access-Control-Allow-Headers": "Content-Type, Signature, SignatureCertChainUrl",
+      },
+    });
+  }
+
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -140,13 +153,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // Read raw bytes first — required for body signature verification
   const rawBodyBytes = new Uint8Array(await req.arrayBuffer());
 
-  const signatureValid = await verifyAlexaSignature(rawBodyBytes, signatureB64, certChainUrl);
-  if (!signatureValid) {
-    console.error("[alexa-skill] Signature verification failed");
-    return new Response(JSON.stringify({ error: "Invalid signature" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+  if (SKIP_SIGNATURE_VERIFICATION) {
+    console.warn("[alexa-skill] Signature verification SKIPPED (development mode)");
+  } else {
+    const signatureValid = await verifyAlexaSignature(rawBodyBytes, signatureB64, certChainUrl);
+    if (!signatureValid) {
+      console.error("[alexa-skill] Signature verification failed");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
   }
 
   try {
