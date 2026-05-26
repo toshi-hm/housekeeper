@@ -233,8 +233,8 @@ export const verifyAlexaSignature = async (
       const timeout = setTimeout(() => controller.abort(), 2000);
       let certRes: Response;
       try {
-        // redirect:"error" prevents 3xx chains from serving a cert from an untrusted host
-        certRes = await fetch(certChainUrl, { signal: controller.signal, redirect: "error" });
+        // redirect:"follow" allows S3 regional redirects (s3.amazonaws.com → s3.us-east-1.amazonaws.com)
+        certRes = await fetch(certChainUrl, { signal: controller.signal, redirect: "follow" });
         clearTimeout(timeout);
       } catch (fetchErr) {
         clearTimeout(timeout);
