@@ -230,12 +230,14 @@ export const verifyAlexaSignature = async (
       spki = certCache.spki;
     } else {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000);
+      // 8 s gives S3 room to respond even on slow edge-node routes
+      const timeout = setTimeout(() => controller.abort(), 8000);
       let certRes: Response;
       try {
         // redirect:"follow" allows S3 regional redirects (s3.amazonaws.com → s3.us-east-1.amazonaws.com)
         certRes = await fetch(certChainUrl, { signal: controller.signal, redirect: "follow" });
         clearTimeout(timeout);
+        console.log("[alexa-skill] Cert fetch OK, status:", certRes.status, "url:", certChainUrl);
       } catch (fetchErr) {
         clearTimeout(timeout);
         console.error("[alexa-skill] Cert fetch failed:", fetchErr);
@@ -254,38 +256,45 @@ export const verifyAlexaSignature = async (
       }
 
       const certDer = Uint8Array.from(atob(pemMatch[1].replace(/\s/g, "")), (c) => c.charCodeAt(0));
+      console.log("[alexa-skill] Cert DER parsed, length:", certDer.length);
 
       const notAfterMs = validateCertDates(certDer);
       if (notAfterMs === null) {
         console.error("[alexa-skill] Certificate is expired or not yet valid");
         return false;
       }
+      console.log("[alexa-skill] Cert dates valid, notAfter:", new Date(notAfterMs).toISOString());
 
       if (!validateCertDomain(certDer)) {
         console.error("[alexa-skill] Certificate SAN does not include echo-api.amazon.com");
         return false;
       }
+      console.log("[alexa-skill] Cert domain valid");
 
       const extracted = extractSPKI(certDer);
       if (!extracted) {
         console.error("[alexa-skill] Failed to extract SPKI from certificate");
         return false;
       }
+      console.log("[alexa-skill] SPKI extracted, length:", extracted.length);
 
       spki = extracted;
       certCache = { url: certChainUrl, spki, notAfterMs };
     }
 
+    // Alexa signs request bodies with RSA + SHA-1 (SHA1withRSA), not SHA-256
     const publicKey = await crypto.subtle.importKey(
       "spki",
       spki,
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-1" },
       false,
       ["verify"],
     );
 
     const signature = Uint8Array.from(atob(signatureB64), (c) => c.charCodeAt(0));
-    return await crypto.subtle.verify("RSASSA-PKCS1-v1_5", publicKey, signature, rawBody);
+    const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", publicKey, signature, rawBody);
+    console.log("[alexa-skill] RSA-SHA1 verify:", valid, "body:", rawBody.length, "bytes, sig:", signature.length, "bytes");
+    return valid;
   } catch (err) {
     console.error("[alexa-skill] Signature verification error:", err);
     return false;
