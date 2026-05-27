@@ -293,7 +293,15 @@ export const verifyAlexaSignature = async (
 
     const signature = Uint8Array.from(atob(signatureB64), (c) => c.charCodeAt(0));
     const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", publicKey, signature, rawBody);
-    console.log("[alexa-skill] RSA-SHA1 verify:", valid, "body:", rawBody.length, "bytes, sig:", signature.length, "bytes");
+    console.log(
+      "[alexa-skill] RSA-SHA1 verify:",
+      valid,
+      "body:",
+      rawBody.length,
+      "bytes, sig:",
+      signature.length,
+      "bytes",
+    );
     return valid;
   } catch (err) {
     console.error("[alexa-skill] Signature verification error:", err);
