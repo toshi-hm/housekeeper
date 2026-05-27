@@ -37,7 +37,7 @@ const isValidGeminiResult = (data: unknown): data is GeminiMatchResult => {
 };
 
 const GEMINI_MODEL = "gemini-2.5-flash";
-const GEMINI_TIMEOUT_MS = 4000;
+const GEMINI_TIMEOUT_MS = 8000;
 
 const SYSTEM_PROMPT = `あなたは家庭の在庫管理アシスタントです。
 ユーザーの問いかけに対して、以下の在庫リストから最適なアイテムを見つけ、

@@ -59,8 +59,8 @@ const extractSPKI = (certDer: Uint8Array): Uint8Array | null => {
   }
 };
 
-// Parse UTCTime (0x17) or GeneralizedTime (0x18) from DER bytes
-const parseDERTime = (data: Uint8Array, pos: number, len: number, tag: number): Date | null => {
+// Parse UTCTime (0x17) or GeneralizedTime (0x18) from DER bytes; returns ms timestamp
+const parseDERTime = (data: Uint8Array, pos: number, len: number, tag: number): number | null => {
   try {
     const s = new TextDecoder("ascii").decode(data.slice(pos, pos + len));
     if (tag === 0x17) {
@@ -69,14 +69,14 @@ const parseDERTime = (data: Uint8Array, pos: number, len: number, tag: number): 
       return new Date(
         `${yr >= 50 ? 1900 + yr : 2000 + yr}-${s.slice(2, 4)}-${s.slice(4, 6)}` +
           `T${s.slice(6, 8)}:${s.slice(8, 10)}:${s.slice(10, 12)}Z`,
-      );
+      ).getTime();
     }
     if (tag === 0x18) {
       // GeneralizedTime: YYYYMMDDHHMMSSZ
       return new Date(
         `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` +
           `T${s.slice(8, 10)}:${s.slice(10, 12)}:${s.slice(12, 14)}Z`,
-      );
+      ).getTime();
     }
     return null;
   } catch {
@@ -105,10 +105,10 @@ const validateCertDates = (certDer: Uint8Array): number | null => {
           const naTag = certDer[naPos];
           const naLen = readDERLen(certDer, naPos + 1);
           const notAfter = parseDERTime(certDer, naLen.end, naLen.len, naTag);
-          if (notBefore && notAfter) {
+          if (notBefore !== null && notAfter !== null) {
             const now = Date.now();
-            if (now >= notBefore.getTime() && now <= notAfter.getTime()) {
-              return notAfter.getTime();
+            if (now >= notBefore && now <= notAfter) {
+              return notAfter;
             }
             return null;
           }
