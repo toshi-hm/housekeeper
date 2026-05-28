@@ -5,15 +5,27 @@
       "intents": [
         {
           "name": "AMAZON.CancelIntent",
-          "samples": ["キャンセル", "やめる", "終了"]
+          "samples": [
+            "キャンセル",
+            "やめる",
+            "終了"
+          ]
         },
         {
           "name": "AMAZON.HelpIntent",
-          "samples": ["ヘルプ", "使い方を教えて", "何ができる"]
+          "samples": [
+            "ヘルプ",
+            "使い方を教えて",
+            "何ができる"
+          ]
         },
         {
           "name": "AMAZON.StopIntent",
-          "samples": ["ストップ", "終わり", "閉じて"]
+          "samples": [
+            "ストップ",
+            "終わり",
+            "閉じて"
+          ]
         },
         {
           "name": "AMAZON.NavigateHomeIntent",
@@ -21,11 +33,24 @@
         },
         {
           "name": "AMAZON.YesIntent",
-          "samples": ["はい", "うん", "そう", "そうして", "お願い", "追加して"]
+          "samples": [
+            "はい",
+            "うん",
+            "そう",
+            "そうして",
+            "お願い",
+            "追加して"
+          ]
         },
         {
           "name": "AMAZON.NoIntent",
-          "samples": ["いいえ", "違う", "やめて", "しない", "結構です"]
+          "samples": [
+            "いいえ",
+            "違う",
+            "やめて",
+            "しない",
+            "結構です"
+          ]
         },
         {
           "name": "CheckInventoryIntent",
@@ -47,7 +72,14 @@
             "うちに {ItemQuery} はある",
             "今 {ItemQuery} の在庫はある",
             "今 {ItemQuery} の在庫を確認して",
-            "今 {ItemQuery} の在庫は"
+            "今 {ItemQuery} の在庫は",
+            "{ItemQuery} はある",
+            "{ItemQuery} はありますか",
+            "{ItemQuery} の在庫を確認して",
+            "{ItemQuery} って在庫ある",
+            "{ItemQuery} はいくつある",
+            "{ItemQuery} はストックある",
+            "{ItemQuery} って残ってる"
           ]
         },
         {
