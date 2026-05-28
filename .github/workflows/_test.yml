@@ -17,3 +17,16 @@ jobs:
 
       - name: Test
         run: bun test
+
+  deno-test:
+    name: Deno Edge Function Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Test Edge Functions
+        run: deno test supabase/functions/alexa-skill/ --allow-env --allow-net
