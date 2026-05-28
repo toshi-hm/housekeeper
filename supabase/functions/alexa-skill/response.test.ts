@@ -1,5 +1,10 @@
 import { assertEquals, assertStrictEquals } from "jsr:@std/assert";
-import { buildAskResponse, buildErrorResponse, buildTellResponse, buildTimeoutResponse } from "./response.ts";
+import {
+  buildAskResponse,
+  buildErrorResponse,
+  buildTellResponse,
+  buildTimeoutResponse,
+} from "./response.ts";
 
 Deno.test("buildTellResponse - speech and shouldEndSession=true", () => {
   const res = buildTellResponse("テスト応答");
