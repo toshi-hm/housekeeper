@@ -125,7 +125,7 @@ const validateCertDates = (certDer: Uint8Array): number | null => {
 // Check dNSName against target, supporting a single leading wildcard (*.example.com).
 // A wildcard matches exactly one additional label: *.example.com matches sub.example.com
 // but NOT a.b.example.com (multi-label depth).
-const dnsMatches = (name: string, target: string): boolean => {
+export const dnsMatches = (name: string, target: string): boolean => {
   const n = name.toLowerCase();
   const t = target.toLowerCase();
   if (n === t) return true;
