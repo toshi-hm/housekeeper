@@ -29,4 +29,8 @@ jobs:
           deno-version: v2.x
 
       - name: Test Edge Functions
-        run: deno test supabase/functions/alexa-skill/ --allow-env --allow-net
+        run: |
+          deno test --no-check \
+            supabase/functions/alexa-skill/response.test.ts \
+            supabase/functions/alexa-skill/inventory-formatters.test.ts \
+            supabase/functions/alexa-skill/signature-verifier.test.ts

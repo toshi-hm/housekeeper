@@ -1,10 +1,10 @@
-import { assertEquals } from "jsr:@std/assert";
+import assert from "node:assert/strict";
 import { formatExpiryDate, formatTotalRemaining } from "./inventory-formatters.ts";
 
 // formatTotalRemaining
 
 Deno.test("formatTotalRemaining - zero units, no opened_remaining", () => {
-  assertEquals(
+  assert.strictEqual(
     formatTotalRemaining({
       units: 0,
       content_amount: 500,
@@ -16,7 +16,7 @@ Deno.test("formatTotalRemaining - zero units, no opened_remaining", () => {
 });
 
 Deno.test("formatTotalRemaining - single sealed unit", () => {
-  assertEquals(
+  assert.strictEqual(
     formatTotalRemaining({
       units: 1,
       content_amount: 500,
@@ -28,7 +28,7 @@ Deno.test("formatTotalRemaining - single sealed unit", () => {
 });
 
 Deno.test("formatTotalRemaining - multiple sealed units", () => {
-  assertEquals(
+  assert.strictEqual(
     formatTotalRemaining({
       units: 3,
       content_amount: 500,
@@ -41,7 +41,7 @@ Deno.test("formatTotalRemaining - multiple sealed units", () => {
 
 Deno.test("formatTotalRemaining - sealed units + opened_remaining", () => {
   // 2 units total: 1 opened (250ml left) + 1 sealed (500ml)
-  assertEquals(
+  assert.strictEqual(
     formatTotalRemaining({
       units: 2,
       content_amount: 500,
@@ -53,7 +53,7 @@ Deno.test("formatTotalRemaining - sealed units + opened_remaining", () => {
 });
 
 Deno.test("formatTotalRemaining - only opened unit (units=1, opened_remaining set)", () => {
-  assertEquals(
+  assert.strictEqual(
     formatTotalRemaining({
       units: 1,
       content_amount: 500,
@@ -65,7 +65,7 @@ Deno.test("formatTotalRemaining - only opened unit (units=1, opened_remaining se
 });
 
 Deno.test("formatTotalRemaining - opened unit with zero remaining", () => {
-  assertEquals(
+  assert.strictEqual(
     formatTotalRemaining({
       units: 1,
       content_amount: 500,
@@ -77,7 +77,7 @@ Deno.test("formatTotalRemaining - opened unit with zero remaining", () => {
 });
 
 Deno.test("formatTotalRemaining - decimal result rounded to 2 places", () => {
-  assertEquals(
+  assert.strictEqual(
     formatTotalRemaining({
       units: 1,
       content_amount: 100,
@@ -89,7 +89,7 @@ Deno.test("formatTotalRemaining - decimal result rounded to 2 places", () => {
 });
 
 Deno.test("formatTotalRemaining - integer total does not show decimal", () => {
-  assertEquals(
+  assert.strictEqual(
     formatTotalRemaining({
       units: 2,
       content_amount: 100,
@@ -101,7 +101,7 @@ Deno.test("formatTotalRemaining - integer total does not show decimal", () => {
 });
 
 Deno.test("formatTotalRemaining - different unit label (個)", () => {
-  assertEquals(
+  assert.strictEqual(
     formatTotalRemaining({
       units: 5,
       content_amount: 1,
@@ -115,17 +115,17 @@ Deno.test("formatTotalRemaining - different unit label (個)", () => {
 // formatExpiryDate
 
 Deno.test("formatExpiryDate - null returns 未設定", () => {
-  assertEquals(formatExpiryDate(null), "未設定");
+  assert.strictEqual(formatExpiryDate(null), "未設定");
 });
 
 Deno.test("formatExpiryDate - valid date string", () => {
-  assertEquals(formatExpiryDate("2026-03-15"), "3月15日");
+  assert.strictEqual(formatExpiryDate("2026-03-15"), "3月15日");
 });
 
 Deno.test("formatExpiryDate - leading zeros stripped", () => {
-  assertEquals(formatExpiryDate("2026-01-05"), "1月5日");
+  assert.strictEqual(formatExpiryDate("2026-01-05"), "1月5日");
 });
 
 Deno.test("formatExpiryDate - incomplete string (no dashes) returned as-is", () => {
-  assertEquals(formatExpiryDate("20260315"), "20260315");
+  assert.strictEqual(formatExpiryDate("20260315"), "20260315");
 });
