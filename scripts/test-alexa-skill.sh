@@ -2,10 +2,16 @@
 # Test the deployed Alexa Skill Edge Function.
 # Requires SKIP_SIGNATURE_VERIFICATION=true in Supabase secrets.
 #
-# Usage:
+# Usage (variable must be exported to the subprocess — not just assigned):
+#
+#   # Option 1: inline (one-shot, recommended)
 #   ALEXA_SKILL_ID=amzn1.ask.skill.xxxx ./scripts/test-alexa-skill.sh
 #
-# Or create a .env.local (gitignored) and source it:
+#   # Option 2: export first
+#   export ALEXA_SKILL_ID=amzn1.ask.skill.xxxx
+#   ./scripts/test-alexa-skill.sh
+#
+#   # Option 3: .env.local (gitignored) — add: export ALEXA_SKILL_ID=...
 #   source .env.local && ./scripts/test-alexa-skill.sh
 
 set -euo pipefail
