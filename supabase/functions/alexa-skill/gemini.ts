@@ -130,6 +130,7 @@ export const queryGemini = async (
       responseMimeType: "application/json",
       responseSchema: RESPONSE_SCHEMA,
       temperature: 0.1,
+      thinkingConfig: { thinkingBudget: 0 },
     },
   };
 
