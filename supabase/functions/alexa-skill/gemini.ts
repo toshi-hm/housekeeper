@@ -163,7 +163,9 @@ export const queryGemini = async (
     }
 
     const json = (await res.json()) as GeminiResponse;
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+    // With thinking enabled, parts[0] may be the thought (thought:true); find the actual response
+    const parts = json.candidates?.[0]?.content?.parts ?? [];
+    const text = parts.find((p) => !(p as Record<string, unknown>).thought)?.text;
     if (!text) {
       console.error("[gemini] Empty response from Gemini");
       return { kind: "error" };
