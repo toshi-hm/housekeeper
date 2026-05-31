@@ -42,6 +42,32 @@ export const createLot = async (
   return data as ItemLot;
 };
 
+export const updateLot = async (
+  lotId: string,
+  values: {
+    units?: number;
+    opened_remaining?: number | null;
+    purchase_date?: string | null;
+    expiry_date?: string | null;
+  },
+): Promise<ItemLot> => {
+  requireOnline();
+  const { data, error } = await supabase
+    .from("item_lots")
+    .update({
+      units: values.units,
+      opened_remaining: values.opened_remaining,
+      purchase_date: values.purchase_date,
+      expiry_date: values.expiry_date,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", lotId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ItemLot;
+};
+
 /** Recompute and update the item aggregate (units, expiry_date, opened_remaining) from its lots. */
 export const syncItemAggregate = async (itemId: string): Promise<void> => {
   const { data: lots, error: lotsError } = await supabase
@@ -146,6 +172,36 @@ export const useConsumeLot = () => {
         qc.invalidateQueries({ queryKey: ["items"] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs", variables.lot.item_id] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+      ]);
+    },
+  });
+};
+
+export const useUpdateLot = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      lotId,
+      itemId,
+      values,
+    }: {
+      lotId: string;
+      itemId: string;
+      values: {
+        units?: number;
+        opened_remaining?: number | null;
+        purchase_date?: string | null;
+        expiry_date?: string | null;
+      };
+    }) => {
+      const updated = await updateLot(lotId, values);
+      await syncItemAggregate(itemId);
+      return updated;
+    },
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: [...LOTS_KEY, variables.itemId] }),
+        qc.invalidateQueries({ queryKey: ["items"] }),
       ]);
     },
   });
