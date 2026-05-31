@@ -84,6 +84,8 @@ const meta = {
   args: {
     categories,
     onCheck: async () => {},
+    onUndo: async () => {},
+    pendingRemovalItemIds: [],
   },
   render: (args) => wrapper({ children: <CalendarPage {...args} /> }),
 } satisfies Meta<typeof CalendarPage>;

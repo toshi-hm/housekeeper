@@ -10,10 +10,19 @@ interface CalendarPageProps {
   items: Item[];
   categories: Category[];
   isLoading: boolean;
-  onCheck: (id: string) => Promise<void>;
+  onCheck: (item: Item) => Promise<void>;
+  onUndo: (itemId: string) => Promise<void>;
+  pendingRemovalItemIds: string[];
 }
 
-export const CalendarPage = ({ items, categories, isLoading, onCheck }: CalendarPageProps) => {
+export const CalendarPage = ({
+  items,
+  categories,
+  isLoading,
+  onCheck,
+  onUndo,
+  pendingRemovalItemIds,
+}: CalendarPageProps) => {
   const { t } = useTranslation("calendar");
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
@@ -52,6 +61,25 @@ export const CalendarPage = ({ items, categories, isLoading, onCheck }: Calendar
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">{t("title")}</h1>
+      {pendingRemovalItemIds.length > 0 && (
+        <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm">
+          <p className="mb-2 font-medium">{t("pendingRemovalMessage")}</p>
+          <div className="flex flex-wrap gap-2">
+            {pendingRemovalItemIds.map((itemId) => (
+              <button
+                key={itemId}
+                type="button"
+                onClick={() => {
+                  void onUndo(itemId);
+                }}
+                className="rounded-md border border-yellow-400 bg-white px-2 py-1 text-xs font-medium hover:bg-yellow-100"
+              >
+                {t("undo")}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {items.length === 0 && (
         <div className="py-12 text-center text-muted-foreground">
           <CalendarDays className="mx-auto mb-3 h-12 w-12 opacity-30" />

@@ -12,5 +12,7 @@
   "noItemsHint": "Set expiry dates on your items to see them here",
   "close": "Close",
   "noItemsOnDate": "No items expiring on this date",
-  "expiryItemsOnDate": "Items expiring on {{date}}"
+  "expiryItemsOnDate": "Items expiring on {{date}}",
+  "undo": "Undo",
+  "pendingRemovalMessage": "You can undo removed lots"
 }

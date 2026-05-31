@@ -7,7 +7,7 @@ import type { Item } from "@/types/item";
 interface ExpiryCheckItemProps {
   item: Item;
   categoryColor?: string | null;
-  onCheck: (id: string) => Promise<void>;
+  onCheck: (item: Item) => Promise<void>;
 }
 
 export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckItemProps) => {
@@ -17,7 +17,7 @@ export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckIte
     if (checked) return;
     setChecked(true);
     try {
-      await onCheck(item.id);
+      await onCheck(item);
     } catch {
       setChecked(false);
     }
