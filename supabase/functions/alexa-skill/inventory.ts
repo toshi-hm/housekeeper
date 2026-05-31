@@ -1,4 +1,4 @@
-import type { InventoryItem } from "./types.ts";
+import type { InventoryItem, RecentlyConsumedItem } from "./types.ts";
 import { getSupabaseClient } from "./supabase-client.ts";
 export type { RemainingFields } from "./inventory-formatters.ts";
 export { formatExpiryDate, formatTotalRemaining } from "./inventory-formatters.ts";
@@ -28,6 +28,45 @@ export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
     return null;
   }
   return (data ?? []) as InventoryItem[];
+};
+
+export const fetchRecentlyConsumedItems = async (): Promise<RecentlyConsumedItem[] | null> => {
+  const ctx = getSupabaseClient();
+  if (!ctx) {
+    console.error("[inventory] Missing required environment variables");
+    return null;
+  }
+  const { supabase, userId } = ctx;
+  const twoMonthsAgo = new Date();
+  twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+  const { data, error } = await supabase
+    .from("consumption_logs")
+    .select("item_id, occurred_at, items(name)")
+    .eq("user_id", userId)
+    .eq("units_after", 0)
+    .gte("occurred_at", twoMonthsAgo.toISOString())
+    .order("occurred_at", { ascending: false });
+
+  if (error) {
+    console.error("[inventory] fetchRecentlyConsumedItems error:", error);
+    return null;
+  }
+
+  // Deduplicate: keep the most recent consumption event per item
+  const seen = new Set<string>();
+  const result: RecentlyConsumedItem[] = [];
+  for (const row of data ?? []) {
+    const itemName = (row.items as { name: string } | null)?.name;
+    if (!itemName || seen.has(row.item_id)) continue;
+    seen.add(row.item_id);
+    result.push({
+      item_id: row.item_id,
+      item_name: itemName,
+      last_consumed_at: row.occurred_at,
+    });
+  }
+  return result;
 };
 
 export const fetchItemsByLocation = async (
