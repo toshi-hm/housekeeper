@@ -44,7 +44,7 @@
             "{ItemQuery} はいくつある",
             "{ItemQuery} はストックある",
             "{ItemQuery} って残ってる",
-            "{ItemQuery} はある？",
+            "{ItemQuery} ってある",
             "{ItemQuery} は在庫ある",
             "まだ {ItemQuery} はある",
             "まだ {ItemQuery} はあります",
