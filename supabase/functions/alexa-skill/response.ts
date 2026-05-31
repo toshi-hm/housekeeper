@@ -9,6 +9,7 @@ export const buildTellResponse = (
   response: {
     outputSpeech: { type: "PlainText", text: speech },
     shouldEndSession: true,
+    card: { type: "Simple", title: "ハウスキーパー", content: speech },
   },
 });
 
