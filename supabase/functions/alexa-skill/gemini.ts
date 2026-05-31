@@ -37,7 +37,8 @@ const isValidGeminiResult = (data: unknown): data is GeminiMatchResult => {
 };
 
 const GEMINI_MODEL = "gemini-2.5-flash";
-const GEMINI_TIMEOUT_MS = 4000;
+// 7s leaves ~1s buffer before Alexa's 8s hard limit for network overhead
+const GEMINI_TIMEOUT_MS = 7000;
 
 const SYSTEM_PROMPT = `あなたは家庭の在庫管理アシスタントです。
 ユーザーの問いかけに対して、以下の在庫リストから最適なアイテムを見つけ、
@@ -130,22 +131,33 @@ export const queryGemini = async (
       responseMimeType: "application/json",
       responseSchema: RESPONSE_SCHEMA,
       temperature: 0.1,
+      thinkingConfig: { thinkingBudget: 1024 },
     },
   };
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
+  let res: Response;
   try {
-    const res = await fetch(geminiUrl, {
+    res = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
-
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      console.error("[gemini] Timeout after", GEMINI_TIMEOUT_MS, "ms");
+      return { kind: "timeout" };
+    }
+    console.error("[gemini] Fetch error:", e);
+    return { kind: "error" };
+  } finally {
     clearTimeout(timeoutId);
+  }
 
+  try {
     if (!res.ok) {
       const errText = await res.text();
       console.error("[gemini] API error:", res.status, errText);
@@ -153,9 +165,11 @@ export const queryGemini = async (
     }
 
     const json = (await res.json()) as GeminiResponse;
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+    // With thinking enabled, parts[0] may be the thought (thought:true); find the actual response
+    const parts = json.candidates?.[0]?.content?.parts ?? [];
+    const text = parts.find((p) => !(p as Record<string, unknown>).thought)?.text;
     if (!text) {
-      console.error("[gemini] Empty response");
+      console.error("[gemini] Empty response from Gemini");
       return { kind: "error" };
     }
 
@@ -164,14 +178,10 @@ export const queryGemini = async (
       console.error("[gemini] Response schema mismatch:", JSON.stringify(parsed).slice(0, 200));
       return { kind: "error" };
     }
+    console.log("[gemini] Success:", GEMINI_MODEL, "stockStatus:", parsed.stockStatus);
     return { kind: "ok", data: parsed };
   } catch (err) {
-    clearTimeout(timeoutId);
-    if (err instanceof Error && err.name === "AbortError") {
-      console.error("[gemini] Timeout after", GEMINI_TIMEOUT_MS, "ms");
-      return { kind: "timeout" };
-    }
-    console.error("[gemini] Fetch error:", err);
+    console.error("[gemini] Response parse error:", err);
     return { kind: "error" };
   }
 };

@@ -97,6 +97,7 @@ export interface GeminiRequest {
     responseMimeType?: string;
     responseSchema?: unknown;
     temperature?: number;
+    thinkingConfig?: { thinkingBudget: number };
   };
 }
 
