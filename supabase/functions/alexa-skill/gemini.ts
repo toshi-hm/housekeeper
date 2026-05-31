@@ -14,15 +14,19 @@ const STOCK_STATUS_VALUES = new Set(["in_stock", "out_of_stock", "not_found", "r
 const isValidMatchedItem = (item: unknown): boolean => {
   if (!item || typeof item !== "object") return false;
   const it = item as Record<string, unknown>;
-  return (
-    typeof it.id === "string" &&
-    typeof it.name === "string" &&
-    typeof it.units === "number" &&
-    isFinite(it.units) &&
-    typeof it.content_amount === "number" &&
-    isFinite(it.content_amount) &&
-    typeof it.content_unit === "string"
-  );
+  if (typeof it.id !== "string" || typeof it.name !== "string") return false;
+  // units/content_amount/content_unit are only present for in_stock/out_of_stock items;
+  // recently_consumed items may omit them, so allow null/undefined.
+  const hasUnits = it.units === null || it.units === undefined || typeof it.units === "number";
+  const hasAmount =
+    it.content_amount === null ||
+    it.content_amount === undefined ||
+    typeof it.content_amount === "number";
+  const hasUnit =
+    it.content_unit === null ||
+    it.content_unit === undefined ||
+    typeof it.content_unit === "string";
+  return hasUnits && hasAmount && hasUnit;
 };
 
 const isValidGeminiResult = (data: unknown): data is GeminiMatchResult => {
@@ -98,7 +102,7 @@ const RESPONSE_SCHEMA = {
           category: { type: "string", nullable: true },
           storage_location: { type: "string", nullable: true },
         },
-        required: ["id", "name", "units", "content_amount", "content_unit"],
+        required: ["id", "name"],
       },
     },
     speech: { type: "string" },

@@ -40,11 +40,13 @@ export const fetchRecentlyConsumedItems = async (): Promise<RecentlyConsumedItem
   const twoMonthsAgo = new Date();
   twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
 
+  // Fetch recent consumption logs joined with item state.
+  // units_after in consumption_logs reflects lot-level units, not the whole item,
+  // so we include the item's current units and deleted_at to determine if it's fully gone.
   const { data, error } = await supabase
     .from("consumption_logs")
-    .select("item_id, occurred_at, items(name)")
+    .select("item_id, occurred_at, items(name, units, deleted_at)")
     .eq("user_id", userId)
-    .eq("units_after", 0)
     .gte("occurred_at", twoMonthsAgo.toISOString())
     .order("occurred_at", { ascending: false });
 
@@ -53,18 +55,26 @@ export const fetchRecentlyConsumedItems = async (): Promise<RecentlyConsumedItem
     return null;
   }
 
-  // Deduplicate: keep the most recent consumption event per item
+  // Keep only items that are currently empty: deleted or units=0.
+  // Items still in inventory with units>0 are already in the inventory context.
+  // Deduplicate: keep the most recent consumption event per item.
   const seen = new Set<string>();
   const result: RecentlyConsumedItem[] = [];
   for (const row of data ?? []) {
-    const itemName = (row.items as { name: string } | null)?.name;
-    if (!itemName || seen.has(row.item_id)) continue;
-    seen.add(row.item_id);
-    result.push({
-      item_id: row.item_id,
-      item_name: itemName,
-      last_consumed_at: row.occurred_at,
-    });
+    const item = row.items as {
+      name: string;
+      units: number;
+      deleted_at: string | null;
+    } | null;
+    if (!item || seen.has(row.item_id)) continue;
+    if (item.deleted_at !== null || item.units === 0) {
+      seen.add(row.item_id);
+      result.push({
+        item_id: row.item_id,
+        item_name: item.name,
+        last_consumed_at: row.occurred_at,
+      });
+    }
   }
   return result;
 };
