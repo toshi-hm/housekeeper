@@ -37,6 +37,7 @@ const isValidGeminiResult = (data: unknown): data is GeminiMatchResult => {
 };
 
 const GEMINI_MODEL = "gemini-2.5-flash";
+// 7s leaves ~1s buffer before Alexa's 8s hard limit for network overhead
 const GEMINI_TIMEOUT_MS = 7000;
 
 const SYSTEM_PROMPT = `あなたは家庭の在庫管理アシスタントです。
@@ -134,25 +135,26 @@ export const queryGemini = async (
     },
   };
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("timeout")), GEMINI_TIMEOUT_MS),
-  );
-  const fetchPromise = fetch(geminiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
   let res: Response;
   try {
-    res = await Promise.race([fetchPromise, timeoutPromise]);
+    res = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
   } catch (e) {
-    if (e instanceof Error && e.message === "timeout") {
+    if (e instanceof Error && e.name === "AbortError") {
       console.error("[gemini] Timeout after", GEMINI_TIMEOUT_MS, "ms");
       return { kind: "timeout" };
     }
     console.error("[gemini] Fetch error:", e);
     return { kind: "error" };
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   try {

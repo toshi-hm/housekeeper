@@ -236,7 +236,6 @@ export const verifyAlexaSignature = async (
       try {
         // redirect:"follow" allows S3 regional redirects (s3.amazonaws.com → s3.us-east-1.amazonaws.com)
         certRes = await fetch(certChainUrl, { signal: controller.signal, redirect: "follow" });
-        clearTimeout(timeout);
         console.log("[alexa-skill] Cert fetch OK, status:", certRes.status, "url:", certChainUrl);
       } catch (fetchErr) {
         clearTimeout(timeout);
@@ -244,11 +243,14 @@ export const verifyAlexaSignature = async (
         return false;
       }
       if (!certRes.ok) {
+        clearTimeout(timeout);
         console.error("[alexa-skill] Cert fetch HTTP error:", certRes.status);
         return false;
       }
 
+      // Keep timeout active during body read — slow transfers can still be aborted
       const pem = await certRes.text();
+      clearTimeout(timeout);
       const pemMatch = PEM_CERT_REGEX.exec(pem);
       if (!pemMatch) {
         console.error("[alexa-skill] No certificate found in PEM response");
