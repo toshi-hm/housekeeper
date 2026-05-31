@@ -36,6 +36,16 @@
             }
           ],
           "samples": [
+            "{ItemQuery} はある",
+            "{ItemQuery} はありますか",
+            "{ItemQuery} の在庫を確認して",
+            "{ItemQuery} の在庫を教えて",
+            "{ItemQuery} って在庫ある",
+            "{ItemQuery} はいくつある",
+            "{ItemQuery} はストックある",
+            "{ItemQuery} って残ってる",
+            "{ItemQuery} はある？",
+            "{ItemQuery} は在庫ある",
             "まだ {ItemQuery} はある",
             "まだ {ItemQuery} はあります",
             "まだ {ItemQuery} は在庫にある",
@@ -47,14 +57,7 @@
             "うちに {ItemQuery} はある",
             "今 {ItemQuery} の在庫はある",
             "今 {ItemQuery} の在庫を確認して",
-            "今 {ItemQuery} の在庫は",
-            "{ItemQuery} はある",
-            "{ItemQuery} はありますか",
-            "{ItemQuery} の在庫を確認して",
-            "{ItemQuery} って在庫ある",
-            "{ItemQuery} はいくつある",
-            "{ItemQuery} はストックある",
-            "{ItemQuery} って残ってる"
+            "今 {ItemQuery} の在庫は"
           ]
         },
         {
@@ -66,6 +69,17 @@
             }
           ],
           "samples": [
+            "{ItemQuery} の賞味期限",
+            "{ItemQuery} の賞味期限は",
+            "{ItemQuery} の賞味期限を教えて",
+            "{ItemQuery} の賞味期限を確認して",
+            "{ItemQuery} はいつまで",
+            "{ItemQuery} はいつまで食べられる",
+            "{ItemQuery} の期限は",
+            "{ItemQuery} の消費期限",
+            "{ItemQuery} の消費期限を教えて",
+            "{ItemQuery} いつまで大丈夫",
+            "{ItemQuery} の期限を教えて",
             "ねえ {ItemQuery} の賞味期限",
             "ねえ {ItemQuery} の賞味期限は",
             "ねえ {ItemQuery} の賞味期限を教えて",
@@ -87,6 +101,18 @@
             }
           ],
           "samples": [
+            "{LocationQuery} に何がある",
+            "{LocationQuery} には何がある",
+            "{LocationQuery} にあるものを教えて",
+            "{LocationQuery} の中身",
+            "{LocationQuery} の中身を教えて",
+            "{LocationQuery} に何を入れてある",
+            "{LocationQuery} に入ってるもの",
+            "{LocationQuery} の在庫",
+            "{LocationQuery} の在庫を教えて",
+            "{LocationQuery} にあるものを確認して",
+            "{LocationQuery} の一覧",
+            "{LocationQuery} の一覧を教えて",
             "今 {LocationQuery} に何がある",
             "今 {LocationQuery} には何がある",
             "今 {LocationQuery} にあるものを教えて",
@@ -109,6 +135,16 @@
             }
           ],
           "samples": [
+            "{ItemQuery} はどこにある",
+            "{ItemQuery} はどこ",
+            "{ItemQuery} はどこにしまってある",
+            "{ItemQuery} の場所",
+            "{ItemQuery} の場所を教えて",
+            "{ItemQuery} どこに置いてある",
+            "{ItemQuery} はどこに保管してある",
+            "{ItemQuery} の保管場所",
+            "{ItemQuery} はどこに入ってる",
+            "{ItemQuery} はどこ収納してある",
             "ねえ {ItemQuery} はどこにある",
             "ねえ {ItemQuery} はどこ",
             "ねえ {ItemQuery} はどこにしまってある",
@@ -130,6 +166,14 @@
             }
           ],
           "samples": [
+            "{ItemQuery} はあとどれくらい",
+            "{ItemQuery} はあとどのくらい残ってる",
+            "{ItemQuery} の残量",
+            "{ItemQuery} の残量を教えて",
+            "{ItemQuery} はどのくらい残ってる",
+            "{ItemQuery} はあとどれだけある",
+            "{ItemQuery} の残りを教えて",
+            "{ItemQuery} はいくら残ってる",
             "まだ {ItemQuery} はあとどれくらい",
             "まだ {ItemQuery} はあとどのくらい残ってる",
             "今 {ItemQuery} の残量",
@@ -151,6 +195,13 @@
             }
           ],
           "samples": [
+            "{ItemQuery} を買い物リストに追加して",
+            "{ItemQuery} を買い物リストに入れて",
+            "{ItemQuery} を買い物リストに加えて",
+            "{ItemQuery} を買い物メモに追加して",
+            "{ItemQuery} を買っておいて",
+            "{ItemQuery} を補充して",
+            "{ItemQuery} を購入リストに追加して",
             "ちょっと {ItemQuery} を買い物リストに追加して",
             "ちょっと {ItemQuery} を買い物リストに入れて",
             "ちょっと {ItemQuery} を買い物リストに加えて",
