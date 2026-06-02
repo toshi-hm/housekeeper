@@ -25,7 +25,6 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   const pendingFileRef = useRef<File | null>(null);
   const pendingImageUrlRef = useRef<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const handleSubmit = async (values: ItemFormValues) => {
     setIsSubmitting(true);
@@ -50,8 +49,6 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
         }
       }
       toast(t("updateSuccess"), "success");
-      setIsTransitioning(true);
-      await new Promise((resolve) => setTimeout(resolve, 800));
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
       toast(t("common:unknownError"), "error");
@@ -81,17 +78,6 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
             {t("backToItems")}
           </Button>
         </div>
-      </div>
-    );
-  }
-
-  if (isTransitioning) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <p className="text-5xl" role="img" aria-label={t("transitioning")}>
-          🌀
-        </p>
-        <p className="text-sm text-muted-foreground">{t("transitioning")}</p>
       </div>
     );
   }
