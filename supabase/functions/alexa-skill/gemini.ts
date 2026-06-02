@@ -4,24 +4,29 @@ import type {
   GeminiResponse,
   GeminiResult,
   InventoryItem,
+  RecentlyConsumedItem,
 } from "./types.ts";
 import { formatTotalRemaining } from "./inventory.ts";
 
 const CONFIDENCE_VALUES = new Set(["exact", "fuzzy", "none"]);
-const STOCK_STATUS_VALUES = new Set(["in_stock", "out_of_stock", "not_found"]);
+const STOCK_STATUS_VALUES = new Set(["in_stock", "out_of_stock", "not_found", "recently_consumed"]);
 
 const isValidMatchedItem = (item: unknown): boolean => {
   if (!item || typeof item !== "object") return false;
   const it = item as Record<string, unknown>;
-  return (
-    typeof it.id === "string" &&
-    typeof it.name === "string" &&
-    typeof it.units === "number" &&
-    isFinite(it.units) &&
-    typeof it.content_amount === "number" &&
-    isFinite(it.content_amount) &&
-    typeof it.content_unit === "string"
-  );
+  if (typeof it.id !== "string" || typeof it.name !== "string") return false;
+  // units/content_amount/content_unit are only present for in_stock/out_of_stock items;
+  // recently_consumed items may omit them, so allow null/undefined.
+  const hasUnits = it.units === null || it.units === undefined || typeof it.units === "number";
+  const hasAmount =
+    it.content_amount === null ||
+    it.content_amount === undefined ||
+    typeof it.content_amount === "number";
+  const hasUnit =
+    it.content_unit === null ||
+    it.content_unit === undefined ||
+    typeof it.content_unit === "string";
+  return hasUnits && hasAmount && hasUnit;
 };
 
 const isValidGeminiResult = (data: unknown): data is GeminiMatchResult => {
@@ -41,20 +46,25 @@ const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_TIMEOUT_MS = 7000;
 
 const SYSTEM_PROMPT = `あなたは家庭の在庫管理アシスタントです。
-ユーザーの問いかけに対して、以下の在庫リストから最適なアイテムを見つけ、
+ユーザーの問いかけに対して、以下の在庫リストおよび最近使い切りリストから最適なアイテムを見つけ、
 簡潔な日本語で回答を生成してください。
 
 ルール:
-- アイテムが見つかり total_remaining が「0{単位}」でない場合: stockStatus = "in_stock"
-- アイテムが見つかったが total_remaining が「0{単位}」の場合: stockStatus = "out_of_stock", speech に「〇〇は在庫切れです」
-- アイテムが在庫リストに一切見つからない場合: stockStatus = "not_found", speech に「今までの購入記録から〇〇は見つかりませんでした」
+- アイテムが在庫リストに見つかり total_remaining が「0{単位}」でない場合: stockStatus = "in_stock"
+- アイテムが在庫リストに見つかったが total_remaining が「0{単位}」の場合: stockStatus = "out_of_stock", speech に「〇〇は在庫切れです」
+- アイテムが在庫リストにないが「最近使い切りリスト」に見つかった場合: stockStatus = "recently_consumed", speech に「過去に〇〇がありましたが、{last_consumed_at を「M月D日」形式}にすべて使い切りました」
+- アイテムが在庫リストにも最近使い切りリストにも見つからない場合: stockStatus = "not_found", speech に「現在、〇〇は自宅にありません」
+- 商品名の一致は部分一致・類似語も許容すること（例:「牛乳」は「低脂肪牛乳」「雪印牛乳」にもマッチする）
 - 複数ヒット(3件以下): すべて列挙して読み上げる
 - 複数ヒット(4件以上): 「〇〇など△件あります」と要約する
 - 類似品がある場合(confidence="fuzzy"): そのまま回答する
 - 必ず指定のJSONスキーマで返すこと。それ以外のテキストは含めないこと。`;
 
-const buildInventoryContext = (items: InventoryItem[]): string => {
-  const list = items.map((item) => ({
+const buildInventoryContext = (
+  items: InventoryItem[],
+  recentlyConsumed: RecentlyConsumedItem[],
+): string => {
+  const inventoryList = items.map((item) => ({
     id: item.id,
     name: item.name,
     category: item.categories?.name ?? null,
@@ -66,7 +76,12 @@ const buildInventoryContext = (items: InventoryItem[]): string => {
     expiry_date: item.expiry_date,
     total_remaining: formatTotalRemaining(item),
   }));
-  return JSON.stringify(list);
+  const consumedList = recentlyConsumed.map((c) => ({
+    item_id: c.item_id,
+    item_name: c.item_name,
+    last_consumed_at: c.last_consumed_at,
+  }));
+  return JSON.stringify({ inventory: inventoryList, recently_consumed: consumedList });
 };
 
 const RESPONSE_SCHEMA = {
@@ -87,14 +102,14 @@ const RESPONSE_SCHEMA = {
           category: { type: "string", nullable: true },
           storage_location: { type: "string", nullable: true },
         },
-        required: ["id", "name", "units", "content_amount", "content_unit"],
+        required: ["id", "name"],
       },
     },
     speech: { type: "string" },
     confidence: { type: "string", enum: ["exact", "fuzzy", "none"] },
     stockStatus: {
       type: "string",
-      enum: ["in_stock", "out_of_stock", "not_found"],
+      enum: ["in_stock", "out_of_stock", "not_found", "recently_consumed"],
     },
   },
   required: ["matchedItems", "speech", "confidence", "stockStatus"],
@@ -103,6 +118,7 @@ const RESPONSE_SCHEMA = {
 export const queryGemini = async (
   userMessage: string,
   items: InventoryItem[],
+  recentlyConsumed: RecentlyConsumedItem[] = [],
 ): Promise<GeminiResult> => {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) {
@@ -111,13 +127,13 @@ export const queryGemini = async (
   }
 
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  const inventoryContext = buildInventoryContext(items);
+  const inventoryContext = buildInventoryContext(items, recentlyConsumed);
 
   const body: GeminiRequest = {
     systemInstruction: {
       parts: [
         {
-          text: `${SYSTEM_PROMPT}\n\n在庫リスト:\n${inventoryContext}`,
+          text: `${SYSTEM_PROMPT}\n\n在庫データ(inventory=現在の在庫, recently_consumed=過去2か月以内に使い切ったアイテム):\n${inventoryContext}`,
         },
       ],
     },
