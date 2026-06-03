@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, setSystemTime } from "bun:test";
 
 import type { Category, Item } from "@/types/item";
 
@@ -43,7 +43,12 @@ const labels = {
 };
 
 describe("ExpiryCalendar", () => {
+  afterEach(() => {
+    setSystemTime();
+  });
+
   it("opens date modal and shows items for selected day", () => {
+    setSystemTime(new Date("2026-05-03"));
     const { getByRole, getByText } = render(
       <ExpiryCalendar items={[item]} categories={categories} labels={labels} />,
     );
