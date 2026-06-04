@@ -7,7 +7,10 @@ import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
+import { useItemLots, useUpdateLot } from "@/hooks/useItemLots";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
@@ -22,17 +25,34 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: item, isLoading } = useItem(itemId);
+  const { data: lots = [] } = useItemLots(itemId);
   const updateItem = useUpdateItem(itemId);
+  const updateLot = useUpdateLot();
   const { toast } = useToast();
   const pendingFileRef = useRef<File | null>(null);
   const pendingImageUrlRef = useRef<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedLotId, setSelectedLotId] = useState<string | null>(null);
+
+  const selectedLot =
+    lots.find((lot) => lot.id === (selectedLotId ?? lots[0]?.id)) ?? lots[0] ?? null;
 
   const handleSubmit = async (values: ItemFormValues) => {
     setIsSubmitting(true);
     try {
       const oldImagePath = item?.image_path ?? null;
       await updateItem.mutateAsync(values);
+      if (selectedLot) {
+        await updateLot.mutateAsync({
+          lotId: selectedLot.id,
+          itemId,
+          values: {
+            units: values.units,
+            purchase_date: values.purchase_date ?? null,
+            expiry_date: values.expiry_date ?? null,
+          },
+        });
+      }
       const pendingFile = pendingFileRef.current;
       const pendingImageUrl = pendingImageUrlRef.current;
       if (pendingFile || pendingImageUrl) {
@@ -98,18 +118,35 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
         </Button>
         <h1 className="text-xl font-bold">{t("editItem")}</h1>
       </div>
+      {lots.length > 1 && (
+        <div className="space-y-2 rounded-lg border p-3">
+          <Label htmlFor="lot-select">{t("editLot")}</Label>
+          <Select
+            id="lot-select"
+            value={selectedLot?.id ?? ""}
+            onChange={(e) => setSelectedLotId(e.target.value)}
+          >
+            {lots.map((lot, index) => (
+              <option key={lot.id} value={lot.id}>
+                {t("lotLabel", { index: index + 1 })}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
       <ItemForm
+        key={selectedLot?.id ?? item.id}
         defaultValues={{
           name: item.name,
           barcode: item.barcode ?? undefined,
           category_id: item.category_id,
           storage_location_id: item.storage_location_id,
-          units: item.units,
+          units: selectedLot?.units ?? item.units,
           content_amount: item.content_amount,
           content_unit: item.content_unit,
           opened_remaining: item.opened_remaining,
-          purchase_date: item.purchase_date ?? undefined,
-          expiry_date: item.expiry_date ?? undefined,
+          purchase_date: selectedLot?.purchase_date ?? item.purchase_date ?? undefined,
+          expiry_date: selectedLot?.expiry_date ?? item.expiry_date ?? undefined,
           notes: item.notes ?? undefined,
           image_path: item.image_path ?? undefined,
         }}
