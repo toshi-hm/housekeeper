@@ -4,7 +4,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const ALLOWED_HOSTS = [/^([a-z0-9-]+\.)*yimg\.jp$/, /^shopping\.yahoo\.co\.jp$/];
+const ALLOWED_HOSTS = [/^([a-z0-9-]+\.)+yimg\.jp$/, /^shopping\.yahoo\.co\.jp$/];
 
 const ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const GENERIC_CONTENT_TYPES = ["application/octet-stream", "binary/octet-stream"];
