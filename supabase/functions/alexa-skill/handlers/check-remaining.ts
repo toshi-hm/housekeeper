@@ -5,7 +5,7 @@ import {
   buildTellResponse,
   buildTimeoutResponse,
 } from "../response.ts";
-import { fetchAllItems } from "../inventory.ts";
+import { fetchAllItems, fetchRecentlyConsumedItems } from "../inventory.ts";
 import { buildCheckRemainingPrompt, queryGemini } from "../gemini.ts";
 
 export const handleCheckRemaining = async (query: string): Promise<AlexaResponse> => {
@@ -17,10 +17,17 @@ export const handleCheckRemaining = async (query: string): Promise<AlexaResponse
     );
   }
 
-  const items = await fetchAllItems();
+  const [items, recentlyConsumed] = await Promise.all([
+    fetchAllItems(),
+    fetchRecentlyConsumedItems(),
+  ]);
   if (!items) return buildErrorResponse("在庫情報の取得に失敗しました。");
 
-  const geminiResult = await queryGemini(buildCheckRemainingPrompt(query), items);
+  const geminiResult = await queryGemini(
+    buildCheckRemainingPrompt(query),
+    items,
+    recentlyConsumed ?? [],
+  );
   if (geminiResult.kind === "timeout") return buildTimeoutResponse();
   if (geminiResult.kind === "error") return buildErrorResponse();
 
