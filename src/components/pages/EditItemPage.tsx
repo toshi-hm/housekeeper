@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useRef, useState } from "react";
@@ -19,6 +20,7 @@ interface EditItemPageProps {
 export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   const { t } = useTranslation("items");
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { data: item, isLoading } = useItem(itemId);
   const updateItem = useUpdateItem(itemId);
   const { toast } = useToast();
@@ -44,11 +46,13 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
             err instanceof OfflineError ? t("common:offlineError") : t("imageUploadFailed"),
             err instanceof OfflineError ? "error" : "warning",
           );
+          await qc.invalidateQueries({ queryKey: ["items"] });
           void navigate({ to: "/items/$itemId", params: { itemId } });
           return;
         }
       }
       toast(t("updateSuccess"), "success");
+      await qc.invalidateQueries({ queryKey: ["items"] });
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
       toast(t("common:unknownError"), "error");

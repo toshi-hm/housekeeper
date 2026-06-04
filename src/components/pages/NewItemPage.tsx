@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, PackagePlus } from "lucide-react";
 import { useRef, useState } from "react";
@@ -14,6 +15,7 @@ import type { Item, ItemFormValues } from "@/types/item";
 export const NewItemPage = () => {
   const { t } = useTranslation("items");
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const createItem = useCreateItem();
   const { toast } = useToast();
   const pendingFileRef = useRef<File | null>(null);
@@ -49,11 +51,13 @@ export const NewItemPage = () => {
             err instanceof OfflineError ? t("common:offlineError") : t("imageUploadFailed"),
             err instanceof OfflineError ? "error" : "warning",
           );
+          await qc.invalidateQueries({ queryKey: ["items"] });
           void navigate({ to: "/" });
           return;
         }
       }
 
+      await qc.invalidateQueries({ queryKey: ["items"] });
       if (result._stacked) {
         toast(t("stackSuccess"), "success");
         void navigate({ to: "/items/$itemId", params: { itemId: item.id } });
