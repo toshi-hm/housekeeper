@@ -1,0 +1,222 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "ハウスキーパー",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": ["キャンセル", "やめる", "終了"]
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": ["ヘルプ", "使い方を教えて", "何ができる"]
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": ["ストップ", "終わり", "閉じて"]
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.YesIntent",
+          "samples": ["はい", "うん", "そう", "そうして", "お願い", "追加して"]
+        },
+        {
+          "name": "AMAZON.NoIntent",
+          "samples": ["いいえ", "違う", "やめて", "しない", "結構です"]
+        },
+        {
+          "name": "CheckInventoryIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery} はある",
+            "{ItemQuery} はありますか",
+            "{ItemQuery} の在庫を確認して",
+            "{ItemQuery} の在庫を教えて",
+            "{ItemQuery} って在庫ある",
+            "{ItemQuery} はいくつある",
+            "{ItemQuery} はストックある",
+            "{ItemQuery} って残ってる",
+            "{ItemQuery} ってある",
+            "{ItemQuery} は在庫ある",
+            "まだ {ItemQuery} はある",
+            "まだ {ItemQuery} はあります",
+            "まだ {ItemQuery} は在庫にある",
+            "まだ {ItemQuery} はストックしてある",
+            "まだ {ItemQuery} は残ってる",
+            "まだ {ItemQuery} はありますか",
+            "もう {ItemQuery} は買ってある",
+            "まだ {ItemQuery} はストックある",
+            "うちに {ItemQuery} はある",
+            "今 {ItemQuery} の在庫はある",
+            "今 {ItemQuery} の在庫を確認して",
+            "今 {ItemQuery} の在庫は"
+          ]
+        },
+        {
+          "name": "CheckExpiryIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery} の賞味期限",
+            "{ItemQuery} の賞味期限は",
+            "{ItemQuery} の賞味期限を教えて",
+            "{ItemQuery} の賞味期限を確認して",
+            "{ItemQuery} はいつまで",
+            "{ItemQuery} はいつまで食べられる",
+            "{ItemQuery} の期限は",
+            "{ItemQuery} の消費期限",
+            "{ItemQuery} の消費期限を教えて",
+            "{ItemQuery} いつまで大丈夫",
+            "{ItemQuery} の期限を教えて",
+            "ねえ {ItemQuery} の賞味期限",
+            "ねえ {ItemQuery} の賞味期限は",
+            "ねえ {ItemQuery} の賞味期限を教えて",
+            "ねえ {ItemQuery} はいつまで",
+            "ねえ {ItemQuery} はいつまで食べられる",
+            "ねえ {ItemQuery} の期限は",
+            "ねえ {ItemQuery} の消費期限",
+            "ねえ {ItemQuery} の消費期限を教えて",
+            "ねえ {ItemQuery} いつまで大丈夫",
+            "ねえ {ItemQuery} の期限を教えて"
+          ]
+        },
+        {
+          "name": "ListByLocationIntent",
+          "slots": [
+            {
+              "name": "LocationQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{LocationQuery} に何がある",
+            "{LocationQuery} には何がある",
+            "{LocationQuery} にあるものを教えて",
+            "{LocationQuery} の中身",
+            "{LocationQuery} の中身を教えて",
+            "{LocationQuery} に何を入れてある",
+            "{LocationQuery} に入ってるもの",
+            "{LocationQuery} の在庫",
+            "{LocationQuery} の在庫を教えて",
+            "{LocationQuery} にあるものを確認して",
+            "{LocationQuery} の一覧",
+            "{LocationQuery} の一覧を教えて",
+            "今 {LocationQuery} に何がある",
+            "今 {LocationQuery} には何がある",
+            "今 {LocationQuery} にあるものを教えて",
+            "今 {LocationQuery} の中身",
+            "今 {LocationQuery} の中身を教えて",
+            "今 {LocationQuery} に何を入れてある",
+            "今 {LocationQuery} に入ってるもの",
+            "今 {LocationQuery} の在庫",
+            "今 {LocationQuery} の在庫を教えて",
+            "今 {LocationQuery} にあるものを確認して",
+            "今 {LocationQuery} の一覧"
+          ]
+        },
+        {
+          "name": "CheckLocationIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery} はどこにある",
+            "{ItemQuery} はどこ",
+            "{ItemQuery} はどこにしまってある",
+            "{ItemQuery} の場所",
+            "{ItemQuery} の場所を教えて",
+            "{ItemQuery} どこに置いてある",
+            "{ItemQuery} はどこに保管してある",
+            "{ItemQuery} の保管場所",
+            "{ItemQuery} はどこに入ってる",
+            "{ItemQuery} はどこ収納してある",
+            "ねえ {ItemQuery} はどこにある",
+            "ねえ {ItemQuery} はどこ",
+            "ねえ {ItemQuery} はどこにしまってある",
+            "ねえ {ItemQuery} の場所",
+            "ねえ {ItemQuery} の場所を教えて",
+            "ねえ {ItemQuery} どこに置いてある",
+            "ねえ {ItemQuery} はどこに保管してある",
+            "ねえ {ItemQuery} の保管場所",
+            "ねえ {ItemQuery} はどこに入ってる",
+            "ねえ {ItemQuery} はどこ収納してある"
+          ]
+        },
+        {
+          "name": "CheckRemainingIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery} はあとどれくらい",
+            "{ItemQuery} はあとどのくらい残ってる",
+            "{ItemQuery} の残量",
+            "{ItemQuery} の残量を教えて",
+            "{ItemQuery} はどのくらい残ってる",
+            "{ItemQuery} はあとどれだけある",
+            "{ItemQuery} の残りを教えて",
+            "{ItemQuery} はいくら残ってる",
+            "まだ {ItemQuery} はあとどれくらい",
+            "まだ {ItemQuery} はあとどのくらい残ってる",
+            "今 {ItemQuery} の残量",
+            "今 {ItemQuery} の残量を教えて",
+            "今 {ItemQuery} はどのくらい残ってる",
+            "まだ {ItemQuery} はあとどれくらい残ってる",
+            "今 {ItemQuery} 残りはどのくらい",
+            "まだ {ItemQuery} はあとどれだけある",
+            "今 {ItemQuery} の残りを教えて",
+            "まだ {ItemQuery} はいくら残ってる"
+          ]
+        },
+        {
+          "name": "AddToShoppingListIntent",
+          "slots": [
+            {
+              "name": "ItemQuery",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "{ItemQuery} を買い物リストに追加して",
+            "{ItemQuery} を買い物リストに入れて",
+            "{ItemQuery} を買い物リストに加えて",
+            "{ItemQuery} を買い物メモに追加して",
+            "{ItemQuery} を買っておいて",
+            "{ItemQuery} を補充して",
+            "{ItemQuery} を購入リストに追加して",
+            "ちょっと {ItemQuery} を買い物リストに追加して",
+            "ちょっと {ItemQuery} を買い物リストに入れて",
+            "ちょっと {ItemQuery} を買い物リストに加えて",
+            "次の買い物に {ItemQuery} を入れて",
+            "次の買い物に {ItemQuery} を加えて",
+            "あとで {ItemQuery} を買って",
+            "今度 {ItemQuery} を買い足して",
+            "今度 {ItemQuery} を補充して",
+            "ちょっと {ItemQuery} を購入リストに追加して",
+            "ちょっと {ItemQuery} を買い物メモに追加して",
+            "次の買い物で {ItemQuery} を買っておいて"
+          ]
+        }
+      ],
+      "types": []
+    }
+  }
+}
