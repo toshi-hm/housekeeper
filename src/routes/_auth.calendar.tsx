@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { CalendarPage } from "@/components/pages/CalendarPage";
-import { syncItemAggregate } from "@/hooks/useItemLots";
+import { LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
 import { useItemsWithExpiry } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
 import { supabase } from "@/lib/supabase";
@@ -11,11 +12,13 @@ import type { Item } from "@/types/item";
 interface PendingLotRemoval {
   lotId: string;
   itemId: string;
+  itemName: string;
   units: number;
   openedRemaining: number | null;
 }
 
 const CalendarRoutePage = () => {
+  const qc = useQueryClient();
   const { data: items = [], isLoading } = useItemsWithExpiry();
   const { data: categories = [] } = useCategories();
   const [pendingRemovals, setPendingRemovals] = useState<Record<string, PendingLotRemoval>>({});
@@ -50,11 +53,16 @@ const CalendarRoutePage = () => {
     if (updateError) throw updateError;
 
     await syncItemAggregate(item.id);
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["items"] }),
+      qc.invalidateQueries({ queryKey: [...LOTS_KEY, item.id] }),
+    ]);
     setPendingRemovals((prev) => ({
       ...prev,
       [item.id]: {
         lotId: targetLot.id,
         itemId: item.id,
+        itemName: item.name,
         units: targetLot.units,
         openedRemaining: targetLot.opened_remaining,
       },
@@ -75,6 +83,10 @@ const CalendarRoutePage = () => {
     if (error) throw error;
 
     await syncItemAggregate(pending.itemId);
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["items"] }),
+      qc.invalidateQueries({ queryKey: [...LOTS_KEY, pending.itemId] }),
+    ]);
     setPendingRemovals((prev) => {
       const next = { ...prev };
       delete next[itemId];
@@ -89,7 +101,10 @@ const CalendarRoutePage = () => {
       isLoading={isLoading}
       onCheck={handleCheck}
       onUndo={handleUndo}
-      pendingRemovalItemIds={Object.keys(pendingRemovals)}
+      pendingRemovals={Object.values(pendingRemovals).map(({ itemId, itemName }) => ({
+        itemId,
+        itemName,
+      }))}
     />
   );
 };

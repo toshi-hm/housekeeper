@@ -12,7 +12,7 @@ interface CalendarPageProps {
   isLoading: boolean;
   onCheck: (item: Item) => Promise<void>;
   onUndo: (itemId: string) => Promise<void>;
-  pendingRemovalItemIds: string[];
+  pendingRemovals: { itemId: string; itemName: string }[];
 }
 
 export const CalendarPage = ({
@@ -21,7 +21,7 @@ export const CalendarPage = ({
   isLoading,
   onCheck,
   onUndo,
-  pendingRemovalItemIds,
+  pendingRemovals,
 }: CalendarPageProps) => {
   const { t } = useTranslation("calendar");
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
@@ -61,11 +61,11 @@ export const CalendarPage = ({
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">{t("title")}</h1>
-      {pendingRemovalItemIds.length > 0 && (
+      {pendingRemovals.length > 0 && (
         <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm">
           <p className="mb-2 font-medium">{t("pendingRemovalMessage")}</p>
           <div className="flex flex-wrap gap-2">
-            {pendingRemovalItemIds.map((itemId) => (
+            {pendingRemovals.map(({ itemId, itemName }) => (
               <button
                 key={itemId}
                 type="button"
@@ -74,7 +74,7 @@ export const CalendarPage = ({
                 }}
                 className="rounded-md border border-yellow-400 bg-white px-2 py-1 text-xs font-medium hover:bg-yellow-100"
               >
-                {t("undo")}
+                {t("undo")} ({itemName})
               </button>
             ))}
           </div>
