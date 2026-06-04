@@ -97,6 +97,7 @@ export interface GeminiRequest {
     responseMimeType?: string;
     responseSchema?: unknown;
     temperature?: number;
+    thinkingConfig?: { thinkingBudget: number };
   };
 }
 
@@ -106,6 +107,13 @@ export interface GeminiResponse {
       parts: Array<{ text: string }>;
     };
   }>;
+}
+
+// Recently consumed item (fully consumed within past 2 months)
+export interface RecentlyConsumedItem {
+  item_id: string;
+  item_name: string;
+  last_consumed_at: string; // ISO timestamp
 }
 
 // Gemini structured output schema
@@ -123,7 +131,7 @@ export interface GeminiMatchResult {
   }>;
   speech: string;
   confidence: "exact" | "fuzzy" | "none";
-  stockStatus: "in_stock" | "out_of_stock" | "not_found";
+  stockStatus: "in_stock" | "out_of_stock" | "not_found" | "recently_consumed";
 }
 
 // Session attributes for multi-turn dialog

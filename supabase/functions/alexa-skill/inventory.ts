@@ -1,12 +1,7 @@
-import type { InventoryItem } from "./types.ts";
+import type { InventoryItem, RecentlyConsumedItem } from "./types.ts";
 import { getSupabaseClient } from "./supabase-client.ts";
-
-export interface RemainingFields {
-  units: number;
-  content_amount: number;
-  content_unit: string;
-  opened_remaining: number | null;
-}
+export type { RemainingFields } from "./inventory-formatters.ts";
+export { formatExpiryDate, formatTotalRemaining } from "./inventory-formatters.ts";
 
 const ITEM_SELECT =
   "id, name, category_id, storage_location_id, units, content_amount, content_unit, opened_remaining, expiry_date, deleted_at, categories(name), storage_locations(name)";
@@ -35,6 +30,55 @@ export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
   return (data ?? []) as InventoryItem[];
 };
 
+export const fetchRecentlyConsumedItems = async (): Promise<RecentlyConsumedItem[] | null> => {
+  const ctx = getSupabaseClient();
+  if (!ctx) {
+    console.error("[inventory] Missing required environment variables");
+    return null;
+  }
+  const { supabase, userId } = ctx;
+  const twoMonthsAgo = new Date();
+  twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+  // Fetch recent consumption logs joined with item state.
+  // units_after in consumption_logs reflects lot-level units, not the whole item,
+  // so we include the item's current units and deleted_at to determine if it's fully gone.
+  const { data, error } = await supabase
+    .from("consumption_logs")
+    .select("item_id, occurred_at, items(name, units, deleted_at)")
+    .eq("user_id", userId)
+    .gte("occurred_at", twoMonthsAgo.toISOString())
+    .order("occurred_at", { ascending: false });
+
+  if (error) {
+    console.error("[inventory] fetchRecentlyConsumedItems error:", error);
+    return null;
+  }
+
+  // Keep only items that are currently empty: deleted or units=0.
+  // Items still in inventory with units>0 are already in the inventory context.
+  // Deduplicate: keep the most recent consumption event per item.
+  const seen = new Set<string>();
+  const result: RecentlyConsumedItem[] = [];
+  for (const row of data ?? []) {
+    const item = row.items as {
+      name: string;
+      units: number;
+      deleted_at: string | null;
+    } | null;
+    if (!item || seen.has(row.item_id)) continue;
+    if (item.deleted_at !== null || item.units === 0) {
+      seen.add(row.item_id);
+      result.push({
+        item_id: row.item_id,
+        item_name: item.name,
+        last_consumed_at: row.occurred_at,
+      });
+    }
+  }
+  return result;
+};
+
 export const fetchItemsByLocation = async (
   locationName: string,
 ): Promise<InventoryItem[] | null> => {
@@ -56,23 +100,4 @@ export const fetchItemsByLocation = async (
     return null;
   }
   return (data ?? []) as InventoryItem[];
-};
-
-export const formatTotalRemaining = (item: RemainingFields): string => {
-  const { units, content_amount, content_unit, opened_remaining } = item;
-  if (units === 0 && opened_remaining === null) return `0${content_unit}`;
-
-  const closedUnits = opened_remaining !== null ? Math.max(units - 1, 0) : units;
-  const closedAmount = closedUnits * content_amount;
-  const total = closedAmount + (opened_remaining ?? 0);
-
-  if (Number.isInteger(total)) return `${total}${content_unit}`;
-  return `${Math.round(total * 100) / 100}${content_unit}`;
-};
-
-export const formatExpiryDate = (expiryDate: string | null): string => {
-  if (!expiryDate) return "未設定";
-  const parts = expiryDate.split("-");
-  if (parts.length < 3) return expiryDate;
-  return `${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
 };

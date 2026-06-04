@@ -59,8 +59,8 @@ const extractSPKI = (certDer: Uint8Array): Uint8Array | null => {
   }
 };
 
-// Parse UTCTime (0x17) or GeneralizedTime (0x18) from DER bytes
-const parseDERTime = (data: Uint8Array, pos: number, len: number, tag: number): Date | null => {
+// Parse UTCTime (0x17) or GeneralizedTime (0x18) from DER bytes; returns ms timestamp
+const parseDERTime = (data: Uint8Array, pos: number, len: number, tag: number): number | null => {
   try {
     const s = new TextDecoder("ascii").decode(data.slice(pos, pos + len));
     if (tag === 0x17) {
@@ -69,14 +69,14 @@ const parseDERTime = (data: Uint8Array, pos: number, len: number, tag: number): 
       return new Date(
         `${yr >= 50 ? 1900 + yr : 2000 + yr}-${s.slice(2, 4)}-${s.slice(4, 6)}` +
           `T${s.slice(6, 8)}:${s.slice(8, 10)}:${s.slice(10, 12)}Z`,
-      );
+      ).getTime();
     }
     if (tag === 0x18) {
       // GeneralizedTime: YYYYMMDDHHMMSSZ
       return new Date(
         `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` +
           `T${s.slice(8, 10)}:${s.slice(10, 12)}:${s.slice(12, 14)}Z`,
-      );
+      ).getTime();
     }
     return null;
   } catch {
@@ -105,10 +105,10 @@ const validateCertDates = (certDer: Uint8Array): number | null => {
           const naTag = certDer[naPos];
           const naLen = readDERLen(certDer, naPos + 1);
           const notAfter = parseDERTime(certDer, naLen.end, naLen.len, naTag);
-          if (notBefore && notAfter) {
+          if (notBefore !== null && notAfter !== null) {
             const now = Date.now();
-            if (now >= notBefore.getTime() && now <= notAfter.getTime()) {
-              return notAfter.getTime();
+            if (now >= notBefore && now <= notAfter) {
+              return notAfter;
             }
             return null;
           }
@@ -125,7 +125,7 @@ const validateCertDates = (certDer: Uint8Array): number | null => {
 // Check dNSName against target, supporting a single leading wildcard (*.example.com).
 // A wildcard matches exactly one additional label: *.example.com matches sub.example.com
 // but NOT a.b.example.com (multi-label depth).
-const dnsMatches = (name: string, target: string): boolean => {
+export const dnsMatches = (name: string, target: string): boolean => {
   const n = name.toLowerCase();
   const t = target.toLowerCase();
   if (n === t) return true;
@@ -230,23 +230,26 @@ export const verifyAlexaSignature = async (
       spki = certCache.spki;
     } else {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000);
+      // 3s for cert fetch — S3 is fast; keeps budget for Gemini on cold start
+      const timeout = setTimeout(() => controller.abort(), 3000);
       let certRes: Response;
       try {
         // redirect:"follow" allows S3 regional redirects (s3.amazonaws.com → s3.us-east-1.amazonaws.com)
         certRes = await fetch(certChainUrl, { signal: controller.signal, redirect: "follow" });
-        clearTimeout(timeout);
       } catch (fetchErr) {
         clearTimeout(timeout);
         console.error("[alexa-skill] Cert fetch failed:", fetchErr);
         return false;
       }
       if (!certRes.ok) {
+        clearTimeout(timeout);
         console.error("[alexa-skill] Cert fetch HTTP error:", certRes.status);
         return false;
       }
 
+      // Keep timeout active during body read — slow transfers can still be aborted
       const pem = await certRes.text();
+      clearTimeout(timeout);
       const pemMatch = PEM_CERT_REGEX.exec(pem);
       if (!pemMatch) {
         console.error("[alexa-skill] No certificate found in PEM response");
@@ -276,16 +279,26 @@ export const verifyAlexaSignature = async (
       certCache = { url: certChainUrl, spki, notAfterMs };
     }
 
+    // Alexa signs request bodies with RSA + SHA-1 (SHA1withRSA), not SHA-256
     const publicKey = await crypto.subtle.importKey(
       "spki",
       spki,
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-1" },
       false,
       ["verify"],
     );
 
     const signature = Uint8Array.from(atob(signatureB64), (c) => c.charCodeAt(0));
-    return await crypto.subtle.verify("RSASSA-PKCS1-v1_5", publicKey, signature, rawBody);
+    const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", publicKey, signature, rawBody);
+    if (!valid) {
+      console.error(
+        "[alexa-skill] RSA-SHA1 verify failed, body:",
+        rawBody.length,
+        "sig:",
+        signature.length,
+      );
+    }
+    return valid;
   } catch (err) {
     console.error("[alexa-skill] Signature verification error:", err);
     return false;
