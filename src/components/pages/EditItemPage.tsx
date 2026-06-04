@@ -8,6 +8,7 @@ import { Spinner } from "@/components/atoms/Spinner";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { useItemLots, useUpdateLot } from "@/hooks/useItemLots";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
@@ -120,9 +121,8 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
       {lots.length > 1 && (
         <div className="space-y-2 rounded-lg border p-3">
           <Label htmlFor="lot-select">{t("editLot")}</Label>
-          <select
+          <Select
             id="lot-select"
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             value={selectedLot?.id ?? ""}
             onChange={(e) => setSelectedLotId(e.target.value)}
           >
@@ -131,7 +131,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
                 {t("lotLabel", { index: index + 1 })}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
       <ItemForm
