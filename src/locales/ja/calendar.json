@@ -12,5 +12,7 @@
   "noItemsHint": "アイテムに期限日を設定するとここに表示されます",
   "close": "閉じる",
   "noItemsOnDate": "この日に期限を迎えるアイテムはありません",
-  "expiryItemsOnDate": "{{date}} の期限アイテム"
+  "expiryItemsOnDate": "{{date}} の期限アイテム",
+  "undo": "取り消す",
+  "pendingRemovalMessage": "削除したロットを取り消せます"
 }
