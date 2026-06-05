@@ -87,7 +87,11 @@ export const useUpsertShoppingItem = () => {
       await qc.invalidateQueries({ queryKey: [QUERY_KEY] });
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      if (error instanceof OfflineError) {
+        toast(t("offlineError"), "error");
+      } else {
+        toast(t("unknownError"), "error");
+      }
     },
   });
 };
@@ -173,7 +177,11 @@ export const usePurchaseShoppingItem = () => {
       ]);
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      if (error instanceof OfflineError) {
+        toast(t("offlineError"), "error");
+      } else {
+        toast(t("unknownError"), "error");
+      }
     },
   });
 };

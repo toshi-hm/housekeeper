@@ -43,7 +43,7 @@ const DashboardPage = () => {
   const filtered = items.filter((item) => {
     if (hideEmpty && item.units === 0) return false;
     if (expiryFilter && expiryFilter !== "all") {
-      const status = getExpiryStatus(item.expiry_date);
+      const status = getExpiryStatus(item.expiry_date, warningDays);
       if (status !== expiryFilter) return false;
     }
     return true;
@@ -67,7 +67,11 @@ const DashboardPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{items.length}件</p>
+          <p className="text-sm text-muted-foreground">
+            {filtered.length === items.length
+              ? `${items.length}件`
+              : `${filtered.length} / ${items.length}件`}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/items/new">

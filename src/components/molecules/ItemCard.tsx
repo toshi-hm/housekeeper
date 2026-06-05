@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import { formatRemaining, getExpiryStatus, type Item } from "@/types/item";
 
@@ -54,7 +55,7 @@ export const ItemCard = ({ item, categoryName, locationName, warningDays }: Item
             {item.expiry_date && (
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                <span>{new Date(item.expiry_date).toLocaleDateString(i18n.language)}</span>
+                <span>{parseLocalDate(item.expiry_date).toLocaleDateString(i18n.language)}</span>
               </div>
             )}
           </div>
