@@ -5,21 +5,22 @@
 Supabase Auth（email + password）による単一ユーザー認証。
 未認証ユーザーは `/login` 以外にアクセスできない。
 
-> 2026-06 時点では個人利用を優先するため、新規ユーザー登録の画面導線は一時的に閉じ、登録済みユーザーのサインインのみを提供する。
+> 2026-06 時点では個人利用を優先するため、`src/config/auth.ts` の `isAvailableRegisterNewUser` を `false` にして新規ユーザー登録の画面導線を一時的に閉じる。再開時は同フラグを `true` に戻す。
 
 ## ユーザーストーリー
 
 - 登録済みユーザーは email / password でサインインできる
+- `isAvailableRegisterNewUser` が `true` の場合、ユーザーは email / password でサインアップできる
 - ユーザーはサインアウトできる
 - 認証状態は再読み込みでも維持される
 - 未認証で保護ルートにアクセスすると `/login` にリダイレクトされる
 
 ## 画面・動線
 
-| ルート     | 表示                                                           |
-| ---------- | -------------------------------------------------------------- |
-| `/login`   | サインインフォームのみ。新規ユーザー登録停止中の案内を表示する |
-| `/_auth/*` | 認証ガード。未認証なら `redirect({ to: '/login' })`            |
+| ルート     | 表示                                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `/login`   | `isAvailableRegisterNewUser` が `false` の場合はサインインフォームのみ。`true` の場合はサインイン / サインアップを 1 画面で切替 |
+| `/_auth/*` | 認証ガード。未認証なら `redirect({ to: '/login' })`                                                                             |
 
 主要 organism: `AuthForm`（`src/components/organisms/AuthForm.tsx`）
 
@@ -31,7 +32,7 @@ Supabase Auth（email + password）による単一ユーザー認証。
 ## API
 
 ```ts
-// 新規登録導線を再開するまで画面からは呼び出さない
+// isAvailableRegisterNewUser が true の場合のみ画面から呼び出す
 supabase.auth.signUp({ email, password })
 supabase.auth.signInWithPassword({ email, password })
 supabase.auth.signOut()
@@ -45,7 +46,8 @@ supabase.auth.onAuthStateChange((event, session) => ...)
 - メール形式不正: クライアント側 Zod で弾く
 - 認証失敗: トースト + フィールドエラー
 - ネットワーク失敗: トーストでリトライを促す
-- 新規ユーザー登録停止中: `/login` に停止中の案内を表示し、サインアップフォーム・ボタンは出さない
+- 新規ユーザー登録停止中: `isAvailableRegisterNewUser` が `false` の場合、`/login` に停止中の案内を表示し、サインアップフォーム・ボタンは出さない
+- 新規ユーザー登録再開時: `isAvailableRegisterNewUser` を `true` にし、既存のサインアップフォーム・`supabase.auth.signUp` 導線を復帰する
 
 ## アクセシビリティ
 
