@@ -112,5 +112,7 @@
   "lotsLoadError": "Failed to load stock lots. Please try again later.",
   "back": "Back",
   "noStockToConsume": "No stock available to use",
-  "editLot": "Select lot to edit"
+  "editLot": "Select lot to edit",
+  "itemCountLabel": "{{count}} items",
+  "itemCountLabelFiltered": "{{filtered}} / {{total}} items"
 }

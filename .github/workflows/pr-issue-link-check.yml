@@ -8,7 +8,7 @@ jobs:
   check:
     name: Require Issue Link
     runs-on: ubuntu-latest
-    # dependabot と codex の自動PRはスキップ
+    # dependabot の自動PRはスキップ。緊急対応は 'skip-issue-link' ラベルで除外可能
     if: |
       github.actor != 'dependabot[bot]' &&
       !contains(github.event.pull_request.labels.*.name, 'skip-issue-link')

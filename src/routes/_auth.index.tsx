@@ -69,8 +69,8 @@ const DashboardPage = () => {
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">
             {filtered.length === items.length
-              ? `${items.length}件`
-              : `${filtered.length} / ${items.length}件`}
+              ? t("itemCountLabel", { count: items.length })
+              : t("itemCountLabelFiltered", { filtered: filtered.length, total: items.length })}
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -109,7 +109,9 @@ export const ItemForm = ({
     setLookupResult(result.product);
     setLookupSource(result.source);
     if (result.product?.name) set("name", result.product.name);
-    if (result.product?.image_url && !localPreviewUrl) {
+    if (result.product?.image_path && !localPreviewUrl) {
+      set("image_path", result.product.image_path);
+    } else if (result.product?.image_url && !localPreviewUrl) {
       setBarcodeImageUrl(result.product.image_url);
       onPendingImageUrlChange?.(result.product.image_url);
     }

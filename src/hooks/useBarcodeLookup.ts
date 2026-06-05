@@ -4,7 +4,10 @@ import { supabase } from "@/lib/supabase";
 
 export interface ProductInfo {
   name: string;
+  /** External image URL (from barcode API). Use onPendingImageUrlChange to download & upload. */
   image_url?: string;
+  /** Supabase Storage path (from local DB hit). Set directly to form's image_path. */
+  image_path?: string;
   description?: string;
   brand?: string;
 }
