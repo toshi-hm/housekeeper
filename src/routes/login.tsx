@@ -25,7 +25,8 @@ import { supabase } from "@/lib/supabase";
 const LoginPage = () => {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const isSignupMode = isAvailableRegisterNewUser && mode === "signup";
+  const effectiveMode = isAvailableRegisterNewUser ? mode : "login";
+  const isSignupMode = effectiveMode === "signup";
 
   // Common fields
   const [email, setEmail] = useState("");
@@ -128,10 +129,10 @@ const LoginPage = () => {
     clearErrors();
     setIsLoading(true);
     try {
-      if (mode === "login") {
-        await handleLogin();
-      } else {
+      if (isSignupMode) {
         await handleSignup();
+      } else {
+        await handleLogin();
       }
     } catch (err) {
       setGlobalError(err instanceof Error ? err.message : "認証に失敗しました");
@@ -310,11 +311,11 @@ const LoginPage = () => {
                 type="button"
                 variant="ghost"
                 className="w-full"
-                onClick={() => switchMode(mode === "login" ? "signup" : "login")}
+                onClick={() => switchMode(isSignupMode ? "login" : "signup")}
               >
-                {mode === "login"
-                  ? "アカウントをお持ちでない方はこちら"
-                  : "すでにアカウントをお持ちの方はこちら"}
+                {isSignupMode
+                  ? "すでにアカウントをお持ちの方はこちら"
+                  : "アカウントをお持ちでない方はこちら"}
               </Button>
             ) : (
               <div className="rounded-md border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
@@ -322,7 +323,7 @@ const LoginPage = () => {
               </div>
             )}
 
-            {(mode === "login" || !isAvailableRegisterNewUser) && (
+            {!isSignupMode && (
               <div className="text-center">
                 <Link
                   to="/forgot-password"
