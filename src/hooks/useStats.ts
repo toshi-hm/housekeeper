@@ -18,15 +18,15 @@ export type {
 } from "@/types/stats";
 
 export const useCategoryStats = () => {
-  const { data: items = [] } = useItems({}, "created_at");
+  const { data: items = [], isLoading, isError } = useItems({}, "created_at");
   const { data: categories = [] } = useCategories();
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
-  return computeCategoryStats(items, categoryMap);
+  return { stats: computeCategoryStats(items, categoryMap), isLoading, isError };
 };
 
 export const useExpiryDistribution = (warningDays?: number) => {
-  const { data: items = [] } = useItems({}, "created_at");
-  return computeExpiryDistribution(items, warningDays);
+  const { data: items = [], isLoading, isError } = useItems({}, "created_at");
+  return { distribution: computeExpiryDistribution(items, warningDays), isLoading, isError };
 };
 
 export const useAllConsumptionLogs = () =>

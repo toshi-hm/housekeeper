@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { ColorDot } from "@/components/atoms/ColorDot";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,7 @@ interface ExpiryCheckItemProps {
 
 export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckItemProps) => {
   const [checked, setChecked] = useState(false);
+  const { i18n } = useTranslation();
 
   const handleChange = async () => {
     if (checked) return;
@@ -26,10 +28,13 @@ export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckIte
   const expiryLabel = (() => {
     if (!item.expiry_date) return "";
     const parts = item.expiry_date.slice(0, 10).split("-").map(Number);
-    return new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1).toLocaleDateString("ja-JP", {
-      month: "short",
-      day: "numeric",
-    });
+    return new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1).toLocaleDateString(
+      i18n.language,
+      {
+        month: "short",
+        day: "numeric",
+      },
+    );
   })();
 
   return (
