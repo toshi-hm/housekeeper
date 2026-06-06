@@ -19,10 +19,14 @@ const StatsPage = () => {
     isLoading: expiryLoading,
     isError: expiryError,
   } = useExpiryDistribution(userSettings?.expiry_warning_days);
-  const monthlyData = useMonthlyConsumption(6);
+  const {
+    data: monthlyData,
+    isLoading: monthlyLoading,
+    isError: monthlyError,
+  } = useMonthlyConsumption(6);
 
-  const isLoading = categoryLoading || expiryLoading;
-  const isError = categoryError || expiryError;
+  const isLoading = categoryLoading || expiryLoading || monthlyLoading;
+  const isError = categoryError || expiryError || monthlyError;
 
   if (isLoading) {
     return (

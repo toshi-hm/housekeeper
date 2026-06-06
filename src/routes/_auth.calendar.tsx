@@ -7,7 +7,7 @@ import { CalendarPage } from "@/components/pages/CalendarPage";
 import { LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
 import { useItemsWithExpiry } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
-import { OfflineError } from "@/lib/requireOnline";
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 import type { Item } from "@/types/item";
@@ -30,6 +30,7 @@ const CalendarRoutePage = () => {
 
   const handleCheck = async (item: Item) => {
     try {
+      requireOnline();
       const { data: lots, error } = await supabase
         .from("item_lots")
         .select("id, units, opened_remaining, expiry_date")
@@ -81,6 +82,7 @@ const CalendarRoutePage = () => {
 
   const handleUndo = async (itemId: string) => {
     try {
+      requireOnline();
       const pending = pendingRemovals[itemId];
       if (!pending) return;
       const { error } = await supabase
@@ -105,7 +107,6 @@ const CalendarRoutePage = () => {
       });
     } catch (err) {
       toast(err instanceof OfflineError ? t("offlineError") : t("unknownError"), "error");
-      throw err;
     }
   };
 
