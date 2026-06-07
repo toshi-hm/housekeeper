@@ -22,7 +22,7 @@ Supabase Auth（email + password）による単一ユーザー認証。
 | `/login`   | `isAvailableRegisterNewUser` が `false` の場合はサインインフォームのみ。`true` の場合はサインイン / サインアップを 1 画面で切替 |
 | `/_auth/*` | 認証ガード。未認証なら `redirect({ to: '/login' })`                                                                             |
 
-主要 organism: `AuthForm`（`src/components/organisms/AuthForm.tsx`）
+主要 page component: `LoginPage`（`src/components/pages/LoginPage.tsx`）
 
 ## データ
 
