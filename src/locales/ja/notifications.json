@@ -8,5 +8,6 @@
   "thresholdDays": "通知する日数前",
   "daysBefore": "日前",
   "notifyAt": "通知時刻",
-  "saveSuccess": "通知設定を保存しました"
+  "saveSuccess": "通知設定を保存しました",
+  "invalidEmailAddress": "有効なメールアドレスを入力してください"
 }

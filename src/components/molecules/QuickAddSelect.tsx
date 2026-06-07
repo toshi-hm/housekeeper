@@ -1,5 +1,6 @@
 import { Check, ChevronDown, Loader2, Plus, X } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,14 +29,20 @@ export const QuickAddSelect = ({
   value,
   onChange,
   options,
-  placeholder = "選択",
+  placeholder,
   onAdd,
   onDelete,
-  addLabel = "追加",
-  confirmLabel = "確認",
-  cancelLabel = "キャンセル",
-  addErrorMessage = "追加に失敗しました",
+  addLabel,
+  confirmLabel,
+  cancelLabel,
+  addErrorMessage,
 }: QuickAddSelectProps) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("common:select");
+  const resolvedAddLabel = addLabel ?? t("common:add");
+  const resolvedConfirmLabel = confirmLabel ?? t("common:confirm");
+  const resolvedCancelLabel = cancelLabel ?? t("common:cancel");
+  const resolvedAddErrorMessage = addErrorMessage ?? t("items:addError");
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -90,7 +97,7 @@ export const QuickAddSelect = ({
       setInputValue("");
       setIsOpen(false);
     } catch {
-      setAddError(addErrorMessage);
+      setAddError(resolvedAddErrorMessage);
     } finally {
       setIsAdding(false);
     }
@@ -116,7 +123,7 @@ export const QuickAddSelect = ({
         onChange("");
       }
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "削除できません");
+      setDeleteError(err instanceof Error ? err.message : t("common:unknownError"));
     } finally {
       setDeletingId(null);
     }
@@ -137,7 +144,7 @@ export const QuickAddSelect = ({
         aria-expanded={isOpen}
       >
         <span className={selectedOption ? "text-foreground" : "text-muted-foreground"}>
-          {selectedOption?.label ?? placeholder}
+          {selectedOption?.label ?? resolvedPlaceholder}
         </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
@@ -155,7 +162,7 @@ export const QuickAddSelect = ({
               className={`w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent ${!value ? "bg-accent/50 font-medium" : ""}`}
               onClick={() => handleSelect("")}
             >
-              {placeholder}
+              {resolvedPlaceholder}
             </button>
 
             {options.map((option) => (
@@ -176,7 +183,7 @@ export const QuickAddSelect = ({
                     className="mr-2 shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
                     onClick={(e) => void handleDelete(e, option.value)}
                     disabled={!!deletingId}
-                    aria-label="削除"
+                    aria-label={t("common:delete")}
                   >
                     {deletingId === option.value ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -204,7 +211,7 @@ export const QuickAddSelect = ({
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={addLabel}
+                    placeholder={resolvedAddLabel}
                     className="h-8 flex-1 text-base sm:text-sm"
                     disabled={isAdding}
                   />
@@ -215,7 +222,7 @@ export const QuickAddSelect = ({
                     className="h-8 w-8 shrink-0"
                     onClick={() => void handleConfirmAdd()}
                     disabled={isAdding || !inputValue.trim()}
-                    aria-label={confirmLabel}
+                    aria-label={resolvedConfirmLabel}
                   >
                     {isAdding ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -230,7 +237,7 @@ export const QuickAddSelect = ({
                     className="h-8 w-8 shrink-0"
                     onClick={handleCancelAdd}
                     disabled={isAdding}
-                    aria-label={cancelLabel}
+                    aria-label={resolvedCancelLabel}
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
@@ -244,7 +251,7 @@ export const QuickAddSelect = ({
                 onClick={handleOpenAdd}
               >
                 <Plus className="h-3.5 w-3.5" />
-                {addLabel}
+                {resolvedAddLabel}
               </button>
             )}
           </div>

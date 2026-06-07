@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { ColorDot } from "@/components/atoms/ColorDot";
 import { Button } from "@/components/ui/button";
@@ -21,22 +22,8 @@ const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month
 const toDateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-const MONTH_LABELS = [
-  "1月",
-  "2月",
-  "3月",
-  "4月",
-  "5月",
-  "6月",
-  "7月",
-  "8月",
-  "9月",
-  "10月",
-  "11月",
-  "12月",
-];
-
 export const ExpiryCalendar = ({ items, categories, labels }: ExpiryCalendarProps) => {
+  const { i18n, t } = useTranslation("calendar");
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -44,6 +31,14 @@ export const ExpiryCalendar = ({ items, categories, labels }: ExpiryCalendarProp
   const [pickerYear, setPickerYear] = useState(today.getFullYear());
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+
+  const monthLabels = Array.from({ length: 12 }, (_, i) =>
+    new Date(2000, i, 1).toLocaleDateString(i18n.language, { month: "short" }),
+  );
+  // Jan 4, 1970 (Unix epoch + 3 days) was a Sunday
+  const dayLabels = Array.from({ length: 7 }, (_, i) =>
+    new Date(1970, 0, 4 + i).toLocaleDateString(i18n.language, { weekday: "narrow" }),
+  );
 
   const prevMonth = () => {
     if (month === 0) {
@@ -91,23 +86,24 @@ export const ExpiryCalendar = ({ items, categories, labels }: ExpiryCalendarProp
   const todayKey = toDateKey(today);
   const selectedItems = selectedDateKey ? (itemsByDate.get(selectedDateKey) ?? []) : [];
 
-  const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
-
   return (
     <div className="rounded-lg border bg-background p-3">
       {/* Header */}
       <div className="relative mb-3 flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={prevMonth} aria-label="前の月">
+        <Button variant="ghost" size="icon" onClick={prevMonth} aria-label={t("prevMonth")}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <button
           className="rounded px-2 py-1 text-sm font-semibold hover:bg-muted"
           onClick={openPicker}
-          aria-label="年月を選択"
+          aria-label={t("selectYearMonth")}
         >
-          {year}年{month + 1}月
+          {new Date(year, month, 1).toLocaleDateString(i18n.language, {
+            year: "numeric",
+            month: "long",
+          })}
         </button>
-        <Button variant="ghost" size="icon" onClick={nextMonth} aria-label="次の月">
+        <Button variant="ghost" size="icon" onClick={nextMonth} aria-label={t("nextMonth")}>
           <ChevronRight className="h-4 w-4" />
         </Button>
 
@@ -130,24 +126,28 @@ export const ExpiryCalendar = ({ items, categories, labels }: ExpiryCalendarProp
                   size="icon"
                   className="h-7 w-7"
                   onClick={() => setPickerYear((y) => y - 1)}
-                  aria-label="前の年"
+                  aria-label={t("prevYear")}
                 >
                   <ChevronLeft className="h-3 w-3" />
                 </Button>
-                <span className="text-sm font-semibold">{pickerYear}年</span>
+                <span className="text-sm font-semibold">
+                  {new Date(pickerYear, 0, 1).toLocaleDateString(i18n.language, {
+                    year: "numeric",
+                  })}
+                </span>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
                   onClick={() => setPickerYear((y) => y + 1)}
-                  aria-label="次の年"
+                  aria-label={t("nextYear")}
                 >
                   <ChevronRight className="h-3 w-3" />
                 </Button>
               </div>
               {/* Month grid */}
               <div className="grid grid-cols-4 gap-1">
-                {MONTH_LABELS.map((label, i) => (
+                {monthLabels.map((label, i) => (
                   <button
                     key={label}
                     className={`rounded py-1.5 text-xs font-medium transition-colors ${
@@ -168,9 +168,9 @@ export const ExpiryCalendar = ({ items, categories, labels }: ExpiryCalendarProp
 
       {/* Day labels */}
       <div className="mb-1 grid grid-cols-7 text-center">
-        {DAY_LABELS.map((d, i) => (
+        {dayLabels.map((d, i) => (
           <div
-            key={d}
+            key={i}
             className={`text-xs font-medium ${i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : "text-muted-foreground"}`}
           >
             {d}

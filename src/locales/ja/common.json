@@ -32,5 +32,6 @@
   "unknownError": "エラーが発生しました",
   "offlineError": "オフラインのため操作できません",
   "enabled": "有効",
-  "disabled": "無効"
+  "disabled": "無効",
+  "select": "選択"
 }

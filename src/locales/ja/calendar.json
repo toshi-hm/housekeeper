@@ -14,5 +14,10 @@
   "noItemsOnDate": "この日に期限を迎えるアイテムはありません",
   "expiryItemsOnDate": "{{date}} の期限アイテム",
   "undo": "取り消す",
-  "pendingRemovalMessage": "削除したロットを取り消せます"
+  "pendingRemovalMessage": "削除したロットを取り消せます",
+  "prevMonth": "前の月",
+  "nextMonth": "次の月",
+  "selectYearMonth": "年月を選択",
+  "prevYear": "前の年",
+  "nextYear": "次の年"
 }

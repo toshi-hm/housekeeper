@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ColorDot } from "@/components/atoms/ColorDot";
@@ -14,14 +14,18 @@ interface ExpiryCheckItemProps {
 export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckItemProps) => {
   const [checked, setChecked] = useState(false);
   const { i18n } = useTranslation();
+  const isProcessingRef = useRef(false);
 
   const handleChange = async () => {
-    if (checked) return;
+    if (checked || isProcessingRef.current) return;
+    isProcessingRef.current = true;
     setChecked(true);
     try {
       await onCheck(item);
     } catch {
       setChecked(false);
+    } finally {
+      isProcessingRef.current = false;
     }
   };
 

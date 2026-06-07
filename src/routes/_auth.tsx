@@ -99,7 +99,7 @@ const AuthLayout = () => {
 
       {/* Page content */}
       <main className="flex-1 lg:pl-64">
-        <div className="mx-auto max-w-4xl px-4 py-6">
+        <div className="mx-auto max-w-4xl px-4 pt-6 pb-24 lg:py-6">
           <Outlet />
         </div>
       </main>
