@@ -115,7 +115,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
       cancelled = true;
       controlsRef.current?.stop();
     };
-  }, [startScanning]);
+  }, [startScanning, t]);
 
   const handleSwitchCamera = () => {
     if (devices.length <= 1) return;

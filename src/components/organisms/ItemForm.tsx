@@ -123,6 +123,7 @@ export const ItemForm = ({
     } catch {
       setLookupResult(null);
       toast(t("barcodeLookupError"), "error");
+      onBarcodeScanned?.(barcode, null);
     }
   };
 
