@@ -16,6 +16,7 @@ import {
   translateAuthError,
 } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 
 // ---------------------------------------------------------------------------
 // Page component
@@ -23,6 +24,7 @@ import { supabase } from "@/lib/supabase";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [mode, setMode] = useState<"login" | "signup">("login");
 
   // Common fields
@@ -90,7 +92,10 @@ const LoginPage = () => {
       // Email confirmation required
       setGlobalError(null);
       setFieldErrors({});
-      alert("確認メールを送信しました。メールのリンクをクリックしてからログインしてください。");
+      toast(
+        "確認メールを送信しました。メールのリンクをクリックしてからログインしてください。",
+        "success",
+      );
       switchMode("login");
       return;
     }

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { passwordSchema } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 
 // ---------------------------------------------------------------------------
 // Constants & helpers
@@ -117,6 +118,7 @@ interface Step2Props {
 
 const Step2 = ({ email, question, onBack }: Step2Props) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [answer, setAnswer] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -154,7 +156,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
         answer: answer.trim(),
         new_password: newPassword,
       });
-      alert("パスワードを変更しました。新しいパスワードでサインインしてください。");
+      toast("パスワードを変更しました。新しいパスワードでサインインしてください。", "success");
       void navigate({ to: "/login" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
