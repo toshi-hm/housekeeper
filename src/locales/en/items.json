@@ -113,6 +113,7 @@
   "back": "Back",
   "noStockToConsume": "No stock available to use",
   "editLot": "Select lot to edit",
-  "itemCountLabel": "{{count}} items",
+  "itemCountLabel_one": "{{count}} item",
+  "itemCountLabel_other": "{{count}} items",
   "itemCountLabelFiltered": "{{filtered}} / {{total}} items"
 }
