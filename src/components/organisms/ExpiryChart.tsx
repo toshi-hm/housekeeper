@@ -43,6 +43,7 @@ export const ExpiryChart = ({ distribution }: ExpiryChartProps) => {
           outerRadius={80}
           dataKey="value"
           paddingAngle={2}
+          isAnimationActive={false}
         >
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status] ?? "#94a3b8"} />

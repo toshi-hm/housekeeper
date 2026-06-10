@@ -38,7 +38,12 @@ export const ConsumptionChart = ({ data }: ConsumptionChartProps) => {
           formatter={(value) => [`${value ?? 0}${unit}`, t("consumptionTrend")]}
           contentStyle={{ fontSize: 12 }}
         />
-        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+        <Bar
+          dataKey="total"
+          fill="hsl(var(--primary))"
+          radius={[4, 4, 0, 0]}
+          isAnimationActive={false}
+        />
       </BarChart>
     </ResponsiveContainer>
   );
