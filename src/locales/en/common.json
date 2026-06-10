@@ -33,5 +33,12 @@
   "offlineError": "Cannot perform this action while offline",
   "enabled": "Enabled",
   "disabled": "Disabled",
-  "select": "Select"
+  "select": "Select",
+  "navHome": "Home",
+  "navAddItem": "Add",
+  "navShopping": "Shopping",
+  "navStats": "Stats",
+  "navSettings": "Settings",
+  "navCalendar": "Calendar",
+  "navSignOut": "Sign Out"
 }

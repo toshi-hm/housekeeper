@@ -49,7 +49,7 @@ const DashboardPage = () => {
     return true;
   });
 
-  const urgentItems = items.filter((item) => {
+  const urgentItems = filtered.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
   });

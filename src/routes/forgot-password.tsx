@@ -62,7 +62,7 @@ const Step1 = ({ onNext }: Step1Props) => {
       }
       onNext(email, question);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("genericError"));
+      setError(err instanceof Error ? err.message : t("common:unknownError"));
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +72,7 @@ const Step1 = ({ onNext }: Step1Props) => {
     <>
       <CardHeader className="pb-4">
         <CardTitle>{t("resetPasswordTitle")}</CardTitle>
-        <CardDescription>{t("resetPasswordDescription")}</CardDescription>
+        <CardDescription>{t("resetEmailSubtitle")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -87,13 +87,13 @@ const Step1 = ({ onNext }: Step1Props) => {
             </div>
           )}
           <div className="space-y-1">
-            <Label htmlFor="email">{t("emailLabel")}</Label>
+            <Label htmlFor="email">{t("email")}</Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder={t("emailInputPlaceholder")}
+              placeholder={t("emailPlaceholder")}
               required
               autoComplete="email"
             />
@@ -119,9 +119,9 @@ interface Step2Props {
 }
 
 const Step2 = ({ email, question, onBack }: Step2Props) => {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { t } = useTranslation("auth");
   const [answer, setAnswer] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -140,11 +140,13 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
     const pwResult = passwordSchema.safeParse(newPassword);
     if (!pwResult.success) {
-      setFieldErrors({ newPassword: pwResult.error.issues[0]?.message ?? t("validationError") });
+      setFieldErrors({
+        newPassword: pwResult.error.issues[0]?.message ?? t("common:unknownError"),
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setFieldErrors({ confirmPassword: t("passwordMismatch") });
+      setFieldErrors({ confirmPassword: t("confirmPasswordMismatch") });
       return;
     }
     if (!answer.trim()) {
@@ -159,10 +161,10 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
         answer: answer.trim(),
         new_password: newPassword,
       });
-      toast(t("passwordChanged"), "success");
+      toast(t("resetSuccess"), "success");
       void navigate({ to: "/login" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("genericError"));
+      setError(err instanceof Error ? err.message : t("common:unknownError"));
     } finally {
       setIsLoading(false);
     }
@@ -171,8 +173,8 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
   return (
     <>
       <CardHeader className="pb-4">
-        <CardTitle>{t("securityQuestionTitle")}</CardTitle>
-        <CardDescription>{t("securityQuestionDescription")}</CardDescription>
+        <CardTitle>{t("answerSecurityQuestionTitle")}</CardTitle>
+        <CardDescription>{t("answerSecurityQuestionSubtitle")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -201,7 +203,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
               type="text"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              placeholder={t("answerInputPlaceholder")}
+              placeholder={t("answerPlaceholder")}
               autoComplete="off"
               required
             />
@@ -210,7 +212,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
           {/* New password */}
           <div className="space-y-1">
-            <Label htmlFor="newPassword">{t("newPasswordLabel")}</Label>
+            <Label htmlFor="newPassword">{t("newPassword")}</Label>
             <div className="relative">
               <Input
                 id="newPassword"
@@ -238,7 +240,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
           {/* Confirm new password */}
           <div className="space-y-1">
-            <Label htmlFor="confirmPassword">{t("confirmNewPasswordLabel")}</Label>
+            <Label htmlFor="confirmPassword">{t("newPasswordConfirm")}</Label>
             <div className="relative">
               <Input
                 id="confirmPassword"
@@ -259,7 +261,9 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
                 {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {confirmMismatch && <p className="text-xs text-destructive">{t("passwordMismatch")}</p>}
+            {confirmMismatch && (
+              <p className="text-xs text-destructive">{t("confirmPasswordMismatch")}</p>
+            )}
             {fieldErrors.confirmPassword && !confirmMismatch && (
               <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
             )}

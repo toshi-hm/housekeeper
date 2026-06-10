@@ -21,9 +21,9 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 
 export const LoginPage = () => {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { t } = useTranslation("auth");
   const [mode, setMode] = useState<"login" | "signup">("login");
   const effectiveMode = isAvailableRegisterNewUser ? mode : "login";
   const isSignupMode = effectiveMode === "signup";
@@ -77,7 +77,7 @@ export const LoginPage = () => {
 
   const handleSignup = async () => {
     if (!isAvailableRegisterNewUser) {
-      throw new Error("現在、新規ユーザー登録は受け付けていません。");
+      throw new Error(t("signupNotAllowed"));
     }
 
     const result = signupSchema.safeParse({
@@ -101,7 +101,7 @@ export const LoginPage = () => {
       // Email confirmation required
       setGlobalError(null);
       setFieldErrors({});
-      toast(t("signUpEmailSent"), "success");
+      toast(t("confirmationEmailSent"), "success");
       switchMode("login");
       return;
     }
@@ -118,7 +118,7 @@ export const LoginPage = () => {
     });
     if (sqError) {
       await supabase.auth.signOut();
-      throw new Error(t("setupError"));
+      throw new Error(t("accountSetupFailed"));
     }
 
     void navigate({ to: "/" });
@@ -135,7 +135,7 @@ export const LoginPage = () => {
         await handleLogin();
       }
     } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : t("authError"));
+      setGlobalError(err instanceof Error ? err.message : t("authFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -159,7 +159,7 @@ export const LoginPage = () => {
         <CardHeader className="pb-4">
           <CardTitle>{isSignupMode ? t("signUpTitle") : t("signInTitle")}</CardTitle>
           <CardDescription>
-            {isSignupMode ? t("signUpDescription") : t("signInDescription")}
+            {isSignupMode ? t("signUpSubtitle") : t("signInSubtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -177,13 +177,13 @@ export const LoginPage = () => {
 
             {/* Email */}
             <div className="space-y-1">
-              <Label htmlFor="email">{t("emailLabel")}</Label>
+              <Label htmlFor="email">{t("email")}</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("emailInputPlaceholder")}
+                placeholder={t("emailPlaceholder")}
                 required
                 autoComplete="email"
               />
@@ -192,7 +192,7 @@ export const LoginPage = () => {
 
             {/* Password */}
             <div className="space-y-1">
-              <Label htmlFor="password">{t("passwordLabel")}</Label>
+              <Label htmlFor="password">{t("password")}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -224,7 +224,7 @@ export const LoginPage = () => {
               <>
                 {/* Confirm password */}
                 <div className="space-y-1">
-                  <Label htmlFor="confirmPassword">{t("confirmPasswordLabel")}</Label>
+                  <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
                   <div className="relative">
                     <Input
                       id="confirmPassword"
@@ -250,7 +250,7 @@ export const LoginPage = () => {
                     </button>
                   </div>
                   {confirmMismatch && (
-                    <p className="text-xs text-destructive">{t("passwordMismatch")}</p>
+                    <p className="text-xs text-destructive">{t("confirmPasswordMismatch")}</p>
                   )}
                   {fieldErrors.confirmPassword && !confirmMismatch && (
                     <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
@@ -266,7 +266,7 @@ export const LoginPage = () => {
                     onChange={(e) => setSecurityQuestion(e.target.value)}
                     required
                   >
-                    <option value="">{t("selectQuestion")}</option>
+                    <option value="">{t("selectSecurityQuestion")}</option>
                     {SECURITY_QUESTIONS.map((q) => (
                       <option key={q} value={q}>
                         {q}
@@ -286,10 +286,10 @@ export const LoginPage = () => {
                     type="text"
                     value={securityAnswer}
                     onChange={(e) => setSecurityAnswer(e.target.value)}
-                    placeholder={t("answerPlaceholder")}
+                    placeholder={t("securityAnswerPlaceholder")}
                     autoComplete="off"
                   />
-                  <p className="text-xs text-muted-foreground">{t("answerHint")}</p>
+                  <p className="text-xs text-muted-foreground">{t("securityAnswerHint")}</p>
                   {fieldErrors.securityAnswer && (
                     <p className="text-xs text-destructive">{fieldErrors.securityAnswer}</p>
                   )}
@@ -309,11 +309,11 @@ export const LoginPage = () => {
                 className="w-full"
                 onClick={() => switchMode(isSignupMode ? "login" : "signup")}
               >
-                {isSignupMode ? t("switchToSignInFull") : t("switchToSignUpFull")}
+                {isSignupMode ? t("switchToSignIn") : t("switchToSignUp")}
               </Button>
             ) : (
               <div className="rounded-md border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
-                現在、新規ユーザー登録は受け付けていません。登録済みのアカウントでサインインしてください。
+                {t("signUpDisabled")}
               </div>
             )}
 
