@@ -59,8 +59,15 @@ export const useBarcodeLookup = () => {
         .maybeSingle<ItemLookupRow>();
 
       if (!localError && localData?.name) {
+        let image_url: string | undefined;
+        if (localData.image_path) {
+          const { data: signedData } = await supabase.storage
+            .from("item-images")
+            .createSignedUrl(localData.image_path, 60 * 50);
+          image_url = signedData?.signedUrl ?? undefined;
+        }
         return {
-          product: { name: localData.name },
+          product: { name: localData.name, image_url },
           source: "db",
         };
       }
