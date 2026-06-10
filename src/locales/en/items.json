@@ -44,6 +44,8 @@
   "scannerHint": "Point the camera at a barcode to scan",
   "scannerError": "Camera Error",
   "scannerRetry": "Retry",
+  "scannerCameraAccessDenied": "Camera access denied",
+  "barcodeLookupError": "Failed to retrieve product information",
   "scannerManualInput": "Manual Input",
   "scannerManualPlaceholder": "Type barcode and press Enter",
   "scannerSwitchCamera": "Switch Camera",
@@ -57,6 +59,7 @@
     "unknown": "No Expiry"
   },
   "totalAmount": "Total",
+  "unitsLabel": "items",
   "unitsDisplay": "{{units}} units",
   "remainingDisplay": "({{amount}}{{unit}} left)",
   "emptyStock": "Used up",
@@ -112,5 +115,8 @@
   "lotsLoadError": "Failed to load stock lots. Please try again later.",
   "back": "Back",
   "noStockToConsume": "No stock available to use",
-  "editLot": "Select lot to edit"
+  "editLot": "Select lot to edit",
+  "itemCountLabel_one": "{{count}} item",
+  "itemCountLabel_other": "{{count}} items",
+  "itemCountLabelFiltered": "{{filtered}} / {{total}} items"
 }

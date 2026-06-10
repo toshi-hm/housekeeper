@@ -44,6 +44,8 @@
   "scannerHint": "バーコードにカメラを向けてください",
   "scannerError": "カメラエラー",
   "scannerRetry": "再試行",
+  "scannerCameraAccessDenied": "カメラへのアクセスが拒否されました",
+  "barcodeLookupError": "商品情報の取得に失敗しました",
   "scannerManualInput": "手動入力",
   "scannerManualPlaceholder": "バーコードを入力して確定",
   "scannerSwitchCamera": "カメラを切り替え",
@@ -57,6 +59,7 @@
     "unknown": "期限不明"
   },
   "totalAmount": "総量",
+  "unitsLabel": "点",
   "unitsDisplay": "{{units}}点",
   "remainingDisplay": "(残: {{amount}}{{unit}})",
   "emptyStock": "使い切り",
@@ -112,5 +115,7 @@
   "lotsLoadError": "在庫ロットの読み込みに失敗しました。時間をおいて再試行してください。",
   "back": "戻る",
   "noStockToConsume": "使用できる在庫がありません",
-  "editLot": "編集するロットを選択"
+  "editLot": "編集するロットを選択",
+  "itemCountLabel": "{{count}}件",
+  "itemCountLabelFiltered": "{{filtered}} / {{total}}件"
 }

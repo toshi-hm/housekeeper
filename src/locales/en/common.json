@@ -32,5 +32,6 @@
   "unknownError": "An error occurred",
   "offlineError": "Cannot perform this action while offline",
   "enabled": "Enabled",
-  "disabled": "Disabled"
+  "disabled": "Disabled",
+  "select": "Select"
 }

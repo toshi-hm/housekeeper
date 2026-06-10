@@ -48,6 +48,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           itemId,
           values: {
             units: values.units,
+            opened_remaining: values.opened_remaining ?? null,
             purchase_date: values.purchase_date ?? null,
             expiry_date: values.expiry_date ?? null,
           },

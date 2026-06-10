@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
+import { Spinner } from "@/components/atoms/Spinner";
 import { CategoryChart } from "@/components/organisms/CategoryChart";
 import { ConsumptionChart } from "@/components/organisms/ConsumptionChart";
 import { ExpiryChart } from "@/components/organisms/ExpiryChart";
@@ -10,10 +11,39 @@ import { useUserSettings } from "@/hooks/useUserSettings";
 
 const StatsPage = () => {
   const { t } = useTranslation("stats");
-  const stats = useCategoryStats();
+  const { t: tc } = useTranslation("common");
+  const { stats, isLoading: categoryLoading, isError: categoryError } = useCategoryStats();
   const { data: userSettings } = useUserSettings();
-  const distribution = useExpiryDistribution(userSettings?.expiry_warning_days);
-  const monthlyData = useMonthlyConsumption(6);
+  const {
+    distribution,
+    isLoading: expiryLoading,
+    isError: expiryError,
+  } = useExpiryDistribution(userSettings?.expiry_warning_days);
+  const {
+    data: monthlyData,
+    isLoading: monthlyLoading,
+    isError: monthlyError,
+  } = useMonthlyConsumption(6);
+
+  const isLoading = categoryLoading || expiryLoading || monthlyLoading;
+  const isError = categoryError || expiryError || monthlyError;
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[200px] items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-lg border border-destructive p-4 text-destructive">
+        <p className="font-medium">{tc("error")}</p>
+        <p className="text-sm text-muted-foreground">{tc("unknownError")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

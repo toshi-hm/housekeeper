@@ -18,15 +18,27 @@ export type {
 } from "@/types/stats";
 
 export const useCategoryStats = () => {
-  const { data: items = [] } = useItems({}, "created_at");
-  const { data: categories = [] } = useCategories();
+  const {
+    data: items = [],
+    isLoading: itemsLoading,
+    isError: itemsError,
+  } = useItems({}, "created_at");
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    isError: categoriesError,
+  } = useCategories();
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
-  return computeCategoryStats(items, categoryMap);
+  return {
+    stats: computeCategoryStats(items, categoryMap),
+    isLoading: itemsLoading || categoriesLoading,
+    isError: itemsError || categoriesError,
+  };
 };
 
 export const useExpiryDistribution = (warningDays?: number) => {
-  const { data: items = [] } = useItems({}, "created_at");
-  return computeExpiryDistribution(items, warningDays);
+  const { data: items = [], isLoading, isError } = useItems({}, "created_at");
+  return { distribution: computeExpiryDistribution(items, warningDays), isLoading, isError };
 };
 
 export const useAllConsumptionLogs = () =>
@@ -44,6 +56,6 @@ export const useAllConsumptionLogs = () =>
   });
 
 export const useMonthlyConsumption = (months = 6) => {
-  const { data: logs = [] } = useAllConsumptionLogs();
-  return computeMonthlyConsumption(logs, months);
+  const { data: logs = [], isLoading, isError } = useAllConsumptionLogs();
+  return { data: computeMonthlyConsumption(logs, months), isLoading, isError };
 };

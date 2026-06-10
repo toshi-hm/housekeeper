@@ -32,9 +32,12 @@
 2. `getUserMedia` でカメラ取得（背面優先）
 3. `BrowserMultiFormatReader` でフレーム解析
 4. 値が取れたら `useBarcodeLookup` に渡す
-5. Edge Function `barcode-lookup` が外部 API（Open Food Facts など）を叩く
-6. 成功なら `ProductInfo` を返す → フォーム自動入力
-7. 失敗 / 未ヒットでもバーコード文字列はフォームに残す
+5. **DB優先**: `items` テーブルをバーコードで検索（`deleted_at IS NULL`）
+   - ヒットした場合 → 商品名・画像（署名付きURL）を返す（外部 API は呼ばない）
+   - 未ヒットの場合 → 次ステップへ
+6. Edge Function `barcode-lookup` が外部 API（Yahoo Shopping など）を叩く
+7. 成功なら `ProductInfo` を返す → フォーム自動入力
+8. 失敗 / 未ヒットでもバーコード文字列はフォームに残す
 
 ## API
 
@@ -59,7 +62,10 @@ Edge Function 実装: `supabase/functions/barcode-lookup/index.ts`
 - 読取失敗時のフォールバック導線整備
 - `barcode-lookup` の戻り値にカテゴリ候補を入れる（マッチがあれば）
 
+## 実装済み（v1）
+
+- DB優先ルックアップ: 同じバーコードで過去登録済みのアイテムがあれば外部 API を叩かずにその商品名・画像を返す
+
 ## Backlog
 
 - 複数バーコード一括読取
-- 履歴に基づく予測補完（同じバーコードの再読取 → 既存 item を提案）
