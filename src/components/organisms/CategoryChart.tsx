@@ -54,7 +54,7 @@ export const CategoryChart = ({ stats }: CategoryChartProps) => {
           formatter={(value) => [`${value ?? 0}${t("itemCount")}`, ti("units")]}
           contentStyle={{ fontSize: 12 }}
         />
-        <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+        <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive={false}>
           {data.map((_, index) => (
             <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
           ))}
