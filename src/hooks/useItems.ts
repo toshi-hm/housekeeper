@@ -172,14 +172,15 @@ const tryReviveItem = async (
   values: ItemFormValues,
   userId: string,
 ): Promise<Item | null> => {
-  const { data } = await supabase
+  const { data, error: findError } = await supabase
     .from("items")
     .select("*")
     .eq("user_id", userId)
     .eq("barcode", barcode)
     .not("deleted_at", "is", null)
     .limit(1)
-    .single();
+    .maybeSingle();
+  if (findError) throw findError;
   if (!data) return null;
 
   const item = data as Item;

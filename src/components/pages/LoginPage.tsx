@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, Loader2, Package } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { PasswordStrength } from "@/components/atoms/PasswordStrength";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,12 @@ import {
   translateAuthError,
 } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { t } = useTranslation("auth");
   const [mode, setMode] = useState<"login" | "signup">("login");
   const effectiveMode = isAvailableRegisterNewUser ? mode : "login";
   const isSignupMode = effectiveMode === "signup";
@@ -97,7 +101,7 @@ export const LoginPage = () => {
       // Email confirmation required
       setGlobalError(null);
       setFieldErrors({});
-      alert("確認メールを送信しました。メールのリンクをクリックしてからログインしてください。");
+      toast(t("signUpEmailSent"), "success");
       switchMode("login");
       return;
     }
@@ -114,7 +118,7 @@ export const LoginPage = () => {
     });
     if (sqError) {
       await supabase.auth.signOut();
-      throw new Error("アカウントの初期設定に失敗しました。もう一度お試しください。");
+      throw new Error(t("setupError"));
     }
 
     void navigate({ to: "/" });
@@ -131,7 +135,7 @@ export const LoginPage = () => {
         await handleLogin();
       }
     } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : "認証に失敗しました");
+      setGlobalError(err instanceof Error ? err.message : t("authError"));
     } finally {
       setIsLoading(false);
     }
@@ -148,16 +152,14 @@ export const LoginPage = () => {
           <Package className="h-8 w-8" />
           Housekeeper
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">Home inventory management</p>
+        <p className="mt-2 text-sm text-muted-foreground">{t("appTagline")}</p>
       </div>
 
       <Card className="w-full max-w-sm">
         <CardHeader className="pb-4">
-          <CardTitle>{isSignupMode ? "アカウント作成" : "サインイン"}</CardTitle>
+          <CardTitle>{isSignupMode ? t("signUpTitle") : t("signInTitle")}</CardTitle>
           <CardDescription>
-            {isSignupMode
-              ? "情報を入力してアカウントを作成してください"
-              : "登録済みのメールアドレスとパスワードでサインインします"}
+            {isSignupMode ? t("signUpDescription") : t("signInDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -175,13 +177,13 @@ export const LoginPage = () => {
 
             {/* Email */}
             <div className="space-y-1">
-              <Label htmlFor="email">メールアドレス</Label>
+              <Label htmlFor="email">{t("emailLabel")}</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={t("emailInputPlaceholder")}
                 required
                 autoComplete="email"
               />
@@ -190,7 +192,7 @@ export const LoginPage = () => {
 
             {/* Password */}
             <div className="space-y-1">
-              <Label htmlFor="password">パスワード</Label>
+              <Label htmlFor="password">{t("passwordLabel")}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -206,7 +208,7 @@ export const LoginPage = () => {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                  aria-label={showPassword ? t("hidePassword") : t("showPassword")}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -222,7 +224,7 @@ export const LoginPage = () => {
               <>
                 {/* Confirm password */}
                 <div className="space-y-1">
-                  <Label htmlFor="confirmPassword">パスワード（確認）</Label>
+                  <Label htmlFor="confirmPassword">{t("confirmPasswordLabel")}</Label>
                   <div className="relative">
                     <Input
                       id="confirmPassword"
@@ -238,7 +240,7 @@ export const LoginPage = () => {
                       type="button"
                       onClick={() => setShowConfirmPassword((v) => !v)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label={showConfirmPassword ? "パスワードを隠す" : "パスワードを表示"}
+                      aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")}
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -248,7 +250,7 @@ export const LoginPage = () => {
                     </button>
                   </div>
                   {confirmMismatch && (
-                    <p className="text-xs text-destructive">パスワードが一致しません</p>
+                    <p className="text-xs text-destructive">{t("passwordMismatch")}</p>
                   )}
                   {fieldErrors.confirmPassword && !confirmMismatch && (
                     <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
@@ -257,14 +259,14 @@ export const LoginPage = () => {
 
                 {/* Secret question */}
                 <div className="space-y-1">
-                  <Label htmlFor="securityQuestion">秘密の質問</Label>
+                  <Label htmlFor="securityQuestion">{t("securityQuestion")}</Label>
                   <Select
                     id="securityQuestion"
                     value={securityQuestion}
                     onChange={(e) => setSecurityQuestion(e.target.value)}
                     required
                   >
-                    <option value="">質問を選択してください</option>
+                    <option value="">{t("selectQuestion")}</option>
                     {SECURITY_QUESTIONS.map((q) => (
                       <option key={q} value={q}>
                         {q}
@@ -278,18 +280,16 @@ export const LoginPage = () => {
 
                 {/* Secret answer */}
                 <div className="space-y-1">
-                  <Label htmlFor="securityAnswer">秘密の質問の答え</Label>
+                  <Label htmlFor="securityAnswer">{t("securityAnswer")}</Label>
                   <Input
                     id="securityAnswer"
                     type="text"
                     value={securityAnswer}
                     onChange={(e) => setSecurityAnswer(e.target.value)}
-                    placeholder="答えを入力"
+                    placeholder={t("answerPlaceholder")}
                     autoComplete="off"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    パスワードを忘れた際の本人確認に使用します
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t("answerHint")}</p>
                   {fieldErrors.securityAnswer && (
                     <p className="text-xs text-destructive">{fieldErrors.securityAnswer}</p>
                   )}
@@ -299,7 +299,7 @@ export const LoginPage = () => {
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSignupMode ? "アカウント作成" : "サインイン"}
+              {isSignupMode ? t("signUpButton") : t("signInButton")}
             </Button>
 
             {isAvailableRegisterNewUser ? (
@@ -309,9 +309,7 @@ export const LoginPage = () => {
                 className="w-full"
                 onClick={() => switchMode(isSignupMode ? "login" : "signup")}
               >
-                {isSignupMode
-                  ? "すでにアカウントをお持ちの方はこちら"
-                  : "アカウントをお持ちでない方はこちら"}
+                {isSignupMode ? t("switchToSignInFull") : t("switchToSignUpFull")}
               </Button>
             ) : (
               <div className="rounded-md border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
@@ -325,7 +323,7 @@ export const LoginPage = () => {
                   to="/forgot-password"
                   className="text-xs text-muted-foreground underline-offset-4 hover:underline"
                 >
-                  パスワードを忘れた方はこちら
+                  {t("forgotPassword")}
                 </Link>
               </div>
             )}

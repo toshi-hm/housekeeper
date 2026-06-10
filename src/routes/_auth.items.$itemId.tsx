@@ -237,8 +237,10 @@ const ItemDetailPage = () => {
           </div>
 
           {/* Tab navigation */}
-          <div className="flex rounded-lg border p-1">
+          <div className="flex rounded-lg border p-1" role="tablist">
             <button
+              role="tab"
+              aria-selected={detailTab === "info"}
               className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "info" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => setDetailTab("info")}
             >
@@ -247,6 +249,8 @@ const ItemDetailPage = () => {
             </button>
             {lots.length > 0 && (
               <button
+                role="tab"
+                aria-selected={detailTab === "lots"}
                 className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "lots" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                 onClick={() => setDetailTab("lots")}
               >
@@ -260,6 +264,8 @@ const ItemDetailPage = () => {
               </button>
             )}
             <button
+              role="tab"
+              aria-selected={detailTab === "history"}
               className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "history" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => setDetailTab("history")}
             >

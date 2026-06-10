@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Eye, EyeOff, Loader2, Package } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { passwordSchema } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 
 // ---------------------------------------------------------------------------
 // Constants & helpers
@@ -40,6 +42,7 @@ interface Step1Props {
 }
 
 const Step1 = ({ onNext }: Step1Props) => {
+  const { t } = useTranslation("auth");
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,12 +57,12 @@ const Step1 = ({ onNext }: Step1Props) => {
         email,
       });
       if (!question) {
-        setError("登録情報が見つかりません");
+        setError(t("userNotFound"));
         return;
       }
       onNext(email, question);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "エラーが発生しました");
+      setError(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setIsLoading(false);
     }
@@ -68,8 +71,8 @@ const Step1 = ({ onNext }: Step1Props) => {
   return (
     <>
       <CardHeader className="pb-4">
-        <CardTitle>パスワードをリセット</CardTitle>
-        <CardDescription>登録済みのメールアドレスを入力してください</CardDescription>
+        <CardTitle>{t("resetPasswordTitle")}</CardTitle>
+        <CardDescription>{t("resetPasswordDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -84,20 +87,20 @@ const Step1 = ({ onNext }: Step1Props) => {
             </div>
           )}
           <div className="space-y-1">
-            <Label htmlFor="email">メールアドレス</Label>
+            <Label htmlFor="email">{t("emailLabel")}</Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t("emailInputPlaceholder")}
               required
               autoComplete="email"
             />
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            次へ
+            {t("next")}
           </Button>
         </form>
       </CardContent>
@@ -117,6 +120,8 @@ interface Step2Props {
 
 const Step2 = ({ email, question, onBack }: Step2Props) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { t } = useTranslation("auth");
   const [answer, setAnswer] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -135,15 +140,15 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
     const pwResult = passwordSchema.safeParse(newPassword);
     if (!pwResult.success) {
-      setFieldErrors({ newPassword: pwResult.error.issues[0]?.message ?? "バリデーションエラー" });
+      setFieldErrors({ newPassword: pwResult.error.issues[0]?.message ?? t("validationError") });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setFieldErrors({ confirmPassword: "パスワードが一致しません" });
+      setFieldErrors({ confirmPassword: t("passwordMismatch") });
       return;
     }
     if (!answer.trim()) {
-      setFieldErrors({ answer: "答えを入力してください" });
+      setFieldErrors({ answer: t("answerRequired") });
       return;
     }
 
@@ -154,10 +159,10 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
         answer: answer.trim(),
         new_password: newPassword,
       });
-      alert("パスワードを変更しました。新しいパスワードでサインインしてください。");
+      toast(t("passwordChanged"), "success");
       void navigate({ to: "/login" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "エラーが発生しました");
+      setError(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setIsLoading(false);
     }
@@ -166,10 +171,8 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
   return (
     <>
       <CardHeader className="pb-4">
-        <CardTitle>秘密の質問に回答</CardTitle>
-        <CardDescription>
-          登録時に設定した秘密の質問に答え、新しいパスワードを設定してください
-        </CardDescription>
+        <CardTitle>{t("securityQuestionTitle")}</CardTitle>
+        <CardDescription>{t("securityQuestionDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -186,19 +189,19 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
           {/* Secret question (read-only) */}
           <div className="space-y-1">
-            <Label>秘密の質問</Label>
+            <Label>{t("securityQuestion")}</Label>
             <p className="rounded-md border bg-muted/50 px-3 py-2 text-sm">{question}</p>
           </div>
 
           {/* Answer */}
           <div className="space-y-1">
-            <Label htmlFor="answer">答え</Label>
+            <Label htmlFor="answer">{t("answerLabel")}</Label>
             <Input
               id="answer"
               type="text"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              placeholder="登録時に入力した答え"
+              placeholder={t("answerInputPlaceholder")}
               autoComplete="off"
               required
             />
@@ -207,7 +210,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
           {/* New password */}
           <div className="space-y-1">
-            <Label htmlFor="newPassword">新しいパスワード</Label>
+            <Label htmlFor="newPassword">{t("newPasswordLabel")}</Label>
             <div className="relative">
               <Input
                 id="newPassword"
@@ -223,7 +226,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
                 type="button"
                 onClick={() => setShowNew((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showNew ? "パスワードを隠す" : "パスワードを表示"}
+                aria-label={showNew ? t("hidePassword") : t("showPassword")}
               >
                 {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -235,7 +238,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
           {/* Confirm new password */}
           <div className="space-y-1">
-            <Label htmlFor="confirmPassword">新しいパスワード（確認）</Label>
+            <Label htmlFor="confirmPassword">{t("confirmNewPasswordLabel")}</Label>
             <div className="relative">
               <Input
                 id="confirmPassword"
@@ -251,14 +254,12 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showConfirm ? "パスワードを隠す" : "パスワードを表示"}
+                aria-label={showConfirm ? t("hidePassword") : t("showPassword")}
               >
                 {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {confirmMismatch && (
-              <p className="text-xs text-destructive">パスワードが一致しません</p>
-            )}
+            {confirmMismatch && <p className="text-xs text-destructive">{t("passwordMismatch")}</p>}
             {fieldErrors.confirmPassword && !confirmMismatch && (
               <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
             )}
@@ -266,12 +267,12 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            パスワードを変更する
+            {t("changePassword")}
           </Button>
 
           <Button type="button" variant="ghost" className="w-full" onClick={onBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            メールアドレス入力に戻る
+            {t("backToEmail")}
           </Button>
         </form>
       </CardContent>
@@ -284,6 +285,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 // ---------------------------------------------------------------------------
 
 const ForgotPasswordPage = () => {
+  const { t } = useTranslation("auth");
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [question, setQuestion] = useState("");
@@ -315,7 +317,7 @@ const ForgotPasswordPage = () => {
             to="/login"
             className="text-xs text-muted-foreground underline-offset-4 hover:underline"
           >
-            サインインに戻る
+            {t("backToSignIn")}
           </Link>
         </div>
       </Card>
