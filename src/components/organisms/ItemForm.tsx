@@ -111,7 +111,10 @@ export const ItemForm = ({
     if (result.product?.name) set("name", result.product.name);
     if (result.product?.image_url && !localPreviewUrl) {
       setBarcodeImageUrl(result.product.image_url);
-      onPendingImageUrlChange?.(result.product.image_url);
+      // DB ヒット時は既にStorage済みの画像なので再アップロード不要。プレビュー表示のみ。
+      if (result.source !== "db") {
+        onPendingImageUrlChange?.(result.product.image_url);
+      }
     }
     onBarcodeScanned?.(barcode, result.source);
   };
