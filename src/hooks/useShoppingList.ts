@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
+import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import type { ItemFormValues } from "@/types/item";
+import type { Item, ItemFormValues } from "@/types/item";
 
 type ShoppingStatus = "planned" | "purchased";
 
@@ -126,6 +127,25 @@ export const useDeleteShoppingItem = () => {
   });
 };
 
+const markShoppingItemPurchased = async (shoppingItemId: string, itemId: string) => {
+  const { error } = await supabase
+    .from("shopping_list_items")
+    .update({
+      status: "purchased",
+      purchased_at: new Date().toISOString(),
+      created_item_id: itemId,
+    })
+    .eq("id", shoppingItemId);
+  if (error) throw new Error(error.message);
+};
+
+export const lotValuesFromForm = (itemValues: ItemFormValues) => ({
+  units: itemValues.units ?? 1,
+  opened_remaining: itemValues.opened_remaining ?? null,
+  purchase_date: itemValues.purchase_date || null,
+  expiry_date: itemValues.expiry_date || null,
+});
+
 export const usePurchaseShoppingItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -138,6 +158,50 @@ export const usePurchaseShoppingItem = () => {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Fix #212: バーコードが一致するアクティブなアイテムにスタック
+      if (itemValues.barcode) {
+        const { data: activeItem } = await supabase
+          .from("items")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("barcode", itemValues.barcode)
+          .is("deleted_at", null)
+          .limit(1)
+          .maybeSingle();
+
+        if (activeItem) {
+          await createLot(user.id, activeItem.id, lotValuesFromForm(itemValues));
+          await syncItemAggregate(activeItem.id);
+          await markShoppingItemPurchased(shoppingItemId, activeItem.id);
+          return activeItem as Item;
+        }
+
+        // Fix #212: ソフトデリート済みアイテムを復活
+        const { data: deletedItem } = await supabase
+          .from("items")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("barcode", itemValues.barcode)
+          .not("deleted_at", "is", null)
+          .limit(1)
+          .maybeSingle();
+
+        if (deletedItem) {
+          const { data: revived, error: reviveError } = await supabase
+            .from("items")
+            .update({ deleted_at: null, updated_at: new Date().toISOString() })
+            .eq("id", deletedItem.id)
+            .select()
+            .single();
+          if (reviveError) throw reviveError;
+          await createLot(user.id, deletedItem.id, lotValuesFromForm(itemValues));
+          await syncItemAggregate(deletedItem.id);
+          await markShoppingItemPurchased(shoppingItemId, revived.id);
+          return revived as Item;
+        }
+      }
+
+      // バーコードなし or 既存アイテムなし → 新規作成
       const { data: newItem, error: itemError } = await supabase
         .from("items")
         .insert({
@@ -158,22 +222,18 @@ export const usePurchaseShoppingItem = () => {
         .single();
       if (itemError) throw new Error(itemError.message);
 
-      const { error: shoppingError } = await supabase
-        .from("shopping_list_items")
-        .update({
-          status: "purchased",
-          purchased_at: new Date().toISOString(),
-          created_item_id: newItem.id,
-        })
-        .eq("id", shoppingItemId);
-      if (shoppingError) throw new Error(shoppingError.message);
+      // Fix #211: 新規アイテムのロットを作成
+      await createLot(user.id, newItem.id, lotValuesFromForm(itemValues));
 
-      return newItem;
+      await markShoppingItemPurchased(shoppingItemId, newItem.id);
+
+      return newItem as Item;
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: [QUERY_KEY] }),
         qc.invalidateQueries({ queryKey: ["items"] }),
+        qc.invalidateQueries({ queryKey: [...LOTS_KEY, data.id] }),
       ]);
     },
     onError: (error) => {

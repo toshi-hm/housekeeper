@@ -44,7 +44,7 @@ const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; val
 );
 
 const ItemDetailPage = () => {
-  const { t } = useTranslation("items");
+  const { t, i18n } = useTranslation("items");
   const { t: tc } = useTranslation("common");
   const { itemId } = Route.useParams();
   const navigate = useNavigate();
@@ -416,7 +416,7 @@ const ItemDetailPage = () => {
                           </p>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(log.occurred_at).toLocaleDateString()}
+                          {new Date(log.occurred_at).toLocaleDateString(i18n.language)}
                         </p>
                       </div>
                     </CardContent>
