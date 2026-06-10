@@ -96,7 +96,7 @@ const SettingsPage = () => {
                   void handleWarningDaysChange(parseInt(e.target.value, 10));
                 }}
               />
-              <Label>日前</Label>
+              <Label>{t("daysBefore")}</Label>
             </div>
           </section>
 

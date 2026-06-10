@@ -11,6 +11,7 @@
   "masterData": "マスタデータ",
   "notifications": "通知設定",
   "saveSuccess": "設定を保存しました",
+  "daysBefore": "日前",
   "addCategory": "カテゴリを追加",
   "editCategory": "カテゴリを編集",
   "addLocation": "保管場所を追加",

@@ -11,6 +11,7 @@
   "masterData": "Master Data",
   "notifications": "Notification Settings",
   "saveSuccess": "Settings saved",
+  "daysBefore": "days before",
   "addCategory": "Add Category",
   "editCategory": "Edit Category",
   "addLocation": "Add Location",
