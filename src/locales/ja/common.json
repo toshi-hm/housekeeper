@@ -32,5 +32,12 @@
   "unknownError": "エラーが発生しました",
   "offlineError": "オフラインのため操作できません",
   "enabled": "有効",
-  "disabled": "無効"
+  "disabled": "無効",
+  "navHome": "ホーム",
+  "navAddItem": "追加",
+  "navShopping": "買い物",
+  "navStats": "統計",
+  "navSettings": "設定",
+  "navCalendar": "カレンダー",
+  "navSignOut": "サインアウト"
 }

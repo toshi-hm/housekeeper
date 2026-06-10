@@ -159,10 +159,12 @@ const ShoppingPage = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex rounded-lg border p-1">
+      <div className="flex rounded-lg border p-1" role="tablist">
         {(["planned", "purchased"] as const).map((s) => (
           <button
             key={s}
+            role="tab"
+            aria-selected={tab === s}
             className={`flex-1 rounded py-1.5 text-sm font-medium transition-colors ${
               tab === s
                 ? "bg-primary text-primary-foreground"

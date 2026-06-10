@@ -44,7 +44,7 @@ const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; val
 );
 
 const ItemDetailPage = () => {
-  const { t } = useTranslation("items");
+  const { t, i18n } = useTranslation("items");
   const { t: tc } = useTranslation("common");
   const { itemId } = Route.useParams();
   const navigate = useNavigate();
@@ -237,8 +237,10 @@ const ItemDetailPage = () => {
           </div>
 
           {/* Tab navigation */}
-          <div className="flex rounded-lg border p-1">
+          <div className="flex rounded-lg border p-1" role="tablist">
             <button
+              role="tab"
+              aria-selected={detailTab === "info"}
               className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "info" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => setDetailTab("info")}
             >
@@ -247,6 +249,8 @@ const ItemDetailPage = () => {
             </button>
             {lots.length > 0 && (
               <button
+                role="tab"
+                aria-selected={detailTab === "lots"}
                 className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "lots" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                 onClick={() => setDetailTab("lots")}
               >
@@ -260,6 +264,8 @@ const ItemDetailPage = () => {
               </button>
             )}
             <button
+              role="tab"
+              aria-selected={detailTab === "history"}
               className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "history" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => setDetailTab("history")}
             >
@@ -299,14 +305,14 @@ const ItemDetailPage = () => {
                   <DetailRow
                     icon={<Calendar className="h-4 w-4" />}
                     label={t("purchaseDate")}
-                    value={parseLocalDate(item.purchase_date).toLocaleDateString()}
+                    value={parseLocalDate(item.purchase_date).toLocaleDateString(i18n.language)}
                   />
                 )}
                 {item.expiry_date && (
                   <DetailRow
                     icon={<Calendar className="h-4 w-4" />}
                     label={t("expiryDate")}
-                    value={parseLocalDate(item.expiry_date).toLocaleDateString()}
+                    value={parseLocalDate(item.expiry_date).toLocaleDateString(i18n.language)}
                   />
                 )}
                 {item.notes && (
@@ -355,13 +361,15 @@ const ItemDetailPage = () => {
                                 className={`text-xs ${expiryStatus === "expired" ? "text-destructive" : expiryStatus === "expiring-soon" ? "text-warning" : "text-muted-foreground"}`}
                               >
                                 {t("expiryDate")}:{" "}
-                                {parseLocalDate(lot.expiry_date).toLocaleDateString()}
+                                {parseLocalDate(lot.expiry_date).toLocaleDateString(i18n.language)}
                               </p>
                             )}
                             {lot.purchase_date && (
                               <p className="text-xs text-muted-foreground">
                                 {t("purchaseDate")}:{" "}
-                                {parseLocalDate(lot.purchase_date).toLocaleDateString()}
+                                {parseLocalDate(lot.purchase_date).toLocaleDateString(
+                                  i18n.language,
+                                )}
                               </p>
                             )}
                           </div>
