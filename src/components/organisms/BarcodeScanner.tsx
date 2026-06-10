@@ -49,11 +49,11 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
         controlsRef.current = controls;
         setIsStarting(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Camera access denied");
+        setError(err instanceof Error ? err.message : t("scannerCameraAccessDenied"));
         setIsStarting(false);
       }
     },
-    [onScan],
+    [onScan, t],
   );
 
   useEffect(() => {
@@ -103,7 +103,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Camera access denied");
+          setError(err instanceof Error ? err.message : t("scannerCameraAccessDenied"));
           setIsStarting(false);
         }
       }
@@ -115,7 +115,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
       cancelled = true;
       controlsRef.current?.stop();
     };
-  }, [startScanning]);
+  }, [startScanning, t]);
 
   const handleSwitchCamera = () => {
     if (devices.length <= 1) return;

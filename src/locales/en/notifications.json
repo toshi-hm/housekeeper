@@ -8,5 +8,6 @@
   "thresholdDays": "Days before to notify",
   "daysBefore": "days",
   "notifyAt": "Notification time",
-  "saveSuccess": "Notification settings saved"
+  "saveSuccess": "Notification settings saved",
+  "invalidEmailAddress": "Please enter a valid email address"
 }

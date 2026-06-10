@@ -23,6 +23,7 @@ import {
   useDeleteStorageLocation,
   useStorageLocations,
 } from "@/hooks/useMasterData";
+import { useToast } from "@/lib/toast-context";
 import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
 
 interface ItemFormProps {
@@ -47,6 +48,7 @@ export const ItemForm = ({
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
   const { t: ts } = useTranslation("settings");
+  const { toast } = useToast();
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
   const { lookup, isLoading: isLookingUp, error: lookupError } = useBarcodeLookup();
@@ -105,18 +107,24 @@ export const ItemForm = ({
     setLookupResult(undefined);
     setLookupSource(null);
     if (navigator.vibrate) navigator.vibrate(100);
-    const result = await lookup(barcode);
-    setLookupResult(result.product);
-    setLookupSource(result.source);
-    if (result.product?.name) set("name", result.product.name);
-    if (result.product?.image_url && !localPreviewUrl) {
-      setBarcodeImageUrl(result.product.image_url);
-      // DB ヒット時は既にStorage済みの画像なので再アップロード不要。プレビュー表示のみ。
-      if (result.source !== "db") {
-        onPendingImageUrlChange?.(result.product.image_url);
+    try {
+      const result = await lookup(barcode);
+      setLookupResult(result.product);
+      setLookupSource(result.source);
+      if (result.product?.name) set("name", result.product.name);
+      if (result.product?.image_url && !localPreviewUrl) {
+        setBarcodeImageUrl(result.product.image_url);
+        // DB ヒット時は既にStorage済みの画像なので再アップロード不要。プレビュー表示のみ。
+        if (result.source !== "db") {
+          onPendingImageUrlChange?.(result.product.image_url);
+        }
       }
+      onBarcodeScanned?.(barcode, result.source);
+    } catch {
+      setLookupResult(null);
+      toast(t("barcodeLookupError"), "error");
+      onBarcodeScanned?.(barcode, null);
     }
-    onBarcodeScanned?.(barcode, result.source);
   };
 
   const handleAddCategory = async (name: string) => {
@@ -323,7 +331,7 @@ export const ItemForm = ({
               }}
               className="w-24"
             />
-            <span className="text-sm text-muted-foreground">点</span>
+            <span className="text-sm text-muted-foreground">{t("unitsLabel")}</span>
           </div>
           {unitsError && <p className="text-sm text-destructive">{unitsError}</p>}
         </div>

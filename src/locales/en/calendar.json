@@ -14,5 +14,10 @@
   "noItemsOnDate": "No items expiring on this date",
   "expiryItemsOnDate": "Items expiring on {{date}}",
   "undo": "Undo",
-  "pendingRemovalMessage": "You can undo removed lots"
+  "pendingRemovalMessage": "You can undo removed lots",
+  "prevMonth": "Previous month",
+  "nextMonth": "Next month",
+  "selectYearMonth": "Select year and month",
+  "prevYear": "Previous year",
+  "nextYear": "Next year"
 }

@@ -63,8 +63,13 @@ export const NotificationSettings = () => {
   };
 
   const handleEmailAddressBlur = async (address: string) => {
+    const trimmed = address.trim();
+    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast(t("invalidEmailAddress"), "error");
+      return;
+    }
     try {
-      await updatePrefs.mutateAsync({ email_address: address.trim() || null });
+      await updatePrefs.mutateAsync({ email_address: trimmed || null });
     } catch {
       toast(t("common:unknownError"), "error");
     }
