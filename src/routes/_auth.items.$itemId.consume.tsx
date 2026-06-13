@@ -14,7 +14,7 @@ import { useToast } from "@/lib/toast-context";
 import { computeConsumption, type ItemLot } from "@/types/item";
 
 export const ItemConsumePage = () => {
-  const { t } = useTranslation("items");
+  const { t, i18n } = useTranslation("items");
   const { itemId } = Route.useParams();
   const { lotId: preselectedLotId } = Route.useSearch();
   const navigate = useNavigate();
@@ -195,12 +195,14 @@ export const ItemConsumePage = () => {
                   </p>
                   {lot.expiry_date && (
                     <p className="text-xs text-muted-foreground">
-                      {t("expiryDate")}: {parseLocalDate(lot.expiry_date).toLocaleDateString()}
+                      {t("expiryDate")}:{" "}
+                      {parseLocalDate(lot.expiry_date).toLocaleDateString(i18n.language)}
                     </p>
                   )}
                   {lot.purchase_date && (
                     <p className="text-xs text-muted-foreground">
-                      {t("purchaseDate")}: {parseLocalDate(lot.purchase_date).toLocaleDateString()}
+                      {t("purchaseDate")}:{" "}
+                      {parseLocalDate(lot.purchase_date).toLocaleDateString(i18n.language)}
                     </p>
                   )}
                 </button>
