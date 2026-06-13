@@ -9,21 +9,23 @@ import {
   Settings,
   ShoppingCart,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 
-const NAV_ITEMS = [
-  { to: "/" as const, icon: Home, label: "Home" },
-  { to: "/items/new" as const, icon: Plus, label: "Add Item" },
-  { to: "/shopping" as const, icon: ShoppingCart, label: "Shopping" },
-  { to: "/stats" as const, icon: BarChart2, label: "Stats" },
-  { to: "/settings" as const, icon: Settings, label: "Settings" },
-  { to: "/calendar" as const, icon: CalendarDays, label: "Calendar" },
-] as const;
+const NAV_ROUTES = [
+  { to: "/" as const, icon: Home, labelKey: "navHome" as const },
+  { to: "/items/new" as const, icon: Plus, labelKey: "navAddItem" as const },
+  { to: "/shopping" as const, icon: ShoppingCart, labelKey: "navShopping" as const },
+  { to: "/stats" as const, icon: BarChart2, labelKey: "navStats" as const },
+  { to: "/settings" as const, icon: Settings, labelKey: "navSettings" as const },
+  { to: "/calendar" as const, icon: CalendarDays, labelKey: "navCalendar" as const },
+];
 
 const AuthLayout = () => {
   const router = useRouter();
+  const { t } = useTranslation("common");
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -40,14 +42,14 @@ const AuthLayout = () => {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-4">
-          {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+          {NAV_ROUTES.map(({ to, icon: Icon, labelKey }) => (
             <Link
               key={to}
               to={to}
               className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&.active]:bg-accent [&.active]:text-primary"
             >
               <Icon className="h-5 w-5 shrink-0" />
-              {label}
+              {t(labelKey)}
             </Link>
           ))}
         </nav>
@@ -61,7 +63,7 @@ const AuthLayout = () => {
             }}
           >
             <LogOut className="h-5 w-5 shrink-0" />
-            Sign out
+            {t("navSignOut")}
           </Button>
         </div>
       </aside>
@@ -77,8 +79,8 @@ const AuthLayout = () => {
             <Link
               to="/settings"
               className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&.active]:bg-accent [&.active]:text-primary"
-              title="Settings"
-              aria-label="Settings"
+              title={t("navSettings")}
+              aria-label={t("navSettings")}
             >
               <Settings className="h-5 w-5" />
             </Link>
@@ -88,8 +90,8 @@ const AuthLayout = () => {
               onClick={() => {
                 void handleSignOut();
               }}
-              title="Sign out"
-              aria-label="Sign out"
+              title={t("navSignOut")}
+              aria-label={t("navSignOut")}
             >
               <LogOut className="h-5 w-5" />
             </Button>
@@ -112,14 +114,14 @@ const AuthLayout = () => {
             className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <Home className="h-5 w-5" />
-            <span>Home</span>
+            <span>{t("navHome")}</span>
           </Link>
           <Link
             to="/shopping"
             className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <ShoppingCart className="h-5 w-5" />
-            <span>Shopping</span>
+            <span>{t("navShopping")}</span>
           </Link>
           {/* Add Item — center (position 3/5 with justify-around = exactly 50%) */}
           <Link
@@ -129,21 +131,21 @@ const AuthLayout = () => {
             <div className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg">
               <Plus className="h-6 w-6 text-primary-foreground" />
             </div>
-            <span>Add Item</span>
+            <span>{t("navAddItem")}</span>
           </Link>
           <Link
             to="/stats"
             className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <BarChart2 className="h-5 w-5" />
-            <span>Stats</span>
+            <span>{t("navStats")}</span>
           </Link>
           <Link
             to="/calendar"
             className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <CalendarDays className="h-5 w-5" />
-            <span>Calendar</span>
+            <span>{t("navCalendar")}</span>
           </Link>
         </div>
       </nav>

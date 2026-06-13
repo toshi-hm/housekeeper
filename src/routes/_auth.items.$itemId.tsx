@@ -305,14 +305,14 @@ const ItemDetailPage = () => {
                   <DetailRow
                     icon={<Calendar className="h-4 w-4" />}
                     label={t("purchaseDate")}
-                    value={parseLocalDate(item.purchase_date).toLocaleDateString()}
+                    value={parseLocalDate(item.purchase_date).toLocaleDateString(i18n.language)}
                   />
                 )}
                 {item.expiry_date && (
                   <DetailRow
                     icon={<Calendar className="h-4 w-4" />}
                     label={t("expiryDate")}
-                    value={parseLocalDate(item.expiry_date).toLocaleDateString()}
+                    value={parseLocalDate(item.expiry_date).toLocaleDateString(i18n.language)}
                   />
                 )}
                 {item.notes && (
@@ -361,13 +361,15 @@ const ItemDetailPage = () => {
                                 className={`text-xs ${expiryStatus === "expired" ? "text-destructive" : expiryStatus === "expiring-soon" ? "text-warning" : "text-muted-foreground"}`}
                               >
                                 {t("expiryDate")}:{" "}
-                                {parseLocalDate(lot.expiry_date).toLocaleDateString()}
+                                {parseLocalDate(lot.expiry_date).toLocaleDateString(i18n.language)}
                               </p>
                             )}
                             {lot.purchase_date && (
                               <p className="text-xs text-muted-foreground">
                                 {t("purchaseDate")}:{" "}
-                                {parseLocalDate(lot.purchase_date).toLocaleDateString()}
+                                {parseLocalDate(lot.purchase_date).toLocaleDateString(
+                                  i18n.language,
+                                )}
                               </p>
                             )}
                           </div>

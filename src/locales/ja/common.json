@@ -33,5 +33,12 @@
   "offlineError": "オフラインのため操作できません",
   "enabled": "有効",
   "disabled": "無効",
-  "select": "選択"
+  "select": "選択",
+  "navHome": "ホーム",
+  "navAddItem": "追加",
+  "navShopping": "買い物",
+  "navStats": "統計",
+  "navSettings": "設定",
+  "navCalendar": "カレンダー",
+  "navSignOut": "サインアウト"
 }
