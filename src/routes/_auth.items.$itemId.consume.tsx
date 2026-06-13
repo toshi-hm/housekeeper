@@ -60,7 +60,7 @@ export const ItemConsumePage = () => {
       return;
     }
     if (!preview || preview.error) {
-      setValidationError(preview?.error ?? t("consumeValidationError"));
+      setValidationError(preview?.error ? t(preview.error) : t("consumeValidationError"));
       return;
     }
     try {
@@ -251,7 +251,7 @@ export const ItemConsumePage = () => {
               </p>
             </div>
           )}
-          {preview?.error && <p className="text-sm text-destructive">{preview.error}</p>}
+          {preview?.error && <p className="text-sm text-destructive">{t(preview.error)}</p>}
 
           <Button
             className="w-full"

@@ -145,7 +145,7 @@ export const computeConsumption = (
         : units * contentAmount;
 
   if (delta > totalBefore) {
-    return { units_after: 0, opened_remaining_after: 0, error: "在庫が不足しています" };
+    return { units_after: 0, opened_remaining_after: 0, error: "insufficientStock" };
   }
 
   // Round to avoid floating-point noise (DB stores numeric(12,2))
