@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { type Toast, ToastContext, type ToastVariant } from "@/lib/toast-context";
 
@@ -18,10 +19,12 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
     [dismiss],
   );
 
+  const { t } = useTranslation("common");
+
   return (
     <ToastContext value={{ toasts, toast, dismiss }}>
       {children}
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} onDismiss={dismiss} closeLabel={t("close")} />
     </ToastContext>
   );
 };
@@ -36,9 +39,11 @@ const variantClasses: Record<ToastVariant, string> = {
 const ToastContainer = ({
   toasts,
   onDismiss,
+  closeLabel,
 }: {
   toasts: Toast[];
   onDismiss: (id: string) => void;
+  closeLabel: string;
 }) => {
   if (toasts.length === 0) return null;
   return (
@@ -57,7 +62,7 @@ const ToastContainer = ({
           <button
             onClick={() => onDismiss(t.id)}
             className="ml-2 opacity-70 hover:opacity-100"
-            aria-label="閉じる"
+            aria-label={closeLabel}
           >
             ×
           </button>

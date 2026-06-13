@@ -9,7 +9,11 @@ import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
+import {
+  downloadExternalImageAsFile,
+  removeItemImageFile,
+  uploadItemImage,
+} from "@/hooks/useItemImage";
 import { useItemLots, useUpdateLot } from "@/hooks/useItemLots";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
 import { OfflineError } from "@/lib/requireOnline";
@@ -70,6 +74,14 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           await qc.invalidateQueries({ queryKey: ["items"] });
           void navigate({ to: "/items/$itemId", params: { itemId } });
           return;
+        }
+      } else if (oldImagePath && !values.image_path) {
+        // Image was deleted without a replacement — clean up the orphaned storage file.
+        // Non-fatal: DB is already updated above, so we just swallow the error.
+        try {
+          await removeItemImageFile(oldImagePath);
+        } catch {
+          // storage cleanup failure is non-fatal
         }
       }
       toast(t("updateSuccess"), "success");

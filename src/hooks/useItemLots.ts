@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
-import { requireOnline } from "@/lib/requireOnline";
+import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 import { computeConsumption, type Item, type ItemLot } from "@/types/item";
 
 export const LOTS_KEY = ["item-lots"] as const;
@@ -164,6 +166,8 @@ export const useItemLots = (itemId: string) =>
 
 export const useConsumeLot = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: consumeLot,
     onSuccess: async (_data, variables) => {
@@ -173,6 +177,10 @@ export const useConsumeLot = () => {
         qc.invalidateQueries({ queryKey: ["consumption-logs", variables.lot.item_id] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
       ]);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };

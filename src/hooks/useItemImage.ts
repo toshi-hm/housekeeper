@@ -5,6 +5,11 @@ import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 
+export const removeItemImageFile = async (imagePath: string): Promise<void> => {
+  requireOnline();
+  await supabase.storage.from(BUCKET).remove([imagePath]);
+};
+
 export const downloadExternalImageAsFile = async (imageUrl: string): Promise<File> => {
   const { data, error } = await supabase.functions.invoke<{ data: string; contentType: string }>(
     "image-proxy",

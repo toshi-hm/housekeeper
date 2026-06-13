@@ -14,7 +14,7 @@ import { useToast } from "@/lib/toast-context";
 import { computeConsumption, type ItemLot } from "@/types/item";
 
 export const ItemConsumePage = () => {
-  const { t } = useTranslation("items");
+  const { t, i18n } = useTranslation("items");
   const { itemId } = Route.useParams();
   const { lotId: preselectedLotId } = Route.useSearch();
   const navigate = useNavigate();
@@ -60,7 +60,7 @@ export const ItemConsumePage = () => {
       return;
     }
     if (!preview || preview.error) {
-      setValidationError(preview?.error ?? t("consumeValidationError"));
+      setValidationError(preview?.error ? t(preview.error) : t("consumeValidationError"));
       return;
     }
     try {
@@ -195,12 +195,14 @@ export const ItemConsumePage = () => {
                   </p>
                   {lot.expiry_date && (
                     <p className="text-xs text-muted-foreground">
-                      {t("expiryDate")}: {parseLocalDate(lot.expiry_date).toLocaleDateString()}
+                      {t("expiryDate")}:{" "}
+                      {parseLocalDate(lot.expiry_date).toLocaleDateString(i18n.language)}
                     </p>
                   )}
                   {lot.purchase_date && (
                     <p className="text-xs text-muted-foreground">
-                      {t("purchaseDate")}: {parseLocalDate(lot.purchase_date).toLocaleDateString()}
+                      {t("purchaseDate")}:{" "}
+                      {parseLocalDate(lot.purchase_date).toLocaleDateString(i18n.language)}
                     </p>
                   )}
                 </button>
@@ -249,7 +251,7 @@ export const ItemConsumePage = () => {
               </p>
             </div>
           )}
-          {preview?.error && <p className="text-sm text-destructive">{preview.error}</p>}
+          {preview?.error && <p className="text-sm text-destructive">{t(preview.error)}</p>}
 
           <Button
             className="w-full"

@@ -1,8 +1,12 @@
+import { useTranslation } from "react-i18next";
+
 interface PasswordStrengthProps {
   password: string;
 }
 
 const PasswordStrength = ({ password }: PasswordStrengthProps) => {
+  const { t } = useTranslation("auth");
+
   if (!password) return null;
 
   const checks = {
@@ -19,11 +23,10 @@ const PasswordStrength = ({ password }: PasswordStrengthProps) => {
   return (
     <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
       <li className={checks.length ? "text-green-600" : "text-destructive"}>
-        {checks.length ? "✓" : "✗"} 8文字以上
+        {checks.length ? "✓" : "✗"} {t("passwordMinLength")}
       </li>
       <li className={typeCount >= 3 ? "text-green-600" : "text-destructive"}>
-        {typeCount >= 3 ? "✓" : "✗"} 大文字・小文字・数字・記号のうち3種類以上（現在: {typeCount}
-        種類）
+        {typeCount >= 3 ? "✓" : "✗"} {t("passwordComplexity", { count: typeCount })}
       </li>
     </ul>
   );
