@@ -18,7 +18,23 @@ interface PendingLotRemoval {
   itemName: string;
   units: number;
   openedRemaining: number | null;
+  logId: string | null;
 }
+
+/**
+ * カレンダーの「消費済み」チェック操作での消費量を計算する。
+ * opened_remaining がある場合は開封済み分の残量も含める。
+ */
+export const computeCalendarDelta = (
+  units: number,
+  openedRemaining: number | null,
+  contentAmount: number,
+): number => {
+  if (openedRemaining !== null) {
+    return Math.max(0, units - 1) * contentAmount + openedRemaining;
+  }
+  return units * contentAmount;
+};
 
 const CalendarRoutePage = () => {
   const qc = useQueryClient();
@@ -31,6 +47,11 @@ const CalendarRoutePage = () => {
   const handleCheck = async (item: Item) => {
     try {
       requireOnline();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { data: lots, error } = await supabase
         .from("item_lots")
         .select("id, units, opened_remaining, expiry_date")
@@ -59,10 +80,33 @@ const CalendarRoutePage = () => {
         .eq("id", targetLot.id);
       if (updateError) throw updateError;
 
+      // 消費ログを記録（non-fatal: ロット更新は完了しているためエラーを無視）
+      const deltaAmount = computeCalendarDelta(
+        targetLot.units,
+        targetLot.opened_remaining,
+        item.content_amount,
+      );
+      const { data: logData } = await supabase
+        .from("consumption_logs")
+        .insert({
+          user_id: user.id,
+          item_id: item.id,
+          delta_amount: deltaAmount,
+          delta_unit: item.content_unit,
+          units_before: targetLot.units,
+          units_after: 0,
+          opened_remaining_before: targetLot.opened_remaining,
+          opened_remaining_after: null,
+        })
+        .select("id")
+        .single();
+
       await syncItemAggregate(item.id);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["items"] }),
         qc.invalidateQueries({ queryKey: [...LOTS_KEY, item.id] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs", item.id] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
       ]);
       setPendingRemovals((prev) => ({
         ...prev,
@@ -72,6 +116,7 @@ const CalendarRoutePage = () => {
           itemName: item.name,
           units: targetLot.units,
           openedRemaining: targetLot.opened_remaining,
+          logId: logData?.id ?? null,
         },
       }));
     } catch (err) {
@@ -95,10 +140,17 @@ const CalendarRoutePage = () => {
         .eq("id", pending.lotId);
       if (error) throw error;
 
+      // 消費ログを削除（non-fatal: ロット復元は完了しているためエラーを無視）
+      if (pending.logId) {
+        await supabase.from("consumption_logs").delete().eq("id", pending.logId);
+      }
+
       await syncItemAggregate(pending.itemId);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["items"] }),
         qc.invalidateQueries({ queryKey: [...LOTS_KEY, pending.itemId] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs", pending.itemId] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
       ]);
       setPendingRemovals((prev) => {
         const next = { ...prev };

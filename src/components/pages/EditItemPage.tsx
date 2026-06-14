@@ -157,7 +157,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           units: selectedLot?.units ?? item.units,
           content_amount: item.content_amount,
           content_unit: item.content_unit,
-          opened_remaining: item.opened_remaining,
+          opened_remaining: selectedLot?.opened_remaining ?? item.opened_remaining,
           purchase_date: selectedLot?.purchase_date ?? item.purchase_date ?? undefined,
           expiry_date: selectedLot?.expiry_date ?? item.expiry_date ?? undefined,
           notes: item.notes ?? undefined,
