@@ -117,5 +117,7 @@
   "noStockToConsume": "使用できる在庫がありません",
   "editLot": "編集するロットを選択",
   "itemCountLabel": "{{count}}件",
-  "itemCountLabelFiltered": "{{filtered}} / {{total}}件"
+  "itemCountLabelFiltered": "{{filtered}} / {{total}}件",
+  "quickConsume": "1個消費",
+  "quickConsumeSuccess": "{{name}}を1個消費しました"
 }

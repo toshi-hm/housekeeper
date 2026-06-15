@@ -8,10 +8,12 @@ import { ItemCard } from "@/components/molecules/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { useConsumeItem } from "@/hooks/useConsumeItem";
 import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUserSettings } from "@/hooks/useUserSettings";
-import { getExpiryStatus } from "@/types/item";
+import { useToast } from "@/lib/toast-context";
+import { getExpiryStatus, type Item } from "@/types/item";
 
 const DashboardPage = () => {
   const { t } = useTranslation("items");
@@ -20,6 +22,8 @@ const DashboardPage = () => {
   const { data: locations = [] } = useStorageLocations();
   const { data: userSettings } = useUserSettings();
   const warningDays = userSettings?.expiry_warning_days;
+  const consumeItem = useConsumeItem();
+  const { toast } = useToast();
 
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -28,6 +32,15 @@ const DashboardPage = () => {
   const [sort, setSort] = useState<ItemSortKey>("created_at");
   const [showFilters, setShowFilters] = useState(false);
   const [hideEmpty, setHideEmpty] = useState(true);
+
+  const handleQuickConsume = async (item: Item) => {
+    try {
+      await consumeItem.mutateAsync({ item, deltaAmount: item.content_amount });
+      toast(t("quickConsumeSuccess", { name: item.name }), "success");
+    } catch {
+      toast(t("consumeError"), "error");
+    }
+  };
 
   const filters: ItemFilters = {
     search: search || undefined,
@@ -263,6 +276,9 @@ const DashboardPage = () => {
                 item.storage_location_id ? locationMap[item.storage_location_id] : undefined
               }
               warningDays={warningDays}
+              onQuickConsume={(i) => {
+                void handleQuickConsume(i);
+              }}
             />
           ))}
         </div>

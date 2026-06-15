@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { Calendar, MapPin, Tag } from "lucide-react";
+import { Calendar, MapPin, Minus, Tag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
@@ -14,9 +15,16 @@ interface ItemCardProps {
   categoryName?: string | undefined;
   locationName?: string | undefined;
   warningDays?: number;
+  onQuickConsume?: (item: Item) => void;
 }
 
-export const ItemCard = ({ item, categoryName, locationName, warningDays }: ItemCardProps) => {
+export const ItemCard = ({
+  item,
+  categoryName,
+  locationName,
+  warningDays,
+  onQuickConsume,
+}: ItemCardProps) => {
   const { t, i18n } = useTranslation("items");
   const expiryStatus = getExpiryStatus(item.expiry_date, warningDays);
   const isUrgent = expiryStatus === "expired" || expiryStatus === "expiring-soon";
@@ -82,7 +90,24 @@ export const ItemCard = ({ item, categoryName, locationName, warningDays }: Item
               </span>
             )}
           </span>
-          <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />
+          <div className="flex items-center gap-1">
+            {!isEmpty && onQuickConsume && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                aria-label={t("quickConsume")}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onQuickConsume(item);
+                }}
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />
+          </div>
         </CardFooter>
       </Card>
     </Link>
