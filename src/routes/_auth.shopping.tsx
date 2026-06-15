@@ -68,7 +68,7 @@ const ShoppingPage = () => {
       await clearPurchased.mutateAsync();
       toast(t("clearPurchasedSuccess"), "success");
     } catch {
-      toast(t("common:unknownError"), "error");
+      // Error toast is handled by useDeleteAllPurchasedItems.onError
     }
   };
 

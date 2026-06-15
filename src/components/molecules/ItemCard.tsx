@@ -16,6 +16,7 @@ interface ItemCardProps {
   locationName?: string | undefined;
   warningDays?: number;
   onQuickConsume?: (item: Item) => void;
+  isQuickConsuming?: boolean;
 }
 
 export const ItemCard = ({
@@ -24,6 +25,7 @@ export const ItemCard = ({
   locationName,
   warningDays,
   onQuickConsume,
+  isQuickConsuming = false,
 }: ItemCardProps) => {
   const { t, i18n } = useTranslation("items");
   const expiryStatus = getExpiryStatus(item.expiry_date, warningDays);
@@ -97,6 +99,7 @@ export const ItemCard = ({
                 size="icon"
                 className="h-7 w-7 shrink-0"
                 aria-label={t("quickConsume")}
+                disabled={isQuickConsuming}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
