@@ -44,7 +44,7 @@ export const itemFormSchema = z.object({
   barcode: z.string().optional(),
   category_id: z.string().uuid().nullable().optional(),
   storage_location_id: z.string().uuid().nullable().optional(),
-  units: z.coerce.number().int().min(0).default(1),
+  units: z.coerce.number().int().min(1).default(1),
   content_amount: z.coerce.number().positive().default(1),
   content_unit: z.string().default("個"),
   opened_remaining: z.coerce.number().min(0).nullable().optional(),

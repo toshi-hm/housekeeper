@@ -98,6 +98,7 @@
   "consumeValidationError": "Enter a value greater than 0",
   "lookupFromHistory": "Found a match from your previously registered items",
   "unitsRequired": "Enter a quantity",
+  "unitsPositive": "Enter 1 or more",
   "contentAmountRequired": "Enter a value greater than 0",
   "stackSuccess": "Added as new stock to existing item",
   "stackBannerTitle": "This item is already in your inventory",
