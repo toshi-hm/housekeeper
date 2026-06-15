@@ -119,5 +119,9 @@
   "itemCountLabel": "{{count}}件",
   "itemCountLabelFiltered": "{{filtered}} / {{total}}件",
   "quickConsume": "1個消費",
-  "quickConsumeSuccess": "{{name}}を1個消費しました"
+  "quickConsumeSuccess": "{{name}}を1個消費しました",
+  "consumeAll": "全量消費 ({{amount}}{{unit}})",
+  "consumeAllTitle": "全量消費の確認",
+  "consumeAllConfirm": "このロットの全量（{{amount}}{{unit}}）を消費しますか？",
+  "consumeAllConfirmLabel": "全量消費する"
 }
