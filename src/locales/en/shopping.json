@@ -19,5 +19,10 @@
   "deleteSuccess": "Deleted",
   "purchaseSuccess": "Added to inventory",
   "purchaseError": "Failed to add to inventory",
-  "deleteConfirm": "Remove this item from the shopping list?"
+  "deleteConfirm": "Remove this item from the shopping list?",
+  "clearPurchased": "Clear all purchased",
+  "clearPurchasedTitle": "Clear purchased items",
+  "clearPurchasedConfirm": "Delete all purchased items? This cannot be undone.",
+  "clearPurchasedConfirmLabel": "Delete all",
+  "clearPurchasedSuccess": "Purchased items cleared"
 }

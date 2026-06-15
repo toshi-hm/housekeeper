@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  useDeleteAllPurchasedItems,
   useDeleteShoppingItem,
   usePurchaseShoppingItem,
   useShoppingList,
@@ -29,11 +30,13 @@ const ShoppingPage = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showClearPurchased, setShowClearPurchased] = useState(false);
 
   const { data: items = [], isLoading } = useShoppingList(tab);
   const upsert = useUpsertShoppingItem();
   const deleteItem = useDeleteShoppingItem();
   const purchase = usePurchaseShoppingItem();
+  const clearPurchased = useDeleteAllPurchasedItems();
 
   const handleAdd = async () => {
     if (!addName.trim()) return;
@@ -56,6 +59,15 @@ const ShoppingPage = () => {
       toast(t("deleteSuccess"), "success");
     } catch {
       setDeleteId(null);
+      toast(t("common:unknownError"), "error");
+    }
+  };
+
+  const handleClearPurchased = async () => {
+    try {
+      await clearPurchased.mutateAsync();
+      toast(t("clearPurchasedSuccess"), "success");
+    } catch {
       toast(t("common:unknownError"), "error");
     }
   };
@@ -84,6 +96,19 @@ const ShoppingPage = () => {
           void handleDelete();
         }}
         onCancel={() => setDeleteId(null)}
+      />
+      <ConfirmDialog
+        open={showClearPurchased}
+        title={t("clearPurchasedTitle")}
+        message={t("clearPurchasedConfirm")}
+        confirmLabel={t("clearPurchasedConfirmLabel")}
+        variant="destructive"
+        isConfirming={clearPurchased.isPending}
+        onConfirm={() => {
+          setShowClearPurchased(false);
+          void handleClearPurchased();
+        }}
+        onCancel={() => setShowClearPurchased(false)}
       />
 
       {pendingPurchaseId && (
@@ -183,6 +208,20 @@ const ShoppingPage = () => {
           </button>
         ))}
       </div>
+
+      {/* Clear purchased button */}
+      {tab === "purchased" && items.length > 0 && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setShowClearPurchased(true)}
+          >
+            {t("clearPurchased")}
+          </Button>
+        </div>
+      )}
 
       {/* List */}
       {isLoading ? (

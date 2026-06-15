@@ -146,6 +146,37 @@ export const lotValuesFromForm = (itemValues: ItemFormValues) => ({
   expiry_date: itemValues.expiry_date || null,
 });
 
+export const useDeleteAllPurchasedItems = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
+  return useMutation({
+    mutationFn: async () => {
+      requireOnline();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const { error } = await supabase
+        .from("shopping_list_items")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("status", "purchased");
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: [QUERY_KEY] });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) {
+        toast(t("offlineError"), "error");
+      } else {
+        toast(t("unknownError"), "error");
+      }
+    },
+  });
+};
+
 export const usePurchaseShoppingItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
