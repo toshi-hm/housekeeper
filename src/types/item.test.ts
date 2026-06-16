@@ -215,14 +215,17 @@ describe("computeConsumption", () => {
     expect(r.opened_remaining_after).toBe(400);
   });
 
-  test("consume more than total stock => error", () => {
+  test("consume more than total stock => error with null opened_remaining_after", () => {
     const r = computeConsumption({ ...baseItem, units: 1, opened_remaining: 200 }, 800);
     expect(r.error).toBeDefined();
+    expect(r.units_after).toBe(0);
+    expect(r.opened_remaining_after).toBeNull();
   });
 
-  test("units=0 consume => error", () => {
+  test("units=0 consume => error with null opened_remaining_after", () => {
     const r = computeConsumption({ ...baseItem, units: 0, opened_remaining: 0 }, 1);
     expect(r.error).toBeDefined();
+    expect(r.opened_remaining_after).toBeNull();
   });
 
   test("consume exact total (single unit, full)", () => {
@@ -239,9 +242,10 @@ describe("computeConsumption", () => {
     expect(r.error).toBeUndefined();
   });
 
-  test("opened: consume more than opened with no sealed units left => error", () => {
+  test("opened: consume more than opened with no sealed units left => error with null opened_remaining_after", () => {
     // units=1 (the open unit), opened=200, delta=300: only 200 available, not 800
     const r = computeConsumption({ ...baseItem, units: 1, opened_remaining: 200 }, 300);
     expect(r.error).toBeDefined();
+    expect(r.opened_remaining_after).toBeNull();
   });
 });

@@ -19,5 +19,6 @@
   "nextMonth": "次の月",
   "selectYearMonth": "年月を選択",
   "prevYear": "前の年",
-  "nextYear": "次の年"
+  "nextYear": "次の年",
+  "noEligibleLot": "今月中に期限を迎えるロットが見つかりません"
 }

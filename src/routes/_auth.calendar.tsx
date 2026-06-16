@@ -43,6 +43,7 @@ const CalendarRoutePage = () => {
   const [pendingRemovals, setPendingRemovals] = useState<Record<string, PendingLotRemoval>>({});
   const { toast } = useToast();
   const { t } = useTranslation("common");
+  const { t: tc } = useTranslation("calendar");
 
   const handleCheck = async (item: Item) => {
     try {
@@ -72,7 +73,10 @@ const CalendarRoutePage = () => {
         return exp <= monthEnd;
       });
 
-      if (!targetLot) return;
+      if (!targetLot) {
+        toast(tc("noEligibleLot"), "warning");
+        return;
+      }
 
       const { error: updateError } = await supabase
         .from("item_lots")

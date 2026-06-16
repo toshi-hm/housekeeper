@@ -75,11 +75,12 @@ const ShoppingPage = () => {
   const handlePurchase = async (values: ItemFormValues) => {
     if (!pendingPurchaseId) return;
     const id = pendingPurchaseId;
-    setPendingPurchaseId(null);
     try {
       await purchase.mutateAsync({ shoppingItemId: id, itemValues: values });
+      setPendingPurchaseId(null);
       toast(t("purchaseSuccess"), "success");
     } catch {
+      setPendingPurchaseId(null);
       toast(t("purchaseError"), "error");
     }
   };
