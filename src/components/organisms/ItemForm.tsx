@@ -180,6 +180,9 @@ export const ItemForm = ({
     if (unitsRaw.trim() === "" || isNaN(parsedUnits)) {
       setUnitsError(t("unitsRequired"));
       hasError = true;
+    } else if (parsedUnits <= 0) {
+      setUnitsError(t("unitsPositive"));
+      hasError = true;
     }
 
     const parsedContentAmount = Math.round(parseFloat(contentAmountRaw) * 100) / 100;

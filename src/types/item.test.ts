@@ -5,8 +5,50 @@ import {
   DEFAULT_EXPIRY_WARNING_DAYS,
   formatRemaining,
   getExpiryStatus,
+  itemFormSchema,
   itemLotSchema,
 } from "./item";
+
+// --- itemFormSchema ---
+
+describe("itemFormSchema", () => {
+  const validForm = {
+    name: "テスト商品",
+    units: 1,
+    content_amount: 1,
+    content_unit: "個",
+  };
+
+  test("valid form parses correctly", () => {
+    const result = itemFormSchema.safeParse(validForm);
+    expect(result.success).toBe(true);
+  });
+
+  test("units=1 is valid", () => {
+    const result = itemFormSchema.safeParse({ ...validForm, units: 1 });
+    expect(result.success).toBe(true);
+  });
+
+  test("units=0 fails", () => {
+    const result = itemFormSchema.safeParse({ ...validForm, units: 0 });
+    expect(result.success).toBe(false);
+  });
+
+  test("units=-1 fails", () => {
+    const result = itemFormSchema.safeParse({ ...validForm, units: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  test("units=2 is valid", () => {
+    const result = itemFormSchema.safeParse({ ...validForm, units: 2 });
+    expect(result.success).toBe(true);
+  });
+
+  test("empty name fails", () => {
+    const result = itemFormSchema.safeParse({ ...validForm, name: "" });
+    expect(result.success).toBe(false);
+  });
+});
 
 // --- itemLotSchema ---
 

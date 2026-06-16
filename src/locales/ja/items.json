@@ -98,6 +98,7 @@
   "consumeValidationError": "0より大きい値を入力してください",
   "lookupFromHistory": "過去に登録した商品データから候補を見つけました",
   "unitsRequired": "個数を入力してください",
+  "unitsPositive": "1以上の数を入力してください",
   "contentAmountRequired": "0より大きい数値を入力してください",
   "stackSuccess": "既存の在庫にロットを追加しました",
   "stackBannerTitle": "同じ商品が既に在庫にあります",
