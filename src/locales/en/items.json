@@ -118,5 +118,7 @@
   "editLot": "Select lot to edit",
   "itemCountLabel_one": "{{count}} item",
   "itemCountLabel_other": "{{count}} items",
-  "itemCountLabelFiltered": "{{filtered}} / {{total}} items"
+  "itemCountLabelFiltered": "{{filtered}} / {{total}} items",
+  "quickConsume": "Use 1 unit",
+  "quickConsumeSuccess": "Used 1 {{name}}"
 }
