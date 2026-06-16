@@ -198,3 +198,28 @@ export const WithQuickConsume: Story = {
     },
   },
 };
+
+export const QuickConsumeInProgress: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      name: "牛乳",
+      units: 3,
+      content_amount: 1000,
+      content_unit: "mL",
+      category_id: null,
+      barcode: null,
+      storage_location_id: null,
+      expiry_date: "2099-06-01",
+      purchase_date: null,
+      notes: null,
+      image_path: null,
+    },
+    categoryName: "食品",
+    locationName: "冷蔵庫",
+    isQuickConsuming: true,
+    onQuickConsume: (item) => {
+      console.log("Quick consume:", item.name);
+    },
+  },
+};

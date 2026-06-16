@@ -32,13 +32,18 @@ const DashboardPage = () => {
   const [sort, setSort] = useState<ItemSortKey>("created_at");
   const [showFilters, setShowFilters] = useState(false);
   const [hideEmpty, setHideEmpty] = useState(true);
+  const [quickConsumingId, setQuickConsumingId] = useState<string | null>(null);
 
   const handleQuickConsume = async (item: Item) => {
+    if (quickConsumingId) return;
+    setQuickConsumingId(item.id);
     try {
       await consumeItem.mutateAsync({ item, deltaAmount: item.content_amount });
       toast(t("quickConsumeSuccess", { name: item.name }), "success");
     } catch {
-      toast(t("consumeError"), "error");
+      // Error toast is handled by useConsumeItem.onError
+    } finally {
+      setQuickConsumingId(null);
     }
   };
 
@@ -276,6 +281,7 @@ const DashboardPage = () => {
                 item.storage_location_id ? locationMap[item.storage_location_id] : undefined
               }
               warningDays={warningDays}
+              isQuickConsuming={quickConsumingId === item.id}
               onQuickConsume={(i) => {
                 void handleQuickConsume(i);
               }}

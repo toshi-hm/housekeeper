@@ -70,7 +70,7 @@ export const ItemConsumePage = () => {
       toast(t("consumeSuccess"), "success");
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
-      toast(t("consumeError"), "error");
+      // Error toast is handled by useConsumeLot.onError
     }
   };
 
@@ -78,10 +78,12 @@ export const ItemConsumePage = () => {
     if (!item || !selectedLot) return;
     try {
       await consumeLot.mutateAsync({ lot: selectedLot, item, deltaAmount: totalAmount });
+      setShowConsumeAll(false);
       toast(t("consumeSuccess"), "success");
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
-      toast(t("consumeError"), "error");
+      setShowConsumeAll(false);
+      // Error toast is handled by useConsumeLot.onError
     }
   };
 
@@ -166,7 +168,6 @@ export const ItemConsumePage = () => {
           confirmLabel={t("consumeAllConfirmLabel")}
           isConfirming={consumeLot.isPending}
           onConfirm={() => {
-            setShowConsumeAll(false);
             void handleConsumeAll(totalLotAmount);
           }}
           onCancel={() => setShowConsumeAll(false)}
