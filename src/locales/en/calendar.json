@@ -19,5 +19,6 @@
   "nextMonth": "Next month",
   "selectYearMonth": "Select year and month",
   "prevYear": "Previous year",
-  "nextYear": "Next year"
+  "nextYear": "Next year",
+  "noEligibleLot": "No lot expiring this month found"
 }
