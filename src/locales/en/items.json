@@ -120,5 +120,9 @@
   "itemCountLabel_other": "{{count}} items",
   "itemCountLabelFiltered": "{{filtered}} / {{total}} items",
   "quickConsume": "Use 1 unit",
-  "quickConsumeSuccess": "Used 1 {{name}}"
+  "quickConsumeSuccess": "Used 1 {{name}}",
+  "consumeAll": "Use all ({{amount}}{{unit}})",
+  "consumeAllTitle": "Use all stock",
+  "consumeAllConfirm": "Use all stock in this lot ({{amount}}{{unit}})?",
+  "consumeAllConfirmLabel": "Use all"
 }

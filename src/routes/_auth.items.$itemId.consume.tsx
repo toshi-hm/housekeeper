@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ export const ItemConsumePage = () => {
   const [selectedLotId, setSelectedLotId] = useState<string | null>(preselectedLotId ?? null);
   const [delta, setDelta] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [showConsumeAll, setShowConsumeAll] = useState(false);
 
   const isLoading = itemLoading || lotsLoading;
 
@@ -65,6 +67,17 @@ export const ItemConsumePage = () => {
     }
     try {
       await consumeLot.mutateAsync({ lot: selectedLot, item, deltaAmount: amount });
+      toast(t("consumeSuccess"), "success");
+      void navigate({ to: "/items/$itemId", params: { itemId } });
+    } catch {
+      toast(t("consumeError"), "error");
+    }
+  };
+
+  const handleConsumeAll = async (totalAmount: number) => {
+    if (!item || !selectedLot) return;
+    try {
+      await consumeLot.mutateAsync({ lot: selectedLot, item, deltaAmount: totalAmount });
       toast(t("consumeSuccess"), "success");
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
@@ -134,8 +147,31 @@ export const ItemConsumePage = () => {
         })
     : null;
 
+  const totalLotAmount = selectedLot
+    ? selectedLot.opened_remaining !== null && selectedLot.opened_remaining !== undefined
+      ? selectedLot.opened_remaining + Math.max(0, selectedLot.units - 1) * item.content_amount
+      : selectedLot.units * item.content_amount
+    : 0;
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {showConsumeAll && (
+        <ConfirmDialog
+          open={showConsumeAll}
+          title={t("consumeAllTitle")}
+          message={t("consumeAllConfirm", {
+            amount: totalLotAmount,
+            unit: item.content_unit,
+          })}
+          confirmLabel={t("consumeAllConfirmLabel")}
+          isConfirming={consumeLot.isPending}
+          onConfirm={() => {
+            setShowConsumeAll(false);
+            void handleConsumeAll(totalLotAmount);
+          }}
+          onCancel={() => setShowConsumeAll(false)}
+        />
+      )}
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
@@ -253,16 +289,26 @@ export const ItemConsumePage = () => {
           )}
           {preview?.error && <p className="text-sm text-destructive">{t(preview.error)}</p>}
 
-          <Button
-            className="w-full"
-            onClick={() => {
-              void handleSubmit();
-            }}
-            disabled={consumeLot.isPending || !delta || parseFloat(delta) <= 0}
-          >
-            {consumeLot.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
-            {t("consume")}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowConsumeAll(true)}
+              disabled={consumeLot.isPending || totalLotAmount <= 0}
+            >
+              {t("consumeAll", { amount: totalLotAmount, unit: item.content_unit })}
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                void handleSubmit();
+              }}
+              disabled={consumeLot.isPending || !delta || parseFloat(delta) <= 0}
+            >
+              {consumeLot.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
+              {t("consume")}
+            </Button>
+          </div>
         </>
       )}
 
