@@ -1,5 +1,4 @@
-import type { ItemSortKey } from "@/hooks/useItems";
-import type { Item } from "@/types/item";
+import type { Item, ItemSortKey } from "@/types/item";
 
 const compareNullableDatesAsc = (
   a: string | null | undefined,

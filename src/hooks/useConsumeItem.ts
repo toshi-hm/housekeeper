@@ -5,12 +5,7 @@ import { consumeLot as consumeLotFn, LOTS_KEY } from "@/hooks/useItemLots";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import { computeConsumption, type Item } from "@/types/item";
-
-interface ConsumeParams {
-  item: Item;
-  deltaAmount: number;
-}
+import { computeConsumption, type ConsumeParams, type Item } from "@/types/item";
 
 /** Consume from a single-lot item (backward compat path). */
 const consumeItem = async ({ item, deltaAmount }: ConsumeParams): Promise<Item> => {

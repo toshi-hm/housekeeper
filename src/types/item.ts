@@ -90,6 +90,27 @@ export type UserSettings = z.infer<typeof userSettingsSchema>;
 
 export type ExpiryStatus = "expired" | "expiring-soon" | "ok" | "unknown";
 
+/** Filters applied server-side (Supabase query). Client-only filters such as
+ *  expiryStatus and hideEmpty are handled by the caller after fetching. */
+export interface ItemFilters {
+  search?: string;
+  categoryId?: string;
+  storageLocationId?: string;
+}
+
+export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";
+
+export interface ConsumeParams {
+  item: Item;
+  deltaAmount: number;
+}
+
+export interface ConsumeLotParams {
+  lot: ItemLot;
+  item: Pick<Item, "content_amount" | "content_unit">;
+  deltaAmount: number;
+}
+
 export const DEFAULT_EXPIRY_WARNING_DAYS = 3;
 
 export const CONTENT_UNITS = ["個", "枚", "本", "袋", "mL", "L", "g", "kg"] as const;

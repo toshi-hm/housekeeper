@@ -4,17 +4,9 @@ import { useTranslation } from "react-i18next";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
+import type { NotificationPreferences, UpdatePrefs } from "@/types/user";
 
-export interface NotificationPreferences {
-  user_id: string;
-  push_enabled: boolean;
-  email_enabled: boolean;
-  email_address: string | null;
-  threshold_days: number;
-  notify_at: string;
-}
-
-type UpdatePrefs = Partial<Omit<NotificationPreferences, "user_id">>;
+export type { NotificationPreferences };
 
 const PREFS_KEY = ["notification-preferences"] as const;
 
