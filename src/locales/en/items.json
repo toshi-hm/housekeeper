@@ -40,6 +40,7 @@
   "consumeError": "Failed to record consumption",
   "insufficientStock": "Insufficient stock",
   "scanBarcode": "Scan Barcode",
+  "searchBarcode": "Search product by barcode",
   "scannerStarting": "Starting camera...",
   "scannerHint": "Point the camera at a barcode to scan",
   "scannerError": "Camera Error",

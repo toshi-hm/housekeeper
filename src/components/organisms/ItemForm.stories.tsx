@@ -63,3 +63,12 @@ export const StackMode: Story = {
     submitLabel: "追加購入として登録",
   },
 };
+
+/** バーコードが入力済みで検索ボタンが有効な状態 */
+export const WithBarcodeEntered: Story = {
+  args: {
+    defaultValues: {
+      barcode: "4901234567890",
+    },
+  },
+};
