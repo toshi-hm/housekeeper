@@ -304,7 +304,12 @@ export const ItemConsumePage = () => {
               onClick={() => {
                 void handleSubmit();
               }}
-              disabled={consumeLot.isPending || !delta || parseFloat(delta) <= 0}
+              disabled={
+                consumeLot.isPending ||
+                !delta.trim() ||
+                isNaN(parseFloat(delta)) ||
+                parseFloat(delta) <= 0
+              }
             >
               {consumeLot.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
               {t("consume")}
