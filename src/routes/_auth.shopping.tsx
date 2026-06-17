@@ -3,6 +3,7 @@ import { Plus, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ShareButton } from "@/components/atoms/ShareButton";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ShoppingRow } from "@/components/molecules/ShoppingRow";
@@ -34,6 +35,7 @@ const ShoppingPage = () => {
   const [showClearPurchased, setShowClearPurchased] = useState(false);
 
   const { data: items = [], isLoading } = useShoppingList(tab);
+  const { data: plannedItems = [] } = useShoppingList("planned");
   const upsert = useUpsertShoppingItem();
   const deleteItem = useDeleteShoppingItem();
   const purchase = usePurchaseShoppingItem();
@@ -146,10 +148,25 @@ const ShoppingPage = () => {
           <ShoppingCart className="h-6 w-6" />
           <h1 className="text-2xl font-bold">{t("title")}</h1>
         </div>
-        <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
-          <Plus className="mr-1 h-4 w-4" />
-          {t("addItem")}
-        </Button>
+        <div className="flex items-center gap-2">
+          {plannedItems.length > 0 && (
+            <ShareButton
+              title={t("shareShoppingList")}
+              text={plannedItems
+                .map((item) =>
+                  item.desired_units > 1
+                    ? `・${item.name} ×${item.desired_units}`
+                    : `・${item.name}`,
+                )
+                .join("\n")}
+              label={t("share")}
+            />
+          )}
+          <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
+            <Plus className="mr-1 h-4 w-4" />
+            {t("addItem")}
+          </Button>
+        </div>
       </div>
 
       {/* Add form */}

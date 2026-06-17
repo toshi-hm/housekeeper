@@ -29,5 +29,7 @@
   "editSuccess": "Updated",
   "editCancel": "Cancel",
   "editSave": "Save",
-  "desiredUnitsLabel": "Desired qty"
+  "desiredUnitsLabel": "Desired qty",
+  "share": "Share",
+  "shareShoppingList": "Share Shopping List"
 }
