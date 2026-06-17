@@ -40,6 +40,7 @@
   "consumeError": "消費の記録に失敗しました",
   "insufficientStock": "在庫が不足しています",
   "scanBarcode": "バーコードをスキャン",
+  "searchBarcode": "バーコードで商品を検索",
   "scannerStarting": "カメラを起動中...",
   "scannerHint": "バーコードにカメラを向けてください",
   "scannerError": "カメラエラー",

@@ -1,4 +1,4 @@
-import { Barcode, Loader2 } from "lucide-react";
+import { Barcode, Loader2, Search } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -226,7 +226,29 @@ export const ItemForm = ({
               value={values.barcode ?? ""}
               onChange={(e) => set("barcode", e.target.value)}
               placeholder={t("barcodePlaceholder")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && values.barcode) {
+                  e.preventDefault();
+                  void handleBarcodeScan(values.barcode);
+                }
+              }}
             />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                if (values.barcode) void handleBarcodeScan(values.barcode);
+              }}
+              disabled={isLookingUp || !values.barcode}
+              title={t("searchBarcode")}
+            >
+              {isLookingUp ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -235,11 +257,7 @@ export const ItemForm = ({
               disabled={isLookingUp}
               title={t("scanBarcode")}
             >
-              {isLookingUp ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Barcode className="h-4 w-4" />
-              )}
+              <Barcode className="h-4 w-4" />
             </Button>
           </div>
         </div>
