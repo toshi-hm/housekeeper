@@ -29,9 +29,14 @@ const DashboardPage = () => {
   const [categoryId, setCategoryId] = useState("");
   const [locationId, setLocationId] = useState("");
   const [expiryFilter, setExpiryFilter] = useState("");
-  const [sort, setSort] = useState<ItemSortKey>("created_at");
+  const [sort, setSort] = useState<ItemSortKey>(
+    () => (localStorage.getItem("dashboard.sort") as ItemSortKey) ?? "created_at",
+  );
   const [showFilters, setShowFilters] = useState(false);
-  const [hideEmpty, setHideEmpty] = useState(true);
+  const [hideEmpty, setHideEmpty] = useState(() => {
+    const saved = localStorage.getItem("dashboard.hideEmpty");
+    return saved !== null ? saved === "true" : true;
+  });
   const [quickConsumingId, setQuickConsumingId] = useState<string | null>(null);
 
   const handleQuickConsume = async (item: Item) => {
@@ -225,7 +230,14 @@ const DashboardPage = () => {
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">{tc("sort")}</label>
-              <Select value={sort} onChange={(e) => setSort(e.target.value as ItemSortKey)}>
+              <Select
+                value={sort}
+                onChange={(e) => {
+                  const v = e.target.value as ItemSortKey;
+                  setSort(v);
+                  localStorage.setItem("dashboard.sort", v);
+                }}
+              >
                 <option value="created_at">{t("sortByCreatedAt")}</option>
                 <option value="expiry_date">{t("sortByExpiry")}</option>
                 <option value="purchase_date">{t("sortByPurchaseDate")}</option>
@@ -236,7 +248,10 @@ const DashboardPage = () => {
             <input
               type="checkbox"
               checked={hideEmpty}
-              onChange={(e) => setHideEmpty(e.target.checked)}
+              onChange={(e) => {
+                setHideEmpty(e.target.checked);
+                localStorage.setItem("dashboard.hideEmpty", String(e.target.checked));
+              }}
               className="rounded"
             />
             {t("hideEmpty")}
