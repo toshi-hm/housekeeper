@@ -18,6 +18,7 @@ export const Default: Story = {
     desiredUnits: 2,
     onPurchase: () => {},
     onDelete: () => {},
+    onEdit: () => {},
   },
 };
 
@@ -29,6 +30,7 @@ export const WithNote: Story = {
     note: "無添加のもの",
     onPurchase: () => {},
     onDelete: () => {},
+    onEdit: () => {},
   },
 };
 
@@ -39,5 +41,28 @@ export const Purchased: Story = {
     desiredUnits: 3,
     isPurchased: true,
     onDelete: () => {},
+  },
+};
+
+export const EditMode: Story = {
+  args: {
+    id: "4",
+    name: "牛乳",
+    desiredUnits: 2,
+    note: "低脂肪",
+    isEditing: true,
+    onEditSave: () => {},
+    onEditCancel: () => {},
+  },
+};
+
+export const EditModeNoNote: Story = {
+  args: {
+    id: "5",
+    name: "卵",
+    desiredUnits: 1,
+    isEditing: true,
+    onEditSave: () => {},
+    onEditCancel: () => {},
   },
 };

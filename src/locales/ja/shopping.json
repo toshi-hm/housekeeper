@@ -24,5 +24,10 @@
   "clearPurchasedTitle": "購入済みアイテムを削除",
   "clearPurchasedConfirm": "購入済みのアイテムをすべて削除しますか？この操作は取り消せません。",
   "clearPurchasedConfirmLabel": "すべて削除",
-  "clearPurchasedSuccess": "購入済みアイテムを削除しました"
+  "clearPurchasedSuccess": "購入済みアイテムを削除しました",
+  "editItem": "編集",
+  "editSuccess": "更新しました",
+  "editCancel": "キャンセル",
+  "editSave": "保存",
+  "desiredUnitsLabel": "希望数量"
 }

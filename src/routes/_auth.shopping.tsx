@@ -29,6 +29,7 @@ const ShoppingPage = () => {
   const [addNote, setAddNote] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showClearPurchased, setShowClearPurchased] = useState(false);
 
@@ -68,6 +69,24 @@ const ShoppingPage = () => {
       toast(t("clearPurchasedSuccess"), "success");
     } catch {
       // Error toast is handled by useDeleteAllPurchasedItems.onError
+    }
+  };
+
+  const handleEdit = async (
+    id: string,
+    data: { name: string; desiredUnits: number; note: string | null },
+  ) => {
+    try {
+      await upsert.mutateAsync({
+        id,
+        name: data.name,
+        desired_units: data.desiredUnits,
+        note: data.note,
+      });
+      setEditId(null);
+      toast(t("editSuccess"), "success");
+    } catch {
+      toast(t("common:unknownError"), "error");
     }
   };
 
@@ -241,8 +260,14 @@ const ShoppingPage = () => {
               desiredUnits={item.desired_units}
               note={item.note}
               isPurchased={item.status === "purchased"}
+              isEditing={editId === item.id}
               onPurchase={tab === "planned" ? (id) => setPendingPurchaseId(id) : undefined}
               onDelete={(id) => setDeleteId(id)}
+              onEdit={tab === "planned" ? (id) => setEditId(id) : undefined}
+              onEditSave={(id, data) => {
+                void handleEdit(id, data);
+              }}
+              onEditCancel={() => setEditId(null)}
             />
           ))}
         </div>
