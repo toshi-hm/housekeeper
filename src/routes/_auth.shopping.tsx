@@ -58,7 +58,6 @@ const ShoppingPage = () => {
       setDeleteId(null);
       toast(t("deleteSuccess"), "success");
     } catch {
-      setDeleteId(null);
       toast(t("common:unknownError"), "error");
     }
   };
@@ -80,7 +79,6 @@ const ShoppingPage = () => {
       setPendingPurchaseId(null);
       toast(t("purchaseSuccess"), "success");
     } catch {
-      setPendingPurchaseId(null);
       toast(t("purchaseError"), "error");
     }
   };

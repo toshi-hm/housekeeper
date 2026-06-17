@@ -85,7 +85,6 @@ const ItemDetailPage = () => {
       toast(t("deleteSuccess"), "success");
       void navigate({ to: "/" });
     } catch {
-      setShowDeleteConfirm(false);
       toast(t("common:unknownError"), "error");
     }
   };
