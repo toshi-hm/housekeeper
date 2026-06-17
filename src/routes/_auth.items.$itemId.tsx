@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import {
   ArrowLeft,
   Calendar,
+  Copy,
   Edit,
   Hash,
   History,
@@ -189,6 +190,14 @@ const ItemDetailPage = () => {
             onClick={() => void navigate({ to: "/items/$itemId/edit", params: { itemId } })}
           >
             <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={t("cloneItem")}
+            onClick={() => void navigate({ to: "/items/new", search: { cloneFrom: itemId } })}
+          >
+            <Copy className="h-4 w-4" />
           </Button>
           <Button
             variant="destructive"

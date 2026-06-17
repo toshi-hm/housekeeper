@@ -125,5 +125,7 @@
   "consumeAll": "全量消費 ({{amount}}{{unit}})",
   "consumeAllTitle": "全量消費の確認",
   "consumeAllConfirm": "このロットの全量（{{amount}}{{unit}}）を消費しますか？",
-  "consumeAllConfirmLabel": "全量消費する"
+  "consumeAllConfirmLabel": "全量消費する",
+  "cloneItem": "複製して追加",
+  "cloneSuccess": "複製して在庫を追加しました"
 }
