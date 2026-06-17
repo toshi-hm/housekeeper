@@ -24,5 +24,10 @@
   "clearPurchasedTitle": "Clear purchased items",
   "clearPurchasedConfirm": "Delete all purchased items? This cannot be undone.",
   "clearPurchasedConfirmLabel": "Delete all",
-  "clearPurchasedSuccess": "Purchased items cleared"
+  "clearPurchasedSuccess": "Purchased items cleared",
+  "editItem": "Edit",
+  "editSuccess": "Updated",
+  "editCancel": "Cancel",
+  "editSave": "Save",
+  "desiredUnitsLabel": "Desired qty"
 }
