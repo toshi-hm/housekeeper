@@ -40,5 +40,7 @@
   "navStats": "統計",
   "navSettings": "設定",
   "navCalendar": "カレンダー",
-  "navSignOut": "サインアウト"
+  "navSignOut": "サインアウト",
+  "notFound": "404 — ページが見つかりません",
+  "goHome": "ホームへ戻る"
 }
