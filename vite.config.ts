@@ -41,6 +41,22 @@ export default defineConfig({
                   purpose: "any",
                 },
               ],
+              shortcuts: [
+                {
+                  name: "在庫を追加",
+                  short_name: "追加",
+                  description: "新しい在庫アイテムを登録する",
+                  url: "/items/new",
+                  icons: [{ src: "/favicon.svg", sizes: "any", type: "image/svg+xml" }],
+                },
+                {
+                  name: "買い物リスト",
+                  short_name: "リスト",
+                  description: "買い物リストを開く",
+                  url: "/shopping",
+                  icons: [{ src: "/favicon.svg", sizes: "any", type: "image/svg+xml" }],
+                },
+              ],
             },
             devOptions: {
               enabled: false,
