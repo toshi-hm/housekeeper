@@ -14,3 +14,14 @@ jobs:
 
   test:
     uses: ./.github/workflows/_test.yml
+
+  audit:
+    uses: ./.github/workflows/_audit.yml
+
+  knip:
+    uses: ./.github/workflows/_knip.yml
+
+  commitlint:
+    uses: ./.github/workflows/_commitlint.yml
+    with:
+      base_sha: ${{ github.event.pull_request.base.sha }}
