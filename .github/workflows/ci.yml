@@ -17,3 +17,6 @@ jobs:
 
   audit:
     uses: ./.github/workflows/_audit.yml
+
+  knip:
+    uses: ./.github/workflows/_knip.yml
