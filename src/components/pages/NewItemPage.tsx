@@ -4,15 +4,20 @@ import { ArrowLeft, PackagePlus } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Spinner } from "@/components/atoms/Spinner";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
-import { findActiveItemByBarcode, useCreateItem } from "@/hooks/useItems";
+import { findActiveItemByBarcode, useCreateItem, useItem } from "@/hooks/useItems";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import type { Item, ItemFormValues } from "@/types/item";
 
-export const NewItemPage = () => {
+interface NewItemPageProps {
+  cloneFrom?: string;
+}
+
+export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const { t } = useTranslation("items");
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -22,6 +27,8 @@ export const NewItemPage = () => {
   const pendingImageUrlRef = useRef<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingItem, setExistingItem] = useState<Item | null>(null);
+
+  const { data: cloneSource, isLoading: isCloneLoading } = useItem(cloneFrom ?? "");
 
   const handleBarcodeScanned = async (barcode: string, source: "db" | "api" | null) => {
     if (source !== "db") {
@@ -62,7 +69,7 @@ export const NewItemPage = () => {
         toast(t("stackSuccess"), "success");
         void navigate({ to: "/items/$itemId", params: { itemId: item.id } });
       } else {
-        toast(t("createSuccess"), "success");
+        toast(cloneFrom ? t("cloneSuccess") : t("createSuccess"), "success");
         void navigate({ to: "/" });
       }
     } catch {
@@ -72,13 +79,36 @@ export const NewItemPage = () => {
     }
   };
 
+  const cloneDefaultValues: Partial<ItemFormValues> | undefined = cloneSource
+    ? {
+        name: cloneSource.name,
+        barcode: cloneSource.barcode ?? "",
+        category_id: cloneSource.category_id,
+        storage_location_id: cloneSource.storage_location_id,
+        content_amount: cloneSource.content_amount,
+        content_unit: cloneSource.content_unit,
+        units: 1,
+        purchase_date: "",
+        expiry_date: "",
+        notes: "",
+      }
+    : undefined;
+
+  if (cloneFrom && isCloneLoading) {
+    return (
+      <div className="flex min-h-[200px] items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold">{t("addItem")}</h1>
+        <h1 className="text-xl font-bold">{cloneFrom ? t("cloneItem") : t("addItem")}</h1>
       </div>
 
       {existingItem && (
@@ -108,6 +138,7 @@ export const NewItemPage = () => {
           void handleBarcodeScanned(barcode, source);
         }}
         submitLabel={existingItem ? t("stackSubmitLabel") : undefined}
+        defaultValues={cloneDefaultValues}
       />
     </div>
   );

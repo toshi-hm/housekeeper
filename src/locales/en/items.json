@@ -126,5 +126,7 @@
   "consumeAll": "Use all ({{amount}}{{unit}})",
   "consumeAllTitle": "Use all stock",
   "consumeAllConfirm": "Use all stock in this lot ({{amount}}{{unit}})?",
-  "consumeAllConfirmLabel": "Use all"
+  "consumeAllConfirmLabel": "Use all",
+  "cloneItem": "Duplicate Item",
+  "cloneSuccess": "Item duplicated and added"
 }
