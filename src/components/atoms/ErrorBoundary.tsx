@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +12,18 @@ interface State {
   hasError: boolean;
   error: Error | null;
 }
+
+const ErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
+  const { t } = useTranslation("common");
+  return (
+    <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 p-6 text-center">
+      <p className="text-sm text-gray-500">{t("unknownError")}</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        {t("retry")}
+      </Button>
+    </div>
+  );
+};
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
@@ -30,18 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
   override render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
-      return (
-        <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 p-6 text-center">
-          <p className="text-sm text-gray-500">エラーが発生しました</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => this.setState({ hasError: false, error: null })}
-          >
-            再試行
-          </Button>
-        </div>
-      );
+      return <ErrorFallback onRetry={() => this.setState({ hasError: false, error: null })} />;
     }
     return this.props.children;
   }
