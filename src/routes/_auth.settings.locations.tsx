@@ -113,6 +113,7 @@ const LocationsPage = () => {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t("locationName")}
+          disabled={createLocation.isPending}
           onKeyDown={(e) => {
             if (e.key === "Enter") void handleCreate();
           }}
@@ -146,6 +147,7 @@ const LocationsPage = () => {
                     onChange={(e) => setEditName(e.target.value)}
                     className="flex-1"
                     autoFocus
+                    disabled={updateLocation.isPending}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") void handleUpdate();
                     }}
@@ -155,6 +157,7 @@ const LocationsPage = () => {
                     onClick={() => {
                       void handleUpdate();
                     }}
+                    disabled={updateLocation.isPending || !editName.trim()}
                   >
                     {tc("save")}
                   </Button>

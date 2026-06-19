@@ -42,7 +42,11 @@ export const ConfirmDialog = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onCancel} aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={() => !isConfirming && onCancel()}
+        aria-hidden="true"
+      />
       <div
         role="alertdialog"
         aria-modal="true"

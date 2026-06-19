@@ -30,3 +30,15 @@ export const Closed: Story = {
     onCancel: () => {},
   },
 };
+
+export const IsConfirming: Story = {
+  args: {
+    open: true,
+    title: "削除の確認",
+    message: "このアイテムを削除しますか？この操作は取り消せません。",
+    confirmLabel: "削除",
+    isConfirming: true,
+    onConfirm: () => {},
+    onCancel: () => {},
+  },
+};
