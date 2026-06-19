@@ -13,6 +13,7 @@ import { useConsumeItem } from "@/hooks/useConsumeItem";
 import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { updateAppBadge } from "@/lib/pwa";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus, type Item } from "@/types/item";
 
@@ -126,6 +127,10 @@ const DashboardPage = () => {
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   ).length;
   const urgentCount = expiredCount + expiringSoonCount;
+
+  useEffect(() => {
+    void updateAppBadge(urgentCount);
+  }, [urgentCount]);
 
   const urgentItems = baseFiltered.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);

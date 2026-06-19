@@ -131,5 +131,9 @@
   "cloneSuccess": "Item duplicated and added",
   "defaultContentUnit": "piece",
   "lotUpdateFailed": "Item was updated, but the lot update failed",
-  "quickFilterAll": "All"
+  "quickFilterAll": "All",
+  "stackDialogTitle": "Matching item found",
+  "stackDialogBody": "\"{{name}}\" ({{units}} in stock) already exists. Stack as additional purchase?",
+  "stackDialogStack": "Stack to existing item",
+  "stackDialogCreateNew": "Register as new item"
 }

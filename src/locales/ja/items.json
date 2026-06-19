@@ -130,5 +130,9 @@
   "cloneSuccess": "複製して在庫を追加しました",
   "defaultContentUnit": "個",
   "lotUpdateFailed": "在庫情報は更新されましたが、ロット情報の更新に失敗しました",
-  "quickFilterAll": "すべて"
+  "quickFilterAll": "すべて",
+  "stackDialogTitle": "同一バーコードの商品が見つかりました",
+  "stackDialogBody": "「{{name}}」（現在{{units}}点）が既に在庫にあります。追加購入としてスタックしますか？",
+  "stackDialogStack": "既存アイテムにスタック",
+  "stackDialogCreateNew": "新規アイテムとして登録"
 }

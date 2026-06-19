@@ -198,16 +198,24 @@ const tryReviveItem = async (
   return revived as Item;
 };
 
-const createItem = async (
-  values: ItemFormValues,
-): Promise<Item & { _revived?: boolean; _stacked?: boolean }> => {
+interface CreateItemInput {
+  values: ItemFormValues;
+  forceNew?: boolean;
+}
+
+const createItem = async ({
+  values,
+  forceNew = false,
+}: CreateItemInput): Promise<Item & { _revived?: boolean; _stacked?: boolean }> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
   if (values.barcode) {
-    const stacked = await tryStackToActiveItem(values.barcode, values, userData.user.id);
-    if (stacked) return { ...stacked, _stacked: true };
+    if (!forceNew) {
+      const stacked = await tryStackToActiveItem(values.barcode, values, userData.user.id);
+      if (stacked) return { ...stacked, _stacked: true };
+    }
 
     const revived = await tryReviveItem(values.barcode, values, userData.user.id);
     if (revived) return { ...revived, _revived: true };
@@ -302,7 +310,7 @@ export const useCreateItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation(["common", "calendar", "items"]);
-  return useMutation({
+  return useMutation<Item & { _revived?: boolean; _stacked?: boolean }, Error, CreateItemInput>({
     mutationFn: createItem,
     onSuccess: async (data) => {
       const result = data as Item & { _revived?: boolean; _stacked?: boolean };
