@@ -1,7 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { z } from "zod";
 
 import { Spinner } from "@/components/atoms/Spinner";
 import { ItemCard } from "@/components/molecules/ItemCard";
@@ -15,6 +16,13 @@ import { useUserSettings } from "@/hooks/useUserSettings";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus, type Item } from "@/types/item";
 
+const dashboardSearchSchema = z.object({
+  q: z.string().optional().default(""),
+  cat: z.string().optional().default(""),
+  loc: z.string().optional().default(""),
+  expiry: z.string().optional().default(""),
+});
+
 const DashboardPage = () => {
   const { t } = useTranslation("items");
   const { t: tc } = useTranslation("common");
@@ -24,11 +32,19 @@ const DashboardPage = () => {
   const warningDays = userSettings?.expiry_warning_days;
   const consumeItem = useConsumeItem();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const [search, setSearch] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [locationId, setLocationId] = useState("");
-  const [expiryFilter, setExpiryFilter] = useState("");
+  const { q: search, cat: categoryId, loc: locationId, expiry: expiryFilter } = Route.useSearch();
+
+  const setSearch = (v: string) =>
+    void navigate({ to: "/", search: (prev) => ({ ...prev, q: v }), replace: true });
+  const setCategoryId = (v: string) =>
+    void navigate({ to: "/", search: (prev) => ({ ...prev, cat: v }), replace: true });
+  const setLocationId = (v: string) =>
+    void navigate({ to: "/", search: (prev) => ({ ...prev, loc: v }), replace: true });
+  const setExpiryFilter = (v: string) =>
+    void navigate({ to: "/", search: (prev) => ({ ...prev, expiry: v }), replace: true });
+
   const [sort, setSort] = useState<ItemSortKey>(
     () => (localStorage.getItem("dashboard.sort") as ItemSortKey) ?? "created_at",
   );
@@ -359,5 +375,6 @@ const DashboardPage = () => {
 };
 
 export const Route = createFileRoute("/_auth/")({
+  validateSearch: dashboardSearchSchema,
   component: DashboardPage,
 });
