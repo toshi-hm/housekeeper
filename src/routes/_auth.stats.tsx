@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
-import { Spinner } from "@/components/atoms/Spinner";
+import { Skeleton } from "@/components/atoms/Skeleton";
 import { CategoryChart } from "@/components/organisms/CategoryChart";
 import { ConsumptionChart } from "@/components/organisms/ConsumptionChart";
 import { ExpiryChart } from "@/components/organisms/ExpiryChart";
@@ -31,8 +31,13 @@ const ChartCard = ({
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex min-h-[160px] items-center justify-center">
-            <Spinner />
+          <div className="space-y-2 py-2">
+            <Skeleton className="h-[120px] w-full rounded-md" />
+            <div className="flex justify-center gap-4">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-16" />
+            </div>
           </div>
         ) : isError ? (
           <div className="flex min-h-[160px] items-center justify-center rounded-lg border border-destructive p-4 text-center text-destructive">
