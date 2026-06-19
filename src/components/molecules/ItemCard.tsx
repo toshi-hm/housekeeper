@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
+import { Spinner } from "@/components/atoms/Spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { parseLocalDate } from "@/lib/dateUtils";
@@ -106,7 +107,11 @@ export const ItemCard = ({
                   onQuickConsume(item);
                 }}
               >
-                <Minus className="h-3.5 w-3.5" />
+                {isQuickConsuming ? (
+                  <Spinner className="h-3.5 w-3.5" />
+                ) : (
+                  <Minus className="h-3.5 w-3.5" />
+                )}
               </Button>
             )}
             <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />

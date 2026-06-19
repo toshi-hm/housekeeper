@@ -19,3 +19,7 @@ export const Small: Story = {
 export const Large: Story = {
   args: { className: "h-12 w-12" },
 };
+
+export const WithCustomLabel: Story = {
+  args: { label: "読み込み中" },
+};
