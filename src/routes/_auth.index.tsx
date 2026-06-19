@@ -63,8 +63,9 @@ const DashboardPage = () => {
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   const locationMap = Object.fromEntries(locations.map((l) => [l.id, l.name]));
 
-  const filtered = items.filter((item) => {
-    if (hideEmpty && item.units === 0) return false;
+  const baseFiltered = items.filter((item) => !hideEmpty || item.units > 0);
+
+  const filtered = baseFiltered.filter((item) => {
     if (expiryFilter && expiryFilter !== "all") {
       const status = getExpiryStatus(item.expiry_date, warningDays);
       if (status !== expiryFilter) return false;
@@ -72,11 +73,18 @@ const DashboardPage = () => {
     return true;
   });
 
-  const urgentItems = filtered.filter((item) => {
+  const expiredCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
+  ).length;
+  const expiringSoonCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
+  ).length;
+  const urgentCount = expiredCount + expiringSoonCount;
+
+  const urgentItems = baseFiltered.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
   });
-  const urgentCount = urgentItems.length;
   const expiredItems = urgentItems.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
   );
@@ -185,6 +193,48 @@ const DashboardPage = () => {
           <SlidersHorizontal className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Quick filter chips */}
+      {(expiredCount > 0 || expiringSoonCount > 0) && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setExpiryFilter("")}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              !expiryFilter || expiryFilter === "all"
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background text-foreground hover:bg-muted"
+            }`}
+          >
+            {t("quickFilterAll")} ({baseFiltered.length})
+          </button>
+          {expiredCount > 0 && (
+            <button
+              onClick={() => setExpiryFilter(expiryFilter === "expired" ? "" : "expired")}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                expiryFilter === "expired"
+                  ? "border-destructive bg-destructive text-destructive-foreground"
+                  : "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
+              }`}
+            >
+              {t("expiryStatus.expired")} ({expiredCount})
+            </button>
+          )}
+          {expiringSoonCount > 0 && (
+            <button
+              onClick={() =>
+                setExpiryFilter(expiryFilter === "expiring-soon" ? "" : "expiring-soon")
+              }
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                expiryFilter === "expiring-soon"
+                  ? "border-yellow-600 bg-yellow-500 text-white"
+                  : "border-yellow-400/50 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
+              }`}
+            >
+              {t("expiryStatus.expiring-soon")} ({expiringSoonCount})
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Filter panel */}
       {showFilters && (
