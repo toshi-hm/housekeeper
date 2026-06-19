@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Tag } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { LanguageToggle } from "@/components/atoms/LanguageToggle";
@@ -21,6 +22,13 @@ const SettingsPage = () => {
   const { data: settings, isLoading } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
   const { toast } = useToast();
+  const [warningDays, setWarningDays] = useState<string>("");
+
+  useEffect(() => {
+    if (settings?.expiry_warning_days !== undefined) {
+      setWarningDays(String(settings.expiry_warning_days));
+    }
+  }, [settings?.expiry_warning_days]);
 
   const handleLanguageChange = async (lang: "ja" | "en") => {
     try {
@@ -90,10 +98,11 @@ const SettingsPage = () => {
                 type="number"
                 min={0}
                 max={30}
-                defaultValue={settings?.expiry_warning_days ?? 3}
+                value={warningDays}
                 className="w-24"
-                onBlur={(e) => {
-                  void handleWarningDaysChange(parseInt(e.target.value, 10));
+                onChange={(e) => setWarningDays(e.target.value)}
+                onBlur={() => {
+                  void handleWarningDaysChange(parseInt(warningDays, 10));
                 }}
               />
               <Label>{t("daysBefore")}</Label>
