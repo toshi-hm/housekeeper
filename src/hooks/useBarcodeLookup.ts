@@ -1,14 +1,9 @@
 import { useState } from "react";
 
 import { supabase } from "@/lib/supabase";
+import type { BarcodeLookupResult, BarcodeLookupSource, ProductInfo } from "@/types/barcode";
 
-export interface ProductInfo {
-  name: string;
-  /** External image URL (from barcode API). Use onPendingImageUrlChange to download & upload. */
-  image_url?: string;
-  description?: string;
-  brand?: string;
-}
+export type { BarcodeLookupResult, BarcodeLookupSource, ProductInfo };
 
 interface LookupResult {
   product: {
@@ -22,13 +17,6 @@ interface LookupResult {
 interface ItemLookupRow {
   name: string;
   image_path: string | null;
-}
-
-export type BarcodeLookupSource = "db" | "api";
-
-export interface BarcodeLookupResult {
-  product: ProductInfo | null;
-  source: BarcodeLookupSource | null;
 }
 
 export const useBarcodeLookup = () => {

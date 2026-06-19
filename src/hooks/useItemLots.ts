@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import { computeConsumption, type Item, type ItemLot } from "@/types/item";
+import { computeConsumption, type ConsumeLotParams, type ItemLot } from "@/types/item";
 
 export const LOTS_KEY = ["item-lots"] as const;
 
@@ -102,12 +102,6 @@ export const syncItemAggregate = async (itemId: string): Promise<void> => {
     .eq("id", itemId);
   if (updateError) throw updateError;
 };
-
-interface ConsumeLotParams {
-  lot: ItemLot;
-  item: Pick<Item, "content_amount" | "content_unit">;
-  deltaAmount: number;
-}
 
 export const consumeLot = async ({
   lot,

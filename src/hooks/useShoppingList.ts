@@ -6,35 +6,12 @@ import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 import type { Item, ItemFormValues } from "@/types/item";
-
-type ShoppingStatus = "planned" | "purchased";
-
-interface ShoppingItem {
-  id: string;
-  user_id: string;
-  name: string;
-  desired_units: number;
-  note: string | null;
-  linked_item_id: string | null;
-  status: ShoppingStatus;
-  purchased_at: string | null;
-  created_item_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface UpsertShoppingItemInput {
-  id?: string;
-  name: string;
-  desired_units?: number;
-  note?: string | null;
-  linked_item_id?: string | null;
-}
-
-interface PurchaseInput {
-  shoppingItemId: string;
-  itemValues: ItemFormValues;
-}
+import type {
+  PurchaseInput,
+  ShoppingItem,
+  ShoppingStatus,
+  UpsertShoppingItemInput,
+} from "@/types/shopping";
 
 const QUERY_KEY = "shopping";
 

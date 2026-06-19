@@ -1,182 +1,25 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 
 import { CalendarPage } from "@/components/pages/CalendarPage";
-import { LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { useCalendarConsume } from "@/hooks/useCalendarConsume";
 import { useItemsWithExpiry } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
-import { OfflineError, requireOnline } from "@/lib/requireOnline";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/lib/toast-context";
-import type { Item } from "@/types/item";
 
-interface PendingLotRemoval {
-  lotId: string;
-  itemId: string;
-  itemName: string;
-  units: number;
-  openedRemaining: number | null;
-  logId: string | null;
-}
-
-/**
- * カレンダーの「消費済み」チェック操作での消費量を計算する。
- * opened_remaining がある場合は開封済み分の残量も含める。
- */
-export const computeCalendarDelta = (
-  units: number,
-  openedRemaining: number | null,
-  contentAmount: number,
-): number => {
-  if (openedRemaining !== null) {
-    return Math.max(0, units - 1) * contentAmount + openedRemaining;
-  }
-  return units * contentAmount;
-};
+export { computeCalendarDelta } from "@/types/calendar";
 
 const CalendarRoutePage = () => {
-  const qc = useQueryClient();
   const { data: items = [], isLoading } = useItemsWithExpiry();
   const { data: categories = [] } = useCategories();
-  const [pendingRemovals, setPendingRemovals] = useState<Record<string, PendingLotRemoval>>({});
-  const { toast } = useToast();
-  const { t } = useTranslation("common");
-  const { t: tc } = useTranslation("calendar");
-
-  const handleCheck = async (item: Item) => {
-    try {
-      requireOnline();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { data: lots, error } = await supabase
-        .from("item_lots")
-        .select("id, units, opened_remaining, expiry_date")
-        .eq("item_id", item.id)
-        .order("expiry_date", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-      const targetLot = (lots ?? []).find((lot) => {
-        if (lot.units <= 0 && lot.opened_remaining === null) return false;
-        if (!lot.expiry_date) return false;
-        const [y, m, d] = lot.expiry_date.split("-").map(Number) as [number, number, number];
-        const exp = new Date(y, m - 1, d);
-        return exp <= monthEnd;
-      });
-
-      if (!targetLot) {
-        toast(tc("noEligibleLot"), "warning");
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from("item_lots")
-        .update({ units: 0, opened_remaining: null, updated_at: new Date().toISOString() })
-        .eq("id", targetLot.id);
-      if (updateError) throw updateError;
-
-      // 消費ログを記録（non-fatal: ロット更新は完了しているためエラーを無視）
-      const deltaAmount = computeCalendarDelta(
-        targetLot.units,
-        targetLot.opened_remaining,
-        item.content_amount,
-      );
-      const { data: logData } = await supabase
-        .from("consumption_logs")
-        .insert({
-          user_id: user.id,
-          item_id: item.id,
-          delta_amount: deltaAmount,
-          delta_unit: item.content_unit,
-          units_before: targetLot.units,
-          units_after: 0,
-          opened_remaining_before: targetLot.opened_remaining,
-          opened_remaining_after: null,
-        })
-        .select("id")
-        .single();
-
-      await syncItemAggregate(item.id);
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["items"] }),
-        qc.invalidateQueries({ queryKey: [...LOTS_KEY, item.id] }),
-        qc.invalidateQueries({ queryKey: ["consumption-logs", item.id] }),
-        qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
-      ]);
-      setPendingRemovals((prev) => ({
-        ...prev,
-        [item.id]: {
-          lotId: targetLot.id,
-          itemId: item.id,
-          itemName: item.name,
-          units: targetLot.units,
-          openedRemaining: targetLot.opened_remaining,
-          logId: logData?.id ?? null,
-        },
-      }));
-    } catch (err) {
-      toast(err instanceof OfflineError ? t("offlineError") : t("unknownError"), "error");
-      throw err;
-    }
-  };
-
-  const handleUndo = async (itemId: string) => {
-    try {
-      requireOnline();
-      const pending = pendingRemovals[itemId];
-      if (!pending) return;
-      const { error } = await supabase
-        .from("item_lots")
-        .update({
-          units: pending.units,
-          opened_remaining: pending.openedRemaining,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", pending.lotId);
-      if (error) throw error;
-
-      // 消費ログを削除（non-fatal: ロット復元は完了しているためエラーを無視）
-      if (pending.logId) {
-        await supabase.from("consumption_logs").delete().eq("id", pending.logId);
-      }
-
-      await syncItemAggregate(pending.itemId);
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["items"] }),
-        qc.invalidateQueries({ queryKey: [...LOTS_KEY, pending.itemId] }),
-        qc.invalidateQueries({ queryKey: ["consumption-logs", pending.itemId] }),
-        qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
-      ]);
-      setPendingRemovals((prev) => {
-        const next = { ...prev };
-        delete next[itemId];
-        return next;
-      });
-    } catch (err) {
-      toast(err instanceof OfflineError ? t("offlineError") : t("unknownError"), "error");
-    }
-  };
+  const { check, undo, pendingRemovalList } = useCalendarConsume();
 
   return (
     <CalendarPage
       items={items}
       categories={categories}
       isLoading={isLoading}
-      onCheck={handleCheck}
-      onUndo={handleUndo}
-      pendingRemovals={Object.values(pendingRemovals).map(({ itemId, itemName }) => ({
-        itemId,
-        itemName,
-      }))}
+      onCheck={check}
+      onUndo={undo}
+      pendingRemovals={pendingRemovalList}
     />
   );
 };

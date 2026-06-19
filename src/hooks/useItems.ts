@@ -6,17 +6,9 @@ import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import type { Item, ItemFormValues } from "@/types/item";
+import type { Item, ItemFilters, ItemFormValues, ItemSortKey } from "@/types/item";
 
-/** Filters applied server-side (Supabase query). Client-only filters such as
- *  expiryStatus and hideEmpty are handled by the caller after fetching. */
-export interface ItemFilters {
-  search?: string;
-  categoryId?: string;
-  storageLocationId?: string;
-}
-
-export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";
+export type { ItemFilters, ItemSortKey };
 
 const ITEMS_KEY = ["items"] as const;
 
