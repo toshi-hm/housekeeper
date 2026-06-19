@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, Plus, Search, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
@@ -15,6 +15,8 @@ import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus, type Item } from "@/types/item";
+
+const PAGE_SIZE = 40;
 
 const dashboardSearchSchema = z.object({
   q: z.string().optional().default(""),
@@ -88,6 +90,34 @@ const DashboardPage = () => {
     }
     return true;
   });
+
+  const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${hideEmpty}|${sort}`;
+  const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+  const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset pagination when filters change (render-phase state update per React docs)
+  if (prevFiltersKey !== filtersKey) {
+    setPrevFiltersKey(filtersKey);
+    setDisplayCount(PAGE_SIZE);
+  }
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setDisplayCount((prev) => Math.min(prev + PAGE_SIZE, filtered.length));
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filtered.length]);
+
+  const visibleItems = filtered.slice(0, displayCount);
 
   const expiredCount = baseFiltered.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
@@ -352,23 +382,26 @@ const DashboardPage = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
-              locationName={
-                item.storage_location_id ? locationMap[item.storage_location_id] : undefined
-              }
-              warningDays={warningDays}
-              isQuickConsuming={quickConsumingId === item.id}
-              onQuickConsume={(i) => {
-                void handleQuickConsume(i);
-              }}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {visibleItems.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
+                locationName={
+                  item.storage_location_id ? locationMap[item.storage_location_id] : undefined
+                }
+                warningDays={warningDays}
+                isQuickConsuming={quickConsumingId === item.id}
+                onQuickConsume={(i) => {
+                  void handleQuickConsume(i);
+                }}
+              />
+            ))}
+          </div>
+          <div ref={sentinelRef} className="h-1" />
+        </>
       )}
     </div>
   );
