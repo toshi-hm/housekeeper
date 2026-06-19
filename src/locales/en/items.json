@@ -130,5 +130,6 @@
   "cloneItem": "Duplicate Item",
   "cloneSuccess": "Item duplicated and added",
   "defaultContentUnit": "piece",
-  "lotUpdateFailed": "Item was updated, but the lot update failed"
+  "lotUpdateFailed": "Item was updated, but the lot update failed",
+  "quickFilterAll": "All"
 }
