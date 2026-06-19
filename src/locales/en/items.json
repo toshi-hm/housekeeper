@@ -129,5 +129,6 @@
   "consumeAllConfirmLabel": "Use all",
   "cloneItem": "Duplicate Item",
   "cloneSuccess": "Item duplicated and added",
-  "defaultContentUnit": "piece"
+  "defaultContentUnit": "piece",
+  "lotUpdateFailed": "Item was updated, but the lot update failed"
 }

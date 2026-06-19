@@ -47,16 +47,24 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
       const oldImagePath = item?.image_path ?? null;
       await updateItem.mutateAsync(values);
       if (selectedLot) {
-        await updateLot.mutateAsync({
-          lotId: selectedLot.id,
-          itemId,
-          values: {
-            units: values.units,
-            opened_remaining: values.opened_remaining ?? null,
-            purchase_date: values.purchase_date ?? null,
-            expiry_date: values.expiry_date ?? null,
-          },
-        });
+        try {
+          await updateLot.mutateAsync({
+            lotId: selectedLot.id,
+            itemId,
+            values: {
+              units: values.units,
+              opened_remaining: values.opened_remaining ?? null,
+              purchase_date: values.purchase_date ?? null,
+              expiry_date: values.expiry_date ?? null,
+            },
+          });
+        } catch {
+          // Item was updated but lot update failed — show warning and navigate
+          toast(t("lotUpdateFailed"), "warning");
+          await qc.invalidateQueries({ queryKey: ["items"] });
+          void navigate({ to: "/items/$itemId", params: { itemId } });
+          return;
+        }
       }
       const pendingFile = pendingFileRef.current;
       const pendingImageUrl = pendingImageUrlRef.current;
