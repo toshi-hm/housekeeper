@@ -40,5 +40,7 @@
   "navStats": "Stats",
   "navSettings": "Settings",
   "navCalendar": "Calendar",
-  "navSignOut": "Sign Out"
+  "navSignOut": "Sign Out",
+  "notFound": "404 — Page not found",
+  "goHome": "Go home"
 }
