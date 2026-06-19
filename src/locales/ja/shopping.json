@@ -29,5 +29,7 @@
   "editSuccess": "更新しました",
   "editCancel": "キャンセル",
   "editSave": "保存",
-  "desiredUnitsLabel": "希望数量"
+  "desiredUnitsLabel": "希望数量",
+  "share": "共有",
+  "shareShoppingList": "買い物リストを共有"
 }
