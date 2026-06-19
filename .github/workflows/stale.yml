@@ -1,0 +1,42 @@
+name: Stale Issues and PRs
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    name: Mark and Close Stale Items
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          stale-issue-message: >
+            このIssueは30日間アクティビティがないため stale ラベルが付与されました。
+            さらに7日間アクティビティがない場合は自動クローズされます。
+            引き続き対応予定の場合はコメントを追加してください。
+          close-issue-message: >
+            長期間アクティビティがないためクローズしました。
+            再対応が必要な場合は再オープンしてください。
+          days-before-issue-stale: 30
+          days-before-issue-close: 7
+          stale-issue-label: "stale"
+
+          stale-pr-message: >
+            このPRは30日間アクティビティがないため stale ラベルが付与されました。
+            さらに14日間アクティビティがない場合は自動クローズされます。
+          close-pr-message: >
+            長期間アクティビティがないためクローズしました。
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-pr-label: "stale"
+
+          exempt-issue-labels: "phase/backlog,pinned,security"
+          exempt-pr-labels: "pinned"
