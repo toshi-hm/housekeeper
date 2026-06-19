@@ -210,30 +210,59 @@ export const usePurchaseShoppingItem = () => {
         }
       }
 
-      // バーコードなし or 既存アイテムなし → 新規作成
+      // バーコードなし or 既存アイテムなし → 新規作成（冪等化）
+      // created_item_id が既に設定されている場合はリトライ: 同じIDでupsert
+      const { data: shoppingRow } = await supabase
+        .from("shopping_list_items")
+        .select("created_item_id")
+        .eq("id", shoppingItemId)
+        .maybeSingle();
+      const reservedItemId = shoppingRow?.created_item_id ?? null;
+      const newItemId = reservedItemId ?? crypto.randomUUID();
+
+      // アイテム作成前に created_item_id を予約（失敗時のリトライで重複作成を防ぐ）
+      if (!reservedItemId) {
+        await supabase
+          .from("shopping_list_items")
+          .update({ created_item_id: newItemId })
+          .eq("id", shoppingItemId);
+      }
+
       const { data: newItem, error: itemError } = await supabase
         .from("items")
-        .insert({
-          user_id: user.id,
-          name: itemValues.name,
-          barcode: itemValues.barcode ?? null,
-          category_id: itemValues.category_id ?? null,
-          storage_location_id: itemValues.storage_location_id ?? null,
-          units: itemValues.units,
-          content_amount: itemValues.content_amount,
-          content_unit: itemValues.content_unit,
-          opened_remaining: itemValues.opened_remaining ?? null,
-          purchase_date: itemValues.purchase_date ?? null,
-          expiry_date: itemValues.expiry_date ?? null,
-          notes: itemValues.notes ?? null,
-        })
+        .upsert(
+          {
+            id: newItemId,
+            user_id: user.id,
+            name: itemValues.name,
+            barcode: itemValues.barcode ?? null,
+            category_id: itemValues.category_id ?? null,
+            storage_location_id: itemValues.storage_location_id ?? null,
+            units: itemValues.units,
+            content_amount: itemValues.content_amount,
+            content_unit: itemValues.content_unit,
+            opened_remaining: itemValues.opened_remaining ?? null,
+            purchase_date: itemValues.purchase_date ?? null,
+            expiry_date: itemValues.expiry_date ?? null,
+            notes: itemValues.notes ?? null,
+          },
+          { onConflict: "id" },
+        )
         .select()
         .single();
       if (itemError) throw new Error(itemError.message);
 
-      // Fix #211: 新規アイテムのロットを作成
-      await createLot(user.id, newItem.id, lotValuesFromForm(itemValues));
+      // Fix #211: ロットが未作成の場合のみ追加（リトライ時の重複を防ぐ）
+      const { data: existingLots } = await supabase
+        .from("item_lots")
+        .select("id")
+        .eq("item_id", newItemId)
+        .limit(1);
+      if (!existingLots || existingLots.length === 0) {
+        await createLot(user.id, newItem.id, lotValuesFromForm(itemValues));
+      }
 
+      await syncItemAggregate(newItem.id);
       await markShoppingItemPurchased(shoppingItemId, newItem.id);
 
       return newItem as Item;
