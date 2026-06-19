@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { z } from "zod";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
@@ -44,10 +45,15 @@ const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; val
   </div>
 );
 
+const tabSchema = z.object({
+  tab: z.enum(["info", "lots", "history"]).optional().default("info"),
+});
+
 const ItemDetailPage = () => {
   const { t, i18n } = useTranslation("items");
   const { t: tc } = useTranslation("common");
   const { itemId } = Route.useParams();
+  const { tab: detailTab } = Route.useSearch();
   const navigate = useNavigate();
   const matches = useRouterState({ select: (s) => s.matches });
   const isChildActive = matches.some(
@@ -64,7 +70,10 @@ const ItemDetailPage = () => {
   const { data: logs = [] } = useConsumptionLogs(itemId);
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [detailTab, setDetailTab] = useState<"info" | "lots" | "history">("info");
+
+  const setDetailTab = (tab: "info" | "lots" | "history") => {
+    void navigate({ to: "/items/$itemId", params: { itemId }, search: { tab } });
+  };
 
   const handleRestock = async () => {
     if (!item) return;
@@ -441,5 +450,6 @@ const ItemDetailPage = () => {
 };
 
 export const Route = createFileRoute("/_auth/items/$itemId")({
+  validateSearch: tabSchema,
   component: ItemDetailPage,
 });
