@@ -20,5 +20,9 @@
   "notifications": "通知設定",
   "saveSuccess": "設定を保存しました",
   "storageLocations": "保管場所管理",
+  "theme": "テーマ",
+  "themeDark": "ダーク",
+  "themeLight": "ライト",
+  "themeSystem": "システム設定に合わせる",
   "title": "設定"
 }

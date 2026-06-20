@@ -20,5 +20,9 @@
   "notifications": "Notification Settings",
   "saveSuccess": "Settings saved",
   "storageLocations": "Storage Location Management",
+  "theme": "Theme",
+  "themeDark": "Dark",
+  "themeLight": "Light",
+  "themeSystem": "System",
   "title": "Settings"
 }
