@@ -89,6 +89,8 @@
   "productNotFound": "No matching product found",
   "productSearching": "Searching for product...",
   "purchaseDate": "Purchase Date",
+  "qrCode": "QR Code",
+  "qrPrint": "Print",
   "quickConsume": "Use 1 unit",
   "quickConsumeSuccess": "Used 1 {{name}}",
   "quickFilterAll": "All",
