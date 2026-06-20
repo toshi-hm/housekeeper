@@ -10,22 +10,27 @@ interface QRCodeDialogProps {
   onClose: () => void;
 }
 
-const QRCodeCanvas = ({ value }: { value: string }) => {
-  const ref = useRef<HTMLCanvasElement>(null);
-
+const QRCodeCanvas = ({
+  value,
+  canvasRef,
+}: {
+  value: string;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+}) => {
   useEffect(() => {
-    if (!ref.current) return;
-    void QRCode.toCanvas(ref.current, value, { width: 240, margin: 2 });
-  }, [value]);
+    if (!canvasRef.current) return;
+    void QRCode.toCanvas(canvasRef.current, value, { width: 240, margin: 2 });
+  }, [value, canvasRef]);
 
-  return <canvas ref={ref} />;
+  return <canvas ref={canvasRef} />;
 };
 
 export const QRCodeDialog = ({ value, title, onClose }: QRCodeDialogProps) => {
   const { t } = useTranslation("items");
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handlePrint = () => {
-    const canvas = document.querySelector<HTMLCanvasElement>("#qr-print-canvas");
+    const canvas = canvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
     const win = window.open("", "_blank");
@@ -49,9 +54,7 @@ export const QRCodeDialog = ({ value, title, onClose }: QRCodeDialogProps) => {
       >
         <h2 className="text-center text-base font-semibold">{title}</h2>
         <div className="flex justify-center">
-          <div id="qr-print-canvas">
-            <QRCodeCanvas value={value} />
-          </div>
+          <QRCodeCanvas value={value} canvasRef={canvasRef} />
         </div>
         <p className="break-all text-center text-xs text-muted-foreground">{value}</p>
         <div className="flex flex-col gap-2">
