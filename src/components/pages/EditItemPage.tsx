@@ -170,6 +170,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           expiry_date: selectedLot?.expiry_date ?? item.expiry_date ?? undefined,
           notes: item.notes ?? undefined,
           image_path: item.image_path ?? undefined,
+          minimum_stock: item.minimum_stock ?? null,
         }}
         onSubmit={(values) => {
           void handleSubmit(values);

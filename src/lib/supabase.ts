@@ -83,6 +83,7 @@ export interface Database {
           expiry_date: string | null;
           notes: string | null;
           image_path: string | null;
+          minimum_stock: number | null;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -102,6 +103,7 @@ export interface Database {
           expiry_date?: string | null;
           notes?: string | null;
           image_path?: string | null;
+          minimum_stock?: number | null;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -121,6 +123,7 @@ export interface Database {
           expiry_date?: string | null;
           notes?: string | null;
           image_path?: string | null;
+          minimum_stock?: number | null;
           deleted_at?: string | null;
           updated_at?: string;
         };
