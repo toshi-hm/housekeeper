@@ -1,9 +1,11 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import React from "react";
+import { I18nextProvider } from "react-i18next";
 
 import * as useNotifModule from "@/hooks/useNotificationPreferences";
 import * as useUserSettingsModule from "@/hooks/useUserSettings";
+import i18n from "@/lib/i18n";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
 
 // Import routerContext via internal path (not public export) to provide a
@@ -67,7 +69,9 @@ const Wrapper =
   (toastStub: ToastContextValue) =>
   ({ children }: { children: React.ReactNode }) => (
     <routerContext.Provider value={stubRouter}>
-      <ToastContext.Provider value={toastStub}>{children}</ToastContext.Provider>
+      <I18nextProvider i18n={i18n}>
+        <ToastContext.Provider value={toastStub}>{children}</ToastContext.Provider>
+      </I18nextProvider>
     </routerContext.Provider>
   );
 
@@ -76,6 +80,10 @@ describe("SettingsPage - expiryWarningDays validation", () => {
   let updateSpy: ReturnType<typeof spyOn>;
   let notifSpy: ReturnType<typeof spyOn>;
   let updateNotifSpy: ReturnType<typeof spyOn>;
+
+  beforeAll(async () => {
+    await i18n.changeLanguage("ja");
+  });
 
   beforeEach(() => {
     settingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
@@ -114,7 +122,7 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     const input = getAllByRole("spinbutton")[0]!;
     fireEvent.blur(input, { target: { value: "31" } });
 
-    expect(toastFn).toHaveBeenCalledWith("invalidWarningDays", "error");
+    expect(toastFn).toHaveBeenCalledWith("警告日数は1〜30日の範囲で入力してください", "error");
   });
 
   it("shows error toast when value is 0 (below minimum)", () => {
@@ -124,7 +132,7 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     const input = getAllByRole("spinbutton")[0]!;
     fireEvent.blur(input, { target: { value: "0" } });
 
-    expect(toastFn).toHaveBeenCalledWith("invalidWarningDays", "error");
+    expect(toastFn).toHaveBeenCalledWith("警告日数は1〜30日の範囲で入力してください", "error");
   });
 
   it("shows error toast when value is not a number", () => {
@@ -134,7 +142,7 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     const input = getAllByRole("spinbutton")[0]!;
     fireEvent.blur(input, { target: { value: "abc" } });
 
-    expect(toastFn).toHaveBeenCalledWith("invalidWarningDays", "error");
+    expect(toastFn).toHaveBeenCalledWith("警告日数は1〜30日の範囲で入力してください", "error");
   });
 
   it("does not call updateSettings for invalid value above 30", async () => {
@@ -167,6 +175,6 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(mutateAsync).toHaveBeenCalledWith({ expiry_warning_days: 7 });
-    expect(toastFn).toHaveBeenCalledWith("saveSuccess", "success");
+    expect(toastFn).toHaveBeenCalledWith("設定を保存しました", "success");
   });
 });
