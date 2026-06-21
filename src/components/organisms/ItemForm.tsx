@@ -1,5 +1,5 @@
 import { Barcode, Loader2, Search } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ImageUploader } from "@/components/molecules/ImageUploader";
@@ -83,6 +83,12 @@ export const ItemForm = ({
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
   const [lookupSource, setLookupSource] = useState<"db" | "api" | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    };
+  }, [localPreviewUrl]);
 
   const { data: existingImageUrl } = useSignedItemImage(
     localPreviewUrl ? null : values.image_path || null,
