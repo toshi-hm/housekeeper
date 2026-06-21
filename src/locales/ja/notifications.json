@@ -1,13 +1,11 @@
 {
-  "title": "通知設定",
+  "daysBefore": "日前",
+  "emailAddress": "メールアドレス",
+  "emailEnabled": "メール通知",
+  "invalidEmailAddress": "有効なメールアドレスを入力してください",
+  "notifyAt": "通知時刻",
   "pushEnabled": "プッシュ通知",
   "pushNotSupported": "このブラウザはプッシュ通知に対応していません。メール通知をご利用ください。",
   "pushPermissionDenied": "プッシュ通知の許可が拒否されました",
-  "emailEnabled": "メール通知",
-  "emailAddress": "メールアドレス",
-  "thresholdDays": "通知する日数前",
-  "daysBefore": "日前",
-  "notifyAt": "通知時刻",
-  "saveSuccess": "通知設定を保存しました",
-  "invalidEmailAddress": "有効なメールアドレスを入力してください"
+  "thresholdDays": "通知する日数前"
 }

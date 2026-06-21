@@ -187,11 +187,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
               <Button variant="outline" onClick={handleDialogCreateNew} className="w-full">
                 {t("stackDialogCreateNew")}
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setShowStackDialog(false)}
-                className="w-full"
-              >
+              <Button variant="ghost" onClick={() => setShowStackDialog(false)} className="w-full">
                 {t("common:cancel")}
               </Button>
             </div>
