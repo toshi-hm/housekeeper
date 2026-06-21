@@ -6,26 +6,56 @@ import * as useNotifModule from "@/hooks/useNotificationPreferences";
 import * as useUserSettingsModule from "@/hooks/useUserSettings";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
 
-// Mock react-i18next so t(key) returns the key (no i18next instance needed)
-mock.module("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
+// Import routerContext via internal path (not public export) to provide a
+// minimal router stub so that useRouterState / useNavigate / Link don't throw.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { routerContext } from "../../node_modules/@tanstack/react-router/dist/esm/routerContext.js";
+import { SettingsPage } from "./_auth.settings";
 
-// Mock TanStack Router hooks/components that have complex router dependencies
-mock.module("@tanstack/react-router", () => ({
-  createFileRoute: () => () => ({ component: null }),
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) =>
-    React.createElement("a", { href: to }, children),
-  Outlet: () => null,
-  useNavigate: () => () => Promise.resolve(),
-  useRouterState: ({ select }: { select?: (s: { matches: unknown[] }) => unknown } = {}) => {
-    const state = { matches: [] as unknown[] };
-    return select ? select(state) : state;
+// Minimal router state — matches=[] ensures isChildActive is false.
+const routerState = {
+  status: "idle" as const,
+  isFetching: false,
+  matches: [] as unknown[],
+  pendingMatches: [] as unknown[],
+  cachedMatches: [] as unknown[],
+  location: { href: "/", pathname: "/", search: {}, searchStr: "", hash: "", state: {} },
+  resolvedLocation: { href: "/", pathname: "/", search: {}, searchStr: "", hash: "", state: {} },
+};
+
+const stubLocation = { href: "/", pathname: "/", search: {}, searchStr: "", hash: "", state: {} };
+
+const makeStubStore = <T,>(value: T) => ({
+  get: () => value,
+  subscribe: () => ({ unsubscribe: () => {} }),
+});
+
+// useStore (used by useRouterState + Link) needs atom.get() + atom.subscribe()
+const stubRouter = {
+  navigate: () => Promise.resolve(),
+  buildLocation: () => ({
+    href: "/",
+    pathname: "/",
+    search: {},
+    searchStr: "",
+    hash: "",
+    state: {},
+    publicHref: "/",
+    external: false,
+    maskedLocation: undefined,
+  }),
+  isServer: false,
+  basepath: "/",
+  options: { defaultStructuralSharing: false, defaultPreload: false },
+  protocolAllowlist: ["https", "http"],
+  state: routerState,
+  stores: {
+    __store: makeStubStore(routerState),
+    location: makeStubStore(stubLocation),
   },
-}));
-
-// Import after mocking
-const { SettingsPage } = await import("./_auth.settings");
+  history: { createHref: (href: string) => href },
+} as unknown as Parameters<typeof routerContext.Provider>[0]["value"];
 
 const makeToastStub = () => {
   const toastFn = mock(() => {});
@@ -36,7 +66,9 @@ const makeToastStub = () => {
 const Wrapper =
   (toastStub: ToastContextValue) =>
   ({ children }: { children: React.ReactNode }) => (
-    <ToastContext.Provider value={toastStub}>{children}</ToastContext.Provider>
+    <routerContext.Provider value={stubRouter}>
+      <ToastContext.Provider value={toastStub}>{children}</ToastContext.Provider>
+    </routerContext.Provider>
   );
 
 describe("SettingsPage - expiryWarningDays validation", () => {
