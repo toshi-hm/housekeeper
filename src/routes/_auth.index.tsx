@@ -147,7 +147,10 @@ const DashboardPage = () => {
   );
 
   const lowStockItems = baseFiltered.filter(
-    (item) => item.minimum_stock !== null && item.minimum_stock !== undefined && item.units <= item.minimum_stock,
+    (item) =>
+      item.minimum_stock !== null &&
+      item.minimum_stock !== undefined &&
+      item.units <= item.minimum_stock,
   );
 
   const handleBulkAddToShopping = async () => {
