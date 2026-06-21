@@ -100,6 +100,7 @@ export const useDeleteShoppingItem = () => {
         qc.setQueryData(key, data);
       }
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };

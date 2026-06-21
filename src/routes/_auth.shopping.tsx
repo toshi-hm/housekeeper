@@ -50,7 +50,7 @@ const ShoppingPage = () => {
       setAddNote("");
       setShowAdd(false);
     } catch {
-      toast(t("common:unknownError"), "error");
+      // Error toast is handled by useUpsertShoppingItem.onError
     }
   };
 
@@ -61,7 +61,7 @@ const ShoppingPage = () => {
       setDeleteId(null);
       toast(t("deleteSuccess"), "success");
     } catch {
-      toast(t("common:unknownError"), "error");
+      // Error toast is handled by useDeleteShoppingItem.onError
     }
   };
 
@@ -88,7 +88,7 @@ const ShoppingPage = () => {
       setEditId(null);
       toast(t("editSuccess"), "success");
     } catch {
-      toast(t("common:unknownError"), "error");
+      // Error toast is handled by useUpsertShoppingItem.onError
     }
   };
 
@@ -100,7 +100,7 @@ const ShoppingPage = () => {
       setPendingPurchaseId(null);
       toast(t("purchaseSuccess"), "success");
     } catch {
-      toast(t("purchaseError"), "error");
+      // Error toast is handled by usePurchaseShoppingItem.onError
     }
   };
 
