@@ -197,8 +197,8 @@ export const ItemConsumePage = () => {
       {/* Lot selector (shown only when multiple active lots exist) */}
       {hasMultipleLots && (
         <div className="space-y-2">
-          <Label>{t("selectLot")}</Label>
-          <div className="space-y-2">
+          <Label id="lot-selector-label">{t("selectLot")}</Label>
+          <div role="radiogroup" aria-labelledby="lot-selector-label" className="space-y-2">
             {activeLots.map((lot, index) => {
               const lotDisplay =
                 lot.opened_remaining !== null && lot.opened_remaining !== undefined
@@ -215,6 +215,8 @@ export const ItemConsumePage = () => {
               return (
                 <button
                   key={lot.id}
+                  role="radio"
+                  aria-checked={selectedLotId === lot.id}
                   type="button"
                   onClick={() => {
                     setSelectedLotId(lot.id);

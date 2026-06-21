@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { useToast } from "@/lib/toast-context";
 
-const SettingsPage = () => {
+export const SettingsPage = () => {
   const { t } = useTranslation("settings");
   const navigate = useNavigate();
   const matches = useRouterState({ select: (s) => s.matches });
@@ -32,7 +32,10 @@ const SettingsPage = () => {
   };
 
   const handleWarningDaysChange = async (days: number) => {
-    if (isNaN(days) || days < 0) return;
+    if (isNaN(days) || days < 1 || days > 30) {
+      toast(t("invalidWarningDays"), "error");
+      return;
+    }
     try {
       await updateSettings.mutateAsync({ expiry_warning_days: days });
       toast(t("saveSuccess"), "success");
@@ -88,7 +91,7 @@ const SettingsPage = () => {
             <div className="flex items-center gap-2">
               <Input
                 type="number"
-                min={0}
+                min={1}
                 max={30}
                 defaultValue={settings?.expiry_warning_days ?? 3}
                 className="w-24"
