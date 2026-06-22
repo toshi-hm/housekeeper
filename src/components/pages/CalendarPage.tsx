@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ExpiryCheckItem } from "@/components/molecules/ExpiryCheckItem";
 import { ExpiryCalendar } from "@/components/organisms/ExpiryCalendar";
+import { useToast } from "@/lib/toast-context";
 import type { Category, Item } from "@/types/item";
 
 interface CalendarPageProps {
@@ -24,6 +25,7 @@ export const CalendarPage = ({
   pendingRemovals,
 }: CalendarPageProps) => {
   const { t } = useTranslation("calendar");
+  const { toast } = useToast();
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
   const today = new Date();
@@ -70,7 +72,9 @@ export const CalendarPage = ({
                 key={itemId}
                 type="button"
                 onClick={() => {
-                  void onUndo(itemId);
+                  onUndo(itemId).catch(() => {
+                    toast(t("undoError"), "error");
+                  });
                 }}
                 className="rounded-md border border-yellow-400 bg-white px-2 py-1 text-xs font-medium hover:bg-yellow-100"
               >

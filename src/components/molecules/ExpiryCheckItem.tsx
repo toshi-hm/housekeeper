@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ColorDot } from "@/components/atoms/ColorDot";
+import { useToast } from "@/lib/toast-context";
 import { cn } from "@/lib/utils";
 import type { Item } from "@/types/item";
 
@@ -13,7 +14,8 @@ interface ExpiryCheckItemProps {
 
 export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckItemProps) => {
   const [checked, setChecked] = useState(false);
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation("calendar");
+  const { toast } = useToast();
   const isProcessingRef = useRef(false);
 
   const handleChange = async () => {
@@ -24,6 +26,7 @@ export const ExpiryCheckItem = ({ item, categoryColor, onCheck }: ExpiryCheckIte
       await onCheck(item);
     } catch {
       setChecked(false);
+      toast(t("checkError"), "error");
     } finally {
       isProcessingRef.current = false;
     }
