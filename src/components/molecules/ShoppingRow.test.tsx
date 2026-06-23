@@ -42,7 +42,7 @@ describe("ShoppingRow", () => {
 
   it("calls onPurchase with id when purchase button clicked", () => {
     const onPurchase = mock(() => {});
-    const { getByRole } = render(
+    const { container } = render(
       <ShoppingRow
         id="abc"
         name="牛乳"
@@ -52,7 +52,8 @@ describe("ShoppingRow", () => {
       />,
       { wrapper },
     );
-    const btn = getByRole("button", { name: /inventory|purchased|購入/i });
+    // purchase button is the only button without an aria-label (icon buttons have aria-label)
+    const btn = container.querySelector("button:not([aria-label])") as HTMLElement;
     fireEvent.click(btn);
     expect(onPurchase).toHaveBeenCalledWith("abc");
   });
