@@ -64,7 +64,7 @@ export const ItemForm = ({
     storage_location_id: defaultValues?.storage_location_id ?? null,
     units: defaultValues?.units ?? 1,
     content_amount: defaultValues?.content_amount ?? 1,
-    content_unit: defaultValues?.content_unit ?? "個",
+    content_unit: defaultValues?.content_unit ?? t("defaultContentUnit"),
     opened_remaining: defaultValues?.opened_remaining ?? null,
     purchase_date: defaultValues?.purchase_date ?? "",
     expiry_date: defaultValues?.expiry_date ?? "",

@@ -128,5 +128,6 @@
   "consumeAllConfirm": "Use all stock in this lot ({{amount}}{{unit}})?",
   "consumeAllConfirmLabel": "Use all",
   "cloneItem": "Duplicate Item",
-  "cloneSuccess": "Item duplicated and added"
+  "cloneSuccess": "Item duplicated and added",
+  "defaultContentUnit": "piece"
 }
