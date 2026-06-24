@@ -79,3 +79,13 @@ export const EditModeSaving: Story = {
     onEditCancel: () => {},
   },
 };
+
+export const PurchasedNoActions: Story = {
+  args: {
+    id: "7",
+    name: "洗剤",
+    desiredUnits: 1,
+    isPurchased: true,
+    onDelete: () => {},
+  },
+};
