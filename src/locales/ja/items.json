@@ -128,5 +128,6 @@
   "consumeAllConfirmLabel": "全量消費する",
   "cloneItem": "複製して追加",
   "cloneSuccess": "複製して在庫を追加しました",
-  "defaultContentUnit": "個"
+  "defaultContentUnit": "個",
+  "lotUpdateFailed": "在庫情報は更新されましたが、ロット情報の更新に失敗しました"
 }
