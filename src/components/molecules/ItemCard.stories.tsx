@@ -193,9 +193,7 @@ export const WithQuickConsume: Story = {
     },
     categoryName: "食品",
     locationName: "冷蔵庫",
-    onQuickConsume: (item) => {
-      console.log("Quick consume:", item.name);
-    },
+    onQuickConsume: () => {},
   },
 };
 
@@ -218,8 +216,6 @@ export const QuickConsumeInProgress: Story = {
     categoryName: "食品",
     locationName: "冷蔵庫",
     isQuickConsuming: true,
-    onQuickConsume: (item) => {
-      console.log("Quick consume:", item.name);
-    },
+    onQuickConsume: () => {},
   },
 };
