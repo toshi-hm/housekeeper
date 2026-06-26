@@ -72,7 +72,7 @@ const fetchItem = async (id: string): Promise<Item> => {
   return data as Item;
 };
 
-export const normalizeCreateValues = (values: ItemFormValues) => ({
+const normalizeCreateValues = (values: ItemFormValues) => ({
   name: values.name,
   barcode: values.barcode || null,
   category_id: values.category_id || null,
@@ -244,12 +244,6 @@ const updateItem = async (id: string, values: Partial<ItemFormValues>): Promise<
   return data as Item;
 };
 
-const deleteItem = async (id: string): Promise<void> => {
-  requireOnline();
-  const { error } = await supabase.from("items").delete().eq("id", id);
-  if (error) throw error;
-};
-
 const softDeleteItem = async (id: string): Promise<void> => {
   requireOnline();
   const { error } = await supabase
@@ -369,33 +363,6 @@ export const useUpdateItem = (id: string) => {
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("offlineError"), "error");
-    },
-  });
-};
-
-export const useDeleteItem = () => {
-  const qc = useQueryClient();
-  const { toast } = useToast();
-  const { t } = useTranslation("common");
-  return useMutation({
-    mutationFn: deleteItem,
-    onMutate: async (id: string) => {
-      await qc.cancelQueries({ queryKey: ITEMS_KEY });
-      const snapshot = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
-      qc.setQueriesData<Item[]>({ queryKey: ITEMS_KEY }, (old) =>
-        Array.isArray(old) ? old.filter((item) => item.id !== id) : old,
-      );
-      qc.removeQueries({ queryKey: [...ITEMS_KEY, id], exact: true });
-      return { snapshot };
-    },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ITEMS_KEY });
-    },
-    onError: (error, _id, context) => {
-      for (const [key, data] of context?.snapshot ?? []) {
-        qc.setQueryData(key, data);
-      }
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
