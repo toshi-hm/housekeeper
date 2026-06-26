@@ -322,6 +322,7 @@ export const useCreateItem = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
+      else toast(t("common:unknownError"), "error");
     },
   });
 };
@@ -370,6 +371,7 @@ export const useUpdateItem = (id: string) => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };

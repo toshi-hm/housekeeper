@@ -72,7 +72,7 @@ const ItemDetailPage = () => {
       await upsertShopping.mutateAsync({ name: item.name, linked_item_id: item.id });
       toast(t("restockSuccess"), "success");
     } catch {
-      toast(t("common:unknownError"), "error");
+      // error is handled by useUpsertShoppingItem.onError
     }
   };
 
