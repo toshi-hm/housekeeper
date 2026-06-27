@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
+import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 
 const SettingsPage = () => {
@@ -31,8 +32,10 @@ const SettingsPage = () => {
     try {
       await updateSettings.mutateAsync({ language: lang });
       toast(t("saveSuccess"), "success");
-    } catch {
-      toast(t("common:unknownError"), "error");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
     }
   };
 
@@ -42,8 +45,10 @@ const SettingsPage = () => {
       await updateSettings.mutateAsync({ expiry_warning_days: days });
       setWarningDays(null);
       toast(t("saveSuccess"), "success");
-    } catch {
-      toast(t("common:unknownError"), "error");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
     }
   };
 
