@@ -67,6 +67,10 @@ const renderPage = async () => {
   return result;
 };
 
+// Match the urgentBanner summary text in English ("N items are expired or expiring soon")
+// or Japanese ("N件の在庫が期限切れまたは期限間近"). Specific enough to exclude detail rows.
+const URGENT_BANNER_RE = /items are expired or expiring soon|件の在庫が期限切れ/;
+
 describe("DashboardPage", () => {
   let itemsspy: ReturnType<typeof spyOn>;
   let categoriesspy: ReturnType<typeof spyOn>;
@@ -74,9 +78,7 @@ describe("DashboardPage", () => {
   let settingsspy: ReturnType<typeof spyOn>;
   let consumespy: ReturnType<typeof spyOn>;
 
-  beforeEach(async () => {
-    await i18n.changeLanguage("ja");
-
+  beforeEach(() => {
     itemsspy = spyOn(useItemsModule, "useItems").mockReturnValue({
       data: [],
       isLoading: false,
@@ -120,7 +122,7 @@ describe("DashboardPage", () => {
       error: null,
     } as ReturnType<typeof useItemsModule.useItems>);
     const { queryByText } = await renderPage();
-    expect(queryByText(/件の在庫が期限切れ/)).toBeNull();
+    expect(queryByText(URGENT_BANNER_RE)).toBeNull();
   });
 
   it("期限切れアイテムがある場合に警告バナーが表示される", async () => {
@@ -130,7 +132,7 @@ describe("DashboardPage", () => {
       error: null,
     } as ReturnType<typeof useItemsModule.useItems>);
     const { queryByText } = await renderPage();
-    expect(queryByText(/件の在庫が期限切れ/)).not.toBeNull();
+    expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
   });
 
   it("期限切れアイテムが units=0 では警告バナーに含まれない", async () => {
@@ -140,7 +142,7 @@ describe("DashboardPage", () => {
       error: null,
     } as ReturnType<typeof useItemsModule.useItems>);
     const { queryByText } = await renderPage();
-    expect(queryByText(/件の在庫が期限切れ/)).toBeNull();
+    expect(queryByText(URGENT_BANNER_RE)).toBeNull();
   });
 
   it("期限フィルターを「正常」にしても期限切れ警告バナーが表示され続ける (#391)", async () => {
@@ -155,9 +157,10 @@ describe("DashboardPage", () => {
 
     const { getByLabelText, queryByText, getAllByRole } = await renderPage();
 
-    // フィルターパネルを開く
+    // フィルターパネルを開く（aria-label は i18n キー "filter" の翻訳値）
+    const filterBtn = getByLabelText(/filter|絞り込み/i);
     await act(async () => {
-      fireEvent.click(getByLabelText("絞り込み"));
+      fireEvent.click(filterBtn);
     });
 
     // 期限フィルターを「正常」に変更（3番目のselect: カテゴリ/保管場所/期限/ソート）
@@ -168,6 +171,6 @@ describe("DashboardPage", () => {
 
     // filtered には ok アイテムのみが入るが、urgentItems は全アイテムから計算されるため
     // 期限切れアイテムがある警告バナーは引き続き表示されるべき
-    expect(queryByText(/件の在庫が期限切れ/)).not.toBeNull();
+    expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
   });
 });
