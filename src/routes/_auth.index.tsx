@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
-import { Spinner } from "@/components/atoms/Spinner";
+import { Skeleton } from "@/components/atoms/Skeleton";
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -357,8 +357,14 @@ const DashboardPage = () => {
 
       {/* Loading / Error / Content */}
       {isLoading ? (
-        <div className="flex min-h-[200px] items-center justify-center">
-          <Spinner />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="space-y-2 rounded-lg border p-3">
+              <Skeleton className="aspect-square w-full rounded-md" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
         </div>
       ) : error ? (
         <div className="rounded-lg border border-destructive p-4 text-sm text-destructive">
