@@ -2,6 +2,7 @@ import { CheckCircle2, Pencil, ShoppingCart, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Spinner } from "@/components/atoms/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -12,6 +13,7 @@ interface ShoppingRowProps {
   note?: string | null;
   isPurchased?: boolean;
   isEditing?: boolean;
+  isSaving?: boolean;
   onPurchase?: (id: string) => void;
   onDelete?: (id: string) => void;
   onEdit?: (id: string) => void;
@@ -29,6 +31,7 @@ export const ShoppingRow = ({
   note,
   isPurchased,
   isEditing,
+  isSaving,
   onPurchase,
   onDelete,
   onEdit,
@@ -74,6 +77,7 @@ export const ShoppingRow = ({
           onChange={(e) => setEditName(e.target.value)}
           placeholder={t("itemNamePlaceholder")}
           autoFocus
+          disabled={isSaving}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
             if (e.key === "Escape") handleCancel();
@@ -87,6 +91,7 @@ export const ShoppingRow = ({
               value={editUnits}
               onChange={(e) => setEditUnits(e.target.value)}
               placeholder={t("desiredUnitsLabel")}
+              disabled={isSaving}
             />
           </div>
           <div className="flex-[2]">
@@ -94,14 +99,20 @@ export const ShoppingRow = ({
               value={editNote}
               onChange={(e) => setEditNote(e.target.value)}
               placeholder={t("notePlaceholder")}
+              disabled={isSaving}
             />
           </div>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" className="flex-1" onClick={handleSave} disabled={!editName.trim()}>
-            {t("editSave")}
+          <Button
+            size="sm"
+            className="flex-1"
+            onClick={handleSave}
+            disabled={!editName.trim() || isSaving}
+          >
+            {isSaving ? <Spinner className="h-4 w-4" /> : t("editSave")}
           </Button>
-          <Button size="sm" variant="outline" onClick={handleCancel}>
+          <Button size="sm" variant="outline" onClick={handleCancel} disabled={isSaving}>
             {t("editCancel")}
           </Button>
         </div>

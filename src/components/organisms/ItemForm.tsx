@@ -354,8 +354,13 @@ export const ItemForm = ({
                 const raw = e.target.value;
                 if (!/^\d*$/.test(raw)) return;
                 setUnitsRaw(raw);
-                setUnitsError("");
-                if (raw !== "") set("units", parseInt(raw, 10));
+                const parsed = parseInt(raw, 10);
+                if (raw !== "" && !isNaN(parsed) && parsed <= 0) {
+                  setUnitsError(t("unitsPositive"));
+                } else {
+                  setUnitsError("");
+                }
+                if (raw !== "") set("units", parsed);
               }}
               className="w-24"
             />

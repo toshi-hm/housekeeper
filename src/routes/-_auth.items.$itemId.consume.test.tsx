@@ -175,4 +175,40 @@ describe("ItemConsumePage", () => {
     const { getByRole } = renderPage();
     expect(getByRole("spinbutton")).toBeDefined();
   });
+
+  it("renders lot selector as radiogroup with radio buttons when multiple lots exist", () => {
+    const lot1: ItemLot = { ...baseLot, id: "lot-1" };
+    const lot2: ItemLot = { ...baseLot, id: "lot-2" };
+    lotsspy.mockReturnValue({
+      data: [lot1, lot2],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useItemLotsModule.useItemLots>);
+    const { getByRole, getAllByRole } = renderPage();
+    expect(getByRole("radiogroup")).toBeDefined();
+    const radios = getAllByRole("radio");
+    expect(radios.length).toBe(2);
+  });
+
+  it("marks the selected lot radio button as checked", () => {
+    const lot1: ItemLot = { ...baseLot, id: "lot-1" };
+    const lot2: ItemLot = { ...baseLot, id: "lot-2" };
+    lotsspy.mockReturnValue({
+      data: [lot1, lot2],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useItemLotsModule.useItemLots>);
+    searchspy.mockReturnValue({
+      lotId: "lot-1",
+    } as ReturnType<typeof Route.useSearch>);
+    const { getAllByRole } = renderPage();
+    const radios = getAllByRole("radio");
+    expect(radios[0]?.getAttribute("aria-checked")).toBe("true");
+    expect(radios[1]?.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("does not render radiogroup when there is only one active lot", () => {
+    const { queryByRole } = renderPage();
+    expect(queryByRole("radiogroup")).toBeNull();
+  });
 });

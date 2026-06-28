@@ -1,9 +1,11 @@
 {
+  "checkError": "Failed to update inventory",
   "close": "Close",
   "expired": "Expired",
   "expiryItemsOnDate": "Items expiring on {{date}}",
   "nextMonth": "Next month",
   "nextYear": "Next year",
+  "noEligibleLot": "No lot expiring this month found",
   "noExpired": "No expired items",
   "noItems": "No items with expiry dates",
   "noItemsHint": "Set expiry dates on your items to see them here",
@@ -19,5 +21,6 @@
   "thisMonth": "Expiring This Month",
   "thisWeek": "Expiring This Week",
   "title": "Expiry Calendar",
-  "undo": "Undo"
+  "undo": "Undo",
+  "undoError": "Failed to undo"
 }

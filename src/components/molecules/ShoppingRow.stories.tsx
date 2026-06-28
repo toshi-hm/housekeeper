@@ -66,3 +66,16 @@ export const EditModeNoNote: Story = {
     onEditCancel: () => {},
   },
 };
+
+export const EditModeSaving: Story = {
+  args: {
+    id: "6",
+    name: "牛乳",
+    desiredUnits: 2,
+    note: "低脂肪",
+    isEditing: true,
+    isSaving: true,
+    onEditSave: () => {},
+    onEditCancel: () => {},
+  },
+};
