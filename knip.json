@@ -9,5 +9,5 @@
     "src/**/*.stories.tsx"
   ],
   "project": ["src/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["tailwindcss"]
+  "ignoreDependencies": ["tailwindcss", "i18next-parser"]
 }
