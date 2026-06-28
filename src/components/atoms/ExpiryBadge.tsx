@@ -15,11 +15,18 @@ const statusVariant: Record<ExpiryStatus, "destructive" | "warning" | "secondary
   unknown: "outline",
 };
 
+const statusLabelKey = {
+  expired: "expiryStatus.expired",
+  "expiring-soon": "expiryStatus.expiring-soon",
+  ok: "expiryStatus.ok",
+  unknown: "expiryStatus.unknown",
+} as const satisfies Record<ExpiryStatus, string>;
+
 export const ExpiryBadge = ({ expiryDate, warningDays }: ExpiryBadgeProps) => {
   const { t } = useTranslation("items");
   const status = getExpiryStatus(expiryDate, warningDays);
 
   if (status === "unknown") return null;
 
-  return <Badge variant={statusVariant[status]}>{t(`expiryStatus.${status}`)}</Badge>;
+  return <Badge variant={statusVariant[status]}>{t(statusLabelKey[status])}</Badge>;
 };
