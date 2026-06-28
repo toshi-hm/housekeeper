@@ -22,9 +22,34 @@ jobs:
       - name: Run tests with coverage
         run: bun test --coverage --coverage-reporter=lcov --coverage-dir=coverage
 
-      - name: Post coverage comment
-        uses: romeovs/lcov-reporter-action@v0.4.0
+      - name: Parse coverage and build comment
+        id: parse
+        run: |
+          LF=$(grep "^LF:"  coverage/lcov.info | awk -F: '{sum+=$2} END {print sum+0}')
+          LH=$(grep "^LH:"  coverage/lcov.info | awk -F: '{sum+=$2} END {print sum+0}')
+          FNF=$(grep "^FNF:" coverage/lcov.info | awk -F: '{sum+=$2} END {print sum+0}')
+          FNH=$(grep "^FNH:" coverage/lcov.info | awk -F: '{sum+=$2} END {print sum+0}')
+          BRF=$(grep "^BRF:" coverage/lcov.info | awk -F: '{sum+=$2} END {print sum+0}')
+          BRH=$(grep "^BRH:" coverage/lcov.info | awk -F: '{sum+=$2} END {print sum+0}')
+
+          line_pct=$([ "$LF"  -gt 0 ] && echo "scale=1; $LH  * 100 / $LF"  | bc || echo "0")
+          func_pct=$([ "$FNF" -gt 0 ] && echo "scale=1; $FNH * 100 / $FNF" | bc || echo "0")
+          branch_pct=$([ "$BRF" -gt 0 ] && echo "scale=1; $BRH * 100 / $BRF" | bc || echo "0")
+
+          {
+            echo "comment<<COMMENT_EOF"
+            echo "## Coverage Report"
+            echo ""
+            echo "| Metric | Covered | Total | % |"
+            echo "|--------|---------|-------|---|"
+            echo "| Lines | $LH | $LF | ${line_pct}% |"
+            echo "| Functions | $FNH | $FNF | ${func_pct}% |"
+            echo "| Branches | $BRH | $BRF | ${branch_pct}% |"
+            echo "COMMENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post or update coverage comment
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          lcov-file: coverage/lcov.info
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          delete-old-comments: true
+          header: coverage-report
+          message: ${{ steps.parse.outputs.comment }}

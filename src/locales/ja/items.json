@@ -84,6 +84,8 @@
   "productNotFound": "該当の商品が見つかりませんでした",
   "productSearching": "商品を検索中...",
   "purchaseDate": "購入日",
+  "qrCode": "QRコード",
+  "qrPrint": "印刷",
   "quickConsume": "1個消費",
   "quickConsumeSuccess": "{{name}}を1個消費しました",
   "quickFilterAll": "すべて",

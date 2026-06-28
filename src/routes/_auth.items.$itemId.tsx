@@ -9,6 +9,7 @@ import {
   Layers,
   MapPin,
   Package,
+  QrCode,
   RefreshCw,
   StickyNote,
   Trash2,
@@ -22,6 +23,7 @@ import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { QRCodeDialog } from "@/components/molecules/QRCodeDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,6 +72,7 @@ const ItemDetailPage = () => {
   const { data: logs = [] } = useConsumptionLogs(itemId);
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
 
   const setDetailTab = (tab: "info" | "lots" | "history") => {
     void navigate({ to: "/items/$itemId", params: { itemId }, search: { tab } });
@@ -173,6 +176,14 @@ const ItemDetailPage = () => {
         onCancel={() => setShowDeleteConfirm(false)}
       />
 
+      {showQRCode && (
+        <QRCodeDialog
+          value={`${window.location.origin}/items/${itemId}`}
+          title={item.name}
+          onClose={() => setShowQRCode(false)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button
@@ -223,6 +234,14 @@ const ItemDetailPage = () => {
             onClick={() => void navigate({ to: "/items/new", search: { cloneFrom: itemId } })}
           >
             <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={t("qrCode")}
+            onClick={() => setShowQRCode(true)}
+          >
+            <QrCode className="h-4 w-4" />
           </Button>
           <Button
             variant="destructive"
