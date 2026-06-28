@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export interface QuickAddOption {
+interface QuickAddOption {
   value: string;
   label: string;
 }
