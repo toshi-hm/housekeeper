@@ -22,10 +22,17 @@ import type { ItemFormValues } from "@/types/item";
 
 import { PurchaseDialog } from "../components/molecules/PurchaseDialog";
 
+type ShoppingTab = "planned" | "purchased";
+
+const tabLabelKey = {
+  planned: "statusPlanned",
+  purchased: "statusPurchased",
+} as const satisfies Record<ShoppingTab, string>;
+
 const ShoppingPage = () => {
   const { t } = useTranslation("shopping");
   const { toast } = useToast();
-  const [tab, setTab] = useState<"planned" | "purchased">("planned");
+  const [tab, setTab] = useState<ShoppingTab>("planned");
   const [addName, setAddName] = useState("");
   const [addNote, setAddNote] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -220,7 +227,7 @@ const ShoppingPage = () => {
 
       {/* Tabs */}
       <div className="flex rounded-lg border p-1" role="tablist">
-        {(["planned", "purchased"] as const).map((s) => (
+        {(["planned", "purchased"] as const satisfies ShoppingTab[]).map((s) => (
           <button
             key={s}
             role="tab"
@@ -235,11 +242,7 @@ const ShoppingPage = () => {
               setShowAdd(false);
             }}
           >
-            {t(
-              `status${s.charAt(0).toUpperCase()}${s.slice(1)}` as
-                | "statusPlanned"
-                | "statusPurchased",
-            )}
+            {t(tabLabelKey[s])}
           </button>
         ))}
       </div>
