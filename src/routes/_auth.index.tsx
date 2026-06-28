@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Plus, Search, ShoppingCart, SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/select";
 import { useConsumeItem } from "@/hooks/useConsumeItem";
 import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { updateAppBadge } from "@/lib/pwa";
 import { useToast } from "@/lib/toast-context";
@@ -34,8 +35,10 @@ const DashboardPage = () => {
   const { data: userSettings } = useUserSettings();
   const warningDays = userSettings?.expiry_warning_days;
   const consumeItem = useConsumeItem();
+  const upsertShoppingItem = useUpsertShoppingItem();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [isBulkAdding, setIsBulkAdding] = useState(false);
 
   const { q: search, cat: categoryId, loc: locationId, expiry: expiryFilter } = Route.useSearch();
 
@@ -143,6 +146,28 @@ const DashboardPage = () => {
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   );
 
+  const handleBulkAddToShopping = async () => {
+    if (isBulkAdding) return;
+    setIsBulkAdding(true);
+    try {
+      await Promise.all(
+        urgentItems.map((item) =>
+          upsertShoppingItem.mutateAsync({
+            name: item.name,
+            linked_item_id: item.id,
+            desired_units: 1,
+          }),
+        ),
+      );
+      toast(t("bulkAddToShoppingSuccess", { count: urgentItems.length }), "success");
+      void navigate({ to: "/shopping" });
+    } catch {
+      // Error toast handled by useUpsertShoppingItem.onError
+    } finally {
+      setIsBulkAdding(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -221,6 +246,18 @@ const DashboardPage = () => {
               </div>
             </div>
           </details>
+          {urgentItems.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full border-yellow-400 bg-yellow-50 text-yellow-800 hover:bg-yellow-100"
+              onClick={() => void handleBulkAddToShopping()}
+              disabled={isBulkAdding}
+            >
+              <ShoppingCart className="mr-1.5 h-4 w-4" />
+              {isBulkAdding ? tc("loading") : t("bulkAddToShopping", { count: urgentItems.length })}
+            </Button>
+          )}
         </div>
       )}
 

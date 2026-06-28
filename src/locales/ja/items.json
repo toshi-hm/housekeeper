@@ -8,6 +8,8 @@
   "barcode": "バーコード",
   "barcodeLookupError": "商品情報の取得に失敗しました",
   "barcodePlaceholder": "バーコードを入力",
+  "bulkAddToShopping_other": "期限切れ・期限間近の{{count}}件をまとめてリストに追加",
+  "bulkAddToShoppingSuccess_other": "{{count}}件を買い物リストに追加しました",
   "category": "カテゴリ",
   "categoryPlaceholder": "カテゴリを選択",
   "cloneItem": "複製して追加",
