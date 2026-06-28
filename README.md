@@ -33,9 +33,14 @@
    supabase/migrations/20240101000000_create_items.sql
    ```
 
-### 2. Deploy Supabase Edge Function
+### 2. Deploy Supabase Edge Functions
 
-The barcode lookup is proxied through a Supabase Edge Function to avoid CORS issues.
+External API calls are proxied through Supabase Edge Functions to avoid CORS issues
+and to keep API keys server-side. **All** functions under `supabase/functions/` must be
+deployed — in particular `image-proxy`, which downloads the product image returned by a
+JAN/barcode lookup so it can be stored in the `item-images` bucket. If `image-proxy` is
+not deployed, saving a barcode-fetched product image fails with "在庫は保存されましたが、
+画像のアップロードに失敗しました" (`imageUploadFailed`).
 
 ```bash
 # Install Supabase CLI if not already installed
@@ -43,7 +48,15 @@ The barcode lookup is proxied through a Supabase Edge Function to avoid CORS iss
 
 supabase login
 supabase link --project-ref your-project-ref
+
+# Deploy every edge function in supabase/functions/
 supabase functions deploy barcode-lookup
+supabase functions deploy image-proxy
+supabase functions deploy subscribe-push
+supabase functions deploy send-expiry-notifications
+supabase functions deploy get-security-question
+supabase functions deploy verify-security-answer
+supabase functions deploy alexa-skill
 ```
 
 ### 3. Configure Environment Variables
@@ -121,7 +134,9 @@ src/
 supabase/
   functions/
     barcode-lookup/
-      index.ts                       # Edge Function: proxy barcode lookup to Open Food Facts
+      index.ts                       # Edge Function: proxy barcode (JAN) lookup to external API
+    image-proxy/
+      index.ts                       # Edge Function: download external product images (CORS-safe)
   migrations/
     20240101000000_create_items.sql  # Database schema
 ```
