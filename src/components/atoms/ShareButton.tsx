@@ -1,7 +1,7 @@
 import { Share2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { canShare } from "@/lib/share";
+import { canShare, shareText } from "@/lib/share";
 
 interface ShareButtonProps {
   title: string;
@@ -14,7 +14,7 @@ export const ShareButton = ({ title, text, label }: ShareButtonProps) => {
 
   const handleShare = async () => {
     try {
-      await navigator.share({ title, text });
+      await shareText(title, text);
     } catch {
       // User cancelled or share failed — no action needed
     }
