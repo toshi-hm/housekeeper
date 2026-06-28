@@ -13,7 +13,9 @@
     "check": "bun run lint && bun run typecheck",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "knip": "knip",
+    "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/supabase.ts && node scripts/fix-supabase-types.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
@@ -29,6 +31,7 @@
     "i18next-browser-languagedetector": "^8.2.1",
     "idb-keyval": "^6.2.2",
     "lucide-react": "^1.11.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-i18next": "^17.0.6",
@@ -41,8 +44,12 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
     "@eslint/js": "^10.0.1",
-    "@happy-dom/global-registrator": "20.10.6",
+    "@happy-dom/global-registrator": "^20.10.6",
+    "@storybook/addon-a11y": "^10.4.6",
+    "@storybook/react": "^10.3.5",
     "@storybook/react-vite": "^10.3.5",
     "@tailwindcss/vite": "^4.2.4",
     "@tanstack/react-query-devtools": "5.100.8",
@@ -50,6 +57,7 @@
     "@tanstack/router-plugin": "^1.167.28",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^25.6.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
@@ -58,6 +66,8 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "eslint-plugin-simple-import-sort": "^13.0.0",
     "globals": "^17.5.0",
+    "i18next-parser": "^9.4.0",
+    "knip": "^6.17.1",
     "oxfmt": "^0.47.0",
     "oxlint": "1.62.0",
     "reg-cli": "^0.18.14",
@@ -65,6 +75,7 @@
     "storycap": "^5.0.1",
     "stylelint": "^17.11.0",
     "stylelint-config-standard": "^40.0.0",
+    "supabase": "^2.107.0",
     "tailwindcss": "^4.2.4",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.59.1",

@@ -12,7 +12,11 @@ import { useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import { useItem } from "@/hooks/useItems";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
-import { computeConsumption, type ItemLot } from "@/types/item";
+import { computeConsumption, type ConsumptionError, type ItemLot } from "@/types/item";
+
+const consumptionErrorKey = {
+  insufficientStock: "insufficientStock",
+} as const satisfies Record<ConsumptionError, string>;
 
 export const ItemConsumePage = () => {
   const { t, i18n } = useTranslation("items");
@@ -62,7 +66,9 @@ export const ItemConsumePage = () => {
       return;
     }
     if (!preview || preview.error) {
-      setValidationError(preview?.error ? t(preview.error) : t("consumeValidationError"));
+      setValidationError(
+        preview?.error ? t(consumptionErrorKey[preview.error]) : t("consumeValidationError"),
+      );
       return;
     }
     try {
@@ -290,7 +296,9 @@ export const ItemConsumePage = () => {
               </p>
             </div>
           )}
-          {preview?.error && <p className="text-sm text-destructive">{t(preview.error)}</p>}
+          {preview?.error && (
+            <p className="text-sm text-destructive">{t(consumptionErrorKey[preview.error])}</p>
+          )}
 
           <div className="flex gap-2">
             <Button

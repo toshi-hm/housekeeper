@@ -64,12 +64,13 @@ export const ItemForm = ({
     storage_location_id: defaultValues?.storage_location_id ?? null,
     units: defaultValues?.units ?? 1,
     content_amount: defaultValues?.content_amount ?? 1,
-    content_unit: defaultValues?.content_unit ?? "個",
+    content_unit: defaultValues?.content_unit ?? t("defaultContentUnit"),
     opened_remaining: defaultValues?.opened_remaining ?? null,
     purchase_date: defaultValues?.purchase_date ?? "",
     expiry_date: defaultValues?.expiry_date ?? "",
     notes: defaultValues?.notes ?? "",
     image_path: defaultValues?.image_path ?? "",
+    minimum_stock: defaultValues?.minimum_stock ?? null,
   });
   const [unitsRaw, setUnitsRaw] = useState(String(defaultValues?.units ?? 1));
   const [contentAmountRaw, setContentAmountRaw] = useState(
@@ -434,6 +435,24 @@ export const ItemForm = ({
             onChange={(e) => set("notes", e.target.value)}
             placeholder={t("notesPlaceholder")}
             rows={3}
+          />
+        </div>
+
+        {/* Minimum stock */}
+        <div className="space-y-2">
+          <Label htmlFor="minimum_stock">{t("minimumStock")}</Label>
+          <p className="text-xs text-muted-foreground">{t("minimumStockHelp")}</p>
+          <Input
+            id="minimum_stock"
+            type="number"
+            min={0}
+            className="w-28"
+            value={values.minimum_stock ?? ""}
+            placeholder="—"
+            onChange={(e) => {
+              const v = e.target.value;
+              set("minimum_stock", v === "" ? null : parseInt(v, 10));
+            }}
           />
         </div>
 

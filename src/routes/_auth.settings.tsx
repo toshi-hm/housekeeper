@@ -1,10 +1,11 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Tag } from "lucide-react";
+import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Moon, Tag } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { LanguageToggle } from "@/components/atoms/LanguageToggle";
-import { Spinner } from "@/components/atoms/Spinner";
+import { Skeleton } from "@/components/atoms/Skeleton";
+import { ThemeToggle } from "@/components/atoms/ThemeToggle";
 import { NotificationSettings } from "@/components/organisms/NotificationSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,8 +70,13 @@ export const SettingsPage = () => {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
+        <div className="space-y-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="space-y-6">
@@ -86,6 +92,15 @@ export const SettingsPage = () => {
                 void handleLanguageChange(lang as "ja" | "en");
               }}
             />
+          </section>
+
+          {/* Theme */}
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Moon className="h-4 w-4" />
+              {t("theme")}
+            </h2>
+            <ThemeToggle />
           </section>
 
           {/* Expiry warning days */}

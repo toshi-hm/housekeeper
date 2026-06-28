@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import { describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
@@ -11,6 +11,10 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 );
 
 describe("Spinner", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("ja");
+  });
+
   it("renders with default aria-label from locale", () => {
     const { container } = render(<Spinner />, { wrapper });
     const el = container.firstChild as HTMLElement;

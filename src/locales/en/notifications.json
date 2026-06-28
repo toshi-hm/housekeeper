@@ -1,13 +1,11 @@
 {
-  "title": "Notification Settings",
+  "daysBefore": "days",
+  "emailAddress": "Email Address",
+  "emailEnabled": "Email Notifications",
+  "invalidEmailAddress": "Please enter a valid email address",
+  "notifyAt": "Notification time",
   "pushEnabled": "Push Notifications",
   "pushNotSupported": "Push notifications are not supported in this browser. Please use email notifications instead.",
   "pushPermissionDenied": "Push notification permission denied",
-  "emailEnabled": "Email Notifications",
-  "emailAddress": "Email Address",
-  "thresholdDays": "Days before to notify",
-  "daysBefore": "days",
-  "notifyAt": "Notification time",
-  "saveSuccess": "Notification settings saved",
-  "invalidEmailAddress": "Please enter a valid email address"
+  "thresholdDays": "Days before to notify"
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ShareButton } from "@/components/atoms/ShareButton";
-import { Spinner } from "@/components/atoms/Spinner";
+import { Skeleton } from "@/components/atoms/Skeleton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ShoppingRow } from "@/components/molecules/ShoppingRow";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,17 @@ import type { ItemFormValues } from "@/types/item";
 
 import { PurchaseDialog } from "../components/molecules/PurchaseDialog";
 
+type ShoppingTab = "planned" | "purchased";
+
+const tabLabelKey = {
+  planned: "statusPlanned",
+  purchased: "statusPurchased",
+} as const satisfies Record<ShoppingTab, string>;
+
 const ShoppingPage = () => {
   const { t } = useTranslation("shopping");
   const { toast } = useToast();
-  const [tab, setTab] = useState<"planned" | "purchased">("planned");
+  const [tab, setTab] = useState<ShoppingTab>("planned");
   const [addName, setAddName] = useState("");
   const [addNote, setAddNote] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -227,7 +234,7 @@ const ShoppingPage = () => {
 
       {/* Tabs */}
       <div className="flex rounded-lg border p-1" role="tablist">
-        {(["planned", "purchased"] as const).map((s) => (
+        {(["planned", "purchased"] as const satisfies ShoppingTab[]).map((s) => (
           <button
             key={s}
             role="tab"
@@ -242,11 +249,7 @@ const ShoppingPage = () => {
               setShowAdd(false);
             }}
           >
-            {t(
-              `status${s.charAt(0).toUpperCase()}${s.slice(1)}` as
-                | "statusPlanned"
-                | "statusPurchased",
-            )}
+            {t(tabLabelKey[s])}
           </button>
         ))}
       </div>
@@ -267,8 +270,14 @@ const ShoppingPage = () => {
 
       {/* List */}
       {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-8 w-16 rounded-md" />
+            </div>
+          ))}
         </div>
       ) : items.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">

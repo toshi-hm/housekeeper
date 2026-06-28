@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Plus, Search, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { AlertTriangle, Plus, Search, ShoppingCart, SlidersHorizontal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { z } from "zod";
 
-import { Spinner } from "@/components/atoms/Spinner";
+import { Skeleton } from "@/components/atoms/Skeleton";
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +12,20 @@ import { Select } from "@/components/ui/select";
 import { useConsumeItem } from "@/hooks/useConsumeItem";
 import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { updateAppBadge } from "@/lib/pwa";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus, type Item } from "@/types/item";
+
+const PAGE_SIZE = 40;
+
+const dashboardSearchSchema = z.object({
+  q: z.string().optional().default(""),
+  cat: z.string().optional().default(""),
+  loc: z.string().optional().default(""),
+  expiry: z.string().optional().default(""),
+});
 
 const DashboardPage = () => {
   const { t } = useTranslation("items");
@@ -23,12 +35,22 @@ const DashboardPage = () => {
   const { data: userSettings } = useUserSettings();
   const warningDays = userSettings?.expiry_warning_days;
   const consumeItem = useConsumeItem();
+  const upsertShoppingItem = useUpsertShoppingItem();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isBulkAdding, setIsBulkAdding] = useState(false);
 
-  const [search, setSearch] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [locationId, setLocationId] = useState("");
-  const [expiryFilter, setExpiryFilter] = useState("");
+  const { q: search, cat: categoryId, loc: locationId, expiry: expiryFilter } = Route.useSearch();
+
+  const setSearch = (v: string) =>
+    void navigate({ to: "/", search: (prev) => ({ ...prev, q: v }), replace: true });
+  const setCategoryId = (v: string) =>
+    void navigate({ to: "/", search: (prev) => ({ ...prev, cat: v }), replace: true });
+  const setLocationId = (v: string) =>
+    void navigate({ to: "/", search: (prev) => ({ ...prev, loc: v }), replace: true });
+  const setExpiryFilter = (v: string) =>
+    void navigate({ to: "/", search: (prev) => ({ ...prev, expiry: v }), replace: true });
+
   const [sort, setSort] = useState<ItemSortKey>(
     () => (localStorage.getItem("dashboard.sort") as ItemSortKey) ?? "created_at",
   );
@@ -63,8 +85,9 @@ const DashboardPage = () => {
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   const locationMap = Object.fromEntries(locations.map((l) => [l.id, l.name]));
 
-  const filtered = items.filter((item) => {
-    if (hideEmpty && item.units === 0) return false;
+  const baseFiltered = items.filter((item) => !hideEmpty || item.units > 0);
+
+  const filtered = baseFiltered.filter((item) => {
     if (expiryFilter && expiryFilter !== "all") {
       const status = getExpiryStatus(item.expiry_date, warningDays);
       if (status !== expiryFilter) return false;
@@ -72,17 +95,85 @@ const DashboardPage = () => {
     return true;
   });
 
-  const urgentItems = filtered.filter((item) => {
+  const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${hideEmpty}|${sort}`;
+  const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+  const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset pagination when filters change (render-phase state update per React docs)
+  if (prevFiltersKey !== filtersKey) {
+    setPrevFiltersKey(filtersKey);
+    setDisplayCount(PAGE_SIZE);
+  }
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setDisplayCount((prev) => Math.min(prev + PAGE_SIZE, filtered.length));
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filtered.length]);
+
+  const visibleItems = filtered.slice(0, displayCount);
+
+  const expiredCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
+  ).length;
+  const expiringSoonCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
+  ).length;
+  const urgentCount = expiredCount + expiringSoonCount;
+
+  useEffect(() => {
+    void updateAppBadge(urgentCount);
+  }, [urgentCount]);
+
+  const urgentItems = baseFiltered.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
   });
-  const urgentCount = urgentItems.length;
   const expiredItems = urgentItems.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
   );
   const expiringSoonItems = urgentItems.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   );
+
+  const lowStockItems = baseFiltered.filter(
+    (item) =>
+      item.minimum_stock !== null &&
+      item.minimum_stock !== undefined &&
+      item.units <= item.minimum_stock,
+  );
+
+  const handleBulkAddToShopping = async () => {
+    if (isBulkAdding) return;
+    setIsBulkAdding(true);
+    try {
+      await Promise.all(
+        urgentItems.map((item) =>
+          upsertShoppingItem.mutateAsync({
+            name: item.name,
+            linked_item_id: item.id,
+            desired_units: 1,
+          }),
+        ),
+      );
+      toast(t("bulkAddToShoppingSuccess", { count: urgentItems.length }), "success");
+      void navigate({ to: "/shopping" });
+    } catch {
+      // Error toast handled by useUpsertShoppingItem.onError
+    } finally {
+      setIsBulkAdding(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -162,6 +253,48 @@ const DashboardPage = () => {
               </div>
             </div>
           </details>
+          {urgentItems.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full border-yellow-400 bg-yellow-50 text-yellow-800 hover:bg-yellow-100"
+              onClick={() => void handleBulkAddToShopping()}
+              disabled={isBulkAdding}
+            >
+              <ShoppingCart className="mr-1.5 h-4 w-4" />
+              {isBulkAdding ? tc("loading") : t("bulkAddToShopping", { count: urgentItems.length })}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Low-stock alert banner */}
+      {lowStockItems.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-orange-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p className="text-sm font-medium">
+              {t("lowStockBanner", { count: lowStockItems.length })}
+            </p>
+          </div>
+          <details className="rounded-md border border-orange-200 bg-orange-100/50 p-2">
+            <summary className="cursor-pointer text-sm font-medium">
+              {t("lowStockBannerDetails")}
+            </summary>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+              {lowStockItems.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    className="underline decoration-orange-800 underline-offset-2 hover:opacity-80"
+                    to="/items/$itemId"
+                    params={{ itemId: item.id }}
+                  >
+                    {item.name} ({item.units} / {item.minimum_stock})
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </details>
         </div>
       )}
 
@@ -185,6 +318,48 @@ const DashboardPage = () => {
           <SlidersHorizontal className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Quick filter chips */}
+      {(expiredCount > 0 || expiringSoonCount > 0) && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setExpiryFilter("")}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              !expiryFilter || expiryFilter === "all"
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background text-foreground hover:bg-muted"
+            }`}
+          >
+            {t("quickFilterAll")} ({baseFiltered.length})
+          </button>
+          {expiredCount > 0 && (
+            <button
+              onClick={() => setExpiryFilter(expiryFilter === "expired" ? "" : "expired")}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                expiryFilter === "expired"
+                  ? "border-destructive bg-destructive text-destructive-foreground"
+                  : "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
+              }`}
+            >
+              {t("expiryStatus.expired")} ({expiredCount})
+            </button>
+          )}
+          {expiringSoonCount > 0 && (
+            <button
+              onClick={() =>
+                setExpiryFilter(expiryFilter === "expiring-soon" ? "" : "expiring-soon")
+              }
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                expiryFilter === "expiring-soon"
+                  ? "border-yellow-600 bg-yellow-500 text-white"
+                  : "border-yellow-400/50 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
+              }`}
+            >
+              {t("expiryStatus.expiring-soon")} ({expiringSoonCount})
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Filter panel */}
       {showFilters && (
@@ -261,8 +436,14 @@ const DashboardPage = () => {
 
       {/* Loading / Error / Content */}
       {isLoading ? (
-        <div className="flex min-h-[200px] items-center justify-center">
-          <Spinner />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="space-y-2 rounded-lg border p-3">
+              <Skeleton className="aspect-square w-full rounded-md" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
         </div>
       ) : error ? (
         <div className="rounded-lg border border-destructive p-4 text-sm text-destructive">
@@ -286,28 +467,32 @@ const DashboardPage = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
-              locationName={
-                item.storage_location_id ? locationMap[item.storage_location_id] : undefined
-              }
-              warningDays={warningDays}
-              isQuickConsuming={quickConsumingId === item.id}
-              onQuickConsume={(i) => {
-                void handleQuickConsume(i);
-              }}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {visibleItems.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
+                locationName={
+                  item.storage_location_id ? locationMap[item.storage_location_id] : undefined
+                }
+                warningDays={warningDays}
+                isQuickConsuming={quickConsumingId === item.id}
+                onQuickConsume={(i) => {
+                  void handleQuickConsume(i);
+                }}
+              />
+            ))}
+          </div>
+          <div ref={sentinelRef} className="h-1" />
+        </>
       )}
     </div>
   );
 };
 
 export const Route = createFileRoute("/_auth/")({
+  validateSearch: dashboardSearchSchema,
   component: DashboardPage,
 });

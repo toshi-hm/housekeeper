@@ -9,6 +9,7 @@ import {
   Layers,
   MapPin,
   Package,
+  QrCode,
   RefreshCw,
   StickyNote,
   Trash2,
@@ -16,11 +17,13 @@ import {
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { z } from "zod";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
-import { Spinner } from "@/components/atoms/Spinner";
+import { Skeleton } from "@/components/atoms/Skeleton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { QRCodeDialog } from "@/components/molecules/QRCodeDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,10 +47,15 @@ const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; val
   </div>
 );
 
+const tabSchema = z.object({
+  tab: z.enum(["info", "lots", "history"]).optional().default("info"),
+});
+
 const ItemDetailPage = () => {
   const { t, i18n } = useTranslation("items");
   const { t: tc } = useTranslation("common");
   const { itemId } = Route.useParams();
+  const { tab: detailTab } = Route.useSearch();
   const navigate = useNavigate();
   const matches = useRouterState({ select: (s) => s.matches });
   const isChildActive = matches.some(
@@ -64,7 +72,11 @@ const ItemDetailPage = () => {
   const { data: logs = [] } = useConsumptionLogs(itemId);
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [detailTab, setDetailTab] = useState<"info" | "lots" | "history">("info");
+  const [showQRCode, setShowQRCode] = useState(false);
+
+  const setDetailTab = (tab: "info" | "lots" | "history") => {
+    void navigate({ to: "/items/$itemId", params: { itemId }, search: { tab } });
+  };
 
   const handleRestock = async () => {
     if (!item) return;
@@ -95,8 +107,25 @@ const ItemDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <Spinner />
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 w-9 rounded-md" />
+          <Skeleton className="h-6 w-48" />
+        </div>
+        <Skeleton className="aspect-video w-full rounded-lg" />
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex justify-between py-1">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-20 rounded-md" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -146,6 +175,14 @@ const ItemDetailPage = () => {
         }}
         onCancel={() => setShowDeleteConfirm(false)}
       />
+
+      {showQRCode && (
+        <QRCodeDialog
+          value={`${window.location.origin}/items/${itemId}`}
+          title={item.name}
+          onClose={() => setShowQRCode(false)}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -197,6 +234,14 @@ const ItemDetailPage = () => {
             onClick={() => void navigate({ to: "/items/new", search: { cloneFrom: itemId } })}
           >
             <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={t("qrCode")}
+            onClick={() => setShowQRCode(true)}
+          >
+            <QrCode className="h-4 w-4" />
           </Button>
           <Button
             variant="destructive"
@@ -441,5 +486,6 @@ const ItemDetailPage = () => {
 };
 
 export const Route = createFileRoute("/_auth/items/$itemId")({
+  validateSearch: tabSchema,
   component: ItemDetailPage,
 });

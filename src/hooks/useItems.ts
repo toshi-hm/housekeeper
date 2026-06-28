@@ -72,7 +72,7 @@ const fetchItem = async (id: string): Promise<Item> => {
   return data as Item;
 };
 
-export const normalizeCreateValues = (values: ItemFormValues) => ({
+const normalizeCreateValues = (values: ItemFormValues) => ({
   name: values.name,
   barcode: values.barcode || null,
   category_id: values.category_id || null,
@@ -88,6 +88,10 @@ export const normalizeCreateValues = (values: ItemFormValues) => ({
   expiry_date: values.expiry_date || null,
   notes: values.notes || null,
   image_path: values.image_path || null,
+  minimum_stock:
+    values.minimum_stock !== undefined && values.minimum_stock !== null
+      ? values.minimum_stock
+      : null,
 });
 
 const hasOwn = <K extends PropertyKey>(obj: object, key: K): obj is Record<K, unknown> =>
@@ -119,6 +123,12 @@ export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
   if (hasOwn(values, "expiry_date")) normalized.expiry_date = values.expiry_date || null;
   if (hasOwn(values, "notes")) normalized.notes = values.notes || null;
   if (hasOwn(values, "image_path")) normalized.image_path = values.image_path || null;
+  if (hasOwn(values, "minimum_stock")) {
+    normalized.minimum_stock =
+      values.minimum_stock !== undefined && values.minimum_stock !== null
+        ? values.minimum_stock
+        : null;
+  }
 
   return normalized;
 };
@@ -198,16 +208,24 @@ const tryReviveItem = async (
   return revived as Item;
 };
 
-const createItem = async (
-  values: ItemFormValues,
-): Promise<Item & { _revived?: boolean; _stacked?: boolean }> => {
+interface CreateItemInput {
+  values: ItemFormValues;
+  forceNew?: boolean;
+}
+
+const createItem = async ({
+  values,
+  forceNew = false,
+}: CreateItemInput): Promise<Item & { _revived?: boolean; _stacked?: boolean }> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
   if (values.barcode) {
-    const stacked = await tryStackToActiveItem(values.barcode, values, userData.user.id);
-    if (stacked) return { ...stacked, _stacked: true };
+    if (!forceNew) {
+      const stacked = await tryStackToActiveItem(values.barcode, values, userData.user.id);
+      if (stacked) return { ...stacked, _stacked: true };
+    }
 
     const revived = await tryReviveItem(values.barcode, values, userData.user.id);
     if (revived) return { ...revived, _revived: true };
@@ -242,12 +260,6 @@ const updateItem = async (id: string, values: Partial<ItemFormValues>): Promise<
     .single();
   if (error) throw error;
   return data as Item;
-};
-
-const deleteItem = async (id: string): Promise<void> => {
-  requireOnline();
-  const { error } = await supabase.from("items").delete().eq("id", id);
-  if (error) throw error;
 };
 
 const softDeleteItem = async (id: string): Promise<void> => {
@@ -302,7 +314,7 @@ export const useCreateItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation(["common", "calendar", "items"]);
-  return useMutation({
+  return useMutation<Item & { _revived?: boolean; _stacked?: boolean }, Error, CreateItemInput>({
     mutationFn: createItem,
     onSuccess: async (data) => {
       const result = data as Item & { _revived?: boolean; _stacked?: boolean };
@@ -369,33 +381,6 @@ export const useUpdateItem = (id: string) => {
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("offlineError"), "error");
-    },
-  });
-};
-
-export const useDeleteItem = () => {
-  const qc = useQueryClient();
-  const { toast } = useToast();
-  const { t } = useTranslation("common");
-  return useMutation({
-    mutationFn: deleteItem,
-    onMutate: async (id: string) => {
-      await qc.cancelQueries({ queryKey: ITEMS_KEY });
-      const snapshot = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
-      qc.setQueriesData<Item[]>({ queryKey: ITEMS_KEY }, (old) =>
-        Array.isArray(old) ? old.filter((item) => item.id !== id) : old,
-      );
-      qc.removeQueries({ queryKey: [...ITEMS_KEY, id], exact: true });
-      return { snapshot };
-    },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ITEMS_KEY });
-    },
-    onError: (error, _id, context) => {
-      for (const [key, data] of context?.snapshot ?? []) {
-        qc.setQueryData(key, data);
-      }
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
     },
   });
