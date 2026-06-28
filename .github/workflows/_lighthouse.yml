@@ -29,7 +29,7 @@ jobs:
         shell: bash
 
       - name: Wait for server
-        run: npx wait-on http://localhost:4173 --timeout 30000
+        run: bunx wait-on http://localhost:4173 --timeout 30000
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
