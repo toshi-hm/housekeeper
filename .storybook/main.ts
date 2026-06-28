@@ -8,6 +8,7 @@ const __dirname = dirname(__filename);
 const config: StorybookConfig = {
   framework: "@storybook/react-vite",
   stories: ["../src/**/*.stories.@(ts|tsx)"],
+  addons: ["@storybook/addon-a11y"],
   staticDirs: ["../public"],
   viteFinal: async (config) => {
     const { mergeConfig } = await import("vite");
