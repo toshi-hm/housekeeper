@@ -409,3 +409,93 @@ export const useItemsWithExpiry = () =>
     queryFn: fetchItemsWithExpiry,
     staleTime: 30_000,
   });
+
+// --- Bulk operations (#359) ---
+
+/** 複数アイテムの保管場所 / カテゴリを一括更新する。 */
+const bulkUpdateItems = async (
+  ids: string[],
+  values: Pick<Partial<ItemFormValues>, "category_id" | "storage_location_id">,
+): Promise<void> => {
+  requireOnline();
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from("items")
+    .update({ ...normalizeUpdateValues(values), updated_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) throw error;
+};
+
+/** 複数アイテムをソフトデリートする。 */
+const bulkSoftDeleteItems = async (ids: string[]): Promise<void> => {
+  requireOnline();
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from("items")
+    .update({ deleted_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) throw error;
+};
+
+/** 複数アイテムを全消費（units=0）にする。ロットを削除して在庫を 0 にリセットする。 */
+const bulkConsumeItems = async (ids: string[]): Promise<void> => {
+  requireOnline();
+  if (ids.length === 0) return;
+  const { error: lotError } = await supabase.from("item_lots").delete().in("item_id", ids);
+  if (lotError) throw lotError;
+  const { error } = await supabase
+    .from("items")
+    .update({
+      units: 0,
+      opened_remaining: null,
+      expiry_date: null,
+      updated_at: new Date().toISOString(),
+    })
+    .in("id", ids);
+  if (error) throw error;
+};
+
+export type BulkAction = "updateLocation" | "updateCategory" | "consume" | "delete";
+
+interface BulkActionInput {
+  action: BulkAction;
+  ids: string[];
+  /** updateLocation / updateCategory のときの対象ID（null = 未設定にする） */
+  targetId?: string | null;
+}
+
+export const useBulkItemAction = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation(["common", "items"]);
+  return useMutation({
+    mutationFn: async ({ action, ids, targetId = null }: BulkActionInput) => {
+      switch (action) {
+        case "updateLocation":
+          await bulkUpdateItems(ids, { storage_location_id: targetId });
+          break;
+        case "updateCategory":
+          await bulkUpdateItems(ids, { category_id: targetId });
+          break;
+        case "consume":
+          await bulkConsumeItems(ids);
+          break;
+        case "delete":
+          await bulkSoftDeleteItems(ids);
+          break;
+      }
+      return { action, count: ids.length };
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: LOTS_KEY, refetchType: "all" }),
+      ]);
+      toast(t("items:bulkActionSuccess"), "success");
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
+      else toast(t("common:unknownError"), "error");
+    },
+  });
+};
