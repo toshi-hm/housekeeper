@@ -22,6 +22,7 @@ import { z } from "zod";
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { TagBadge } from "@/components/atoms/TagBadge";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { QRCodeDialog } from "@/components/molecules/QRCodeDialog";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,7 @@ import { useItemLots } from "@/hooks/useItemLots";
 import { useItem, useSoftDeleteItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
+import { useItemTagIds, useTags } from "@/hooks/useTags";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
@@ -90,6 +92,10 @@ const ItemDetailPage = () => {
 
   const category = categories.find((c) => c.id === item?.category_id);
   const location = locations.find((l) => l.id === item?.storage_location_id);
+
+  const { data: allTags = [] } = useTags();
+  const { data: itemTagIds = [] } = useItemTagIds(itemId);
+  const itemTags = allTags.filter((tag) => itemTagIds.includes(tag.id));
 
   const handleDelete = async () => {
     try {
@@ -286,6 +292,13 @@ const ItemDetailPage = () => {
                 warningDays={userSettings?.expiry_warning_days}
               />
             </div>
+            {itemTags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {itemTags.map((tag) => (
+                  <TagBadge key={tag.id} name={tag.name} color={tag.color} />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tab navigation */}

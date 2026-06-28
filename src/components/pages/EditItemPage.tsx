@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { MultiTagSelect } from "@/components/molecules/MultiTagSelect";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ import {
 } from "@/hooks/useItemImage";
 import { useItemLots, useUpdateLot } from "@/hooks/useItemLots";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
+import { setItemTags, useCreateTag, useItemTagIds, useTags } from "@/hooks/useTags";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
@@ -38,6 +40,17 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedLotId, setSelectedLotId] = useState<string | null>(null);
 
+  const { data: tags = [] } = useTags();
+  const createTag = useCreateTag();
+  const itemTagsQuery = useItemTagIds(itemId);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [tagsInitialized, setTagsInitialized] = useState(false);
+  // 既存タグの初回ロード時に選択状態へ反映する（render 中の state 調整）
+  if (!tagsInitialized && itemTagsQuery.isSuccess) {
+    setTagsInitialized(true);
+    setSelectedTagIds(itemTagsQuery.data);
+  }
+
   const selectedLot =
     lots.find((lot) => lot.id === (selectedLotId ?? lots[0]?.id)) ?? lots[0] ?? null;
 
@@ -46,6 +59,11 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
     try {
       const oldImagePath = item?.image_path ?? null;
       await updateItem.mutateAsync(values);
+      try {
+        await setItemTags(itemId, selectedTagIds);
+      } catch {
+        // タグ保存失敗は非致命
+      }
       if (selectedLot) {
         try {
           await updateLot.mutateAsync({
@@ -182,6 +200,23 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
         onPendingImageUrlChange={(url) => {
           pendingImageUrlRef.current = url;
         }}
+        extraFields={
+          <div className="space-y-2">
+            <Label>{t("tags")}</Label>
+            <MultiTagSelect
+              tags={tags}
+              selectedIds={selectedTagIds}
+              onChange={setSelectedTagIds}
+              onCreate={(name) => createTag.mutateAsync({ name })}
+              labels={{
+                placeholder: t("tagPlaceholder"),
+                addLabel: t("addTag"),
+                removeLabel: t("common:delete"),
+                empty: t("tagsEmpty"),
+              }}
+            />
+          </div>
+        }
       />
     </div>
   );

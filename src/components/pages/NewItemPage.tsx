@@ -5,10 +5,13 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { MultiTagSelect } from "@/components/molecules/MultiTagSelect";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useCreateItem, useItem } from "@/hooks/useItems";
+import { setItemTags, useCreateTag, useTags } from "@/hooks/useTags";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import type { Item, ItemFormValues } from "@/types/item";
@@ -28,6 +31,9 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingItem, setExistingItem] = useState<Item | null>(null);
   const [pendingValues, setPendingValues] = useState<ItemFormValues | null>(null);
+  const { data: tags = [] } = useTags();
+  const createTag = useCreateTag();
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [showStackDialog, setShowStackDialog] = useState(false);
 
   const { data: cloneSource, isLoading: isCloneLoading } = useItem(cloneFrom ?? "");
@@ -46,6 +52,15 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
     try {
       const item = await createItem.mutateAsync({ values, forceNew });
       const result = item as Item & { _stacked?: boolean; _revived?: boolean };
+
+      // タグを保存（既存アイテムへのスタック時は上書きしない）
+      if (selectedTagIds.length > 0 && !result._stacked) {
+        try {
+          await setItemTags(item.id, selectedTagIds);
+        } catch {
+          // タグ保存失敗は非致命。アイテム自体は作成済み。
+        }
+      }
 
       const pendingFile = pendingFileRef.current;
       const pendingImageUrl = pendingImageUrlRef.current;
@@ -162,6 +177,23 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         }}
         submitLabel={existingItem ? t("stackSubmitLabel") : undefined}
         defaultValues={cloneDefaultValues}
+        extraFields={
+          <div className="space-y-2">
+            <Label>{t("tags")}</Label>
+            <MultiTagSelect
+              tags={tags}
+              selectedIds={selectedTagIds}
+              onChange={setSelectedTagIds}
+              onCreate={(name) => createTag.mutateAsync({ name })}
+              labels={{
+                placeholder: t("tagPlaceholder"),
+                addLabel: t("addTag"),
+                removeLabel: t("common:delete"),
+                empty: t("tagsEmpty"),
+              }}
+            />
+          </div>
+        }
       />
 
       {/* Stacking confirmation dialog */}

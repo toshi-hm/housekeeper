@@ -19,6 +19,14 @@ export interface StorageLocation {
   updated_at: string;
 }
 
+export interface Tag {
+  id: string;
+  user_id: string;
+  name: string;
+  color?: string | null;
+  created_at: string;
+}
+
 export interface Item {
   id: string;
   user_id: string;
