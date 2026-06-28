@@ -1,19 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LayoutList, Plus, ShoppingCart } from "lucide-react";
+import { LayoutList, Plus, ScanLine, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ShareButton } from "@/components/atoms/ShareButton";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { ScanToShoppingDialog } from "@/components/molecules/ScanToShoppingDialog";
 import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
 import { ShoppingRow } from "@/components/molecules/ShoppingRow";
+import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
 import { ShoppingTemplatesPanel } from "@/components/organisms/ShoppingTemplatesPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { useItems } from "@/hooks/useItems";
+import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
+import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
 import {
   useDeleteAllPurchasedItems,
@@ -51,6 +54,13 @@ const sortLabelKey = {
   priority: "sortPriority",
 } as const satisfies Record<ShoppingSortKey, string>;
 
+interface ScanDraft {
+  barcode: string;
+  defaultName: string;
+  matchedExisting: boolean;
+  linkedItemId: string | null;
+}
+
 type ShoppingTab = "planned" | "purchased";
 
 const tabLabelKey = {
@@ -76,6 +86,9 @@ const ShoppingPage = () => {
     const saved = localStorage.getItem(SORT_STORAGE_KEY);
     return saved && isShoppingSortKey(saved) ? saved : "added";
   });
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanDraft, setScanDraft] = useState<ScanDraft | null>(null);
+  const [isLooking, setIsLooking] = useState(false);
 
   const { data: items = [], isLoading } = useShoppingList(tab);
   const { data: plannedItems = [] } = useShoppingList("planned");
@@ -89,6 +102,7 @@ const ShoppingPage = () => {
   const saveTemplate = useSaveShoppingTemplate();
   const deleteTemplate = useDeleteShoppingTemplate();
   const applyTemplate = useApplyShoppingTemplate();
+  const { lookup } = useBarcodeLookup();
 
   const handleAdd = async () => {
     if (!addName.trim()) return;
@@ -200,6 +214,47 @@ const ShoppingPage = () => {
     localStorage.setItem(SORT_STORAGE_KEY, value);
   };
 
+  // バーコードスキャン → 在庫一致 or バーコードAPIで商品名を解決し、確認ダイアログを開く
+  const handleScan = async (barcode: string) => {
+    setShowScanner(false);
+    setIsLooking(true);
+    setScanDraft({ barcode, defaultName: "", matchedExisting: false, linkedItemId: null });
+    try {
+      const existing = await findActiveItemByBarcode(barcode);
+      if (existing) {
+        setScanDraft({
+          barcode,
+          defaultName: existing.name,
+          matchedExisting: true,
+          linkedItemId: existing.id,
+        });
+        return;
+      }
+      const result = await lookup(barcode);
+      setScanDraft({
+        barcode,
+        defaultName: result.product?.name ?? "",
+        matchedExisting: false,
+        linkedItemId: null,
+      });
+    } catch {
+      setScanDraft({ barcode, defaultName: "", matchedExisting: false, linkedItemId: null });
+    } finally {
+      setIsLooking(false);
+    }
+  };
+
+  const handleScanConfirm = async (name: string) => {
+    if (!scanDraft) return;
+    try {
+      await upsert.mutateAsync({ name, linked_item_id: scanDraft.linkedItemId });
+      setScanDraft(null);
+      toast(t("addSuccess"), "success");
+    } catch {
+      // Error toast is handled by useUpsertShoppingItem.onError
+    }
+  };
+
   // linked_item_id → カテゴリを解決するためのマップを構築する
   const itemCategoryIdMap = new Map(inventoryItems.map((i) => [i.id, i.category_id ?? null]));
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
@@ -303,6 +358,15 @@ const ShoppingPage = () => {
             <LayoutList className="mr-1 h-4 w-4" />
             {t("templates")}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowScanner(true)}
+            aria-label={t("scanAdd")}
+          >
+            <ScanLine className="mr-1 h-4 w-4" />
+            {t("scanAdd")}
+          </Button>
           <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
             <Plus className="mr-1 h-4 w-4" />
             {t("addItem")}
@@ -326,6 +390,27 @@ const ShoppingPage = () => {
           applyingId={applyingTemplateId}
         />
       )}
+
+      {showScanner && (
+        <BarcodeScanner
+          onScan={(barcode) => {
+            void handleScan(barcode);
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+
+      <ScanToShoppingDialog
+        open={scanDraft !== null}
+        isLooking={isLooking}
+        defaultName={scanDraft?.defaultName ?? ""}
+        matchedExisting={scanDraft?.matchedExisting ?? false}
+        isSubmitting={upsert.isPending}
+        onConfirm={(name) => {
+          void handleScanConfirm(name);
+        }}
+        onClose={() => setScanDraft(null)}
+      />
 
       {/* Add form */}
       {showAdd && (
