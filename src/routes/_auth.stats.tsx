@@ -9,9 +9,45 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCategoryStats, useExpiryDistribution, useMonthlyConsumption } from "@/hooks/useStats";
 import { useUserSettings } from "@/hooks/useUserSettings";
 
+const ChartCard = ({
+  title,
+  subtitle,
+  isLoading,
+  isError,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  isLoading: boolean;
+  isError: boolean;
+  children: React.ReactNode;
+}) => {
+  const { t: tc } = useTranslation("common");
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{title}</CardTitle>
+        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex min-h-[160px] items-center justify-center">
+            <Spinner />
+          </div>
+        ) : isError ? (
+          <div className="flex min-h-[160px] items-center justify-center rounded-lg border border-destructive p-4 text-center text-destructive">
+            <p className="text-sm">{tc("unknownError")}</p>
+          </div>
+        ) : (
+          children
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const StatsPage = () => {
   const { t } = useTranslation("stats");
-  const { t: tc } = useTranslation("common");
   const { stats, isLoading: categoryLoading, isError: categoryError } = useCategoryStats();
   const { data: userSettings } = useUserSettings();
   const {
@@ -25,59 +61,32 @@ const StatsPage = () => {
     isError: monthlyError,
   } = useMonthlyConsumption(6);
 
-  const isLoading = categoryLoading || expiryLoading || monthlyLoading;
-  const isError = categoryError || expiryError || monthlyError;
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-lg border border-destructive p-4 text-destructive">
-        <p className="font-medium">{tc("error")}</p>
-        <p className="text-sm text-muted-foreground">{tc("unknownError")}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t("categoryBreakdown")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CategoryChart stats={stats} />
-          </CardContent>
-        </Card>
+        <ChartCard
+          title={t("categoryBreakdown")}
+          isLoading={categoryLoading}
+          isError={categoryError}
+        >
+          <CategoryChart stats={stats} />
+        </ChartCard>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t("expiryBreakdown")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ExpiryChart distribution={distribution} />
-          </CardContent>
-        </Card>
+        <ChartCard title={t("expiryBreakdown")} isLoading={expiryLoading} isError={expiryError}>
+          <ExpiryChart distribution={distribution} />
+        </ChartCard>
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t("consumptionTrend")}</CardTitle>
-          <p className="text-xs text-muted-foreground">{t("last6Months")}</p>
-        </CardHeader>
-        <CardContent>
-          <ConsumptionChart data={monthlyData} />
-        </CardContent>
-      </Card>
+      <ChartCard
+        title={t("consumptionTrend")}
+        subtitle={t("last6Months")}
+        isLoading={monthlyLoading}
+        isError={monthlyError}
+      >
+        <ConsumptionChart data={monthlyData} />
+      </ChartCard>
     </div>
   );
 };

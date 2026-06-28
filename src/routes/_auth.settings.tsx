@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Tag } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { LanguageToggle } from "@/components/atoms/LanguageToggle";
@@ -21,6 +22,10 @@ export const SettingsPage = () => {
   const { data: settings, isLoading } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
   const { toast } = useToast();
+  const [warningDays, setWarningDays] = useState<string | null>(null);
+  const warningDaysValue =
+    warningDays ??
+    (settings?.expiry_warning_days !== undefined ? String(settings.expiry_warning_days) : "");
 
   const handleLanguageChange = async (lang: "ja" | "en") => {
     try {
@@ -38,6 +43,7 @@ export const SettingsPage = () => {
     }
     try {
       await updateSettings.mutateAsync({ expiry_warning_days: days });
+      setWarningDays(null);
       toast(t("saveSuccess"), "success");
     } catch {
       toast(t("common:unknownError"), "error");
@@ -93,10 +99,11 @@ export const SettingsPage = () => {
                 type="number"
                 min={1}
                 max={30}
-                defaultValue={settings?.expiry_warning_days ?? 3}
+                value={warningDaysValue}
                 className="w-24"
-                onBlur={(e) => {
-                  void handleWarningDaysChange(parseInt(e.target.value, 10));
+                onChange={(e) => setWarningDays(e.target.value)}
+                onBlur={() => {
+                  void handleWarningDaysChange(parseInt(warningDaysValue, 10));
                 }}
               />
               <Label>{t("daysBefore")}</Label>
