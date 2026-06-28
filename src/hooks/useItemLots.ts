@@ -44,7 +44,7 @@ export const createLot = async (
   return data as ItemLot;
 };
 
-export const updateLot = async (
+const updateLot = async (
   lotId: string,
   values: {
     units?: number;

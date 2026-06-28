@@ -13,7 +13,8 @@
     "check": "bun run lint && bun run typecheck",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "knip": "knip"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
@@ -43,6 +44,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@happy-dom/global-registrator": "^20.10.6",
+    "@storybook/react": "^10.3.5",
     "@storybook/react-vite": "^10.3.5",
     "@tailwindcss/vite": "^4.2.4",
     "@tanstack/react-query-devtools": "5.100.8",
@@ -58,6 +60,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "eslint-plugin-simple-import-sort": "^13.0.0",
     "globals": "^17.5.0",
+    "knip": "^6.17.1",
     "oxfmt": "^0.47.0",
     "oxlint": "1.62.0",
     "reg-cli": "^0.18.14",
