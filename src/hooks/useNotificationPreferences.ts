@@ -6,8 +6,6 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 import type { NotificationPreferences, UpdatePrefs } from "@/types/user";
 
-export type { NotificationPreferences };
-
 const PREFS_KEY = ["notification-preferences"] as const;
 
 const fetchPreferences = async (): Promise<NotificationPreferences | null> => {

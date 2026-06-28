@@ -13,26 +13,6 @@ import { Label } from "@/components/ui/label";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { useToast } from "@/lib/toast-context";
 
-interface ExpiryWarningInputProps {
-  initialValue: number;
-  onSave: (days: number) => void;
-}
-
-const ExpiryWarningInput = ({ initialValue, onSave }: ExpiryWarningInputProps) => {
-  const [value, setValue] = useState<string>(String(initialValue));
-  return (
-    <Input
-      type="number"
-      min={0}
-      max={30}
-      value={value}
-      className="w-24"
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={() => onSave(parseInt(value, 10))}
-    />
-  );
-};
-
 const SettingsPage = () => {
   const { t } = useTranslation("settings");
   const navigate = useNavigate();
@@ -43,6 +23,10 @@ const SettingsPage = () => {
   const { data: settings, isLoading } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
   const { toast } = useToast();
+  const [warningDays, setWarningDays] = useState<string | null>(null);
+  const warningDaysValue =
+    warningDays ??
+    (settings?.expiry_warning_days !== undefined ? String(settings.expiry_warning_days) : "");
 
   const handleLanguageChange = async (lang: "ja" | "en") => {
     try {
@@ -57,14 +41,11 @@ const SettingsPage = () => {
     if (isNaN(days) || days < 0) return;
     try {
       await updateSettings.mutateAsync({ expiry_warning_days: days });
+      setWarningDays(null);
       toast(t("saveSuccess"), "success");
     } catch {
       toast(t("common:unknownError"), "error");
     }
-  };
-
-  const handleWarningDaysSave = (days: number) => {
-    void handleWarningDaysChange(days);
   };
 
   if (isChildActive) {
@@ -126,10 +107,16 @@ const SettingsPage = () => {
             </h2>
             <p className="mb-2 text-xs text-muted-foreground">{t("expiryWarningDaysHelp")}</p>
             <div className="flex items-center gap-2">
-              <ExpiryWarningInput
-                key={settings?.expiry_warning_days}
-                initialValue={settings?.expiry_warning_days ?? 7}
-                onSave={handleWarningDaysSave}
+              <Input
+                type="number"
+                min={0}
+                max={30}
+                value={warningDaysValue}
+                className="w-24"
+                onChange={(e) => setWarningDays(e.target.value)}
+                onBlur={() => {
+                  void handleWarningDaysChange(parseInt(warningDaysValue, 10));
+                }}
               />
               <Label>{t("daysBefore")}</Label>
             </div>
