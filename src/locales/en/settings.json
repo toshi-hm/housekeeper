@@ -12,6 +12,7 @@
   "notifications": "Notification Settings",
   "saveSuccess": "Settings saved",
   "daysBefore": "days before",
+  "invalidWarningDays": "Warning days must be between 1 and 30",
   "addCategory": "Add Category",
   "editCategory": "Edit Category",
   "addLocation": "Add Location",
