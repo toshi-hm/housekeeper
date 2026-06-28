@@ -6,7 +6,7 @@ export interface ProductInfo {
   brand?: string;
 }
 
-export type BarcodeLookupSource = "db" | "api";
+type BarcodeLookupSource = "db" | "api";
 
 export interface BarcodeLookupResult {
   product: ProductInfo | null;
