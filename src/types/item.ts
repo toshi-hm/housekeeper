@@ -19,26 +19,26 @@ export interface StorageLocation {
   updated_at: string;
 }
 
-export const itemSchema = z.object({
-  id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  name: z.string().min(1),
-  barcode: z.string().nullable().optional(),
-  category_id: z.string().uuid().nullable().optional(),
-  storage_location_id: z.string().uuid().nullable().optional(),
-  units: z.number().int().min(0).default(1),
-  content_amount: z.number().positive().default(1),
-  content_unit: z.string().default("個"),
-  opened_remaining: z.number().min(0).nullable().optional(),
-  purchase_date: z.string().nullable().optional(),
-  expiry_date: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
-  image_path: z.string().nullable().optional(),
-  minimum_stock: z.number().int().min(0).nullable().optional(),
-  deleted_at: z.string().nullable().optional(),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
+export interface Item {
+  id: string;
+  user_id: string;
+  name: string;
+  barcode?: string | null;
+  category_id?: string | null;
+  storage_location_id?: string | null;
+  units: number;
+  content_amount: number;
+  content_unit: string;
+  opened_remaining?: number | null;
+  purchase_date?: string | null;
+  expiry_date?: string | null;
+  notes?: string | null;
+  image_path?: string | null;
+  minimum_stock?: number | null;
+  deleted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export const itemFormSchema = z.object({
   name: z.string().min(1, "名前は必須です"),
@@ -78,7 +78,6 @@ export interface UserSettings {
   updated_at: string;
 }
 
-export type Item = z.infer<typeof itemSchema>;
 export type ItemLot = z.infer<typeof itemLotSchema>;
 export type ItemFormValues = z.infer<typeof itemFormSchema>;
 
