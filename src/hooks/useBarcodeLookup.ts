@@ -1,9 +1,9 @@
 import { useState } from "react";
 
 import { supabase } from "@/lib/supabase";
-import type { BarcodeLookupResult, BarcodeLookupSource, ProductInfo } from "@/types/barcode";
+import type { BarcodeLookupResult, ProductInfo } from "@/types/barcode";
 
-export type { BarcodeLookupResult, BarcodeLookupSource, ProductInfo };
+export type { BarcodeLookupResult, ProductInfo };
 
 interface LookupResult {
   product: {

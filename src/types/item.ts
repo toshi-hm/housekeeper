@@ -1,43 +1,43 @@
 import { z } from "zod";
 
-export const categorySchema = z.object({
-  id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  name: z.string().min(1),
-  color: z.string().nullable().optional(),
-  icon: z.string().nullable().optional(),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
+export interface Category {
+  id: string;
+  user_id: string;
+  name: string;
+  color?: string | null;
+  icon?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
-export const storageLocationSchema = z.object({
-  id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  name: z.string().min(1),
-  icon: z.string().nullable().optional(),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
+export interface StorageLocation {
+  id: string;
+  user_id: string;
+  name: string;
+  icon?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
-export const itemSchema = z.object({
-  id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  name: z.string().min(1),
-  barcode: z.string().nullable().optional(),
-  category_id: z.string().uuid().nullable().optional(),
-  storage_location_id: z.string().uuid().nullable().optional(),
-  units: z.number().int().min(0).default(1),
-  content_amount: z.number().positive().default(1),
-  content_unit: z.string().default("個"),
-  opened_remaining: z.number().min(0).nullable().optional(),
-  purchase_date: z.string().nullable().optional(),
-  expiry_date: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
-  image_path: z.string().nullable().optional(),
-  deleted_at: z.string().nullable().optional(),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
+export interface Item {
+  id: string;
+  user_id: string;
+  name: string;
+  barcode?: string | null;
+  category_id?: string | null;
+  storage_location_id?: string | null;
+  units: number;
+  content_amount: number;
+  content_unit: string;
+  opened_remaining?: number | null;
+  purchase_date?: string | null;
+  expiry_date?: string | null;
+  notes?: string | null;
+  image_path?: string | null;
+  deleted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export const itemFormSchema = z.object({
   name: z.string().min(1, "名前は必須です"),
@@ -66,27 +66,18 @@ export const itemLotSchema = z.object({
   updated_at: z.string(),
 });
 
-export const consumeFormSchema = z.object({
-  delta_amount: z.coerce.number().positive("消費量は0より大きい値を入力してください"),
-});
+export interface UserSettings {
+  user_id: string;
+  language: "ja" | "en";
+  expiry_warning_days: number;
+  default_unit: string;
+  notify_at: string;
+  created_at: string;
+  updated_at: string;
+}
 
-export const userSettingsSchema = z.object({
-  user_id: z.string().uuid(),
-  language: z.enum(["ja", "en"]).default("ja"),
-  expiry_warning_days: z.number().int().min(0).default(3),
-  default_unit: z.string().default("mL"),
-  notify_at: z.string().default("08:00"),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
-
-export type Category = z.infer<typeof categorySchema>;
-export type StorageLocation = z.infer<typeof storageLocationSchema>;
-export type Item = z.infer<typeof itemSchema>;
 export type ItemLot = z.infer<typeof itemLotSchema>;
 export type ItemFormValues = z.infer<typeof itemFormSchema>;
-export type ConsumeFormValues = z.infer<typeof consumeFormSchema>;
-export type UserSettings = z.infer<typeof userSettingsSchema>;
 
 export type ExpiryStatus = "expired" | "expiring-soon" | "ok" | "unknown";
 
