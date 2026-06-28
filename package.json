@@ -15,7 +15,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "knip": "knip",
-    "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/supabase.ts"
+    "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/supabase.ts && node scripts/fix-supabase-types.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
