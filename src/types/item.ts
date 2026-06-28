@@ -81,6 +81,10 @@ export type ItemFormValues = z.infer<typeof itemFormSchema>;
 
 export type ExpiryStatus = "expired" | "expiring-soon" | "ok" | "unknown";
 
+/** Error codes returned by computeConsumption. Each value is also an i18n key
+ *  in the `items` namespace. */
+export type ConsumptionError = "insufficientStock";
+
 /** Filters applied server-side (Supabase query). Client-only filters such as
  *  expiryStatus and hideEmpty are handled by the caller after fetching. */
 export interface ItemFilters {
@@ -141,7 +145,7 @@ export const computeConsumption = (
 ): {
   units_after: number;
   opened_remaining_after: number | null;
-  error?: string;
+  error?: ConsumptionError;
 } => {
   const { content_amount: contentAmount, units } = item;
   const openedRemaining = item.opened_remaining ?? null;
