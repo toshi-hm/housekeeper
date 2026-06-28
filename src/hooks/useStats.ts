@@ -10,12 +10,7 @@ import {
   type RawLog,
 } from "@/types/stats";
 
-export type {
-  CategoryStat,
-  ExpiryDistributionEntry,
-  MonthlyConsumptionEntry,
-  RawLog,
-} from "@/types/stats";
+export type { RawLog } from "@/types/stats";
 
 export const useCategoryStats = () => {
   const {
@@ -41,7 +36,7 @@ export const useExpiryDistribution = (warningDays?: number) => {
   return { distribution: computeExpiryDistribution(items, warningDays), isLoading, isError };
 };
 
-export const useAllConsumptionLogs = () =>
+const useAllConsumptionLogs = () =>
   useQuery<RawLog[]>({
     queryKey: ["consumption-logs-all"],
     queryFn: async () => {
