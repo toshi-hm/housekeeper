@@ -1,3 +1,16 @@
+export const updateAppBadge = async (urgentCount: number): Promise<void> => {
+  if (!("setAppBadge" in navigator)) return;
+  try {
+    if (urgentCount > 0) {
+      await navigator.setAppBadge(urgentCount);
+    } else {
+      await navigator.clearAppBadge();
+    }
+  } catch {
+    // Badge API may be blocked by permissions or not fully supported
+  }
+};
+
 export const createSwRegistrationHandler = (): (() => void) => {
   const handler = () => {
     void navigator.serviceWorker.register("/sw.js").catch((err: unknown) => {

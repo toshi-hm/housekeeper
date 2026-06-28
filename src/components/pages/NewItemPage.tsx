@@ -4,7 +4,7 @@ import { ArrowLeft, PackagePlus } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Spinner } from "@/components/atoms/Spinner";
+import { Skeleton } from "@/components/atoms/Skeleton";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
@@ -27,6 +27,8 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const pendingImageUrlRef = useRef<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingItem, setExistingItem] = useState<Item | null>(null);
+  const [pendingValues, setPendingValues] = useState<ItemFormValues | null>(null);
+  const [showStackDialog, setShowStackDialog] = useState(false);
 
   const { data: cloneSource, isLoading: isCloneLoading } = useItem(cloneFrom ?? "");
 
@@ -39,10 +41,10 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
     setExistingItem(found);
   };
 
-  const handleSubmit = async (values: ItemFormValues) => {
+  const submitItem = async (values: ItemFormValues, forceNew: boolean) => {
     setIsSubmitting(true);
     try {
-      const item = await createItem.mutateAsync(values);
+      const item = await createItem.mutateAsync({ values, forceNew });
       const result = item as Item & { _stacked?: boolean; _revived?: boolean };
 
       const pendingFile = pendingFileRef.current;
@@ -79,6 +81,27 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
     }
   };
 
+  const handleSubmit = (values: ItemFormValues) => {
+    if (existingItem) {
+      setPendingValues(values);
+      setShowStackDialog(true);
+      return;
+    }
+    void submitItem(values, false);
+  };
+
+  const handleDialogStack = () => {
+    setShowStackDialog(false);
+    if (pendingValues) void submitItem(pendingValues, false);
+    setPendingValues(null);
+  };
+
+  const handleDialogCreateNew = () => {
+    setShowStackDialog(false);
+    if (pendingValues) void submitItem(pendingValues, true);
+    setPendingValues(null);
+  };
+
   const cloneDefaultValues: Partial<ItemFormValues> | undefined = cloneSource
     ? {
         name: cloneSource.name,
@@ -96,8 +119,10 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
 
   if (cloneFrom && isCloneLoading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <Spinner />
+      <div className="space-y-4">
+        <Skeleton className="h-7 w-32" />
+        <Skeleton className="h-10 w-full rounded-md" />
+        <Skeleton className="h-10 w-full rounded-md" />
       </div>
     );
   }
@@ -124,9 +149,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
       )}
 
       <ItemForm
-        onSubmit={(values) => {
-          void handleSubmit(values);
-        }}
+        onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
         onPendingFileChange={(file) => {
           pendingFileRef.current = file;
@@ -140,6 +163,37 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         submitLabel={existingItem ? t("stackSubmitLabel") : undefined}
         defaultValues={cloneDefaultValues}
       />
+
+      {/* Stacking confirmation dialog */}
+      {showStackDialog && existingItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowStackDialog(false)}
+        >
+          <div
+            className="w-full max-w-sm space-y-4 rounded-xl bg-background p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h2 className="text-base font-semibold">{t("stackDialogTitle")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("stackDialogBody", { name: existingItem.name, units: existingItem.units })}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button onClick={handleDialogStack} className="w-full">
+                {t("stackDialogStack")}
+              </Button>
+              <Button variant="outline" onClick={handleDialogCreateNew} className="w-full">
+                {t("stackDialogCreateNew")}
+              </Button>
+              <Button variant="ghost" onClick={() => setShowStackDialog(false)} className="w-full">
+                {t("common:cancel")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
