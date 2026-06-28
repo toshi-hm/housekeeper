@@ -1,7 +1,14 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["src/main.tsx", "src/routes/**/*.tsx", "src/service-worker.ts"],
+  "entry": [
+    "src/routes/**/*.tsx",
+    "src/sw.ts",
+    "src/test/setup.ts",
+    "src/mocks/supabase.ts",
+    "src/**/*.test.{ts,tsx}",
+    "src/**/*.stories.tsx"
+  ],
   "project": ["src/**/*.{ts,tsx}"],
-  "ignore": ["src/routeTree.gen.ts", "src/**/*.stories.tsx", "src/**/*.test.{ts,tsx}"],
-  "ignoreDependencies": ["@tanstack/router-devtools", "@tanstack/react-query-devtools"]
+  "ignoreDependencies": ["tailwindcss", "i18next-parser"],
+  "ignoreBinaries": ["wait-on"]
 }
