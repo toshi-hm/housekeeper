@@ -31,6 +31,7 @@ const ShoppingPage = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showClearPurchased, setShowClearPurchased] = useState(false);
 
@@ -78,6 +79,7 @@ const ShoppingPage = () => {
     id: string,
     data: { name: string; desiredUnits: number; note: string | null },
   ) => {
+    setSavingId(id);
     try {
       await upsert.mutateAsync({
         id,
@@ -89,6 +91,8 @@ const ShoppingPage = () => {
       toast(t("editSuccess"), "success");
     } catch {
       // Error toast is handled by useUpsertShoppingItem.onError
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -134,10 +138,13 @@ const ShoppingPage = () => {
       {pendingPurchaseId && (
         <PurchaseDialog
           open={!!pendingPurchaseId}
+          itemName={plannedItems.find((i) => i.id === pendingPurchaseId)?.name}
           onSubmit={(values) => {
             void handlePurchase(values);
           }}
-          onClose={() => setPendingPurchaseId(null)}
+          onClose={() => {
+            if (!purchase.isPending) setPendingPurchaseId(null);
+          }}
           isSubmitting={purchase.isPending}
         />
       )}
@@ -278,6 +285,7 @@ const ShoppingPage = () => {
               note={item.note}
               isPurchased={item.status === "purchased"}
               isEditing={editId === item.id}
+              isSaving={savingId === item.id}
               onPurchase={tab === "planned" ? (id) => setPendingPurchaseId(id) : undefined}
               onDelete={(id) => setDeleteId(id)}
               onEdit={tab === "planned" ? (id) => setEditId(id) : undefined}
