@@ -102,8 +102,8 @@ export const SettingsPage = () => {
                 value={warningDaysValue}
                 className="w-24"
                 onChange={(e) => setWarningDays(e.target.value)}
-                onBlur={() => {
-                  void handleWarningDaysChange(parseInt(warningDaysValue, 10));
+                onBlur={(e) => {
+                  void handleWarningDaysChange(parseInt(e.target.value, 10));
                 }}
               />
               <Label>{t("daysBefore")}</Label>

@@ -31,7 +31,7 @@
       },
       "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "@happy-dom/global-registrator": "^20.10.6",
+        "@happy-dom/global-registrator": "20.10.6",
         "@storybook/react-vite": "^10.3.5",
         "@tailwindcss/vite": "^4.2.4",
         "@tanstack/react-query-devtools": "5.100.8",

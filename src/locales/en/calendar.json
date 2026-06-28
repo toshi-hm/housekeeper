@@ -20,5 +20,7 @@
   "selectYearMonth": "Select year and month",
   "prevYear": "Previous year",
   "nextYear": "Next year",
-  "noEligibleLot": "No lot expiring this month found"
+  "noEligibleLot": "No lot expiring this month found",
+  "checkError": "Failed to update inventory",
+  "undoError": "Failed to undo"
 }

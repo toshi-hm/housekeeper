@@ -171,6 +171,7 @@ const LocationsPage = () => {
                   <Button
                     size="icon"
                     variant="ghost"
+                    aria-label={tc("edit")}
                     onClick={() => {
                       setEditId(l.id);
                       setEditName(l.name);
@@ -182,6 +183,7 @@ const LocationsPage = () => {
                     size="icon"
                     variant="ghost"
                     className="text-destructive"
+                    aria-label={tc("delete")}
                     disabled={checkingId === l.id}
                     onClick={() => {
                       void handleDeleteClick(l.id);
