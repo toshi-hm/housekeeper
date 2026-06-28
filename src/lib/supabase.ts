@@ -378,6 +378,63 @@ export interface Database {
         };
         Relationships: [];
       };
+      shopping_list_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      shopping_list_template_items: {
+        Row: {
+          id: string;
+          template_id: string;
+          user_id: string;
+          name: string;
+          desired_units: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          user_id: string;
+          name: string;
+          desired_units?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          user_id?: string;
+          name?: string;
+          desired_units?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_template_items_template_id_fkey";
+            columns: ["template_id"];
+            referencedRelation: "shopping_list_templates";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
