@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useConsumptionLogs } from "@/hooks/useConsumptionLogs";
 import { useItemLots } from "@/hooks/useItemLots";
-import { useDeleteItem, useItem } from "@/hooks/useItems";
+import { useItem, useSoftDeleteItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
@@ -59,7 +59,7 @@ const ItemDetailPage = () => {
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
   const { data: userSettings } = useUserSettings();
-  const deleteItem = useDeleteItem();
+  const deleteItem = useSoftDeleteItem();
   const upsertShopping = useUpsertShoppingItem();
   const { data: logs = [] } = useConsumptionLogs(itemId);
   const { toast } = useToast();
@@ -83,10 +83,9 @@ const ItemDetailPage = () => {
     try {
       await deleteItem.mutateAsync(itemId);
       setShowDeleteConfirm(false);
-      toast(t("deleteSuccess"), "success");
       void navigate({ to: "/" });
     } catch {
-      toast(t("common:unknownError"), "error");
+      setShowDeleteConfirm(false);
     }
   };
 
