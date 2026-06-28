@@ -34,13 +34,9 @@
         "@commitlint/cli": "^21.0.2",
         "@commitlint/config-conventional": "^21.0.2",
         "@eslint/js": "^10.0.1",
-<<<<<<< HEAD
         "@happy-dom/global-registrator": "^20.10.6",
         "@storybook/addon-a11y": "^10.4.6",
         "@storybook/react": "^10.3.5",
-=======
-        "@happy-dom/global-registrator": "20.10.6",
->>>>>>> origin/main
         "@storybook/react-vite": "^10.3.5",
         "@tailwindcss/vite": "^4.2.4",
         "@tanstack/react-query-devtools": "5.100.8",
