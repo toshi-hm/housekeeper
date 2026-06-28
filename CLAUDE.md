@@ -95,6 +95,22 @@ npx oxfmt . && bun run check
 - atoms / molecules / organismsを作ったら、必ず .stories.tsx を同時に作成する
 - Storyの規約はdocs/specs/storybook.mdに従う
 
+### i18n キーの動的参照ルール
+
+- `t()` には**文字列リテラル**を渡すのが基本（`t("foo.bar")`）。
+- 動的にキーを切り替える場合は、**テンプレートリテラル連結を避け**、`as const satisfies Record<Union, string>` な
+  Key Map 経由で参照する（型安全 + 網羅チェック）。例:
+  ```ts
+  const labelKey = {
+    a: "fooA",
+    b: "fooB",
+  } as const satisfies Record<MyUnion, string>;
+  t(labelKey[value]);
+  ```
+- **重要**: i18next-parser は `t()` の文字列リテラルしか抽出できず、Key Map / 変数経由のキーは
+  抽出できない。よって `i18next-parser.config.ts` は `keepRemoved: true`（生きたキーを消さない）。
+  動的参照キーや、保存先と実行時 namespace が異なるキーは**手動で管理**する。デッドキーの掃除も手動。
+
 ### TypeScript 記法ルール（lintで強制）
 
 - **関数定義**: `function` 宣言は使わず、必ず `const hoge = () => {}` で記載する
