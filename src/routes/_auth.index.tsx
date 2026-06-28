@@ -146,6 +146,13 @@ const DashboardPage = () => {
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   );
 
+  const lowStockItems = baseFiltered.filter(
+    (item) =>
+      item.minimum_stock !== null &&
+      item.minimum_stock !== undefined &&
+      item.units <= item.minimum_stock,
+  );
+
   const handleBulkAddToShopping = async () => {
     if (isBulkAdding) return;
     setIsBulkAdding(true);
@@ -258,6 +265,36 @@ const DashboardPage = () => {
               {isBulkAdding ? tc("loading") : t("bulkAddToShopping", { count: urgentItems.length })}
             </Button>
           )}
+        </div>
+      )}
+
+      {/* Low-stock alert banner */}
+      {lowStockItems.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-orange-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p className="text-sm font-medium">
+              {t("lowStockBanner", { count: lowStockItems.length })}
+            </p>
+          </div>
+          <details className="rounded-md border border-orange-200 bg-orange-100/50 p-2">
+            <summary className="cursor-pointer text-sm font-medium">
+              {t("lowStockBannerDetails")}
+            </summary>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+              {lowStockItems.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    className="underline decoration-orange-800 underline-offset-2 hover:opacity-80"
+                    to="/items/$itemId"
+                    params={{ itemId: item.id }}
+                  >
+                    {item.name} ({item.units} / {item.minimum_stock})
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </details>
         </div>
       )}
 

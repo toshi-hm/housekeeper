@@ -88,6 +88,10 @@ const normalizeCreateValues = (values: ItemFormValues) => ({
   expiry_date: values.expiry_date || null,
   notes: values.notes || null,
   image_path: values.image_path || null,
+  minimum_stock:
+    values.minimum_stock !== undefined && values.minimum_stock !== null
+      ? values.minimum_stock
+      : null,
 });
 
 const hasOwn = <K extends PropertyKey>(obj: object, key: K): obj is Record<K, unknown> =>
@@ -119,6 +123,12 @@ export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
   if (hasOwn(values, "expiry_date")) normalized.expiry_date = values.expiry_date || null;
   if (hasOwn(values, "notes")) normalized.notes = values.notes || null;
   if (hasOwn(values, "image_path")) normalized.image_path = values.image_path || null;
+  if (hasOwn(values, "minimum_stock")) {
+    normalized.minimum_stock =
+      values.minimum_stock !== undefined && values.minimum_stock !== null
+        ? values.minimum_stock
+        : null;
+  }
 
   return normalized;
 };

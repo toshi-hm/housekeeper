@@ -34,6 +34,7 @@ export interface Item {
   expiry_date?: string | null;
   notes?: string | null;
   image_path?: string | null;
+  minimum_stock?: number | null;
   deleted_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -52,6 +53,7 @@ export const itemFormSchema = z.object({
   expiry_date: z.string().optional(),
   notes: z.string().optional(),
   image_path: z.string().optional(),
+  minimum_stock: z.coerce.number().int().min(0).nullable().optional(),
 });
 
 export const itemLotSchema = z.object({
