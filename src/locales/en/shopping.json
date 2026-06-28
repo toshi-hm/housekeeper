@@ -25,6 +25,12 @@
   "purchaseDialog": "Mark Purchased — Add to Inventory",
   "purchaseSuccess": "Added to inventory",
   "restock": "Restock",
+  "scanAdd": "Scan to add",
+  "scanAddConfirm": "Add to list",
+  "scanDialogTitle": "Scan to add to list",
+  "scanLookingUp": "Looking up product…",
+  "scanMatchedExisting": "Found a matching item in your inventory",
+  "scanNewProduct": "Not in your inventory. Check the name and add it",
   "share": "Share",
   "shareShoppingList": "Share Shopping List",
   "title": "Shopping List"

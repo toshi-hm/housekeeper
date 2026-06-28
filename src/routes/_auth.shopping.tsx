@@ -1,15 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, ShoppingCart } from "lucide-react";
+import { Plus, ScanLine, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ShareButton } from "@/components/atoms/ShareButton";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { ScanToShoppingDialog } from "@/components/molecules/ScanToShoppingDialog";
 import { ShoppingRow } from "@/components/molecules/ShoppingRow";
+import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
+import { findActiveItemByBarcode } from "@/hooks/useItems";
 import {
   useDeleteAllPurchasedItems,
   useDeleteShoppingItem,
@@ -21,6 +25,13 @@ import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
 
 import { PurchaseDialog } from "../components/molecules/PurchaseDialog";
+
+interface ScanDraft {
+  barcode: string;
+  defaultName: string;
+  matchedExisting: boolean;
+  linkedItemId: string | null;
+}
 
 type ShoppingTab = "planned" | "purchased";
 
@@ -41,6 +52,9 @@ const ShoppingPage = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showClearPurchased, setShowClearPurchased] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanDraft, setScanDraft] = useState<ScanDraft | null>(null);
+  const [isLooking, setIsLooking] = useState(false);
 
   const { data: items = [], isLoading } = useShoppingList(tab);
   const { data: plannedItems = [] } = useShoppingList("planned");
@@ -48,6 +62,7 @@ const ShoppingPage = () => {
   const deleteItem = useDeleteShoppingItem();
   const purchase = usePurchaseShoppingItem();
   const clearPurchased = useDeleteAllPurchasedItems();
+  const { lookup } = useBarcodeLookup();
 
   const handleAdd = async () => {
     if (!addName.trim()) return;
@@ -115,6 +130,47 @@ const ShoppingPage = () => {
     }
   };
 
+  // バーコードスキャン → 在庫一致 or バーコードAPIで商品名を解決し、確認ダイアログを開く
+  const handleScan = async (barcode: string) => {
+    setShowScanner(false);
+    setIsLooking(true);
+    setScanDraft({ barcode, defaultName: "", matchedExisting: false, linkedItemId: null });
+    try {
+      const existing = await findActiveItemByBarcode(barcode);
+      if (existing) {
+        setScanDraft({
+          barcode,
+          defaultName: existing.name,
+          matchedExisting: true,
+          linkedItemId: existing.id,
+        });
+        return;
+      }
+      const result = await lookup(barcode);
+      setScanDraft({
+        barcode,
+        defaultName: result.product?.name ?? "",
+        matchedExisting: false,
+        linkedItemId: null,
+      });
+    } catch {
+      setScanDraft({ barcode, defaultName: "", matchedExisting: false, linkedItemId: null });
+    } finally {
+      setIsLooking(false);
+    }
+  };
+
+  const handleScanConfirm = async (name: string) => {
+    if (!scanDraft) return;
+    try {
+      await upsert.mutateAsync({ name, linked_item_id: scanDraft.linkedItemId });
+      setScanDraft(null);
+      toast(t("addSuccess"), "success");
+    } catch {
+      // Error toast is handled by useUpsertShoppingItem.onError
+    }
+  };
+
   return (
     <div className="space-y-4">
       <ConfirmDialog
@@ -176,12 +232,42 @@ const ShoppingPage = () => {
               label={t("share")}
             />
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowScanner(true)}
+            aria-label={t("scanAdd")}
+          >
+            <ScanLine className="mr-1 h-4 w-4" />
+            {t("scanAdd")}
+          </Button>
           <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
             <Plus className="mr-1 h-4 w-4" />
             {t("addItem")}
           </Button>
         </div>
       </div>
+
+      {showScanner && (
+        <BarcodeScanner
+          onScan={(barcode) => {
+            void handleScan(barcode);
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+
+      <ScanToShoppingDialog
+        open={scanDraft !== null}
+        isLooking={isLooking}
+        defaultName={scanDraft?.defaultName ?? ""}
+        matchedExisting={scanDraft?.matchedExisting ?? false}
+        isSubmitting={upsert.isPending}
+        onConfirm={(name) => {
+          void handleScanConfirm(name);
+        }}
+        onClose={() => setScanDraft(null)}
+      />
 
       {/* Add form */}
       {showAdd && (
