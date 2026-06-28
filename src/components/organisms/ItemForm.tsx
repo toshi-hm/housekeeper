@@ -1,5 +1,5 @@
 import { Barcode, Loader2, Search } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ImageUploader } from "@/components/molecules/ImageUploader";
@@ -35,6 +35,8 @@ interface ItemFormProps {
   onPendingImageUrlChange?: (url: string | null) => void;
   /** Called after a barcode is scanned or manually looked up */
   onBarcodeScanned?: (barcode: string, source: "db" | "api" | null) => void;
+  /** カテゴリ・保管場所の下に差し込む追加フィールド（タグ選択など） */
+  extraFields?: ReactNode;
 }
 
 export const ItemForm = ({
@@ -45,6 +47,7 @@ export const ItemForm = ({
   onPendingFileChange,
   onPendingImageUrlChange,
   onBarcodeScanned,
+  extraFields,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
   const { t: ts } = useTranslation("settings");
@@ -339,6 +342,8 @@ export const ItemForm = ({
             addErrorMessage={t("addError")}
           />
         </div>
+
+        {extraFields}
 
         {/* Quantity (units × content_amount content_unit) */}
         <div className="space-y-2">

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Moon, Ruler, Tag } from "lucide-react";
+import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Moon, Ruler, Tag, Tags } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -21,7 +21,10 @@ export const SettingsPage = () => {
   const navigate = useNavigate();
   const matches = useRouterState({ select: (s) => s.matches });
   const isChildActive = matches.some(
-    (m) => m.routeId === "/_auth/settings/categories" || m.routeId === "/_auth/settings/locations",
+    (m) =>
+      m.routeId === "/_auth/settings/categories" ||
+      m.routeId === "/_auth/settings/locations" ||
+      m.routeId === "/_auth/settings/tags",
   );
   const { data: settings, isLoading } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
@@ -194,6 +197,16 @@ export const SettingsPage = () => {
                 <div className="flex items-center gap-3">
                   <MapPin className="h-5 w-5 text-muted-foreground" />
                   <span>{t("storageLocations")}</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link
+                to="/settings/tags"
+                className="flex items-center justify-between p-4 hover:bg-muted/50"
+              >
+                <div className="flex items-center gap-3">
+                  <Tags className="h-5 w-5 text-muted-foreground" />
+                  <span>{t("tags")}</span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </Link>

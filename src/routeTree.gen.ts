@@ -17,6 +17,7 @@ import { Route as AuthStatsRouteImport } from './routes/_auth.stats'
 import { Route as AuthShoppingRouteImport } from './routes/_auth.shopping'
 import { Route as AuthSettingsRouteImport } from './routes/_auth.settings'
 import { Route as AuthCalendarRouteImport } from './routes/_auth.calendar'
+import { Route as AuthSettingsTagsRouteImport } from './routes/_auth.settings.tags'
 import { Route as AuthSettingsLocationsRouteImport } from './routes/_auth.settings.locations'
 import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
 import { Route as AuthItemsNewRouteImport } from './routes/_auth.items.new'
@@ -63,6 +64,11 @@ const AuthCalendarRoute = AuthCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthSettingsTagsRoute = AuthSettingsTagsRouteImport.update({
+  id: '/tags',
+  path: '/tags',
+  getParentRoute: () => AuthSettingsRoute,
+} as any)
 const AuthSettingsLocationsRoute = AuthSettingsLocationsRouteImport.update({
   id: '/locations',
   path: '/locations',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/items/new': typeof AuthItemsNewRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
+  '/settings/tags': typeof AuthSettingsTagsRoute
   '/items/$itemId/consume': typeof AuthItemsItemIdConsumeRoute
   '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute
 }
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/items/new': typeof AuthItemsNewRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
+  '/settings/tags': typeof AuthSettingsTagsRoute
   '/items/$itemId/consume': typeof AuthItemsItemIdConsumeRoute
   '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute
 }
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/_auth/items/new': typeof AuthItemsNewRoute
   '/_auth/settings/categories': typeof AuthSettingsCategoriesRoute
   '/_auth/settings/locations': typeof AuthSettingsLocationsRoute
+  '/_auth/settings/tags': typeof AuthSettingsTagsRoute
   '/_auth/items/$itemId/consume': typeof AuthItemsItemIdConsumeRoute
   '/_auth/items/$itemId/edit': typeof AuthItemsItemIdEditRoute
 }
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/items/new'
     | '/settings/categories'
     | '/settings/locations'
+    | '/settings/tags'
     | '/items/$itemId/consume'
     | '/items/$itemId/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/items/new'
     | '/settings/categories'
     | '/settings/locations'
+    | '/settings/tags'
     | '/items/$itemId/consume'
     | '/items/$itemId/edit'
   id:
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/_auth/items/new'
     | '/_auth/settings/categories'
     | '/_auth/settings/locations'
+    | '/_auth/settings/tags'
     | '/_auth/items/$itemId/consume'
     | '/_auth/items/$itemId/edit'
   fileRoutesById: FileRoutesById
@@ -254,6 +266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCalendarRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/settings/tags': {
+      id: '/_auth/settings/tags'
+      path: '/tags'
+      fullPath: '/settings/tags'
+      preLoaderRoute: typeof AuthSettingsTagsRouteImport
+      parentRoute: typeof AuthSettingsRoute
+    }
     '/_auth/settings/locations': {
       id: '/_auth/settings/locations'
       path: '/locations'
@@ -302,11 +321,13 @@ declare module '@tanstack/react-router' {
 interface AuthSettingsRouteChildren {
   AuthSettingsCategoriesRoute: typeof AuthSettingsCategoriesRoute
   AuthSettingsLocationsRoute: typeof AuthSettingsLocationsRoute
+  AuthSettingsTagsRoute: typeof AuthSettingsTagsRoute
 }
 
 const AuthSettingsRouteChildren: AuthSettingsRouteChildren = {
   AuthSettingsCategoriesRoute: AuthSettingsCategoriesRoute,
   AuthSettingsLocationsRoute: AuthSettingsLocationsRoute,
+  AuthSettingsTagsRoute: AuthSettingsTagsRoute,
 }
 
 const AuthSettingsRouteWithChildren = AuthSettingsRoute._addFileChildren(
