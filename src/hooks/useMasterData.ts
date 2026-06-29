@@ -101,6 +101,7 @@ export const useCreateCategory = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };
@@ -117,6 +118,7 @@ export const useUpdateCategory = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };
@@ -135,6 +137,7 @@ export const useDeleteCategory = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };
@@ -226,6 +229,7 @@ export const useCreateStorageLocation = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };
@@ -241,6 +245,7 @@ export const useUpdateStorageLocation = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };
@@ -259,6 +264,7 @@ export const useDeleteStorageLocation = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };
