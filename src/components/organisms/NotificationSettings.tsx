@@ -77,7 +77,7 @@ export const NotificationSettings = () => {
 
   const handleThresholdBlur = async (val: string) => {
     const days = parseInt(val, 10);
-    if (isNaN(days) || days < 0) return;
+    if (isNaN(days) || days < 0 || days > 30) return;
     try {
       await updatePrefs.mutateAsync({ threshold_days: days });
     } catch {

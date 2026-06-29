@@ -155,10 +155,13 @@ export const ItemConsumePage = () => {
         })
     : null;
 
+  const roundFloat = (n: number) => Math.round(n * 1e10) / 1e10;
   const totalLotAmount = selectedLot
     ? selectedLot.opened_remaining !== null && selectedLot.opened_remaining !== undefined
-      ? selectedLot.opened_remaining + Math.max(0, selectedLot.units - 1) * item.content_amount
-      : selectedLot.units * item.content_amount
+      ? roundFloat(
+          selectedLot.opened_remaining + Math.max(0, selectedLot.units - 1) * item.content_amount,
+        )
+      : roundFloat(selectedLot.units * item.content_amount)
     : 0;
 
   return (

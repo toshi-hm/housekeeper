@@ -1,5 +1,8 @@
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import type { i18n as I18nType } from "i18next";
+import React from "react";
+import { I18nextProvider } from "react-i18next";
 
 import * as useItemLotsModule from "@/hooks/useItemLots";
 import * as useItemsModule from "@/hooks/useItems";
@@ -210,5 +213,82 @@ describe("ItemConsumePage", () => {
   it("does not render radiogroup when there is only one active lot", () => {
     const { queryByRole } = renderPage();
     expect(queryByRole("radiogroup")).toBeNull();
+  });
+});
+
+// This describe initializes i18n AFTER the main describe has run to avoid interfering
+// with existing tests that assert on translation keys rather than translated strings.
+describe("ItemConsumePage - float precision in consume-all display", () => {
+  let i18nInstance: I18nType | null = null;
+  let lotsspy: ReturnType<typeof spyOn>;
+  let itemspy: ReturnType<typeof spyOn>;
+  let consumespy: ReturnType<typeof spyOn>;
+  let paramsspy: ReturnType<typeof spyOn>;
+  let searchspy: ReturnType<typeof spyOn>;
+
+  beforeAll(async () => {
+    const mod = await import("@/lib/i18n");
+    i18nInstance = mod.default;
+    await i18nInstance.changeLanguage("ja");
+  });
+
+  const WrapperWithI18n = ({ children }: { children: React.ReactNode }) => (
+    <routerContext.Provider value={stubRouter}>
+      <I18nextProvider i18n={i18nInstance!}>
+        <ToastContext.Provider value={stubToast}>{children}</ToastContext.Provider>
+      </I18nextProvider>
+    </routerContext.Provider>
+  );
+
+  const renderWithI18n = () =>
+    render(<ItemConsumePage />, { wrapper: WrapperWithI18n as React.ComponentType });
+
+  beforeEach(() => {
+    paramsspy = spyOn(Route, "useParams").mockReturnValue({
+      itemId: "test-item-id",
+    } as ReturnType<typeof Route.useParams>);
+    searchspy = spyOn(Route, "useSearch").mockReturnValue({
+      lotId: undefined,
+    } as ReturnType<typeof Route.useSearch>);
+    lotsspy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data: [{ ...baseLot, units: 3, opened_remaining: null }],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useItemLotsModule.useItemLots>);
+    itemspy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: { ...baseItem, content_amount: 0.1, content_unit: "mL" },
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+    consumespy = spyOn(useItemLotsModule, "useConsumeLot").mockReturnValue({
+      mutateAsync: async () => baseLot,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useConsumeLot>);
+  });
+
+  afterEach(() => {
+    paramsspy.mockRestore();
+    searchspy.mockRestore();
+    lotsspy.mockRestore();
+    itemspy.mockRestore();
+    consumespy.mockRestore();
+    cleanup();
+  });
+
+  it("displays rounded totalLotAmount in consume-all button (0.1 × 3 = 0.3, not 0.30000000000000004)", () => {
+    const { getByText, queryByText } = renderWithI18n();
+    expect(queryByText(/0\.30000000000000004/)).toBeNull();
+    expect(getByText("全量消費 (0.3mL)")).toBeDefined();
+  });
+
+  it("displays rounded totalLotAmount for opened lot (0.1 × 2 sealed + 0.05 opened = 0.25)", () => {
+    lotsspy.mockReturnValue({
+      data: [{ ...baseLot, units: 3, opened_remaining: 0.05 }],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useItemLotsModule.useItemLots>);
+    const { getByText, queryByText } = renderWithI18n();
+    // totalLotAmount = round(0.05 + max(0, 3 - 1) * 0.1) = round(0.05 + 0.2) = 0.25
+    expect(queryByText(/0\.250{5,}/)).toBeNull();
+    expect(getByText("全量消費 (0.25mL)")).toBeDefined();
   });
 });
