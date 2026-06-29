@@ -27,5 +27,6 @@
   "restock": "Restock",
   "share": "Share",
   "shareShoppingList": "Share Shopping List",
+  "invalidUnits": "Please enter a positive integer",
   "title": "Shopping List"
 }
