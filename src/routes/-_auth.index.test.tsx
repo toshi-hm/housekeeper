@@ -67,9 +67,10 @@ const renderPage = async () => {
   return result;
 };
 
-// Match the urgentBanner summary text in English ("N items are expired or expiring soon")
-// or Japanese ("N件の在庫が期限切れまたは期限間近"). Specific enough to exclude detail rows.
-const URGENT_BANNER_RE = /items are expired or expiring soon|件の在庫が期限切れ/;
+// Match the urgentBanner summary text in English ("1 item is expired or expiring soon" or
+// "N items are expired or expiring soon") or Japanese ("N件の在庫が期限切れまたは期限間近").
+// Uses the common substring "expired or expiring soon" to cover both singular and plural forms.
+const URGENT_BANNER_RE = /expired or expiring soon|件の在庫が期限切れ/;
 
 describe("DashboardPage", () => {
   let itemsspy: ReturnType<typeof spyOn>;
