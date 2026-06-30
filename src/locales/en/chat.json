@@ -1,0 +1,15 @@
+{
+  "clear": "Clear conversation",
+  "close": "Close",
+  "emptyHint": "Ask anything about your inventory. Try one of the prompts below.",
+  "error": "Sorry, I couldn't answer that. Please try again in a moment.",
+  "inputLabel": "Type a message",
+  "openChat": "Ask AI about inventory",
+  "placeholder": "Ask about your inventory…",
+  "send": "Send",
+  "suggestion1": "Do I have milk?",
+  "suggestion2": "What expires this week?",
+  "suggestion3": "What's in the fridge?",
+  "thinking": "Thinking…",
+  "title": "AI Inventory Assistant"
+}

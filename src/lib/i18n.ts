@@ -4,6 +4,7 @@ import { initReactI18next } from "react-i18next";
 
 import enAuth from "@/locales/en/auth.json";
 import enCalendar from "@/locales/en/calendar.json";
+import enChat from "@/locales/en/chat.json";
 import enCommon from "@/locales/en/common.json";
 import enItems from "@/locales/en/items.json";
 import enNotifications from "@/locales/en/notifications.json";
@@ -12,6 +13,7 @@ import enShopping from "@/locales/en/shopping.json";
 import enStats from "@/locales/en/stats.json";
 import jaAuth from "@/locales/ja/auth.json";
 import jaCalendar from "@/locales/ja/calendar.json";
+import jaChat from "@/locales/ja/chat.json";
 import jaCommon from "@/locales/ja/common.json";
 import jaItems from "@/locales/ja/items.json";
 import jaNotifications from "@/locales/ja/notifications.json";
@@ -25,7 +27,17 @@ void i18n
   .init({
     fallbackLng: "ja",
     supportedLngs: ["ja", "en"],
-    ns: ["common", "items", "auth", "settings", "shopping", "stats", "notifications", "calendar"],
+    ns: [
+      "common",
+      "items",
+      "auth",
+      "settings",
+      "shopping",
+      "stats",
+      "notifications",
+      "calendar",
+      "chat",
+    ],
     defaultNS: "common",
     interpolation: { escapeValue: false },
     resources: {
@@ -38,6 +50,7 @@ void i18n
         stats: jaStats,
         notifications: jaNotifications,
         calendar: jaCalendar,
+        chat: jaChat,
       },
       en: {
         common: enCommon,
@@ -48,6 +61,7 @@ void i18n
         stats: enStats,
         notifications: enNotifications,
         calendar: enCalendar,
+        chat: enChat,
       },
     },
   });
