@@ -38,10 +38,14 @@ export const useBarcodeLookup = () => {
     setIsLoading(true);
     setError(null);
     try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) throw new Error("Not authenticated");
+
       const { data: localData, error: localError } = await supabase
         .from("items")
         .select("name, image_path")
         .eq("barcode", barcode)
+        .eq("user_id", userData.user.id)
         .is("deleted_at", null)
         .order("updated_at", { ascending: false })
         .limit(1)
