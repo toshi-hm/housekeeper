@@ -61,7 +61,8 @@ export interface GeminiRequest {
     responseMimeType?: string;
     responseSchema?: unknown;
     temperature?: number;
-    thinkingConfig?: { thinkingBudget: number };
+    // Gemini 3.x uses thinkingLevel ("low" | "medium" | "high"); 2.5 used thinkingBudget.
+    thinkingConfig?: { thinkingLevel?: string; thinkingBudget?: number };
   };
 }
 

@@ -10,7 +10,7 @@ import type {
   RecentlyConsumedItem,
 } from "./types.ts";
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.5-flash";
 // The web client has no hard latency cap like Alexa's 8s, so allow more headroom.
 const GEMINI_TIMEOUT_MS = 20000;
 // Cap history to keep token usage within the free tier.
@@ -132,7 +132,8 @@ export const queryGeminiChat = async (
       responseMimeType: "application/json",
       responseSchema: RESPONSE_SCHEMA,
       temperature: 0.2,
-      thinkingConfig: { thinkingBudget: 512 },
+      // Gemini 3.x: use thinkingLevel ("low" keeps it fast/cheap for simple lookups).
+      thinkingConfig: { thinkingLevel: "low" },
     },
   };
 
