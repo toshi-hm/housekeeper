@@ -41,7 +41,7 @@ export interface Item {
 }
 
 export const itemFormSchema = z.object({
-  name: z.string().min(1, "名前は必須です"),
+  name: z.string().min(1),
   barcode: z.string().optional(),
   category_id: z.string().uuid().nullable().optional(),
   storage_location_id: z.string().uuid().nullable().optional(),
