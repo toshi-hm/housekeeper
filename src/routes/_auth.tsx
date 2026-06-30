@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useRouter } from "@tanstack/react-router";
 import {
   BarChart2,
+  Bot,
   CalendarDays,
   Home,
   LogOut,
@@ -9,8 +10,10 @@ import {
   Settings,
   ShoppingCart,
 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { InventoryChatPanel } from "@/components/organisms/InventoryChatPanel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 
@@ -26,6 +29,7 @@ const NAV_ROUTES = [
 const AuthLayout = () => {
   const router = useRouter();
   const { t } = useTranslation("common");
+  const [chatOpen, setChatOpen] = useState(false);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -39,6 +43,17 @@ const AuthLayout = () => {
         <div className="flex h-16 items-center gap-2 border-b px-6 font-bold text-primary">
           <Package className="h-5 w-5" />
           Housekeeper
+        </div>
+
+        <div className="px-4 pt-4">
+          <Button
+            variant="secondary"
+            className="w-full justify-start gap-3"
+            onClick={() => setChatOpen(true)}
+          >
+            <Bot className="h-5 w-5 shrink-0" />
+            {t("chat:openChat")}
+          </Button>
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-4">
@@ -76,6 +91,15 @@ const AuthLayout = () => {
             Housekeeper
           </Link>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setChatOpen(true)}
+              title={t("chat:openChat")}
+              aria-label={t("chat:openChat")}
+            >
+              <Bot className="h-5 w-5" />
+            </Button>
             <Link
               to="/settings"
               className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&.active]:bg-accent [&.active]:text-primary"
@@ -149,6 +173,8 @@ const AuthLayout = () => {
           </Link>
         </div>
       </nav>
+
+      <InventoryChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   );
 };
