@@ -219,3 +219,35 @@ export const QuickConsumeInProgress: Story = {
     onQuickConsume: () => {},
   },
 };
+
+const selectableItem = {
+  ...baseItem,
+  name: "牛乳",
+  category_id: null,
+  barcode: null,
+  storage_location_id: null,
+  expiry_date: "2099-06-01",
+  purchase_date: null,
+  notes: null,
+  image_path: null,
+};
+
+export const SelectionModeUnselected: Story = {
+  args: {
+    item: selectableItem,
+    categoryName: "食品",
+    selectionMode: true,
+    isSelected: false,
+    onToggleSelect: () => {},
+  },
+};
+
+export const SelectionModeSelected: Story = {
+  args: {
+    item: selectableItem,
+    categoryName: "食品",
+    selectionMode: true,
+    isSelected: true,
+    onToggleSelect: () => {},
+  },
+};

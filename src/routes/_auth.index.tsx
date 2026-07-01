@@ -1,20 +1,38 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Plus, Search, ShoppingCart, SlidersHorizontal } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckSquare,
+  Plus,
+  Search,
+  ShoppingCart,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { BulkActionBar } from "@/components/molecules/BulkActionBar";
+import { BulkMoveDialog } from "@/components/molecules/BulkMoveDialog";
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useConsumeItem } from "@/hooks/useConsumeItem";
-import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
+import {
+  type BulkAction,
+  type ItemFilters,
+  type ItemSortKey,
+  useBulkItemAction,
+  useItems,
+} from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { updateAppBadge } from "@/lib/pwa";
+import { toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus, type Item } from "@/types/item";
 
@@ -60,6 +78,31 @@ const DashboardPage = () => {
     return saved !== null ? saved === "true" : true;
   });
   const [quickConsumingId, setQuickConsumingId] = useState<string | null>(null);
+
+  // 一括操作（#359）
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkMoveDialog, setBulkMoveDialog] = useState<"location" | "category" | null>(null);
+  const [bulkConfirm, setBulkConfirm] = useState<"consume" | "delete" | null>(null);
+  const bulkAction = useBulkItemAction();
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkMoveDialog(null);
+    setBulkConfirm(null);
+  };
+
+  const runBulkAction = async (action: BulkAction, targetId?: string | null) => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    try {
+      await bulkAction.mutateAsync({ action, ids, targetId });
+      exitSelectionMode();
+    } catch {
+      // Error toast is handled by useBulkItemAction.onError
+    }
+  };
 
   const handleQuickConsume = async (item: Item) => {
     if (quickConsumingId) return;
@@ -188,14 +231,52 @@ const DashboardPage = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/items/new">
-            <Button size="sm">
-              <Plus className="mr-1 h-4 w-4" />
-              {t("addItem")}
+          {selectionMode ? (
+            <Button size="sm" variant="outline" onClick={exitSelectionMode}>
+              <X className="mr-1 h-4 w-4" />
+              {tc("cancel")}
             </Button>
-          </Link>
+          ) : (
+            <>
+              {items.length > 0 && (
+                <Button size="sm" variant="outline" onClick={() => setSelectionMode(true)}>
+                  <CheckSquare className="mr-1 h-4 w-4" />
+                  {t("bulkSelect")}
+                </Button>
+              )}
+              <Link to="/items/new">
+                <Button size="sm">
+                  <Plus className="mr-1 h-4 w-4" />
+                  {t("addItem")}
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Selection mode sub-header */}
+      {selectionMode && (
+        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
+          <span className="text-sm font-medium">
+            {t("bulkSelectedCount", { count: selectedIds.size })}
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              setSelectedIds(
+                toggleSelectAll(
+                  selectedIds,
+                  filtered.map((i) => i.id),
+                ),
+              )
+            }
+          >
+            {selectedIds.size === filtered.length ? t("bulkDeselectAll") : t("bulkSelectAll")}
+          </Button>
+        </div>
+      )}
 
       {/* Expiry alert banner */}
       {urgentCount > 0 && (
@@ -482,12 +563,81 @@ const DashboardPage = () => {
                 onQuickConsume={(i) => {
                   void handleQuickConsume(i);
                 }}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(item.id)}
+                onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
               />
             ))}
           </div>
           <div ref={sentinelRef} className="h-1" />
         </>
       )}
+
+      {/* Bulk operation bar & dialogs (#359) */}
+      {selectionMode && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          disabled={bulkAction.isPending}
+          onChangeLocation={() => setBulkMoveDialog("location")}
+          onChangeCategory={() => setBulkMoveDialog("category")}
+          onConsume={() => setBulkConfirm("consume")}
+          onDelete={() => setBulkConfirm("delete")}
+        />
+      )}
+
+      <BulkMoveDialog
+        open={bulkMoveDialog === "location"}
+        title={t("bulkChangeLocation")}
+        noneLabel={t("bulkNoneOption")}
+        confirmLabel={tc("save")}
+        cancelLabel={tc("cancel")}
+        options={locations.map((l) => ({ id: l.id, name: l.name }))}
+        isSubmitting={bulkAction.isPending}
+        onConfirm={(targetId) => {
+          setBulkMoveDialog(null);
+          void runBulkAction("updateLocation", targetId);
+        }}
+        onClose={() => setBulkMoveDialog(null)}
+      />
+      <BulkMoveDialog
+        open={bulkMoveDialog === "category"}
+        title={t("bulkChangeCategory")}
+        noneLabel={t("bulkNoneOption")}
+        confirmLabel={tc("save")}
+        cancelLabel={tc("cancel")}
+        options={categories.map((c) => ({ id: c.id, name: c.name }))}
+        isSubmitting={bulkAction.isPending}
+        onConfirm={(targetId) => {
+          setBulkMoveDialog(null);
+          void runBulkAction("updateCategory", targetId);
+        }}
+        onClose={() => setBulkMoveDialog(null)}
+      />
+      <ConfirmDialog
+        open={bulkConfirm === "consume"}
+        title={t("bulkConsume")}
+        message={t("bulkConsumeConfirm", { count: selectedIds.size })}
+        confirmLabel={t("bulkConsume")}
+        isConfirming={bulkAction.isPending}
+        onConfirm={() => {
+          setBulkConfirm(null);
+          void runBulkAction("consume");
+        }}
+        onCancel={() => setBulkConfirm(null)}
+      />
+      <ConfirmDialog
+        open={bulkConfirm === "delete"}
+        title={t("bulkDelete")}
+        message={t("bulkDeleteConfirm", { count: selectedIds.size })}
+        confirmLabel={tc("delete")}
+        variant="destructive"
+        isConfirming={bulkAction.isPending}
+        onConfirm={() => {
+          setBulkConfirm(null);
+          void runBulkAction("delete");
+        }}
+        onCancel={() => setBulkConfirm(null)}
+      />
     </div>
   );
 };
