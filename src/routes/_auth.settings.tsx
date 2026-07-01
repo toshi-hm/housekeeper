@@ -151,7 +151,7 @@ export const SettingsPage = () => {
             </h2>
             <Select
               className="w-32"
-              value={settings?.default_unit ?? CONTENT_UNITS[0]}
+              value={settings?.default_unit ?? "mL"}
               onChange={(e) => {
                 void handleDefaultUnitChange(e.target.value);
               }}

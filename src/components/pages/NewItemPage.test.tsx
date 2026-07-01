@@ -86,4 +86,15 @@ describe("NewItemPage - default content unit", () => {
 
     expect(getByTestId("content-unit").textContent).toBe("");
   });
+
+  it("does not render the form until user settings finish loading, to avoid missing default_unit", () => {
+    settingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    const { queryByTestId } = render(<NewItemPage />, { wrapper: Wrapper });
+
+    expect(queryByTestId("content-unit")).toBeNull();
+  });
 });

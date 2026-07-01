@@ -32,7 +32,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const [showStackDialog, setShowStackDialog] = useState(false);
 
   const { data: cloneSource, isLoading: isCloneLoading } = useItem(cloneFrom ?? "");
-  const { data: userSettings } = useUserSettings();
+  const { data: userSettings, isLoading: isSettingsLoading } = useUserSettings();
 
   const handleBarcodeScanned = async (barcode: string, source: "db" | "api" | null) => {
     if (source !== "db") {
@@ -121,7 +121,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
       ? { content_unit: userSettings.default_unit }
       : undefined;
 
-  if (cloneFrom && isCloneLoading) {
+  if ((cloneFrom && isCloneLoading) || (!cloneFrom && isSettingsLoading)) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-7 w-32" />
