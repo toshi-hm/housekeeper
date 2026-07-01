@@ -178,3 +178,74 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     expect(toastFn).toHaveBeenCalledWith("設定を保存しました", "success");
   });
 });
+
+describe("SettingsPage - default unit", () => {
+  let settingsSpy: ReturnType<typeof spyOn>;
+  let updateSpy: ReturnType<typeof spyOn>;
+  let notifSpy: ReturnType<typeof spyOn>;
+  let updateNotifSpy: ReturnType<typeof spyOn>;
+
+  beforeAll(async () => {
+    await i18n.changeLanguage("ja");
+  });
+
+  beforeEach(() => {
+    settingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: { expiry_warning_days: 3, language: "ja", default_unit: "本" },
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    updateSpy = spyOn(useUserSettingsModule, "useUpdateUserSettings").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
+
+    notifSpy = spyOn(useNotifModule, "useNotificationPreferences").mockReturnValue({
+      data: null,
+      isLoading: false,
+    } as ReturnType<typeof useNotifModule.useNotificationPreferences>);
+
+    updateNotifSpy = spyOn(useNotifModule, "useUpdateNotificationPreferences").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useNotifModule.useUpdateNotificationPreferences>);
+  });
+
+  afterEach(() => {
+    settingsSpy.mockRestore();
+    updateSpy.mockRestore();
+    notifSpy.mockRestore();
+    updateNotifSpy.mockRestore();
+    cleanup();
+  });
+
+  const findDefaultUnitSelect = (comboboxes: HTMLElement[]) =>
+    comboboxes.find((el) =>
+      Array.from((el as HTMLSelectElement).options).some((o) => o.value === "kg"),
+    ) as HTMLSelectElement;
+
+  it("shows the current default unit as selected", () => {
+    const { stub } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const select = findDefaultUnitSelect(getAllByRole("combobox"));
+    expect(select.value).toBe("本");
+  });
+
+  it("saves the newly selected default unit", async () => {
+    const mutateAsync = mock(async () => {});
+    updateSpy.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
+    const { stub, toastFn } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const select = findDefaultUnitSelect(getAllByRole("combobox"));
+    fireEvent.change(select, { target: { value: "kg" } });
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(mutateAsync).toHaveBeenCalledWith({ default_unit: "kg" });
+    expect(toastFn).toHaveBeenCalledWith("設定を保存しました", "success");
+  });
+});

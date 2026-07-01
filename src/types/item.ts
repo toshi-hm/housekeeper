@@ -141,6 +141,9 @@ export const formatRemaining = (
   return total % 1 === 0 ? String(total) : total.toFixed(2).replace(/\.?0+$/, "");
 };
 
+// Round to avoid floating-point noise (DB stores numeric(12,2))
+export const roundFloat = (n: number) => Math.round(n * 1e10) / 1e10;
+
 export const computeConsumption = (
   item: Pick<Item, "units" | "content_amount" | "content_unit" | "opened_remaining">,
   delta: number,
@@ -166,16 +169,14 @@ export const computeConsumption = (
     return { units_after: 0, opened_remaining_after: null, error: "insufficientStock" };
   }
 
-  // Round to avoid floating-point noise (DB stores numeric(12,2))
-  const round = (n: number) => Math.round(n * 1e10) / 1e10;
-  const totalAfter = round(totalBefore - delta);
+  const totalAfter = roundFloat(totalBefore - delta);
 
   if (totalAfter === 0) {
     return { units_after: 0, opened_remaining_after: null };
   }
 
-  const sealedUnits = Math.floor(round(totalAfter / contentAmount));
-  const openedAfter = round(totalAfter - sealedUnits * contentAmount);
+  const sealedUnits = Math.floor(roundFloat(totalAfter / contentAmount));
+  const openedAfter = roundFloat(totalAfter - sealedUnits * contentAmount);
 
   if (openedAfter === 0) {
     return { units_after: sealedUnits, opened_remaining_after: null };

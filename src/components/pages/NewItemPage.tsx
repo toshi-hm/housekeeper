@@ -9,6 +9,7 @@ import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useCreateItem, useItem } from "@/hooks/useItems";
+import { useUserSettings } from "@/hooks/useUserSettings";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import type { Item, ItemFormValues } from "@/types/item";
@@ -31,6 +32,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const [showStackDialog, setShowStackDialog] = useState(false);
 
   const { data: cloneSource, isLoading: isCloneLoading } = useItem(cloneFrom ?? "");
+  const { data: userSettings, isLoading: isSettingsLoading } = useUserSettings();
 
   const handleBarcodeScanned = async (barcode: string, source: "db" | "api" | null) => {
     if (source !== "db") {
@@ -115,9 +117,11 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         expiry_date: "",
         notes: "",
       }
-    : undefined;
+    : userSettings?.default_unit
+      ? { content_unit: userSettings.default_unit }
+      : undefined;
 
-  if (cloneFrom && isCloneLoading) {
+  if ((cloneFrom && isCloneLoading) || (!cloneFrom && isSettingsLoading)) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-7 w-32" />

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Moon, Tag } from "lucide-react";
+import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Moon, Ruler, Tag } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,9 +10,11 @@ import { NotificationSettings } from "@/components/organisms/NotificationSetting
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
+import { CONTENT_UNITS } from "@/types/item";
 
 export const SettingsPage = () => {
   const { t } = useTranslation("settings");
@@ -32,6 +34,17 @@ export const SettingsPage = () => {
   const handleLanguageChange = async (lang: "ja" | "en") => {
     try {
       await updateSettings.mutateAsync({ language: lang });
+      toast(t("saveSuccess"), "success");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+    }
+  };
+
+  const handleDefaultUnitChange = async (unit: string) => {
+    try {
+      await updateSettings.mutateAsync({ default_unit: unit });
       toast(t("saveSuccess"), "success");
     } catch (error) {
       if (!(error instanceof OfflineError)) {
@@ -128,6 +141,27 @@ export const SettingsPage = () => {
               />
               <Label>{t("daysBefore")}</Label>
             </div>
+          </section>
+
+          {/* Default unit */}
+          <section>
+            <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Ruler className="h-4 w-4" />
+              {t("defaultUnit")}
+            </h2>
+            <Select
+              className="w-32"
+              value={settings?.default_unit ?? "mL"}
+              onChange={(e) => {
+                void handleDefaultUnitChange(e.target.value);
+              }}
+            >
+              {CONTENT_UNITS.map((unit) => (
+                <option key={unit} value={unit}>
+                  {unit}
+                </option>
+              ))}
+            </Select>
           </section>
 
           {/* Notification Settings */}
