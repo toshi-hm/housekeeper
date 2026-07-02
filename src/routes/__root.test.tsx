@@ -52,6 +52,5 @@ describe("NotFoundPage", () => {
     });
     expect(getByText("404 — Page not found")).toBeDefined();
     expect(getByText("Go home")).toBeDefined();
-    await i18n.changeLanguage("ja");
   });
 });

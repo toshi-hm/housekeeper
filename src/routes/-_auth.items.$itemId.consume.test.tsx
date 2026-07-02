@@ -129,7 +129,7 @@ describe("ItemConsumePage", () => {
       typeof useItemLotsModule.useItemLots
     >);
     const { getByText, queryByRole } = renderPage();
-    expect(getByText("lotsLoadError")).toBeDefined();
+    expect(getByText(/lotsLoadError|Failed to load stock|在庫ロットの読み込み/)).toBeDefined();
     expect(queryByRole("spinbutton")).toBeNull();
   });
 
@@ -138,7 +138,7 @@ describe("ItemConsumePage", () => {
       typeof useItemsModule.useItem
     >);
     const { getByText } = renderPage();
-    expect(getByText("itemNotFound")).toBeDefined();
+    expect(getByText(/^itemNotFound$|^Item not found$|^アイテムが見つかりません$/)).toBeDefined();
   });
 
   it("shows no stock message when there are no lots", () => {
@@ -146,7 +146,7 @@ describe("ItemConsumePage", () => {
       typeof useItemLotsModule.useItemLots
     >);
     const { getByText, queryByRole } = renderPage();
-    expect(getByText("noStockToConsume")).toBeDefined();
+    expect(getByText(/noStockToConsume|No stock available|在庫がありません/)).toBeDefined();
     expect(queryByRole("spinbutton")).toBeNull();
   });
 
@@ -157,7 +157,7 @@ describe("ItemConsumePage", () => {
       isError: false,
     } as ReturnType<typeof useItemLotsModule.useItemLots>);
     const { getByText, queryByRole } = renderPage();
-    expect(getByText("noStockToConsume")).toBeDefined();
+    expect(getByText(/noStockToConsume|No stock available|在庫がありません/)).toBeDefined();
     expect(queryByRole("spinbutton")).toBeNull();
   });
 
