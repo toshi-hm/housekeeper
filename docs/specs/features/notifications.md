@@ -38,8 +38,13 @@
 - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`
 - `RESEND_API_KEY`（Email プロバイダ）
 - `RESEND_FROM_ADDRESS`
+- `CRON_SECRET`（`send-expiry-notifications` の呼び出し元認証用の共有シークレット）
 
 クライアント側には `VITE_VAPID_PUBLIC_KEY` を埋め込み、購読作成時に使用。
+
+### `send-expiry-notifications` の認証
+
+この Function は `pg_cron` からのみ呼ばれることを想定した非対話的エンドポイントであり、エンドユーザーの JWT を持たない。そのため呼び出し元は `X-Cron-Secret` ヘッダーに Edge Function 側の環境変数 `CRON_SECRET` と同じ値を含める必要があり、一致しない場合は 401 を返す。`pg_cron` からのスケジュール発火は `net.http_post` の `headers` 引数で `X-Cron-Secret` を付与する。
 
 ## 配信ロジック
 
