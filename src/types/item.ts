@@ -128,16 +128,24 @@ export const getExpiryStatus = (
   return "ok";
 };
 
+/** ロット（またはアイテム）1件の実残量を計算する。opened_remaining がある場合は
+ *  開封中の1個を除いた残りの未開封数量にopened_remainingを加算する。 */
+export const getLotRemainingAmount = (
+  units: number,
+  contentAmount: number,
+  openedRemaining: number | null,
+): number =>
+  openedRemaining !== null
+    ? Math.max(0, units - 1) * contentAmount + openedRemaining
+    : units * contentAmount;
+
 /** カードや一覧で使う「残量」の合計値を文字列として返す。 */
 export const formatRemaining = (
   units: number,
   contentAmount: number,
   openedRemaining: number | null,
 ): string => {
-  const total =
-    openedRemaining !== null
-      ? (units - 1) * contentAmount + openedRemaining
-      : units * contentAmount;
+  const total = getLotRemainingAmount(units, contentAmount, openedRemaining);
   return total % 1 === 0 ? String(total) : total.toFixed(2).replace(/\.?0+$/, "");
 };
 

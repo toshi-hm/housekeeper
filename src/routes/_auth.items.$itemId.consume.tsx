@@ -12,7 +12,12 @@ import { useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import { useItem } from "@/hooks/useItems";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
-import { computeConsumption, type ConsumptionError, type ItemLot } from "@/types/item";
+import {
+  computeConsumption,
+  type ConsumptionError,
+  getLotRemainingAmount,
+  type ItemLot,
+} from "@/types/item";
 
 const consumptionErrorKey = {
   insufficientStock: "insufficientStock",
@@ -36,9 +41,7 @@ export const ItemConsumePage = () => {
 
   const contentAmount = item?.content_amount ?? 0;
   const getLotTotal = (l: ItemLot): number =>
-    l.opened_remaining !== null && l.opened_remaining !== undefined
-      ? l.opened_remaining + Math.max(0, l.units - 1) * contentAmount
-      : l.units * contentAmount;
+    getLotRemainingAmount(l.units, contentAmount, l.opened_remaining ?? null);
   const activeLots = lots.filter((l) => getLotTotal(l) > 0);
   const hasMultipleLots = activeLots.length > 1;
 
