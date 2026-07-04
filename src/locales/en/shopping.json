@@ -42,8 +42,8 @@
   "templateName": "Template name",
   "templateNamePlaceholder": "e.g. Weekly groceries",
   "templateRemoveRow": "Remove this row",
-  "templateSaved": "Template saved",
   "templates": "Templates",
+  "templateSaved": "Template saved",
   "templatesEmpty": "No templates yet",
   "templatesTitle": "Shopping Templates",
   "title": "Shopping List"

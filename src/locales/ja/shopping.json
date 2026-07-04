@@ -41,8 +41,8 @@
   "templateName": "テンプレート名",
   "templateNamePlaceholder": "例: 毎週の買い物",
   "templateRemoveRow": "この行を削除",
-  "templateSaved": "テンプレートを保存しました",
   "templates": "テンプレート",
+  "templateSaved": "テンプレートを保存しました",
   "templatesEmpty": "テンプレートはまだありません",
   "templatesTitle": "買い物テンプレート",
   "title": "買い物リスト"
