@@ -104,6 +104,7 @@ const ShoppingPage = () => {
   const handleClearPurchased = async () => {
     try {
       await clearPurchased.mutateAsync();
+      setShowClearPurchased(false);
       toast(t("clearPurchasedSuccess"), "success");
     } catch {
       // Error toast is handled by useDeleteAllPurchasedItems.onError
@@ -204,7 +205,6 @@ const ShoppingPage = () => {
         variant="destructive"
         isConfirming={clearPurchased.isPending}
         onConfirm={() => {
-          setShowClearPurchased(false);
           void handleClearPurchased();
         }}
         onCancel={() => setShowClearPurchased(false)}
@@ -315,6 +315,7 @@ const ShoppingPage = () => {
             onClick={() => {
               setTab(s);
               setShowAdd(false);
+              setEditId(null);
             }}
           >
             {t(tabLabelKey[s])}

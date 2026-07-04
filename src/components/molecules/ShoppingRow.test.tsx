@@ -1,4 +1,5 @@
 import { fireEvent, render } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, mock } from "bun:test";
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
@@ -168,5 +169,120 @@ describe("ShoppingRow", () => {
     );
     const spinner = container.querySelector('[role="status"]');
     expect(spinner).not.toBeNull();
+  });
+
+  it("shows validation error when saving with invalid units", async () => {
+    const onEditSave = mock(() => {});
+    const user = userEvent.setup();
+    const { getByRole, getByText } = render(
+      <ShoppingRow
+        id="1"
+        name="牛乳"
+        desiredUnits={2}
+        isEditing
+        onEditSave={onEditSave}
+        onEditCancel={() => {}}
+      />,
+      { wrapper },
+    );
+    const unitsInput = getByRole("spinbutton");
+    // clear then type space (rejected by number input) → state becomes ""
+    await user.clear(unitsInput);
+    await user.type(unitsInput, " ");
+    fireEvent.click(getByRole("button", { name: /保存|Save/i }));
+    expect(onEditSave).not.toHaveBeenCalled();
+    expect(getByText(/1以上|positive integer/i)).toBeTruthy();
+  });
+
+  it("shows validation error when saving with zero units", async () => {
+    const onEditSave = mock(() => {});
+    const user = userEvent.setup();
+    const { getByRole, getByText } = render(
+      <ShoppingRow
+        id="1"
+        name="牛乳"
+        desiredUnits={2}
+        isEditing
+        onEditSave={onEditSave}
+        onEditCancel={() => {}}
+      />,
+      { wrapper },
+    );
+    const unitsInput = getByRole("spinbutton");
+    await user.clear(unitsInput);
+    await user.type(unitsInput, "0");
+    fireEvent.click(getByRole("button", { name: /保存|Save/i }));
+    expect(onEditSave).not.toHaveBeenCalled();
+    expect(getByText(/1以上|positive integer/i)).toBeTruthy();
+  });
+
+  it("clears validation error when units input changes", async () => {
+    const onEditSave = mock(() => {});
+    const user = userEvent.setup();
+    const { getByRole, getByText, queryByText } = render(
+      <ShoppingRow
+        id="1"
+        name="牛乳"
+        desiredUnits={2}
+        isEditing
+        onEditSave={onEditSave}
+        onEditCancel={() => {}}
+      />,
+      { wrapper },
+    );
+    const unitsInput = getByRole("spinbutton");
+    await user.clear(unitsInput);
+    await user.type(unitsInput, "0");
+    fireEvent.click(getByRole("button", { name: /保存|Save/i }));
+    expect(getByText(/1以上|positive integer/i)).toBeTruthy();
+    await user.clear(unitsInput);
+    await user.type(unitsInput, "3");
+    expect(queryByText(/1以上|positive integer/i)).toBeNull();
+  });
+
+  it("calls onEditSave with valid units", async () => {
+    const onEditSave = mock(() => {});
+    const user = userEvent.setup();
+    const { getByRole } = render(
+      <ShoppingRow
+        id="1"
+        name="牛乳"
+        desiredUnits={2}
+        isEditing
+        onEditSave={onEditSave}
+        onEditCancel={() => {}}
+      />,
+      { wrapper },
+    );
+    const unitsInput = getByRole("spinbutton");
+    await user.clear(unitsInput);
+    await user.type(unitsInput, "5");
+    fireEvent.click(getByRole("button", { name: /保存|Save/i }));
+    expect(onEditSave).toHaveBeenCalledTimes(1);
+    const [, data] = onEditSave.mock.calls[0] as [string, { desiredUnits: number }];
+    expect(data.desiredUnits).toBe(5);
+  });
+
+  it("calls onEditCancel and resets error on cancel", async () => {
+    const onEditCancel = mock(() => {});
+    const user = userEvent.setup();
+    const { getByRole, getByText } = render(
+      <ShoppingRow
+        id="1"
+        name="牛乳"
+        desiredUnits={2}
+        isEditing
+        onEditSave={() => {}}
+        onEditCancel={onEditCancel}
+      />,
+      { wrapper },
+    );
+    const unitsInput = getByRole("spinbutton");
+    await user.clear(unitsInput);
+    await user.type(unitsInput, "0");
+    fireEvent.click(getByRole("button", { name: /保存|Save/i }));
+    expect(getByText(/1以上|positive integer/i)).toBeTruthy();
+    fireEvent.click(getByRole("button", { name: /キャンセル|Cancel/i }));
+    expect(onEditCancel).toHaveBeenCalledTimes(1);
   });
 });

@@ -185,6 +185,8 @@ export const useConsumeLot = () => {
 
 export const useUpdateLot = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: async ({
       lotId,
@@ -209,6 +211,10 @@ export const useUpdateLot = () => {
         qc.invalidateQueries({ queryKey: [...LOTS_KEY, variables.itemId] }),
         qc.invalidateQueries({ queryKey: ["items"] }),
       ]);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };

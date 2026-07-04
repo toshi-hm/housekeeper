@@ -12,6 +12,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { useRealtimeItems } from "@/hooks/useRealtimeItems";
 import { supabase } from "@/lib/supabase";
 
 const NAV_ROUTES = [
@@ -26,6 +27,9 @@ const NAV_ROUTES = [
 const AuthLayout = () => {
   const router = useRouter();
   const { t } = useTranslation("common");
+
+  // 複数デバイス間の在庫・買い物リストをリアルタイム同期する
+  useRealtimeItems();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

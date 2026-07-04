@@ -33,22 +33,36 @@ export const NotificationSettings = () => {
     try {
       if (prefs?.push_enabled) {
         await unsubscribePush();
-        await updatePrefs.mutateAsync({ push_enabled: false });
       } else {
         const permission = await Notification.requestPermission();
         if (permission !== "granted") {
           toast(t("pushPermissionDenied"), "error");
+          setIsPushLoading(false);
           return;
         }
         await subscribePush();
-        await updatePrefs.mutateAsync({ push_enabled: true });
-        toast(t("pushEnabled"), "success");
       }
     } catch (err) {
+      // subscribePush/unsubscribePush errors are not covered by hook onError
       toast(
         err instanceof OfflineError ? t("common:offlineError") : t("common:unknownError"),
         "error",
       );
+      setIsPushLoading(false);
+      return;
+    }
+    try {
+      if (prefs?.push_enabled) {
+        await updatePrefs.mutateAsync({ push_enabled: false });
+      } else {
+        await updatePrefs.mutateAsync({ push_enabled: true });
+        toast(t("pushEnabled"), "success");
+      }
+    } catch (err) {
+      if (!(err instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+      // OfflineError is handled by useUpdateNotificationPreferences onError
     } finally {
       setIsPushLoading(false);
     }
@@ -57,8 +71,10 @@ export const NotificationSettings = () => {
   const handleEmailToggle = async () => {
     try {
       await updatePrefs.mutateAsync({ email_enabled: !prefs?.email_enabled });
-    } catch {
-      toast(t("common:unknownError"), "error");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
     }
   };
 
@@ -70,18 +86,22 @@ export const NotificationSettings = () => {
     }
     try {
       await updatePrefs.mutateAsync({ email_address: trimmed || null });
-    } catch {
-      toast(t("common:unknownError"), "error");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
     }
   };
 
   const handleThresholdBlur = async (val: string) => {
     const days = parseInt(val, 10);
-    if (isNaN(days) || days < 0) return;
+    if (isNaN(days) || days < 0 || days > 30) return;
     try {
       await updatePrefs.mutateAsync({ threshold_days: days });
-    } catch {
-      toast(t("common:unknownError"), "error");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
     }
   };
 
@@ -89,8 +109,10 @@ export const NotificationSettings = () => {
     if (!val) return;
     try {
       await updatePrefs.mutateAsync({ notify_at: val });
-    } catch {
-      toast(t("common:unknownError"), "error");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
     }
   };
 

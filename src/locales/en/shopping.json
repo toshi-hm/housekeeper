@@ -16,6 +16,7 @@
   "editSave": "Save",
   "editSuccess": "Updated",
   "groupOther": "Other",
+  "invalidUnits": "Please enter a positive integer",
   "itemName": "Item name",
   "itemNamePlaceholder": "Enter item name",
   "markPurchased": "Add to Inventory",
