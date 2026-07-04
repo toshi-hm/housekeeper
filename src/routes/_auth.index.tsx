@@ -27,7 +27,7 @@ const dashboardSearchSchema = z.object({
   expiry: z.string().optional().default(""),
 });
 
-const DashboardPage = () => {
+export const DashboardPage = () => {
   const { t } = useTranslation("items");
   const { t: tc } = useTranslation("common");
   const { data: categories = [] } = useCategories();
@@ -135,7 +135,7 @@ const DashboardPage = () => {
     void updateAppBadge(urgentCount);
   }, [urgentCount]);
 
-  const urgentItems = baseFiltered.filter((item) => {
+  const urgentItems = items.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
   });

@@ -46,7 +46,7 @@ const CategoriesPage = () => {
       setNewColor(null);
       toast(t("common:saveSuccess"), "success");
     } catch {
-      toast(t("common:unknownError"), "error");
+      // error is handled by the mutation's onError
     }
   };
 
@@ -57,7 +57,7 @@ const CategoriesPage = () => {
       setEditId(null);
       toast(t("common:saveSuccess"), "success");
     } catch {
-      toast(t("common:unknownError"), "error");
+      // error is handled by the mutation's onError
     }
   };
 
@@ -84,7 +84,7 @@ const CategoriesPage = () => {
       setDeleteId(null);
       toast(t("common:deleteSuccess"), "success");
     } catch {
-      toast(t("common:unknownError"), "error");
+      // error is handled by the mutation's onError
     }
   };
 

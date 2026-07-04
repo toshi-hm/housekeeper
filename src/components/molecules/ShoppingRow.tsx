@@ -43,11 +43,13 @@ export const ShoppingRow = ({
   const [editName, setEditName] = useState(name);
   const [editUnits, setEditUnits] = useState(String(desiredUnits));
   const [editNote, setEditNote] = useState(note ?? "");
+  const [unitsError, setUnitsError] = useState<string | null>(null);
 
   const resetEditState = () => {
     setEditName(name);
     setEditUnits(String(desiredUnits));
     setEditNote(note ?? "");
+    setUnitsError(null);
   };
 
   const handleEditStart = () => {
@@ -57,9 +59,14 @@ export const ShoppingRow = ({
 
   const handleSave = () => {
     const parsedUnits = parseInt(editUnits, 10);
+    if (isNaN(parsedUnits) || parsedUnits <= 0) {
+      setUnitsError(t("invalidUnits"));
+      return;
+    }
+    setUnitsError(null);
     onEditSave?.(id, {
       name: editName.trim() || name,
-      desiredUnits: isNaN(parsedUnits) || parsedUnits <= 0 ? 1 : parsedUnits,
+      desiredUnits: parsedUnits,
       note: editNote.trim() || null,
     });
   };
@@ -89,10 +96,15 @@ export const ShoppingRow = ({
               type="number"
               min={1}
               value={editUnits}
-              onChange={(e) => setEditUnits(e.target.value)}
+              onChange={(e) => {
+                setEditUnits(e.target.value);
+                setUnitsError(null);
+              }}
               placeholder={t("desiredUnitsLabel")}
               disabled={isSaving}
+              aria-invalid={!!unitsError}
             />
+            {unitsError && <p className="mt-0.5 text-xs text-destructive">{unitsError}</p>}
           </div>
           <div className="flex-[2]">
             <Input

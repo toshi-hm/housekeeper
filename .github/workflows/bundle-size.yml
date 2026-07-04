@@ -12,7 +12,7 @@ jobs:
     name: Bundle Size Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
 
@@ -38,7 +38,7 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
 
       - name: Upload bundle stats
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-stats-${{ github.run_id }}
           path: dist/stats.html

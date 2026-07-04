@@ -27,5 +27,6 @@
   "restock": "再購入",
   "share": "共有",
   "shareShoppingList": "買い物リストを共有",
+  "invalidUnits": "1以上の整数を入力してください",
   "title": "買い物リスト"
 }

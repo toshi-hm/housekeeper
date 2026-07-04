@@ -75,7 +75,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         void navigate({ to: "/" });
       }
     } catch {
-      toast(t("common:unknownError"), "error");
+      // error is handled by the mutation's onError
     } finally {
       setIsSubmitting(false);
     }
