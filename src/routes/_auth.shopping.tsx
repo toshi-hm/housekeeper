@@ -6,10 +6,14 @@ import { useTranslation } from "react-i18next";
 import { ShareButton } from "@/components/atoms/ShareButton";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
 import { ShoppingRow } from "@/components/molecules/ShoppingRow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { useItems } from "@/hooks/useItems";
+import { useCategories } from "@/hooks/useMasterData";
 import {
   useDeleteAllPurchasedItems,
   useDeleteShoppingItem,
@@ -17,10 +21,28 @@ import {
   useShoppingList,
   useUpsertShoppingItem,
 } from "@/hooks/useShoppingList";
+import {
+  type CategoryResolver,
+  groupShoppingItemsByCategory,
+  isShoppingSortKey,
+  SHOPPING_SORT_KEYS,
+  type ShoppingSortKey,
+  sortShoppingItems,
+} from "@/lib/shoppingView";
 import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
+import type { ShoppingItem } from "@/types/shopping";
 
 import { PurchaseDialog } from "../components/molecules/PurchaseDialog";
+
+const SORT_STORAGE_KEY = "shopping.sort";
+
+const sortLabelKey = {
+  added: "sortAdded",
+  category: "sortCategory",
+  name: "sortName",
+  priority: "sortPriority",
+} as const satisfies Record<ShoppingSortKey, string>;
 
 type ShoppingTab = "planned" | "purchased";
 
@@ -41,9 +63,15 @@ const ShoppingPage = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showClearPurchased, setShowClearPurchased] = useState(false);
+  const [sort, setSort] = useState<ShoppingSortKey>(() => {
+    const saved = localStorage.getItem(SORT_STORAGE_KEY);
+    return saved && isShoppingSortKey(saved) ? saved : "added";
+  });
 
   const { data: items = [], isLoading } = useShoppingList(tab);
   const { data: plannedItems = [] } = useShoppingList("planned");
+  const { data: inventoryItems = [] } = useItems();
+  const { data: categories = [] } = useCategories();
   const upsert = useUpsertShoppingItem();
   const deleteItem = useDeleteShoppingItem();
   const purchase = usePurchaseShoppingItem();
@@ -115,6 +143,46 @@ const ShoppingPage = () => {
       // Error toast is handled by usePurchaseShoppingItem.onError
     }
   };
+
+  const handleSortChange = (value: ShoppingSortKey) => {
+    setSort(value);
+    localStorage.setItem(SORT_STORAGE_KEY, value);
+  };
+
+  // linked_item_id → カテゴリを解決するためのマップを構築する
+  const itemCategoryIdMap = new Map(inventoryItems.map((i) => [i.id, i.category_id ?? null]));
+  const categoryMap = new Map(categories.map((c) => [c.id, c]));
+  const resolveCategory: CategoryResolver = (shoppingItem) => {
+    if (!shoppingItem.linked_item_id) return null;
+    const categoryId = itemCategoryIdMap.get(shoppingItem.linked_item_id);
+    if (!categoryId) return null;
+    const category = categoryMap.get(categoryId);
+    if (!category) return null;
+    return { id: category.id, name: category.name, color: category.color ?? null };
+  };
+
+  const sortedItems = sortShoppingItems(items, sort, resolveCategory);
+  const groups = sort === "category" ? groupShoppingItemsByCategory(items, resolveCategory) : null;
+
+  const renderRow = (item: ShoppingItem) => (
+    <ShoppingRow
+      key={item.id}
+      id={item.id}
+      name={item.name}
+      desiredUnits={item.desired_units}
+      note={item.note}
+      isPurchased={item.status === "purchased"}
+      isEditing={editId === item.id}
+      isSaving={savingId === item.id}
+      onPurchase={tab === "planned" ? (id) => setPendingPurchaseId(id) : undefined}
+      onDelete={(id) => setDeleteId(id)}
+      onEdit={tab === "planned" ? (id) => setEditId(id) : undefined}
+      onEditSave={(id, data) => {
+        void handleEdit(id, data);
+      }}
+      onEditCancel={() => setEditId(null)}
+    />
+  );
 
   return (
     <div className="space-y-4">
@@ -255,6 +323,29 @@ const ShoppingPage = () => {
         ))}
       </div>
 
+      {/* Sort / group control */}
+      {items.length > 0 && (
+        <div className="flex items-center justify-end gap-2">
+          <label htmlFor="shopping-sort" className="text-xs text-muted-foreground">
+            {t("sortLabel")}
+          </label>
+          <Select
+            id="shopping-sort"
+            className="h-8 w-auto"
+            value={sort}
+            onChange={(e) => {
+              if (isShoppingSortKey(e.target.value)) handleSortChange(e.target.value);
+            }}
+          >
+            {SHOPPING_SORT_KEYS.map((key) => (
+              <option key={key} value={key}>
+                {t(sortLabelKey[key])}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
+
       {/* Clear purchased button */}
       {tab === "purchased" && items.length > 0 && (
         <div className="flex justify-end">
@@ -284,28 +375,22 @@ const ShoppingPage = () => {
         <p className="py-8 text-center text-muted-foreground">
           {tab === "planned" ? t("noItems") : t("noPurchased")}
         </p>
-      ) : (
-        <div className="space-y-2">
-          {items.map((item) => (
-            <ShoppingRow
-              key={item.id}
-              id={item.id}
-              name={item.name}
-              desiredUnits={item.desired_units}
-              note={item.note}
-              isPurchased={item.status === "purchased"}
-              isEditing={editId === item.id}
-              isSaving={savingId === item.id}
-              onPurchase={tab === "planned" ? (id) => setPendingPurchaseId(id) : undefined}
-              onDelete={(id) => setDeleteId(id)}
-              onEdit={tab === "planned" ? (id) => setEditId(id) : undefined}
-              onEditSave={(id, data) => {
-                void handleEdit(id, data);
-              }}
-              onEditCancel={() => setEditId(null)}
-            />
+      ) : groups ? (
+        <div className="space-y-3">
+          {groups.map((group) => (
+            <div key={group.categoryId ?? "__other__"} className="space-y-2">
+              <ShoppingGroupHeader
+                name={group.categoryName}
+                color={group.color}
+                count={group.items.length}
+                otherLabel={t("groupOther")}
+              />
+              {group.items.map(renderRow)}
+            </div>
           ))}
         </div>
+      ) : (
+        <div className="space-y-2">{sortedItems.map(renderRow)}</div>
       )}
     </div>
   );
