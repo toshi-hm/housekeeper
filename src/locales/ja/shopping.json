@@ -15,6 +15,7 @@
   "editItem": "編集",
   "editSave": "保存",
   "editSuccess": "更新しました",
+  "invalidUnits": "1以上の整数を入力してください",
   "itemName": "商品名",
   "itemNamePlaceholder": "商品名を入力",
   "markPurchased": "在庫に追加",
