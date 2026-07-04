@@ -15,6 +15,7 @@
   "editItem": "Edit",
   "editSave": "Save",
   "editSuccess": "Updated",
+  "invalidUnits": "Please enter a positive integer",
   "itemName": "Item name",
   "itemNamePlaceholder": "Enter item name",
   "markPurchased": "Add to Inventory",
@@ -27,6 +28,5 @@
   "restock": "Restock",
   "share": "Share",
   "shareShoppingList": "Share Shopping List",
-  "invalidUnits": "Please enter a positive integer",
   "title": "Shopping List"
 }
