@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Plus, Search, ShoppingCart, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Plus, Search, ShoppingCart, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -175,6 +175,19 @@ export const DashboardPage = () => {
     }
   };
 
+  const hasActiveFilters = Boolean(
+    search || categoryId || locationId || expiryFilter || !hideEmpty,
+  );
+
+  const clearFilters = () => {
+    setSearch("");
+    setCategoryId("");
+    setLocationId("");
+    setExpiryFilter("");
+    setHideEmpty(true);
+    localStorage.setItem("dashboard.hideEmpty", "true");
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -210,6 +223,24 @@ export const DashboardPage = () => {
             <summary className="cursor-pointer text-sm font-medium">
               {t("urgentBannerDetails")}
             </summary>
+            <div className="mt-2 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 border-yellow-400 text-yellow-900"
+                onClick={() => setExpiryFilter("expired")}
+              >
+                {t("showExpiredOnly")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 border-yellow-400 text-yellow-900"
+                onClick={() => setExpiryFilter("expiring-soon")}
+              >
+                {t("showExpiringSoonOnly")}
+              </Button>
+            </div>
             <div className="mt-3 space-y-3 text-sm">
               <div>
                 <p className="mb-1 font-medium">{t("expiryStatus.expired")}</p>
@@ -361,6 +392,57 @@ export const DashboardPage = () => {
         </div>
       )}
 
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">{t("sortShortcutsLabel")}</p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={sort === "expiry_date" ? "default" : "outline"}
+            size="sm"
+            className="h-8 rounded-full px-3 text-xs"
+            onClick={() => {
+              setSort("expiry_date");
+              localStorage.setItem("dashboard.sort", "expiry_date");
+            }}
+          >
+            {t("sortByExpiry")}
+          </Button>
+          <Button
+            variant={sort === "purchase_date" ? "default" : "outline"}
+            size="sm"
+            className="h-8 rounded-full px-3 text-xs"
+            onClick={() => {
+              setSort("purchase_date");
+              localStorage.setItem("dashboard.sort", "purchase_date");
+            }}
+          >
+            {t("sortByPurchaseDate")}
+          </Button>
+          <Button
+            variant={sort === "created_at" ? "default" : "outline"}
+            size="sm"
+            className="h-8 rounded-full px-3 text-xs"
+            onClick={() => {
+              setSort("created_at");
+              localStorage.setItem("dashboard.sort", "created_at");
+            }}
+          >
+            {t("sortByCreatedAt")}
+          </Button>
+        </div>
+      </div>
+
+      {hasActiveFilters && (
+        <div className="flex items-center justify-between rounded-lg border border-dashed p-2 text-xs">
+          <span className="text-muted-foreground">
+            {t("activeFilterResult", { count: filtered.length })}
+          </span>
+          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={clearFilters}>
+            <X className="mr-1 h-3.5 w-3.5" />
+            {t("clearFilters")}
+          </Button>
+        </div>
+      )}
+
       {/* Filter panel */}
       {showFilters && (
         <div className="space-y-3 rounded-lg border p-3">
@@ -463,7 +545,12 @@ export const DashboardPage = () => {
               </Link>
             </>
           ) : (
-            <p className="text-lg font-medium">{t("noMatchingItems")}</p>
+            <>
+              <p className="text-lg font-medium">{t("noMatchingItems")}</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={clearFilters}>
+                {t("clearFilters")}
+              </Button>
+            </>
           )}
         </div>
       ) : (
