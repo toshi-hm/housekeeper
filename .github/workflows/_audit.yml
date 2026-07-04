@@ -21,4 +21,3 @@ jobs:
       - name: Run bun audit
         run: bun audit
         continue-on-error: true
-
