@@ -15,6 +15,7 @@
   "editItem": "Edit",
   "editSave": "Save",
   "editSuccess": "Updated",
+  "groupOther": "Other",
   "invalidUnits": "Please enter a positive integer",
   "itemName": "Item name",
   "itemNamePlaceholder": "Enter item name",
@@ -28,5 +29,10 @@
   "restock": "Restock",
   "share": "Share",
   "shareShoppingList": "Share Shopping List",
+  "sortAdded": "Added order",
+  "sortCategory": "By category",
+  "sortLabel": "Sort",
+  "sortName": "By name",
+  "sortPriority": "By quantity",
   "title": "Shopping List"
 }
