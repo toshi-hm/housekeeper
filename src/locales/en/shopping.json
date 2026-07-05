@@ -20,6 +20,7 @@
   "itemName": "Item name",
   "itemNamePlaceholder": "Enter item name",
   "markPurchased": "Add to Inventory",
+  "nameRequired": "Please enter an item name",
   "noItems": "Shopping list is empty",
   "noPurchased": "No purchased items",
   "note": "Note",

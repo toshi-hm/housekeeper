@@ -27,6 +27,41 @@ const dashboardSearchSchema = z.object({
   expiry: z.string().optional().default(""),
 });
 
+const SEARCH_DEBOUNCE_MS = 300;
+
+interface SearchInputProps {
+  initialValue: string;
+  placeholder: string;
+  onDebouncedChange: (value: string) => void;
+}
+
+/**
+ * キー入力ごとのURL遷移/Supabase再クエリを避けるため、ローカルstateで入力を受けてからデバウンスする。
+ * 親で `key={search}` を指定し、URLのsearchが外部要因(戻る/進む等)で変わったら再マウントで追従させる。
+ */
+const SearchInput = ({ initialValue, placeholder, onDebouncedChange }: SearchInputProps) => {
+  const [value, setValue] = useState(initialValue);
+
+  useEffect(() => {
+    if (value === initialValue) return;
+    const timer = setTimeout(() => onDebouncedChange(value), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <div className="relative flex-1">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        className="pl-9"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+    </div>
+  );
+};
+
 export const DashboardPage = () => {
   const { t } = useTranslation("items");
   const { t: tc } = useTranslation("common");
@@ -300,15 +335,12 @@ export const DashboardPage = () => {
 
       {/* Search */}
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder={t("searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        <SearchInput
+          key={search}
+          initialValue={search}
+          placeholder={t("searchPlaceholder")}
+          onDebouncedChange={setSearch}
+        />
         <Button
           variant={showFilters ? "default" : "outline"}
           size="icon"

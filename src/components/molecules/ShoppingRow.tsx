@@ -43,12 +43,14 @@ export const ShoppingRow = ({
   const [editName, setEditName] = useState(name);
   const [editUnits, setEditUnits] = useState(String(desiredUnits));
   const [editNote, setEditNote] = useState(note ?? "");
+  const [nameError, setNameError] = useState(false);
   const [unitsError, setUnitsError] = useState<string | null>(null);
 
   const resetEditState = () => {
     setEditName(name);
     setEditUnits(String(desiredUnits));
     setEditNote(note ?? "");
+    setNameError(false);
     setUnitsError(null);
   };
 
@@ -58,6 +60,10 @@ export const ShoppingRow = ({
   };
 
   const handleSave = () => {
+    if (!editName.trim()) {
+      setNameError(true);
+      return;
+    }
     const parsedUnits = parseInt(editUnits, 10);
     if (isNaN(parsedUnits) || parsedUnits <= 0) {
       setUnitsError(t("invalidUnits"));
@@ -65,7 +71,7 @@ export const ShoppingRow = ({
     }
     setUnitsError(null);
     onEditSave?.(id, {
-      name: editName.trim() || name,
+      name: editName.trim(),
       desiredUnits: parsedUnits,
       note: editNote.trim() || null,
     });
@@ -81,15 +87,20 @@ export const ShoppingRow = ({
       <div className="space-y-2 rounded-lg border p-3">
         <Input
           value={editName}
-          onChange={(e) => setEditName(e.target.value)}
+          onChange={(e) => {
+            setEditName(e.target.value);
+            if (nameError) setNameError(false);
+          }}
           placeholder={t("itemNamePlaceholder")}
           autoFocus
           disabled={isSaving}
+          aria-invalid={nameError}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
             if (e.key === "Escape") handleCancel();
           }}
         />
+        {nameError && <p className="mt-0.5 text-xs text-destructive">{t("nameRequired")}</p>}
         <div className="flex gap-2">
           <div className="flex-1">
             <Input
