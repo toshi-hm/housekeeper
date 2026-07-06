@@ -29,6 +29,9 @@ reg.json
 # Supabase CLI temp files
 supabase/.temp/
 
+# Stryker mutation testing reports/temp
+reports/
+
 # Serena MCP local metadata
 .serena/
 

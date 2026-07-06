@@ -16,6 +16,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "knip": "knip",
+    "mutation": "stryker run",
+    "mutation:report": "bun run scripts/mutation-report.ts",
     "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/supabase.ts && node scripts/fix-supabase-types.mjs"
   },
   "dependencies": {
@@ -55,6 +57,7 @@
     "@storybook/addon-a11y": "^10.4.6",
     "@storybook/react": "^10.3.5",
     "@storybook/react-vite": "^10.3.5",
+    "@stryker-mutator/core": "^9.6.1",
     "@tailwindcss/vite": "^4.2.4",
     "@tanstack/react-query-devtools": "5.100.8",
     "@tanstack/router-devtools": "^1.166.13",

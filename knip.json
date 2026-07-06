@@ -14,7 +14,8 @@
     "i18next-parser",
     "@babel/preset-react",
     "@babel/preset-typescript",
-    "babel-plugin-istanbul"
+    "babel-plugin-istanbul",
+    "@stryker-mutator/command-runner"
   ],
   "ignoreBinaries": ["wait-on"]
 }
