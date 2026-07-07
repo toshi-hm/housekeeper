@@ -60,6 +60,23 @@ Read the relevant spec file before implementing any feature.
 - 「issue-sync」「issue sync」という言葉が出た
 - PLANS.md のチェックボックスを更新した後に「Issues に反映して」と言われた
 
+## Skills
+
+`.claude/skills/` に定期作業のスキルを同梱している。該当する依頼が来たら **対応する SKILL.md を読み込んでから** 作業すること。
+設計方針とカタログは `docs/skills/README.md` を参照。
+
+| スキル              | 使いどき                                                      |
+| ------------------- | ------------------------------------------------------------- |
+| `react-component`   | 新規コンポーネント作成（Atomic 分類 → 実装 → Story → テスト） |
+| `ts-quality`        | TypeScript の実装・リファクタリング（strict 規約の適用）      |
+| `unit-test`         | 単体テストの作成・修正（bun test 基盤）                       |
+| `pwa-doctor`        | PWA / オフライン / Service Worker の診断・修正                |
+| `uiux-review`       | UI/UX・アクセシビリティのレビュー                             |
+| `feature-proposal`  | 新機能の提案 → spec ドラフト → PLANS.md 反映                  |
+| `issue-sync`        | PLANS.md ⇔ GitHub Issues の同期（上記参照）                   |
+| `recipe-from-stock` | 在庫から献立・レシピ提案（生活系）                            |
+| `pantry-review`     | 週次の在庫・期限・食品ロスレビュー（生活系）                  |
+
 ## Commands
 
 - Dev: `bun run dev`
