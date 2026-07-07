@@ -18,6 +18,8 @@ interface ItemCardProps {
   warningDays?: number;
   onQuickConsume?: (item: Item) => void;
   isQuickConsuming?: boolean;
+  /** Pre-resolved signed image URL (e.g. from useSignedItemImages) to avoid a per-card fetch. */
+  imageUrl?: string;
 }
 
 export const ItemCard = ({
@@ -27,6 +29,7 @@ export const ItemCard = ({
   warningDays,
   onQuickConsume,
   isQuickConsuming = false,
+  imageUrl,
 }: ItemCardProps) => {
   const { t, i18n } = useTranslation("items");
   const expiryStatus = getExpiryStatus(item.expiry_date, warningDays);
@@ -47,6 +50,7 @@ export const ItemCard = ({
           imagePath={item.image_path}
           alt={item.name}
           className="aspect-square rounded-t-lg"
+          signedUrl={imageUrl}
         />
         <CardContent className="p-3">
           <h3 className="line-clamp-2 font-semibold leading-tight">{item.name}</h3>

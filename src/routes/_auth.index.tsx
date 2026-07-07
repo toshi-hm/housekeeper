@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useConsumeItem } from "@/hooks/useConsumeItem";
+import { useSignedItemImages } from "@/hooks/useItemImage";
 import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
@@ -122,6 +123,9 @@ export const DashboardPage = () => {
   }, [filtered.length]);
 
   const visibleItems = filtered.slice(0, displayCount);
+  const { data: imageUrlsByPath } = useSignedItemImages(
+    visibleItems.map((item) => item.image_path),
+  );
 
   const expiredCount = baseFiltered.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
@@ -482,6 +486,7 @@ export const DashboardPage = () => {
                 onQuickConsume={(i) => {
                   void handleQuickConsume(i);
                 }}
+                imageUrl={item.image_path ? imageUrlsByPath?.[item.image_path] : undefined}
               />
             ))}
           </div>
