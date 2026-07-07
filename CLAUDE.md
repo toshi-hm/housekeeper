@@ -63,6 +63,7 @@ Read the relevant spec file before implementing any feature.
 ## Skills
 
 `.claude/skills/` に定期作業のスキルを同梱している。該当する依頼が来たら **対応する SKILL.md を読み込んでから** 作業すること。
+各スキルは汎用コア（SKILL.md）+ プロジェクト設定（PROJECT.md）の 2 層構造で、他リポジトリへコピーして再利用できる。
 設計方針とカタログは `docs/skills/README.md` を参照。
 
 | スキル              | 使いどき                                                      |
@@ -76,6 +77,10 @@ Read the relevant spec file before implementing any feature.
 | `issue-sync`        | PLANS.md ⇔ GitHub Issues の同期（上記参照）                   |
 | `recipe-from-stock` | 在庫から献立・レシピ提案（生活系）                            |
 | `pantry-review`     | 週次の在庫・期限・食品ロスレビュー（生活系）                  |
+| `travel-planner`    | 旅行・おでかけの行程・持ち物・予算プラン（生活系・完全汎用）  |
+| `household-budget`  | 家計の振り返り・節約提案（生活系・完全汎用）                  |
+| `cleaning-planner`  | 掃除・片付けの計画とチェックリスト（生活系・完全汎用）        |
+| `formal-writing`    | 日本語フォーマル文書・連絡文の作成（生活系・完全汎用）        |
 
 ## Commands
 

@@ -1,152 +1,81 @@
 ---
 name: unit-test
 description: >-
-  Use when writing or fixing unit tests in this repo — 「テスト書いて」「テスト追加して」「テストが落ちる」
-  「カバレッジ上げて」など。ランナーは bun test（vitest/jest ではない）。happy-dom + Testing Library +
-  i18n wrapper + Supabase mock というこのリポジトリ固有のテスト基盤に沿って作成・修正する。
+  Use when writing or fixing unit tests — 「テスト書いて」「テスト追加して」「テストが落ちる」
+  「カバレッジ上げて」など。まずプロジェクトのテストランナーを特定してから（仮定しない）、
+  そのプロジェクトのテスト基盤・パターンに沿って作成・修正する。
 ---
 
 # Skill: unit-test
 
-このリポジトリの単体テストを作成・修正する。
+単体テストを作成・修正する。
 
-## 最重要の前提
+## Step 0. プロジェクト設定の解決（最重要）
 
-**テストランナーは `bun test`。vitest / jest ではない。**
+**テストランナーを絶対に仮定しない。** vitest の API を bun test のリポジトリに書く、
+といった事故が最も多い失敗パターン。
 
-```ts
-// 必ずこれ
-import { describe, expect, it, mock } from "bun:test";
+1. **同ディレクトリの `PROJECT.md` があれば読み、その設定を最優先する**
+2. なければ以下から特定する:
+   - `package.json` の `scripts.test` と devDependencies（vitest / jest / bun types の有無）
+   - 設定ファイル: `vitest.config.*` / `jest.config.*` / `bunfig.toml` の `[test]`
+   - 既存テストファイルの import 元（`vitest` / `@jest/globals` / `bun:test`）
+3. 特定したら、**既存テスト 1〜2 本を読んで**セットアップ（DOM 環境、preload、
+   Provider wrapper、モック手法）のパターンを把握してから書き始める
 
-// NG（このリポジトリには存在しない）
-import { describe, it, vi } from "vitest";
-```
+## 汎用原則（ランナー横断）
 
-- `vi.fn()` → `mock(() => ...)`、`vi.mock()` → `mock.module()`（`bun:test`）
-- DOM は happy-dom。`bunfig.toml` の `preload = ["./src/test/setup.ts"]` で
-  `GlobalRegistrator.register()` と `afterEach(cleanup)` が全テストに適用済み。
-  テストファイル側で再セットアップしない
+### 構成
 
-## ファイル配置・実行
+- テストは対象と同階層に colocation（`<name>.test.ts(x)`）が基本。
+  プロジェクトが `__tests__/` 方式ならそれに従う
+- 1 テスト = 1 検証意図。Arrange / Act / Assert を意識し、テスト名は
+  「〜のとき〜になる」が読み取れる英語にする
 
-- テストは対象と同階層に `<name>.test.ts` / `<name>.test.tsx`（colocation）
-- 実行:
+### 何をテストするか
 
-```bash
-bun test                                    # 全件
-bun test src/components/atoms/Foo.test.tsx  # 単体
-bun test --watch                            # watch
-```
+| 対象                     | 観点                                                                 |
+| ------------------------ | -------------------------------------------------------------------- |
+| 表示コンポーネント       | props の全分岐で描画される/されない、状態別の差分                    |
+| 対話コンポーネント       | ユーザー操作 → コールバック呼び出し、表示条件                        |
+| データ取得コンポーネント | loading / error / empty / success の各状態。モック必須               |
+| hooks                    | 成功/失敗、副作用後の状態、早期 return 条件                          |
+| 純粋ロジック             | 境界値（null / undefined / 0 / 空文字 / 閾値ちょうど）、エッジケース |
 
-## パターン集（実在コード準拠）
+### 質の基準
 
-### 1. コンポーネント（i18n が絡む場合の wrapper）
+- 境界値・異常系を必ず含める（正常系 1 本で完了にしない）
+- **ネットワーク・実 DB に依存しない**。外部 I/O は必ずモックする
+- 文言アサーションはロケール・コピー変更に弱い。原則は存在/非存在・ロール・構造で検証する
+- 日付は `new Date()` 相対で組み立てる（固定日付ハードコードは将来落ちる）
+- 実装の内部構造（private な変数名等）ではなく、外から見える振る舞いを検証する
 
-```tsx
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "bun:test";
-import { type ReactNode } from "react";
-import { I18nextProvider } from "react-i18next";
+### Testing Library を使う場合
 
-import i18n from "../../lib/i18n";
-import { ExpiryBadge } from "./ExpiryBadge";
-
-const wrapper = ({ children }: { children: ReactNode }) => (
-  <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
-);
-
-describe("ExpiryBadge", () => {
-  it("renders nothing for null expiry date", () => {
-    const { container } = render(<ExpiryBadge expiryDate={null} />, { wrapper });
-    expect(container.firstChild).toBeNull();
-  });
-});
-```
-
-- 文言のアサーションはロケール依存になるので、原則 **存在/非存在・構造** で検証する。
-  文言を見る場合はキー起点で（`i18n.t("...")` の戻り値と比較）
-- 日付系は `new Date()` 相対で組み立てる（固定日付ハードコードは将来落ちる）
-
-### 2. ユーザー操作
-
-```tsx
-import userEvent from "@testing-library/user-event";
-
-it("calls onConsume when tapped", async () => {
-  const onConsume = mock(() => {});
-  const user = userEvent.setup();
-  render(<ItemCard item={item} onConsume={onConsume} />, { wrapper });
-  await user.click(screen.getByRole("button", { name: /consume/i }));
-  expect(onConsume).toHaveBeenCalledTimes(1);
-});
-```
-
-### 3. hooks（TanStack Query）
-
-QueryClientProvider を wrapper に含める。retry を切って失敗を即時化する。
-
-```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-};
-```
-
-既存例: `src/hooks/useItems.test.ts`
-
-### 4. Supabase のモック
-
-`src/mocks/supabase.ts` を確認し、既存のモックヘルパーを再利用する。
-新規にモックが必要な場合は `mock.module()` で `@/lib/supabase` を差し替える。
-
-```ts
-import { mock } from "bun:test";
-
-mock.module("@/lib/supabase", () => ({
-  supabase: mockSupabaseClient,
-}));
-```
-
-**実 Supabase に接続するテストは書かない**（単体テストはネットワーク不要で完結させる）。
-
-### 5. 純粋ロジック（.ts）
-
-Zod スキーマ・日付計算・整形関数は wrapper 不要のプレーンなテストで、
-境界値（null / undefined / 0 / 空文字 / 閾値ちょうど）を必ず含める。
-既存例: `src/types/item.test.ts`
-
-## レイヤー別のテスト観点
-
-| 対象        | 観点                                                                      |
-| ----------- | ------------------------------------------------------------------------- |
-| atoms       | props の全分岐で描画される/されない、状態別の見た目差分                   |
-| molecules   | ユーザー操作 → コールバック呼び出し、表示条件                             |
-| organisms   | データ状態（loading / error / empty / success）ごとの描画。モック必須     |
-| hooks       | query の成功/失敗、mutation 後のキャッシュ更新、オフライン時の早期 return |
-| types / lib | Zod バリデーション境界値、計算ロジック、エッジケース                      |
-
-templates / pages / `src/components/ui/`（shadcn 生成物）はテスト対象外。
+- クエリ優先順位: `getByRole` > `getByLabelText` > `getByText` > `getByTestId`（最終手段）
+- ユーザー操作は `fireEvent` より `@testing-library/user-event`
+- 非同期は `waitFor` / `findBy*`。`setTimeout` 待ちを書かない
 
 ## テストが落ちているときの調査手順
 
-1. `bun test <落ちたファイル>` で単体再現
-2. import 元が `bun:test` か確認（vitest API 混入がないか）
-3. happy-dom 非対応 API（一部の layout 計測など）を使っていないか
-4. i18n / QueryClient の wrapper 漏れ
-5. 日付・タイムゾーン依存（相対日付に書き換える）
+1. 落ちたファイルを単体実行して再現する
+2. import 元がプロジェクトのランナーと一致しているか（別ランナーの API 混入がないか）
+3. テスト環境の DOM 実装（happy-dom / jsdom）が非対応の API を使っていないか
+4. Provider / wrapper 漏れ（i18n、QueryClient、Router、Theme など）
+5. 日付・タイムゾーン・実行順序への依存
 6. 直近の実装変更との突き合わせ — **テストを実装に合わせるか、実装のバグかを必ず判断して報告する。
    安易にアサーションを緩めて緑にしない**
 
+## やってはいけないこと
+
+- ランナーを確認せずに書き始める
+- 実装と同じロジックをテスト側に複製して検証する（トートロジー）
+- 落ちるテストの skip / アサーション削除で「緑化」する
+- 外部サービスへの実接続
+
 ## Definition of Done
 
-- [ ] `bun test`（全件）が通る
+- [ ] テスト全件が通る
 - [ ] 新規テストは境界値・異常系を含む
 - [ ] ネットワーク・実 DB に依存していない
-- [ ] `npx oxfmt . && bun run check` が通る
+- [ ] プロジェクトの format / lint / typecheck が通る

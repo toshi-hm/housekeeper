@@ -3,103 +3,93 @@ name: pwa-doctor
 description: >-
   Use when working on PWA / offline / Service Worker concerns — 「PWAを確認して」「オフラインで動かない」
   「Service Workerを直して」「インストールできない」「キャッシュがおかしい」「manifest を見て」など。
-  spec（docs/specs/features/pwa.md）との突き合わせ診断と、修正の実装を行う。
+  プロジェクトのオフライン方針と突き合わせた診断チェックリストの適用と、修正の実装を行う。
 ---
 
 # Skill: pwa-doctor
 
 PWA / オフライン / Service Worker まわりの診断と修正を行う。
 
-## 真実の源
+## Step 0. プロジェクト設定の解決
 
-- `docs/specs/features/pwa.md` — オフラインは **参照のみ**。編集系のオフラインキューイングは作らない
-- `docs/specs/features/notifications.md` — SW は Web Push と統合（`injectManifest` 戦略の理由）
+1. **同ディレクトリの `PROJECT.md` があれば読み、その構成・方針を最優先する**
+2. なければ以下から自動検出する:
+   - ビルド設定（`vite.config.*` 等）— PWA プラグインと strategy（generateSW / injectManifest）
+   - SW ソースファイル（`src/sw.*` / `service-worker.*`）と専用 tsconfig
+   - manifest（生成設定 or `public/manifest.webmanifest`）
+   - データ永続化（Query persister / IndexedDB 等）とオフライン検知コード
+   - プロジェクトの spec / ドキュメントにオフライン方針の記述があるか
+3. **オフライン方針（どこまでオフラインで動くべきか）を必ず特定する**:
+   参照のみ？ 編集のキューイングあり？ 完全オンライン前提？
+   方針が不明なままキャッシュを足すのは事故のもと — ドキュメントにも実装にも根拠がなければ
+   ユーザーに確認する
 
-spec と実装が食い違っていたら、**実装を spec に寄せる**のが原則。
+spec / ドキュメントと実装が食い違っていたら、**実装を spec に寄せる**のが原則。
 spec 自体を変えたい場合は先にユーザーへ提案する。
 
-## このリポジトリの PWA 構成
-
-| 要素           | 実体                                                                  |
-| -------------- | --------------------------------------------------------------------- |
-| プラグイン     | `vite-plugin-pwa`（`vite.config.ts`）、strategy は `injectManifest`   |
-| Service Worker | `src/sw.ts`（workbox-precaching / routing / strategies / expiration） |
-| SW 用 tsconfig | `tsconfig.sw.json`                                                    |
-| クエリ永続化   | TanStack Query persister + `idb-keyval`（IndexedDB、24h）             |
-| オフライン抑止 | `useOnlineStatus` / `requireOnline()`（`src/lib/requireOnline.ts`）   |
-| 配信           | Cloudflare（`wrangler.jsonc`）                                        |
-
-## 診断チェックリスト
+## 診断チェックリスト（汎用）
 
 上から順に確認し、結果を ✅ / ⚠️ / ❌ で報告する。
 
 ### A. インストール可能性
 
-- [ ] manifest が生成される（name / short_name / icons 192・512 / theme_color / display: standalone）
-- [ ] `public/` にアイコン実体がある（maskable 含む）
-- [ ] SW が登録される（`virtual:pwa-register` 等の登録コードが main 側にある）
-- [ ] HTTPS 前提の記述に問題がない
+- [ ] manifest が配信される（name / short_name / icons 192・512 / theme_color / display）
+- [ ] アイコン実体が存在する（maskable 含む）
+- [ ] SW が登録される（登録コードがエントリポイント側にある）
+- [ ] HTTPS 前提が満たされる構成か
 
-### B. オフライン参照（spec F-10 の中核）
+### B. オフライン動作（プロジェクト方針に沿って）
 
 - [ ] app shell（HTML/CSS/JS/フォント/アイコン）がプリキャッシュされる
-- [ ] PostgREST GET（items / categories / storage_locations / user_settings）が
-      `stale-while-revalidate`、TTL 1h、maxEntries 100 でランタイムキャッシュされる
-- [ ] TanStack Query の persist が効き、リロード直後に last-known データが出る
-- [ ] 画像（signed URL）はネットワーク優先（短命 URL をキャッシュキーにしない）
+- [ ] API GET のランタイムキャッシュ戦略が方針どおり
+      （stale-while-revalidate / network-first 等、TTL・maxEntries 含む）
+- [ ] クライアント状態の永続化（Query persist 等）が効き、リロード直後に last-known データが出る
+- [ ] 認証付き・短命 URL のリソース（signed URL 等）を不用意にキャッシュしていない
 
-### C. オフライン時の編集抑止
+### C. オフライン時の書き込み
 
-- [ ] すべての mutation hook が先頭で `requireOnline()` を呼ぶ
-      （`rg "useMutation" src/hooks` で列挙し、`requireOnline` の有無を突き合わせる）
-- [ ] オフライン編集試行時にトーストが出る
-- [ ] オフラインキューイングを**実装していない**こと（spec 違反の先回り実装がないか）
+- [ ] 方針が「抑止」なら: すべての mutation がオンライン必須ガードを通り、ユーザーに通知される。
+      キューイングを先回り実装していない
+- [ ] 方針が「キューイング」なら: 再送・競合・重複送信の扱いが定義どおり
 
 ### D. SW 更新フロー
 
-- [ ] 新 SW 配信時の更新挙動（autoUpdate / prompt）が意図どおりか
-- [ ] 古いキャッシュが `workbox-expiration` / precache cleanup で掃除されるか
+- [ ] 新 SW 配信時の更新挙動（autoUpdate / prompt）が意図どおり
+- [ ] 古いキャッシュが expiration / precache cleanup で掃除される
 
-### E. Push 統合（v1.2）
+### E. 通知など SW 拡張機能（採用している場合）
 
-- [ ] `src/sw.ts` に push / notificationclick ハンドラが同居できる構成か
-      （generateSW に切り替えるような変更をしていないか）
+- [ ] push / notificationclick 等のハンドラが現行の strategy と両立している
+      （カスタムハンドラがあるのに generateSW に切り替える、などの構成破壊がないか)
 
-## 動作確認手順
+## 動作確認手順（汎用）
 
-```bash
-bun run build && bun run preview
-```
-
-1. ブラウザで preview URL を開き、DevTools → Application → Manifest / Service Workers を確認
-2. 一覧・詳細を一度表示してキャッシュを温める
-3. DevTools → Network → Offline に切り替えてリロード → 一覧・詳細・バッジが表示されること
-4. オフラインのまま編集操作 → トーストで抑止されること
-5. Online に戻す → データが自動更新されること
-
-**注意**: `bun run dev` では SW の挙動は本番と異なる（devOptions 次第）。
-オフライン検証は必ず build + preview で行う。
+1. 本番相当でビルドしてローカル配信する（dev サーバーでは SW の挙動が本番と異なる）
+2. DevTools → Application → Manifest / Service Workers を確認
+3. 主要画面を一度表示してキャッシュを温める
+4. DevTools → Network → Offline に切り替えてリロード → 方針どおりの範囲が動くこと
+5. オフラインのまま書き込み操作 → 方針どおり（抑止 or キュー）に動くこと
+6. Online に戻す → データが自動更新されること
 
 ## よくある故障と対処
 
-| 症状                       | 原因候補                                                                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------- |
-| インストールバナーが出ない | manifest の icons 不足 / display 設定 / SW 未登録                                        |
-| オフラインで真っ白         | プリキャッシュ漏れ（ハッシュ付きアセットが injectManifest の glob 対象外）               |
-| 古い画面が出続ける         | SW 更新フロー未実装、skipWaiting/clientsClaim の方針不整合                               |
-| オフラインでデータが出ない | ランタイムキャッシュ未ヒット + Query persist 未設定/期限切れ                             |
-| signed URL 画像が壊れる    | 短命 URL をそのままキャッシュ（image_path 単位の正規化を検討 or ネットワーク優先に戻す） |
-| SW のビルドエラー          | `tsconfig.sw.json` のスコープ外 import（DOM 前提コードを sw.ts に混ぜた）                |
+| 症状                       | 原因候補                                                    |
+| -------------------------- | ----------------------------------------------------------- |
+| インストールバナーが出ない | manifest の icons 不足 / display 設定 / SW 未登録           |
+| オフラインで真っ白         | プリキャッシュ漏れ（ハッシュ付きアセットが glob 対象外）    |
+| 古い画面が出続ける         | SW 更新フロー未実装、skipWaiting/clientsClaim の方針不整合  |
+| オフラインでデータが出ない | ランタイムキャッシュ未ヒット + 状態 persist 未設定/期限切れ |
+| 認証付きリソースが壊れる   | 短命 URL をそのままキャッシュキーにしている                 |
+| SW のビルドエラー          | SW は Worker コンテキスト — `window` / DOM 前提コードの混入 |
 
 ## 修正時の注意
 
-- SW（`src/sw.ts`）は WebWorker コンテキスト。`window` / DOM API を使わない
-- キャッシュ戦略の変更は spec の数値（TTL 1h / maxEntries 100 / persist 24h）から
-  逸脱する場合、理由を報告する
-- 修正後は必ず「動作確認手順」を再実行し、`npx oxfmt . && bun run check` を通す
+- SW は WebWorker コンテキスト。`window` / DOM API を使わない
+- キャッシュ戦略の数値（TTL / maxEntries）を spec から逸脱させる場合は理由を報告する
+- 修正後は「動作確認手順」を再実行し、プロジェクトの format / lint / typecheck を通す
 
 ## Definition of Done
 
-- [ ] 診断チェックリスト A〜E の結果を報告した
-- [ ] 修正した場合、build + preview でのオフライン動作確認結果を報告した
-- [ ] `npx oxfmt . && bun run check` が通る
+- [ ] オフライン方針を特定し、チェックリスト A〜E の結果を報告した
+- [ ] 修正した場合、本番相当ビルドでのオフライン動作確認結果を報告した
+- [ ] プロジェクトの format / lint / typecheck が通る
