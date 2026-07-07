@@ -65,7 +65,7 @@ Atomic Design の場合の判断表:
 
 ## Step 4. テストを作成する
 
-- ランナー・パターンは `unit-test` スキル（`.claude/skills/unit-test/SKILL.md`）に従う
+- ランナー・パターンは同梱の `unit-test` スキル（同じ skills ディレクトリ配下）に従う
 - 最低限: 全 props 分岐で「描画される/されない」、コールバックが発火する
 
 ## Step 5. チェック
