@@ -42,3 +42,6 @@ supabase/.temp/
 *.njsproj
 *.sln
 *.sw?
+
+# test coverage output
+coverage/
