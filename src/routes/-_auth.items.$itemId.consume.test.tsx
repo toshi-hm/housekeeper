@@ -161,6 +161,17 @@ describe("ItemConsumePage", () => {
     expect(queryByRole("spinbutton")).toBeNull();
   });
 
+  it("shows no stock message when the only lot has opened_remaining of exactly 0", () => {
+    lotsspy.mockReturnValue({
+      data: [{ ...baseLot, units: 1, opened_remaining: 0 }],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useItemLotsModule.useItemLots>);
+    const { getByText, queryByRole } = renderPage();
+    expect(getByText(/noStockToConsume|No stock available|在庫がありません/)).toBeDefined();
+    expect(queryByRole("spinbutton")).toBeNull();
+  });
+
   it("shows numeric input when there is one active lot", () => {
     const { getByRole } = renderPage();
     expect(getByRole("spinbutton")).toBeDefined();

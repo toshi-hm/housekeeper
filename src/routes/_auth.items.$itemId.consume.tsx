@@ -12,7 +12,12 @@ import { useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import { useItem } from "@/hooks/useItems";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
-import { computeConsumption, type ConsumptionError, type ItemLot } from "@/types/item";
+import {
+  computeConsumption,
+  type ConsumptionError,
+  getLotRemainingAmount,
+  type ItemLot,
+} from "@/types/item";
 
 const consumptionErrorKey = {
   insufficientStock: "insufficientStock",
@@ -34,7 +39,10 @@ export const ItemConsumePage = () => {
 
   const isLoading = itemLoading || lotsLoading;
 
-  const activeLots = lots.filter((l) => l.units > 0 || l.opened_remaining !== null);
+  const contentAmount = item?.content_amount ?? 0;
+  const getLotTotal = (l: ItemLot): number =>
+    getLotRemainingAmount(l.units, contentAmount, l.opened_remaining ?? null);
+  const activeLots = lots.filter((l) => getLotTotal(l) > 0);
   const hasMultipleLots = activeLots.length > 1;
 
   const selectedLot: ItemLot | null =
@@ -155,11 +163,7 @@ export const ItemConsumePage = () => {
         })
     : null;
 
-  const totalLotAmount = selectedLot
-    ? selectedLot.opened_remaining !== null && selectedLot.opened_remaining !== undefined
-      ? selectedLot.opened_remaining + Math.max(0, selectedLot.units - 1) * item.content_amount
-      : selectedLot.units * item.content_amount
-    : 0;
+  const totalLotAmount = selectedLot ? getLotTotal(selectedLot) : 0;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

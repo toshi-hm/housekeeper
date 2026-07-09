@@ -5,6 +5,7 @@ import {
   DEFAULT_EXPIRY_WARNING_DAYS,
   formatRemaining,
   getExpiryStatus,
+  getLotRemainingAmount,
   itemFormSchema,
   itemLotSchema,
 } from "./item";
@@ -135,6 +136,30 @@ describe("formatRemaining", () => {
   test("decimal result keeps significant digits", () => {
     // 1 × 1.5 opened=0.75 → (0 × 1.5) + 0.75 = 0.75
     expect(formatRemaining(1, 1.5, 0.75)).toBe("0.75");
+  });
+});
+
+// --- getLotRemainingAmount ---
+
+describe("getLotRemainingAmount", () => {
+  test("all sealed: units × content_amount", () => {
+    expect(getLotRemainingAmount(3, 1000, null)).toBe(3000);
+  });
+
+  test("one opened unit: (units-1) × amount + opened_remaining", () => {
+    expect(getLotRemainingAmount(3, 1000, 350)).toBe(2350);
+  });
+
+  test("units=0 and opened_remaining=null => 0 (fully depleted)", () => {
+    expect(getLotRemainingAmount(0, 500, null)).toBe(0);
+  });
+
+  test("units=1 and opened_remaining=0 => 0 (opened package used up)", () => {
+    expect(getLotRemainingAmount(1, 500, 0)).toBe(0);
+  });
+
+  test("units=2 and opened_remaining=0 => remaining sealed unit still counts", () => {
+    expect(getLotRemainingAmount(2, 500, 0)).toBe(500);
   });
 });
 
