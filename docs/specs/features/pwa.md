@@ -24,7 +24,9 @@
 3. **strategy**: `injectManifest`（Notifications spec の Service Worker と統合するため）
 4. プリキャッシュ: app shell（HTML/CSS/JS）、アイコン、フォント
 5. ランタイムキャッシュ:
-   - PostgREST GET（items / categories / locations / settings）: `stale-while-revalidate`、TTL 1h、最大 100
+   - PostgREST GET（items / categories / locations / settings）: `network-first`（timeout 5s でキャッシュへフォールバック）、TTL 1h、最大 100
+     - ※ 当初は `stale-while-revalidate` だったが、mutation 直後の TanStack Query refetch に
+       古いキャッシュが返り、更新結果が画面に反映されないバグがあったため network-first に変更
    - 画像（signed URL は短命なので image_path 単位でキャッシュキーを正規化する手法を検討、当面はネットワーク優先）
 6. mutation の抑止: `useOnlineStatus()` で `navigator.onLine` を監視、オフライン時は mutation hook 全体で早期 return + トースト
 
