@@ -218,3 +218,84 @@ describe("unsubscribePush", () => {
     await expect(unsubscribePush()).rejects.toThrow("You are offline");
   });
 });
+
+describe("Mutation hardening (useNotificationPreferences)", () => {
+  test("設定取得は notification_preferences から select * + maybeSingle で行う", async () => {
+    sb.enqueue("notification_preferences", { data: makePrefs() });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useNotificationPreferences(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(sb.queriesFor("notification_preferences")[0]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "maybeSingle", args: [] },
+    ]);
+  });
+
+  test("エラー応答でも data があれば throw が優先される", async () => {
+    // data と error の両方があるとき、error を throw しないと data が返ってしまう
+    sb.enqueue("notification_preferences", {
+      data: makePrefs(),
+      error: { message: "should throw" },
+    });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useNotificationPreferences(), { wrapper });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+
+  test("upsert は user_id と updated_at を付与する", async () => {
+    sb.enqueue("notification_preferences", { data: makePrefs() });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useUpdateNotificationPreferences(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ push_enabled: true });
+    });
+
+    const payload = sb.queriesFor("notification_preferences")[0]?.ops[0]?.args[0] as Record<
+      string,
+      unknown
+    >;
+    expect(payload.push_enabled).toBe(true);
+    expect(payload.user_id).toBe("user-1");
+    expect(typeof payload.updated_at).toBe("string");
+  });
+
+  test("subscribePush: VAPID 鍵を base64url デコードした鍵で購読する", async () => {
+    const originalKey = process.env.VITE_VAPID_PUBLIC_KEY;
+    process.env.VITE_VAPID_PUBLIC_KEY = "ab-_12";
+    try {
+      const subscription: MockSubscription = {
+        endpoint: "https://push.example/key-check",
+        toJSON: () => ({ endpoint: "https://push.example/key-check" }),
+        unsubscribe: () => Promise.resolve(true),
+      };
+      const { subscribeCalls } = installServiceWorkerMock(subscription);
+
+      await subscribePush();
+
+      const options = subscribeCalls[0] as {
+        userVisibleOnly: boolean;
+        applicationServerKey: ArrayBuffer;
+      };
+      expect(options.userVisibleOnly).toBe(true);
+      // "ab-_12" (base64url, 2 文字パディング) のデコード結果
+      expect([...new Uint8Array(options.applicationServerKey)]).toEqual([105, 191, 191, 215]);
+    } finally {
+      process.env.VITE_VAPID_PUBLIC_KEY = originalKey;
+    }
+  });
+
+  test("subscribePush: VAPID 鍵が空なら設定エラーを投げる", async () => {
+    const originalKey = process.env.VITE_VAPID_PUBLIC_KEY;
+    process.env.VITE_VAPID_PUBLIC_KEY = "";
+    try {
+      installServiceWorkerMock(null);
+      await expect(subscribePush()).rejects.toThrow("VITE_VAPID_PUBLIC_KEY is not set");
+    } finally {
+      process.env.VITE_VAPID_PUBLIC_KEY = originalKey;
+    }
+  });
+});

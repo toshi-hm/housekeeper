@@ -207,3 +207,67 @@ describe("Branch カバレッジ補完 (useBarcodeLookup)", () => {
     });
   });
 });
+
+describe("Mutation hardening (useBarcodeLookup): クエリ内容の厳密検証", () => {
+  test("ローカル検索のクエリ内容を完全一致で検証する", async () => {
+    sb.enqueue("items", { data: { name: "牛乳", image_path: null } });
+
+    const { result } = renderHook(() => useBarcodeLookup());
+    await act(async () => {
+      await result.current.lookup("4901234567890");
+    });
+
+    expect(sb.queriesFor("items")[0]?.ops).toEqual([
+      { method: "select", args: ["name, image_path"] },
+      { method: "eq", args: ["barcode", "4901234567890"] },
+      { method: "is", args: ["deleted_at", null] },
+      { method: "order", args: ["updated_at", { ascending: false }] },
+      { method: "limit", args: [1] },
+      { method: "maybeSingle", args: [] },
+    ]);
+  });
+
+  test("署名 URL は item-images バケットに 50 分 (3000 秒) で発行する", async () => {
+    sb.enqueue("items", { data: { name: "牛乳", image_path: "user-1/milk.jpg" } });
+
+    const { result } = renderHook(() => useBarcodeLookup());
+    await act(async () => {
+      await result.current.lookup("4901");
+    });
+
+    expect(sb.storageCalls[0]).toEqual({
+      bucket: "item-images",
+      method: "createSignedUrl",
+      args: ["user-1/milk.jpg", 3000],
+    });
+  });
+
+  test("Edge Function は barcode-lookup 名でバーコードを渡して呼ばれる", async () => {
+    sb.enqueue("items", { data: null });
+    sb.setInvokeResponse({ data: { product: null }, error: null });
+
+    const { result } = renderHook(() => useBarcodeLookup());
+    await act(async () => {
+      await result.current.lookup("4902");
+    });
+
+    expect(sb.invokeCalls[0]).toEqual({ name: "barcode-lookup", body: { barcode: "4902" } });
+  });
+
+  test("network 判定は fetch / network を含むときだけ", async () => {
+    sb.enqueue("items", { data: null }, { data: null });
+    const { result } = renderHook(() => useBarcodeLookup());
+
+    sb.setInvokeResponse({ data: null, error: { message: "socket NETWORK down" } });
+    await act(async () => {
+      await result.current.lookup("1");
+    });
+    expect(result.current.error).toBe("network");
+
+    sb.setInvokeResponse({ data: null, error: { message: "no such product" } });
+    await act(async () => {
+      await result.current.lookup("2");
+    });
+    expect(result.current.error).toBe("not_found");
+  });
+});

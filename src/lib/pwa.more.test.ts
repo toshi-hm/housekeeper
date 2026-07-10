@@ -87,3 +87,61 @@ describe("registerPwaServiceWorker", () => {
     expect(registerPwaServiceWorker()).toBeUndefined();
   });
 });
+
+describe("createSwRegistrationHandler (イベント名とログ内容)", () => {
+  test("load イベントに登録され、解除後は発火しない", async () => {
+    const originalSW = navigator.serviceWorker;
+    const register = mock(() => Promise.resolve({} as ServiceWorkerRegistration));
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: { register },
+    });
+
+    const addSpy = spyOn(window, "addEventListener");
+    const removeSpy = spyOn(window, "removeEventListener");
+
+    try {
+      const cleanupHandler = createSwRegistrationHandler();
+      expect((addSpy.mock.calls[0] as unknown[])[0]).toBe("load");
+
+      cleanupHandler();
+      expect((removeSpy.mock.calls[0] as unknown[])[0]).toBe("load");
+      // 登録した handler と同一の関数を解除している
+      expect((removeSpy.mock.calls[0] as unknown[])[1]).toBe(
+        (addSpy.mock.calls[0] as unknown[])[1],
+      );
+    } finally {
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+      Object.defineProperty(navigator, "serviceWorker", {
+        configurable: true,
+        value: originalSW,
+      });
+    }
+  });
+
+  test("register 失敗ログは [PWA] プレフィックス付きで出力される", async () => {
+    const originalSW = navigator.serviceWorker;
+    const failure = new Error("register failed");
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: { register: () => Promise.reject(failure) },
+    });
+    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const cleanupHandler = createSwRegistrationHandler();
+      window.dispatchEvent(new Event("load"));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      cleanupHandler();
+
+      expect(errorSpy).toHaveBeenCalledWith("[PWA] Service worker registration failed:", failure);
+    } finally {
+      errorSpy.mockRestore();
+      Object.defineProperty(navigator, "serviceWorker", {
+        configurable: true,
+        value: originalSW,
+      });
+    }
+  });
+});

@@ -253,3 +253,61 @@ describe("Mutation hardening (useConsumeItem): クエリ内容とエラー伝播
     );
   });
 });
+
+describe("Mutation hardening 2 (useConsumeItem): ロット経路とフォールバック経路の判別", () => {
+  test("ロットあり: ログはロットの units を使い、items の直接更新は行わない", async () => {
+    // ロット units=5 / アイテム units=2 で経路を判別できるようにする
+    const item = makeItem({ id: "item-1", units: 2, content_amount: 1, opened_remaining: null });
+    const lot = makeLot({ item_id: "item-1", units: 5, opened_remaining: null });
+
+    sb.enqueue("item_lots", { data: [lot] }, { data: makeLot({ units: 4 }) }, { data: [] });
+    sb.enqueue("consumption_logs", { error: null });
+    sb.enqueue("items", { error: null }, { data: makeItem({ id: "item-1", units: 4 }) });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useConsumeItem(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ item, deltaAmount: 1 });
+    });
+
+    // ログの units_before はロット由来 (5)。フォールバックだと item 由来 (2) になる。
+    const logPayload = sb.queriesFor("consumption_logs")[0]?.ops[0]?.args[0] as Record<
+      string,
+      unknown
+    >;
+    expect(logPayload.units_before).toBe(5);
+    expect(logPayload.units_after).toBe(4);
+
+    // item_lots に対する update が発行される (フォールバックでは発行されない)
+    const lotUpdate = sb.queriesFor("item_lots")[1];
+    expect(lotUpdate?.ops[0]?.method).toBe("update");
+    expect(lotUpdate?.ops[1]).toEqual({ method: "eq", args: ["id", lot.id] });
+  });
+
+  test("フォールバック: ログはアイテムの units と opened_remaining を使う", async () => {
+    const item = makeItem({ id: "item-1", units: 2, content_amount: 1, opened_remaining: 0.5 });
+    sb.enqueue("item_lots", { data: [] });
+    sb.enqueue("items", { error: null }, { data: makeItem({ id: "item-1" }) });
+    sb.enqueue("consumption_logs", { error: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useConsumeItem(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ item, deltaAmount: 0.5 });
+    });
+
+    const logPayload = sb.queriesFor("consumption_logs")[0]?.ops[0]?.args[0] as Record<
+      string,
+      unknown
+    >;
+    expect(logPayload.units_before).toBe(2);
+    expect(logPayload.opened_remaining_before).toBe(0.5);
+
+    // items への直接 update がフォールバックの証拠
+    expect(sb.queriesFor("items")[0]?.ops[0]?.method).toBe("update");
+    // item_lots への update は発行されない
+    expect(
+      sb.queriesFor("item_lots").filter((query) => query.ops[0]?.method === "update"),
+    ).toHaveLength(0);
+  });
+});
