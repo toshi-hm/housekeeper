@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 
+import i18n from "@/lib/i18n";
 import { createSupabaseMock, setNavigatorOnline } from "@/test/supabaseMock";
 import { createHookWrapper, makeLot } from "@/test/testUtils";
 
@@ -311,5 +312,143 @@ describe("Branch カバレッジ補完 (useItemLots)", () => {
         }),
       ).rejects.toBeDefined();
     });
+  });
+});
+
+describe("Mutation hardening (useItemLots): クエリ内容とトースト文言", () => {
+  test("fetchLots / sync のクエリ内容を完全一致で検証する", async () => {
+    sb.enqueue("item_lots", { data: [] });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useItemLots("item-1"), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(sb.queriesFor("item_lots")[0]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "eq", args: ["item_id", "item-1"] },
+      { method: "order", args: ["created_at", { ascending: true }] },
+      { method: "await", args: [] },
+    ]);
+
+    sb.enqueue("item_lots", { data: [] });
+    sb.enqueue("items", { error: null });
+    await syncItemAggregate("item-9");
+
+    expect(sb.queriesFor("item_lots")[1]?.ops).toEqual([
+      { method: "select", args: ["units, expiry_date, opened_remaining"] },
+      { method: "eq", args: ["item_id", "item-9"] },
+      { method: "await", args: [] },
+    ]);
+    const updateOps = sb.queriesFor("items")[0]?.ops;
+    const payload = updateOps?.[0]?.args[0] as Record<string, unknown>;
+    expect(payload.units).toBe(0);
+    expect(payload.expiry_date).toBeNull();
+    expect(payload.opened_remaining).toBeNull();
+    expect(typeof payload.updated_at).toBe("string");
+    expect(updateOps?.[1]).toEqual({ method: "eq", args: ["id", "item-9"] });
+  });
+
+  test("消費ログの insert ペイロードを完全一致で検証する", async () => {
+    const lot = makeLot({ units: 3, opened_remaining: 0.5 });
+    sb.enqueue("item_lots", { data: makeLot({ units: 3 }) }, { data: [] });
+    sb.enqueue("consumption_logs", { error: null });
+    sb.enqueue("items", { error: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useConsumeLot(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        lot,
+        item: { content_amount: 1, content_unit: "個" },
+        deltaAmount: 0.5,
+      });
+    });
+
+    expect(sb.queriesFor("consumption_logs")[0]?.ops[0]).toEqual({
+      method: "insert",
+      args: [
+        {
+          user_id: "user-1",
+          item_id: lot.item_id,
+          delta_amount: 0.5,
+          delta_unit: "個",
+          units_before: 3,
+          units_after: 2,
+          opened_remaining_before: 0.5,
+          opened_remaining_after: null,
+        },
+      ],
+    });
+  });
+
+  test("consumeLot: ロット更新エラーは元のエラーを throw する", async () => {
+    sb.enqueue("item_lots", { error: { message: "update failed" } });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useConsumeLot(), { wrapper });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          lot: makeLot({ units: 2 }),
+          item: { content_amount: 1, content_unit: "個" },
+          deltaAmount: 1,
+        }),
+      ).rejects.toEqual({ message: "update failed" });
+    });
+  });
+
+  test("オフライン時は consume / update とも offlineError の文言でトーストする", async () => {
+    setNavigatorOnline(false);
+    const { wrapper, toastCalls } = createHookWrapper();
+
+    const consume = renderHook(() => useConsumeLot(), { wrapper }).result;
+    const update = renderHook(() => useUpdateLot(), { wrapper }).result;
+
+    await act(async () => {
+      await expect(
+        consume.current.mutateAsync({
+          lot: makeLot({ units: 1 }),
+          item: { content_amount: 1, content_unit: "個" },
+          deltaAmount: 1,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        update.current.mutateAsync({ lotId: "1", itemId: "1", values: { units: 1 } }),
+      ).rejects.toThrow();
+    });
+
+    await waitFor(() => expect(toastCalls).toHaveLength(2));
+    for (const call of toastCalls) {
+      expect(call.message).toBe(i18n.t("common:offlineError"));
+      expect(call.variant).toBe("error");
+    }
+  });
+
+  test("エラー時は unknownError の文言でトーストする", async () => {
+    sb.enqueue("item_lots", { error: { message: "e1" } }, { error: { message: "e2" } });
+
+    const { wrapper, toastCalls } = createHookWrapper();
+    const consume = renderHook(() => useConsumeLot(), { wrapper }).result;
+    const update = renderHook(() => useUpdateLot(), { wrapper }).result;
+
+    await act(async () => {
+      await expect(
+        consume.current.mutateAsync({
+          lot: makeLot({ units: 2 }),
+          item: { content_amount: 1, content_unit: "個" },
+          deltaAmount: 1,
+        }),
+      ).rejects.toBeDefined();
+      await expect(
+        update.current.mutateAsync({ lotId: "1", itemId: "1", values: { units: 1 } }),
+      ).rejects.toBeDefined();
+    });
+
+    await waitFor(() => expect(toastCalls).toHaveLength(2));
+    for (const call of toastCalls) {
+      expect(call.message).toBe(i18n.t("common:unknownError"));
+      expect(call.variant).toBe("error");
+    }
   });
 });

@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
+import i18n from "@/lib/i18n";
 import { createSupabaseMock, setNavigatorOnline } from "@/test/supabaseMock";
 import { createHookWrapper, makeItem, makeLot } from "@/test/testUtils";
 import type { Item, ItemFormValues } from "@/types/item";
@@ -552,5 +553,133 @@ describe("Branch カバレッジ補完 (useShoppingList)", () => {
     });
 
     await waitFor(() => expect(toastCalls.some((call) => call.variant === "error")).toBe(true));
+  });
+});
+
+describe("Mutation hardening (useShoppingList): クエリ内容とトースト文言", () => {
+  test("一覧取得のクエリ内容を完全一致で検証する", async () => {
+    sb.enqueue("shopping_list_items", { data: [] });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useShoppingList("purchased"), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(sb.queriesFor("shopping_list_items")[0]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "eq", args: ["status", "purchased"] },
+      { method: "order", args: ["created_at", { ascending: false }] },
+      { method: "await", args: [] },
+    ]);
+  });
+
+  test("upsert のペイロードとオプションを完全一致で検証する", async () => {
+    sb.enqueue("shopping_list_items", { data: makeShoppingItem() });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useUpsertShoppingItem(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: "shop-9",
+        name: "洗剤",
+        desired_units: 3,
+        note: "特売",
+        linked_item_id: "item-9",
+      });
+    });
+
+    expect(sb.queriesFor("shopping_list_items")[0]?.ops).toEqual([
+      {
+        method: "upsert",
+        args: [
+          {
+            id: "shop-9",
+            user_id: "user-1",
+            name: "洗剤",
+            desired_units: 3,
+            note: "特売",
+            linked_item_id: "item-9",
+          },
+          { onConflict: "id" },
+        ],
+      },
+      { method: "select", args: [] },
+      { method: "single", args: [] },
+    ]);
+  });
+
+  test("購入済みマークの update ペイロードを検証する", async () => {
+    const active = makeItem({ id: "item-active", barcode: "4901" });
+    sb.enqueue("items", { data: active }, { error: null });
+    sb.enqueue("item_lots", { data: makeLot() }, { data: [] });
+    sb.enqueue("shopping_list_items", { error: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => usePurchaseShoppingItem(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        shoppingItemId: "shop-1",
+        itemValues: makeFormValues({ barcode: "4901" }),
+      });
+    });
+
+    const markQuery = sb.queriesFor("shopping_list_items")[0];
+    const payload = markQuery?.ops[0]?.args[0] as Record<string, unknown>;
+    expect(markQuery?.ops[0]?.method).toBe("update");
+    expect(payload.status).toBe("purchased");
+    expect(payload.created_item_id).toBe("item-active");
+    expect(typeof payload.purchased_at).toBe("string");
+    expect(markQuery?.ops[1]).toEqual({ method: "eq", args: ["id", "shop-1"] });
+  });
+
+  test("オフライン時の各 mutation は offlineError の文言でトーストする", async () => {
+    setNavigatorOnline(false);
+    const { wrapper, toastCalls } = createHookWrapper();
+
+    const upsert = renderHook(() => useUpsertShoppingItem(), { wrapper }).result;
+    const remove = renderHook(() => useDeleteShoppingItem(), { wrapper }).result;
+    const removeAll = renderHook(() => useDeleteAllPurchasedItems(), { wrapper }).result;
+    const purchase = renderHook(() => usePurchaseShoppingItem(), { wrapper }).result;
+
+    await act(async () => {
+      await expect(upsert.current.mutateAsync({ name: "x" })).rejects.toThrow();
+      await expect(remove.current.mutateAsync("1")).rejects.toThrow();
+      await expect(removeAll.current.mutateAsync()).rejects.toThrow();
+      await expect(
+        purchase.current.mutateAsync({ shoppingItemId: "1", itemValues: makeFormValues() }),
+      ).rejects.toThrow();
+    });
+
+    await waitFor(() => expect(toastCalls).toHaveLength(4));
+    for (const call of toastCalls) {
+      expect(call.message).toBe(i18n.t("common:offlineError"));
+      expect(call.variant).toBe("error");
+    }
+  });
+
+  test("エラー時の各 mutation は unknownError の文言でトーストする", async () => {
+    sb.enqueue(
+      "shopping_list_items",
+      { error: { message: "e1" } },
+      { error: { message: "e2" } },
+      { error: { message: "e3" } },
+    );
+
+    const { wrapper, toastCalls } = createHookWrapper();
+
+    const upsert = renderHook(() => useUpsertShoppingItem(), { wrapper }).result;
+    const remove = renderHook(() => useDeleteShoppingItem(), { wrapper }).result;
+    const removeAll = renderHook(() => useDeleteAllPurchasedItems(), { wrapper }).result;
+
+    await act(async () => {
+      await expect(upsert.current.mutateAsync({ name: "x" })).rejects.toBeDefined();
+      await expect(remove.current.mutateAsync("1")).rejects.toBeDefined();
+      await expect(removeAll.current.mutateAsync()).rejects.toBeDefined();
+    });
+
+    await waitFor(() => expect(toastCalls).toHaveLength(3));
+    for (const call of toastCalls) {
+      expect(call.message).toBe(i18n.t("common:unknownError"));
+      expect(call.variant).toBe("error");
+    }
   });
 });

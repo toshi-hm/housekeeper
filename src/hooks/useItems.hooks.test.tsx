@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
+import i18n from "@/lib/i18n";
 import { createSupabaseMock, setNavigatorOnline } from "@/test/supabaseMock";
 import { createHookWrapper, makeItem, makeLot } from "@/test/testUtils";
 import type { Item } from "@/types/item";
@@ -622,5 +623,333 @@ describe("Branch カバレッジ補完 (useItems)", () => {
         .getQueryData<Item[]>(["items", "custom-key", "created_at"])
         ?.map((item) => item.id),
     ).toEqual(["item-1"]);
+  });
+});
+
+describe("Mutation hardening (useItems): クエリ内容とトースト文言の厳密検証", () => {
+  test("fetchItems: フィルタ付きクエリの発行内容を完全一致で検証する", async () => {
+    sb.enqueue("items", { data: [] });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(
+      () =>
+        useItems(
+          { search: "milk", categoryId: "cat-1", storageLocationId: "loc-1" },
+          "expiry_date",
+        ),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(sb.queriesFor("items")[0]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "is", args: ["deleted_at", null] },
+      { method: "or", args: ["name.ilike.%milk%,barcode.ilike.%milk%"] },
+      { method: "eq", args: ["category_id", "cat-1"] },
+      { method: "eq", args: ["storage_location_id", "loc-1"] },
+      { method: "order", args: ["expiry_date", { ascending: true, nullsFirst: false }] },
+      { method: "await", args: [] },
+    ]);
+  });
+
+  test("fetchItem / fetchItemsWithExpiry のクエリ内容を完全一致で検証する", async () => {
+    sb.enqueue("items", { data: makeItem({ id: "item-9" }) });
+    sb.enqueue("items", { data: [] });
+
+    const { wrapper } = createHookWrapper();
+    const single = renderHook(() => useItem("item-9"), { wrapper });
+    await waitFor(() => expect(single.result.current.isSuccess).toBe(true));
+
+    const withExpiry = renderHook(() => useItemsWithExpiry(), { wrapper });
+    await waitFor(() => expect(withExpiry.result.current.isSuccess).toBe(true));
+
+    expect(sb.queriesFor("items")[0]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "eq", args: ["id", "item-9"] },
+      { method: "single", args: [] },
+    ]);
+    expect(sb.queriesFor("items")[1]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "is", args: ["deleted_at", null] },
+      { method: "not", args: ["expiry_date", "is", null] },
+      { method: "order", args: ["expiry_date", { ascending: true }] },
+      { method: "await", args: [] },
+    ]);
+  });
+
+  test("作成: insert ペイロードを完全一致で検証する", async () => {
+    const created = makeItem({ id: "exact-item" });
+    // forceNew: 1) 復活検索 (null) 2) insert
+    sb.enqueue("items", { data: null }, { data: created });
+    sb.enqueue("item_lots", { data: makeLot() });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateItem(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        values: {
+          name: "厳密検証",
+          barcode: "4901111111111",
+          units: 2,
+          content_amount: 3,
+          content_unit: "g",
+          opened_remaining: 1.5,
+          purchase_date: "2026-06-01",
+          expiry_date: "2026-12-31",
+          notes: "備考",
+          image_path: "u/p.jpg",
+          minimum_stock: 2,
+        },
+        forceNew: true,
+      });
+    });
+
+    // forceNew でも復活検索は走る (maybeSingle) → 2 番目が insert
+    const insertQuery = sb.queriesFor("items").find((query) => query.ops[0]?.method === "insert");
+    expect(insertQuery?.ops[0]?.args[0]).toEqual({
+      name: "厳密検証",
+      barcode: "4901111111111",
+      category_id: null,
+      storage_location_id: null,
+      units: 2,
+      content_amount: 3,
+      content_unit: "g",
+      opened_remaining: 1.5,
+      purchase_date: "2026-06-01",
+      expiry_date: "2026-12-31",
+      notes: "備考",
+      image_path: "u/p.jpg",
+      minimum_stock: 2,
+      user_id: "user-1",
+    });
+    expect(insertQuery?.ops.slice(1)).toEqual([
+      { method: "select", args: [] },
+      { method: "single", args: [] },
+    ]);
+  });
+
+  test("バーコードのスタック/復活検索クエリを完全一致で検証する", async () => {
+    sb.enqueue("items", { data: null }, { data: null }, { data: makeItem({ id: "n" }) });
+    sb.enqueue("item_lots", { data: makeLot() });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateItem(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        values: { name: "x", barcode: "4909", units: 1, content_amount: 1, content_unit: "個" },
+      });
+    });
+
+    const queries = sb.queriesFor("items");
+    // スタック先検索
+    expect(queries[0]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "eq", args: ["user_id", "user-1"] },
+      { method: "eq", args: ["barcode", "4909"] },
+      { method: "is", args: ["deleted_at", null] },
+      { method: "limit", args: [1] },
+      { method: "maybeSingle", args: [] },
+    ]);
+    // 復活対象検索
+    expect(queries[1]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "eq", args: ["user_id", "user-1"] },
+      { method: "eq", args: ["barcode", "4909"] },
+      { method: "not", args: ["deleted_at", "is", null] },
+      { method: "limit", args: [1] },
+      { method: "maybeSingle", args: [] },
+    ]);
+  });
+
+  test("更新: purchase_date ソートのキャッシュは購入日降順の位置へ挿入される", async () => {
+    const itemB = makeItem({
+      id: "b",
+      purchase_date: "2026-06-05",
+      created_at: "2026-01-02T00:00:00Z",
+    });
+    const itemA = makeItem({
+      id: "a",
+      purchase_date: "2026-06-01",
+      created_at: "2026-01-03T00:00:00Z",
+    });
+    const updatedC = makeItem({
+      id: "c",
+      purchase_date: "2026-06-03",
+      created_at: "2026-01-10T00:00:00Z",
+    });
+    sb.enqueue("items", { data: updatedC });
+
+    const { wrapper, queryClient } = createHookWrapper();
+    queryClient.setQueryData(["items", {}, "purchase_date"], [itemB, itemA]);
+
+    const { result } = renderHook(() => useUpdateItem("c"), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ purchase_date: "2026-06-03" });
+    });
+
+    // created_at ソートだと c が先頭に来てしまう。購入日降順なら b → c → a。
+    expect(
+      queryClient.getQueryData<Item[]>(["items", {}, "purchase_date"])?.map((item) => item.id),
+    ).toEqual(["b", "c", "a"]);
+  });
+
+  test("更新: with-expiry キャッシュは期限昇順の位置へ挿入される", async () => {
+    const itemX = makeItem({
+      id: "x",
+      expiry_date: "2026-08-01",
+      created_at: "2026-01-05T00:00:00Z",
+    });
+    const itemY = makeItem({
+      id: "y",
+      expiry_date: "2026-09-01",
+      created_at: "2026-01-01T00:00:00Z",
+    });
+    const updatedZ = makeItem({
+      id: "z",
+      expiry_date: "2026-08-15",
+      created_at: "2026-01-10T00:00:00Z",
+    });
+    sb.enqueue("items", { data: updatedZ });
+
+    const { wrapper, queryClient } = createHookWrapper();
+    queryClient.setQueryData(["items", "with-expiry"], [itemX, itemY]);
+
+    const { result } = renderHook(() => useUpdateItem("z"), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ expiry_date: "2026-08-15" });
+    });
+
+    expect(
+      queryClient.getQueryData<Item[]>(["items", "with-expiry"])?.map((item) => item.id),
+    ).toEqual(["x", "z", "y"]);
+  });
+
+  test("更新: 除外時も他のアイテムはキャッシュに残る", async () => {
+    const other = makeItem({ id: "other", storage_location_id: "loc-x" });
+    const softDeleted = makeItem({ id: "target", deleted_at: "2026-07-01T00:00:00Z" });
+    sb.enqueue("items", { data: softDeleted });
+
+    const { wrapper, queryClient } = createHookWrapper();
+    queryClient.setQueryData(["items", {}, "created_at"], [makeItem({ id: "target" }), other]);
+    queryClient.setQueryData(
+      ["items", { storageLocationId: "loc-x" }, "created_at"],
+      [makeItem({ id: "target" }), other],
+    );
+
+    const { result } = renderHook(() => useUpdateItem("target"), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ name: "削除" });
+    });
+
+    expect(
+      queryClient.getQueryData<Item[]>(["items", {}, "created_at"])?.map((item) => item.id),
+    ).toEqual(["other"]);
+    expect(
+      queryClient
+        .getQueryData<Item[]>(["items", { storageLocationId: "loc-x" }, "created_at"])
+        ?.map((item) => item.id),
+    ).toEqual(["other"]);
+  });
+
+  test("オフライン時は各 mutation が offlineError の文言でトーストする", async () => {
+    setNavigatorOnline(false);
+    const { wrapper, toastCalls } = createHookWrapper();
+
+    const create = renderHook(() => useCreateItem(), { wrapper });
+    await act(async () => {
+      await expect(
+        create.result.current.mutateAsync({
+          values: { name: "x", units: 1, content_amount: 1, content_unit: "個" },
+        }),
+      ).rejects.toThrow();
+    });
+
+    const update = renderHook(() => useUpdateItem("item-1"), { wrapper });
+    await act(async () => {
+      await expect(update.result.current.mutateAsync({ name: "x" })).rejects.toThrow();
+    });
+
+    const softDelete = renderHook(() => useSoftDeleteItem(), { wrapper });
+    await act(async () => {
+      await expect(softDelete.result.current.mutateAsync("item-1")).rejects.toThrow();
+    });
+
+    await waitFor(() => expect(toastCalls).toHaveLength(3));
+    for (const call of toastCalls) {
+      expect(call.message).toBe(i18n.t("common:offlineError"));
+      expect(call.variant).toBe("error");
+    }
+  });
+
+  test("その他エラー時は unknownError の文言でトーストする", async () => {
+    sb.enqueue(
+      "items",
+      { error: { message: "e1" } },
+      { error: { message: "e2" } },
+      {
+        error: { message: "e3" },
+      },
+    );
+    const { wrapper, toastCalls } = createHookWrapper();
+
+    const create = renderHook(() => useCreateItem(), { wrapper });
+    await act(async () => {
+      await expect(
+        create.result.current.mutateAsync({
+          values: { name: "x", units: 1, content_amount: 1, content_unit: "個" },
+        }),
+      ).rejects.toBeDefined();
+    });
+
+    const update = renderHook(() => useUpdateItem("item-1"), { wrapper });
+    await act(async () => {
+      await expect(update.result.current.mutateAsync({ name: "x" })).rejects.toBeDefined();
+    });
+
+    const softDelete = renderHook(() => useSoftDeleteItem(), { wrapper });
+    await act(async () => {
+      await expect(softDelete.result.current.mutateAsync("item-1")).rejects.toBeDefined();
+    });
+
+    await waitFor(() => expect(toastCalls).toHaveLength(3));
+    for (const call of toastCalls) {
+      expect(call.message).toBe(i18n.t("common:unknownError"));
+      expect(call.variant).toBe("error");
+    }
+  });
+
+  test("復活・ソフトデリートの success トースト文言を検証する", async () => {
+    // 復活 (forceNew: スタック検索スキップ)
+    const deleted = makeItem({ id: "rv", barcode: "1", deleted_at: "2026-06-01" });
+    const revived = makeItem({ id: "rv", barcode: "1" });
+    sb.enqueue("items", { data: deleted }, { data: revived }, { error: null });
+    sb.enqueue("item_lots", { data: makeLot() }, { data: [] });
+
+    const { wrapper, toastCalls } = createHookWrapper();
+    const create = renderHook(() => useCreateItem(), { wrapper });
+    await act(async () => {
+      await create.result.current.mutateAsync({
+        values: { name: "x", barcode: "1", units: 1, content_amount: 1, content_unit: "個" },
+        forceNew: true,
+      });
+    });
+
+    expect(toastCalls[0]).toEqual({
+      message: i18n.t("calendar:reviveSuccess"),
+      variant: "success",
+    });
+
+    sb.enqueue("items", { error: null });
+    const softDelete = renderHook(() => useSoftDeleteItem(), { wrapper });
+    await act(async () => {
+      await softDelete.result.current.mutateAsync("item-1");
+    });
+
+    expect(toastCalls[1]).toEqual({
+      message: i18n.t("calendar:softDeleteSuccess"),
+      variant: "success",
+    });
   });
 });

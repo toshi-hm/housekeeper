@@ -249,3 +249,50 @@ describe("computeConsumption", () => {
     expect(r.opened_remaining_after).toBeNull();
   });
 });
+
+describe("Mutation hardening (types/item)", () => {
+  test("itemFormSchema: 必須メッセージとデフォルト値", () => {
+    const empty = itemFormSchema.safeParse({ name: "" });
+    expect(empty.success).toBe(false);
+    if (!empty.success) {
+      expect(empty.error.issues[0]?.message).toBe("名前は必須です");
+    }
+
+    const parsed = itemFormSchema.parse({ name: "x" });
+    expect(parsed.units).toBe(1);
+    expect(parsed.content_amount).toBe(1);
+    expect(parsed.content_unit).toBe("個");
+  });
+
+  test("itemFormSchema: opened_remaining / minimum_stock は 0 以上のみ許容", () => {
+    expect(itemFormSchema.safeParse({ name: "x", opened_remaining: -1 }).success).toBe(false);
+    expect(itemFormSchema.safeParse({ name: "x", opened_remaining: 0 }).success).toBe(true);
+    expect(itemFormSchema.safeParse({ name: "x", minimum_stock: -1 }).success).toBe(false);
+    expect(itemFormSchema.safeParse({ name: "x", minimum_stock: 10 }).success).toBe(true);
+  });
+
+  test("formatRemaining: 小数の末尾ゼロを落とし整数はそのまま", () => {
+    expect(formatRemaining(2, 1, null)).toBe("2");
+    expect(formatRemaining(1, 1.2, null)).toBe("1.2");
+    // (units-1)*content + opened = 0.5 + 1.1
+    expect(formatRemaining(2, 1.1, 0.5)).toBe("1.6");
+    expect(formatRemaining(1, 3, 0.25)).toBe("0.25");
+    expect(formatRemaining(1, 1.1, 1.1)).toBe("1.1");
+  });
+
+  test("computeConsumption: ちょうど全量の消費は成功して 0 / null になる", () => {
+    const result = computeConsumption(
+      { units: 2, content_amount: 1, content_unit: "個", opened_remaining: null },
+      2,
+    );
+    expect(result).toEqual({ units_after: 0, opened_remaining_after: null });
+  });
+
+  test("computeConsumption: units=0 は開封残があっても在庫 0 として扱う", () => {
+    const result = computeConsumption(
+      { units: 0, content_amount: 1, content_unit: "個", opened_remaining: 2 },
+      1,
+    );
+    expect(result.error).toBe("insufficientStock");
+  });
+});

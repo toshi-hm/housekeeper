@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
+import i18n from "@/lib/i18n";
 import { createSupabaseMock, setNavigatorOnline } from "@/test/supabaseMock";
 import { createHookWrapper } from "@/test/testUtils";
 import type { Category, StorageLocation } from "@/types/item";
@@ -535,5 +536,174 @@ describe("Branch カバレッジ補完 (useMasterData)", () => {
       await result.current.mutateAsync("新しい棚");
     });
     expect(queryClient.getQueryData<StorageLocation[]>(["locations"])).toEqual([created]);
+  });
+});
+
+describe("Mutation hardening (useMasterData): クエリ内容とトースト文言", () => {
+  test("カテゴリ/保管場所の一覧取得は name 昇順で発行される", async () => {
+    sb.enqueue("categories", { data: [] });
+    sb.enqueue("storage_locations", { data: [] });
+
+    const { wrapper } = createHookWrapper();
+    const categories = renderHook(() => useCategories(), { wrapper });
+    await waitFor(() => expect(categories.result.current.isSuccess).toBe(true));
+    const locations = renderHook(() => useStorageLocations(), { wrapper });
+    await waitFor(() => expect(locations.result.current.isSuccess).toBe(true));
+
+    const expectedOps = [
+      { method: "select", args: ["*"] },
+      { method: "order", args: ["name", { ascending: true }] },
+      { method: "await", args: [] },
+    ];
+    expect(sb.queriesFor("categories")[0]?.ops).toEqual(expectedOps);
+    expect(sb.queriesFor("storage_locations")[0]?.ops).toEqual(expectedOps);
+  });
+
+  test("使用数チェックのクエリ内容を完全一致で検証する", async () => {
+    sb.enqueue("items", { count: 1, error: null }, { count: 2, error: null });
+
+    await checkCategoryUsage("cat-9");
+    await checkLocationUsage("loc-9");
+
+    expect(sb.queriesFor("items")[0]?.ops).toEqual([
+      { method: "select", args: ["id", { count: "exact", head: true }] },
+      { method: "eq", args: ["category_id", "cat-9"] },
+      { method: "is", args: ["deleted_at", null] },
+      { method: "await", args: [] },
+    ]);
+    expect(sb.queriesFor("items")[1]?.ops).toEqual([
+      { method: "select", args: ["id", { count: "exact", head: true }] },
+      { method: "eq", args: ["storage_location_id", "loc-9"] },
+      { method: "is", args: ["deleted_at", null] },
+      { method: "await", args: [] },
+    ]);
+  });
+
+  test("作成/更新/削除のペイロードを検証する (カテゴリ)", async () => {
+    sb.enqueue("categories", { data: makeCategory() }, { data: makeCategory() }, { error: null });
+
+    const { wrapper } = createHookWrapper();
+
+    const create = renderHook(() => useCreateCategory(), { wrapper });
+    await act(async () => {
+      await create.result.current.mutateAsync({ name: "新規", color: "#123456" });
+    });
+
+    const update = renderHook(() => useUpdateCategory(), { wrapper });
+    await act(async () => {
+      await update.result.current.mutateAsync({ id: "cat-1", name: "更新" });
+    });
+
+    const remove = renderHook(() => useDeleteCategory(), { wrapper });
+    await act(async () => {
+      await remove.result.current.mutateAsync("cat-1");
+    });
+
+    const queries = sb.queriesFor("categories");
+    expect(queries[0]?.ops[0]).toEqual({
+      method: "insert",
+      args: [{ name: "新規", color: "#123456", user_id: "user-1" }],
+    });
+    // 更新: name / color(null 補完) / updated_at
+    const updateArg = queries[1]?.ops[0]?.args[0] as Record<string, unknown>;
+    expect(queries[1]?.ops[0]?.method).toBe("update");
+    expect(updateArg.name).toBe("更新");
+    expect(updateArg.color).toBeNull();
+    expect(typeof updateArg.updated_at).toBe("string");
+    expect(queries[1]?.ops[1]).toEqual({ method: "eq", args: ["id", "cat-1"] });
+    // 削除
+    expect(queries[2]?.ops).toEqual([
+      { method: "delete", args: [] },
+      { method: "eq", args: ["id", "cat-1"] },
+      { method: "await", args: [] },
+    ]);
+  });
+
+  test("オフライン時の各 mutation は offlineError の文言でトーストする", async () => {
+    setNavigatorOnline(false);
+    const { wrapper, toastCalls } = createHookWrapper();
+
+    const hooks = [
+      renderHook(() => useCreateCategory(), { wrapper }).result,
+      renderHook(() => useUpdateCategory(), { wrapper }).result,
+      renderHook(() => useDeleteCategory(), { wrapper }).result,
+      renderHook(() => useCreateStorageLocation(), { wrapper }).result,
+      renderHook(() => useUpdateStorageLocation(), { wrapper }).result,
+      renderHook(() => useDeleteStorageLocation(), { wrapper }).result,
+    ];
+
+    await act(async () => {
+      await expect(hooks[0]!.current.mutateAsync({ name: "x" })).rejects.toThrow();
+      await expect(hooks[1]!.current.mutateAsync({ id: "1", name: "x" })).rejects.toThrow();
+      await expect(hooks[2]!.current.mutateAsync("1")).rejects.toThrow();
+      await expect(hooks[3]!.current.mutateAsync("x")).rejects.toThrow();
+      await expect(hooks[4]!.current.mutateAsync({ id: "1", name: "x" })).rejects.toThrow();
+      await expect(hooks[5]!.current.mutateAsync("1")).rejects.toThrow();
+    });
+
+    await waitFor(() => expect(toastCalls).toHaveLength(6));
+    for (const call of toastCalls) {
+      expect(call.message).toBe(i18n.t("common:offlineError"));
+      expect(call.variant).toBe("error");
+    }
+  });
+
+  test("エラー時の各 mutation は unknownError の文言でトーストする", async () => {
+    sb.enqueue(
+      "categories",
+      { error: { message: "e1", code: "500" } },
+      { error: { message: "e2" } },
+      { error: { message: "e3" } },
+    );
+    sb.enqueue(
+      "storage_locations",
+      { error: { message: "e4", code: "500" } },
+      { error: { message: "e5" } },
+      { error: { message: "e6" } },
+    );
+
+    const { wrapper, toastCalls } = createHookWrapper();
+
+    const hooks = [
+      renderHook(() => useCreateCategory(), { wrapper }).result,
+      renderHook(() => useUpdateCategory(), { wrapper }).result,
+      renderHook(() => useDeleteCategory(), { wrapper }).result,
+      renderHook(() => useCreateStorageLocation(), { wrapper }).result,
+      renderHook(() => useUpdateStorageLocation(), { wrapper }).result,
+      renderHook(() => useDeleteStorageLocation(), { wrapper }).result,
+    ];
+
+    await act(async () => {
+      await expect(hooks[0]!.current.mutateAsync({ name: "x" })).rejects.toBeDefined();
+      await expect(hooks[1]!.current.mutateAsync({ id: "1", name: "x" })).rejects.toBeDefined();
+      await expect(hooks[2]!.current.mutateAsync("1")).rejects.toBeDefined();
+      await expect(hooks[3]!.current.mutateAsync("x")).rejects.toBeDefined();
+      await expect(hooks[4]!.current.mutateAsync({ id: "1", name: "x" })).rejects.toBeDefined();
+      await expect(hooks[5]!.current.mutateAsync("1")).rejects.toBeDefined();
+    });
+
+    await waitFor(() => expect(toastCalls).toHaveLength(6));
+    for (const call of toastCalls) {
+      expect(call.message).toBe(i18n.t("common:unknownError"));
+      expect(call.variant).toBe("error");
+    }
+  });
+
+  test("23505 のときだけ既存検索が name / user_id で発行される", async () => {
+    const existing = makeCategory({ id: "existing" });
+    sb.enqueue("categories", { error: { message: "dup", code: "23505" } }, { data: existing });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateCategory(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ name: "重複" });
+    });
+
+    expect(sb.queriesFor("categories")[1]?.ops).toEqual([
+      { method: "select", args: [] },
+      { method: "eq", args: ["user_id", "user-1"] },
+      { method: "eq", args: ["name", "重複"] },
+      { method: "single", args: [] },
+    ]);
   });
 });

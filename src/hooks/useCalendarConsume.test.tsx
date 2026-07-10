@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
+import i18n from "@/lib/i18n";
 import { createSupabaseMock, setNavigatorOnline } from "@/test/supabaseMock";
 import { createHookWrapper, makeItem } from "@/test/testUtils";
 
@@ -262,5 +263,135 @@ describe("Branch カバレッジ補完 (useCalendarConsume)", () => {
         .queriesFor("consumption_logs")
         .filter((query) => query.ops.some((op) => op.method === "delete")),
     ).toHaveLength(0);
+  });
+});
+
+describe("Mutation hardening (useCalendarConsume): クエリ内容とトースト文言", () => {
+  test("check のクエリ内容とログ payload を完全一致で検証する", async () => {
+    const item = makeItem({ id: "item-1", name: "牛乳", content_amount: 2, content_unit: "本" });
+    sb.enqueue(
+      "item_lots",
+      { data: [{ id: "lot-1", units: 3, opened_remaining: 0.5, expiry_date: todayStr() }] },
+      { error: null },
+      { data: [] },
+    );
+    sb.enqueue("consumption_logs", { data: { id: "log-1" } });
+    sb.enqueue("items", { error: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCalendarConsume(), { wrapper });
+    await act(async () => {
+      await result.current.check(item);
+    });
+
+    // ロット一覧クエリ
+    expect(sb.queriesFor("item_lots")[0]?.ops).toEqual([
+      { method: "select", args: ["id, units, opened_remaining, expiry_date"] },
+      { method: "eq", args: ["item_id", "item-1"] },
+      { method: "order", args: ["expiry_date", { ascending: true, nullsFirst: false }] },
+      { method: "order", args: ["created_at", { ascending: true }] },
+      { method: "await", args: [] },
+    ]);
+
+    // ロットのゼロ化 update
+    const zeroPayload = sb.queriesFor("item_lots")[1]?.ops[0]?.args[0] as Record<string, unknown>;
+    expect(zeroPayload.units).toBe(0);
+    expect(zeroPayload.opened_remaining).toBeNull();
+    expect(sb.queriesFor("item_lots")[1]?.ops[1]).toEqual({ method: "eq", args: ["id", "lot-1"] });
+
+    // ログ payload: (units-1)*content + opened = 2*2 + 0.5
+    expect(sb.queriesFor("consumption_logs")[0]?.ops[0]).toEqual({
+      method: "insert",
+      args: [
+        {
+          user_id: "user-1",
+          item_id: "item-1",
+          delta_amount: 4.5,
+          delta_unit: "本",
+          units_before: 3,
+          units_after: 0,
+          opened_remaining_before: 0.5,
+          opened_remaining_after: null,
+        },
+      ],
+    });
+    expect(sb.queriesFor("consumption_logs")[0]?.ops.slice(1)).toEqual([
+      { method: "select", args: ["id"] },
+      { method: "single", args: [] },
+    ]);
+  });
+
+  test("対象ロットなしの warning は noEligibleLot の文言で出る", async () => {
+    sb.enqueue("item_lots", { data: [] });
+
+    const { wrapper, toastCalls } = createHookWrapper();
+    const { result } = renderHook(() => useCalendarConsume(), { wrapper });
+    await act(async () => {
+      await result.current.check(makeItem());
+    });
+
+    expect(toastCalls[0]).toEqual({
+      message: i18n.t("calendar:noEligibleLot"),
+      variant: "warning",
+    });
+  });
+
+  test("オフライン時の check は offlineError、通常エラーは unknownError の文言", async () => {
+    const { wrapper, toastCalls } = createHookWrapper();
+    const { result } = renderHook(() => useCalendarConsume(), { wrapper });
+
+    setNavigatorOnline(false);
+    await act(async () => {
+      await expect(result.current.check(makeItem())).rejects.toThrow();
+    });
+    expect(toastCalls[0]).toEqual({ message: i18n.t("common:offlineError"), variant: "error" });
+
+    setNavigatorOnline(true);
+    sb.enqueue("item_lots", { error: { message: "boom" } });
+    await act(async () => {
+      await expect(result.current.check(makeItem())).rejects.toBeDefined();
+    });
+    expect(toastCalls[1]).toEqual({ message: i18n.t("common:unknownError"), variant: "error" });
+  });
+
+  test("undo はロット復元 payload とログ削除クエリを検証する", async () => {
+    const item = makeItem({ id: "item-1" });
+    sb.enqueue(
+      "item_lots",
+      { data: [{ id: "lot-1", units: 2, opened_remaining: 0.5, expiry_date: todayStr() }] },
+      { error: null },
+      { data: [] },
+    );
+    sb.enqueue("consumption_logs", { data: { id: "log-1" } });
+    sb.enqueue("items", { error: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCalendarConsume(), { wrapper });
+    await act(async () => {
+      await result.current.check(item);
+    });
+
+    sb.enqueue("item_lots", { error: null }, { data: [] });
+    sb.enqueue("consumption_logs", { error: null });
+    sb.enqueue("items", { error: null });
+
+    await act(async () => {
+      await result.current.undo("item-1");
+    });
+
+    const restore = sb.queriesFor("item_lots")[3];
+    const payload = restore?.ops[0]?.args[0] as Record<string, unknown>;
+    expect(payload.units).toBe(2);
+    expect(payload.opened_remaining).toBe(0.5);
+    expect(restore?.ops[1]).toEqual({ method: "eq", args: ["id", "lot-1"] });
+
+    const logDelete = sb
+      .queriesFor("consumption_logs")
+      .find((query) => query.ops[0]?.method === "delete");
+    expect(logDelete?.ops).toEqual([
+      { method: "delete", args: [] },
+      { method: "eq", args: ["id", "log-1"] },
+      { method: "await", args: [] },
+    ]);
   });
 });

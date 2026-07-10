@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
+import i18n from "@/lib/i18n";
 import { createSupabaseMock, setNavigatorOnline } from "@/test/supabaseMock";
 import { createHookWrapper, makeItem, makeLot } from "@/test/testUtils";
 import type { Item } from "@/types/item";
@@ -141,5 +142,114 @@ describe("useConsumeItem", () => {
     await act(async () => {
       await expect(result.current.mutateAsync({ item, deltaAmount: 1 })).rejects.toBeDefined();
     });
+  });
+});
+
+describe("Mutation hardening (useConsumeItem): クエリ内容とエラー伝播", () => {
+  test("FIFO ロット取得と最終再取得のクエリ内容を完全一致で検証する", async () => {
+    const item = makeItem({ id: "item-1", units: 3 });
+    sb.enqueue("item_lots", { data: [] });
+    sb.enqueue("items", { error: null }, { data: makeItem({ id: "item-1", units: 2 }) });
+    sb.enqueue("consumption_logs", { error: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useConsumeItem(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ item, deltaAmount: 1 });
+    });
+
+    expect(sb.queriesFor("item_lots")[0]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "eq", args: ["item_id", "item-1"] },
+      { method: "order", args: ["created_at", { ascending: true }] },
+      { method: "limit", args: [1] },
+      { method: "await", args: [] },
+    ]);
+
+    // フォールバック時の items 直接更新
+    const updateQuery = sb.queriesFor("items")[0];
+    const payload = updateQuery?.ops[0]?.args[0] as Record<string, unknown>;
+    expect(payload.units).toBe(2);
+    expect(payload.opened_remaining).toBeNull();
+    expect(updateQuery?.ops[1]).toEqual({ method: "eq", args: ["id", "item-1"] });
+
+    // ログ payload
+    expect(sb.queriesFor("consumption_logs")[0]?.ops[0]).toEqual({
+      method: "insert",
+      args: [
+        {
+          user_id: "user-1",
+          item_id: "item-1",
+          delta_amount: 1,
+          delta_unit: "個",
+          units_before: 3,
+          units_after: 2,
+          opened_remaining_before: null,
+          opened_remaining_after: null,
+        },
+      ],
+    });
+
+    // 最終再取得
+    expect(sb.queriesFor("items")[1]?.ops).toEqual([
+      { method: "select", args: ["*"] },
+      { method: "eq", args: ["id", "item-1"] },
+      { method: "single", args: [] },
+    ]);
+  });
+
+  test("ロット取得エラーは元のエラーをそのまま throw する", async () => {
+    sb.enqueue("item_lots", { error: { message: "lots failed" } });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useConsumeItem(), { wrapper });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ item: makeItem(), deltaAmount: 1 }),
+      ).rejects.toEqual({ message: "lots failed" });
+    });
+  });
+
+  test("最終再取得のエラーも元のエラーをそのまま throw する", async () => {
+    const item = makeItem({ id: "item-1", units: 3 });
+    sb.enqueue("item_lots", { data: [] });
+    sb.enqueue("items", { error: null }, { error: { message: "refetch failed" } });
+    sb.enqueue("consumption_logs", { error: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useConsumeItem(), { wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync({ item, deltaAmount: 1 })).rejects.toEqual({
+        message: "refetch failed",
+      });
+    });
+  });
+
+  test("オフラインは offlineError、通常エラーは unknownError の文言でトーストする", async () => {
+    const { wrapper, toastCalls } = createHookWrapper();
+    const { result } = renderHook(() => useConsumeItem(), { wrapper });
+
+    setNavigatorOnline(false);
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ item: makeItem(), deltaAmount: 1 }),
+      ).rejects.toThrow();
+    });
+    await waitFor(() =>
+      expect(toastCalls[0]).toEqual({ message: i18n.t("common:offlineError"), variant: "error" }),
+    );
+
+    setNavigatorOnline(true);
+    sb.enqueue("item_lots", { error: { message: "boom" } });
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ item: makeItem(), deltaAmount: 1 }),
+      ).rejects.toBeDefined();
+    });
+    await waitFor(() =>
+      expect(toastCalls[1]).toEqual({ message: i18n.t("common:unknownError"), variant: "error" }),
+    );
   });
 });
