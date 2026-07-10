@@ -9,6 +9,12 @@
     "src/**/*.stories.tsx"
   ],
   "project": ["src/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["tailwindcss", "i18next-parser"],
+  "ignoreDependencies": [
+    "tailwindcss",
+    "i18next-parser",
+    "@babel/preset-react",
+    "@babel/preset-typescript",
+    "babel-plugin-istanbul"
+  ],
   "ignoreBinaries": ["wait-on"]
 }

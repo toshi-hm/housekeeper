@@ -178,3 +178,30 @@ describe("uploadItemImage", () => {
     ).rejects.toThrow("You are offline");
   });
 });
+
+describe("Branch カバレッジ補完 (useItemImage)", () => {
+  test("image-proxy がエラーなしで data も null なら既定メッセージで throw する", async () => {
+    sb.setInvokeResponse({ data: null, error: null });
+
+    await expect(downloadExternalImageAsFile("https://img.example/none.png")).rejects.toThrow(
+      "Failed to download image",
+    );
+  });
+
+  test("contentType にスラッシュがなければ拡張子 jpg にフォールバックする", async () => {
+    sb.setInvokeResponse({ data: { data: btoa("x"), contentType: "weird" }, error: null });
+
+    const file = await downloadExternalImageAsFile("https://img.example/weird");
+    expect(file.name).toBe("product.jpg");
+  });
+
+  test("署名 URL がエラーなしで null の場合は既定メッセージで失敗する", async () => {
+    sb.setSignedUrlResponse({ data: null, error: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useSignedItemImage("user-1/none.jpg"), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect((result.current.error as Error).message).toBe("Failed to get signed URL");
+  });
+});

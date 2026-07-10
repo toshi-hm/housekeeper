@@ -100,3 +100,16 @@ describe("ItemCard", () => {
     expect(btn).toBeNull();
   });
 });
+
+describe("ItemCard (表示分岐の補完)", () => {
+  it("カテゴリ・場所・期限・開封残量を全て表示する", async () => {
+    const { getByText } = await renderCard({
+      item: { ...baseItem, opened_remaining: 500 },
+      categoryName: "飲料",
+      locationName: "冷蔵庫",
+    });
+
+    expect(getByText("飲料")).toBeDefined();
+    expect(getByText("冷蔵庫")).toBeDefined();
+  });
+});

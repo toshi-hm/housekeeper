@@ -362,3 +362,136 @@ describe("ItemForm", () => {
     expect(submitButton.textContent).toContain("登録");
   });
 });
+
+describe("ItemForm (分岐カバレッジ補完)", () => {
+  test("バーコード Enter 検索: vibrate 付き + DB ヒット画像はプレビューのみ (親へ通知しない)", async () => {
+    const vibrate = mock(() => true);
+    Object.defineProperty(globalThis.navigator, "vibrate", {
+      value: vibrate,
+      configurable: true,
+    });
+
+    sb.enqueue("items", { data: { name: "画像つき牛乳", image_path: "user-1/milk.jpg" } });
+    sb.setSignedUrlResponse({ data: { signedUrl: "https://signed.example/milk" }, error: null });
+
+    const onPendingImageUrlChange = mock(() => {});
+    const { container } = renderForm({ onPendingImageUrlChange });
+
+    const barcodeInput = container.querySelector("#barcode") as HTMLInputElement;
+    await userEvent.type(barcodeInput, "4901");
+    fireEvent.keyDown(barcodeInput, { key: "Enter" });
+
+    await waitFor(() =>
+      expect((container.querySelector("#name") as HTMLInputElement).value).toBe("画像つき牛乳"),
+    );
+
+    expect(vibrate).toHaveBeenCalled();
+    // DB ヒットの画像は再アップロード不要なので、URL が親へ通知されることはない
+    // (バーコード入力中の null リセット通知のみ)
+    const urlCalls = onPendingImageUrlChange.mock.calls.filter(
+      (call) => (call as unknown[])[0] !== null,
+    );
+    expect(urlCalls).toHaveLength(0);
+
+    Object.defineProperty(globalThis.navigator, "vibrate", {
+      value: undefined,
+      configurable: true,
+    });
+  });
+
+  test("バーコード検索: 商品が見つからないと productNotFound を表示する", async () => {
+    sb.enqueue("items", { data: null });
+    sb.setInvokeResponse({ data: { product: null }, error: null });
+
+    const { container, getByText } = renderForm();
+
+    await userEvent.type(container.querySelector("#barcode") as HTMLInputElement, "4999");
+    fireEvent.click(container.querySelector("svg.lucide-search")?.closest("button") as HTMLElement);
+
+    await waitFor(() => expect(getByText(i18n.t("items:productNotFound"))).toBeTruthy());
+  });
+
+  test("カテゴリ / 保管場所をドロップダウンから選択・クリアできる", async () => {
+    sb.enqueue("categories", { data: [makeCategoryRow("cat-1", "既存カテゴリ")] });
+    sb.enqueue("storage_locations", { data: [makeCategoryRow("loc-1", "既存棚")] });
+
+    const { container, getByText, getAllByRole } = renderForm();
+
+    const categoryTrigger = container.querySelector("#category_id") as HTMLButtonElement;
+    fireEvent.click(categoryTrigger);
+    await waitFor(() => expect(getByText("既存カテゴリ")).toBeTruthy());
+    fireEvent.click(getByText("既存カテゴリ"));
+    await waitFor(() => expect(categoryTrigger.textContent).toContain("既存カテゴリ"));
+
+    // クリアオプションで解除 (value || null の null 分岐)
+    fireEvent.click(categoryTrigger);
+    const clearOption = getAllByRole("option")[0]!;
+    fireEvent.click(clearOption);
+    await waitFor(() => expect(categoryTrigger.textContent).not.toContain("既存カテゴリ"));
+
+    const locationTrigger = container.querySelector("#storage_location_id") as HTMLButtonElement;
+    fireEvent.click(locationTrigger);
+    await waitFor(() => expect(getByText("既存棚")).toBeTruthy());
+    fireEvent.click(getByText("既存棚"));
+    await waitFor(() => expect(locationTrigger.textContent).toContain("既存棚"));
+  });
+
+  test("内容量: 数値以外は無視し、0 は state に反映せず、正の数のみ反映する", async () => {
+    const { container } = renderForm({ defaultValues: { name: "テスト" } });
+
+    const amountInput = container.querySelector("#content_amount") as HTMLInputElement;
+
+    await userEvent.type(amountInput, "a");
+    expect(amountInput.value).toBe("1");
+
+    await userEvent.type(amountInput, "{backspace}0");
+    expect(amountInput.value).toBe("0");
+
+    await userEvent.type(amountInput, "{backspace}2");
+    expect(amountInput.value).toBe("2");
+  });
+
+  test("画像: 2回連続選択と、バーコード変更時のプレビュー維持", async () => {
+    const onPendingImageUrlChange = mock(() => {});
+    const { container } = renderForm({ onPendingImageUrlChange });
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file1 = new File([new Uint8Array(4)], "one.png", { type: "image/png" });
+    const file2 = new File([new Uint8Array(4)], "two.png", { type: "image/png" });
+
+    await userEvent.upload(fileInput, file1);
+    // 2 回目は既存プレビュー URL を revoke する分岐を通る
+    await userEvent.upload(fileInput, file2);
+
+    // ローカルプレビューがある状態でバーコードを変更してもプレビューはリセットされない
+    await userEvent.type(container.querySelector("#barcode") as HTMLInputElement, "1");
+    expect(container.querySelector("svg.lucide-trash-2")).not.toBeNull();
+  });
+
+  test("既存画像 (image_path) の削除で image_path がクリアされる", async () => {
+    sb.setSignedUrlResponse({
+      data: { signedUrl: "https://signed.example/existing" },
+      error: null,
+    });
+
+    const onPendingFileChange = mock(() => {});
+    const { container, onSubmit } = renderForm({
+      defaultValues: { name: "画像持ち", image_path: "user-1/existing.jpg" },
+      onPendingFileChange,
+    });
+
+    await waitFor(() =>
+      expect(container.querySelector("svg.lucide-trash-2")?.closest("button")).not.toBeNull(),
+    );
+
+    fireEvent.click(
+      container.querySelector("svg.lucide-trash-2")?.closest("button") as HTMLElement,
+    );
+    expect(onPendingFileChange).toHaveBeenCalledWith(null);
+
+    submitForm(container);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const values = (onSubmit.mock.calls[0] as unknown[])[0] as ItemFormValues;
+    expect(values.image_path).toBeUndefined();
+  });
+});

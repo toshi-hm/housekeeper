@@ -453,3 +453,104 @@ describe("usePurchaseShoppingItem", () => {
     await waitFor(() => expect(toastCalls.some((call) => call.variant === "error")).toBe(true));
   });
 });
+
+describe("Branch カバレッジ補完 (useShoppingList)", () => {
+  test("一覧: null データは空配列になる", async () => {
+    sb.enqueue("shopping_list_items", { data: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useShoppingList(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([]);
+  });
+
+  test("楽観的削除: 配列でないキャッシュはそのまま維持される", async () => {
+    sb.enqueue("shopping_list_items", { error: null });
+
+    const { wrapper, queryClient } = createHookWrapper();
+    const meta = { lastSync: "2026-07-01" };
+    queryClient.setQueryData(["shopping", "meta"], meta);
+    queryClient.setQueryData(["shopping", "planned"], [makeShoppingItem({ id: "shop-1" })]);
+
+    const { result } = renderHook(() => useDeleteShoppingItem(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync("shop-1");
+    });
+
+    expect(queryClient.getQueryData(["shopping", "meta"])).toEqual(meta);
+    expect(queryClient.getQueryData(["shopping", "planned"])).toEqual([]);
+  });
+
+  test("購入: バーコード一致なし (アクティブ/削除済みとも null) なら新規作成する", async () => {
+    const newItem = makeItem({ id: "item-barcode-new", barcode: "4950" });
+    // 1) アクティブ検索 null 2) 削除済み検索 null 3) upsert 4) sync update
+    sb.enqueue("items", { data: null }, { data: null }, { data: newItem }, { error: null });
+    sb.enqueue(
+      "shopping_list_items",
+      { data: { created_item_id: null } },
+      { error: null },
+      { error: null },
+    );
+    sb.enqueue("item_lots", { data: [] }, { data: makeLot() }, { data: [] });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => usePurchaseShoppingItem(), { wrapper });
+
+    let value: Item | undefined;
+    await act(async () => {
+      value = await result.current.mutateAsync({
+        shoppingItemId: "shop-1",
+        itemValues: makeFormValues({ barcode: "4950" }),
+      });
+    });
+
+    expect(value?.id).toBe("item-barcode-new");
+  });
+
+  test("購入: 任意フィールド未指定は null で upsert し、購入済みマーク失敗は throw する", async () => {
+    const newItem = makeItem({ id: "item-partial" });
+    sb.enqueue("items", { data: newItem }, { error: null });
+    // 1) 予約確認 (予約済み) 2) markPurchased 失敗
+    sb.enqueue(
+      "shopping_list_items",
+      { data: { created_item_id: "item-partial" } },
+      { error: { message: "mark failed" } },
+    );
+    sb.enqueue("item_lots", { data: [{ id: "lot-1" }] }, { data: [] });
+
+    const { wrapper, toastCalls } = createHookWrapper();
+    const { result } = renderHook(() => usePurchaseShoppingItem(), { wrapper });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          shoppingItemId: "shop-1",
+          itemValues: {
+            name: "部分指定",
+            units: 1,
+            content_amount: 1,
+            content_unit: "個",
+          } as ItemFormValues,
+        }),
+      ).rejects.toThrow("mark failed");
+    });
+
+    const upsertOp = sb
+      .queriesFor("items")
+      .find((query) => query.ops.some((op) => op.method === "upsert"))
+      ?.ops.find((op) => op.method === "upsert");
+    expect(upsertOp?.args[0]).toMatchObject({
+      barcode: null,
+      category_id: null,
+      storage_location_id: null,
+      opened_remaining: null,
+      purchase_date: null,
+      expiry_date: null,
+      notes: null,
+    });
+
+    await waitFor(() => expect(toastCalls.some((call) => call.variant === "error")).toBe(true));
+  });
+});

@@ -148,3 +148,66 @@ describe("CalendarPage", () => {
     await waitFor(() => expect(toastCalls.some((call) => call.variant === "error")).toBe(true));
   });
 });
+
+describe("CalendarPage (カテゴリ色と月外アイテムの分岐)", () => {
+  test("カテゴリ色の有無・未分類・月外アイテムを処理できる", () => {
+    const weekLater = addDays(7);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const canHaveThisMonth = monthEnd.getTime() > weekLater.getTime();
+
+    const categoriesData = [
+      makeCategory({ id: "cat-color", color: "#00ff00" }),
+      makeCategory({ id: "cat-nocolor", color: null }),
+    ];
+
+    const items = [
+      // expired: 色なしカテゴリ (?? null 分岐)
+      makeItem({
+        id: "e-1",
+        name: "期限切れ色なし",
+        expiry_date: fmt(addDays(-1)),
+        category_id: "cat-nocolor",
+      }),
+      // expired: カテゴリなし
+      makeItem({ id: "e-2", name: "期限切れ未分類", expiry_date: fmt(addDays(-1)) }),
+      // thisWeek: 色ありカテゴリ
+      makeItem({
+        id: "w-1",
+        name: "今週色あり",
+        expiry_date: fmt(addDays(1)),
+        category_id: "cat-color",
+      }),
+      // 月を超えるアイテムはどのグループにも入らない
+      makeItem({ id: "far-1", name: "遠い将来", expiry_date: "2099-12-31" }),
+    ];
+
+    if (canHaveThisMonth) {
+      items.push(
+        makeItem({
+          id: "m-1",
+          name: "今月色あり",
+          expiry_date: fmt(monthEnd),
+          category_id: "cat-color",
+        }),
+        makeItem({
+          id: "m-2",
+          name: "今月色なし",
+          expiry_date: fmt(monthEnd),
+          category_id: "cat-nocolor",
+        }),
+      );
+    }
+
+    const { getAllByText, queryAllByText } = renderPage({ items, categories: categoriesData });
+
+    expect(getAllByText(/期限切れ色なし/).length).toBeGreaterThan(0);
+    expect(getAllByText(/期限切れ未分類/).length).toBeGreaterThan(0);
+    expect(getAllByText(/今週色あり/).length).toBeGreaterThan(0);
+    // 月外アイテムはリスト (ExpiryCheckItem) に表示されない
+    expect(queryAllByText(/遠い将来/)).toHaveLength(0);
+    if (canHaveThisMonth) {
+      expect(getAllByText(/今月色あり/).length).toBeGreaterThan(0);
+      expect(getAllByText(/今月色なし/).length).toBeGreaterThan(0);
+    }
+  });
+});

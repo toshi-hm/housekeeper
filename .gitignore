@@ -45,3 +45,4 @@ supabase/.temp/
 
 # test coverage output
 coverage/
+.nyc_output/

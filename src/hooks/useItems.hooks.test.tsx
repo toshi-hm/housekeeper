@@ -439,3 +439,188 @@ describe("findActiveItemByBarcode", () => {
     await expect(findActiveItemByBarcode("490")).rejects.toBeDefined();
   });
 });
+
+describe("Branch カバレッジ補完 (useItems)", () => {
+  test("useItem: 取得エラーで isError になる", async () => {
+    sb.enqueue("items", { error: { message: "single failed" } });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useItem("item-err"), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+
+  test("useItemsWithExpiry: null データは空配列になる", async () => {
+    sb.enqueue("items", { data: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useItemsWithExpiry(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([]);
+  });
+
+  test("作成: 省略されたフィールドはデフォルト値で補完される", async () => {
+    const created = makeItem({ id: "min-item" });
+    sb.enqueue("items", { data: created });
+    sb.enqueue("item_lots", { data: makeLot() });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateItem(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        values: { name: "最小" } as unknown as Parameters<
+          typeof result.current.mutateAsync
+        >[0]["values"],
+      });
+    });
+
+    const insertOp = sb.queriesFor("items")[0]?.ops[0];
+    expect(insertOp?.args[0]).toMatchObject({
+      units: 1,
+      content_amount: 1,
+      content_unit: "個",
+      opened_remaining: null,
+      minimum_stock: null,
+    });
+  });
+
+  test("作成: opened_remaining / minimum_stock を指定できる", async () => {
+    const created = makeItem({ id: "full-item" });
+    sb.enqueue("items", { data: created });
+    sb.enqueue("item_lots", { data: makeLot() });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateItem(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        values: {
+          name: "指定あり",
+          units: 2,
+          content_amount: 3,
+          content_unit: "g",
+          opened_remaining: 0.5,
+          minimum_stock: 4,
+        },
+      });
+    });
+
+    const insertOp = sb.queriesFor("items")[0]?.ops[0];
+    expect(insertOp?.args[0]).toMatchObject({ opened_remaining: 0.5, minimum_stock: 4 });
+
+    const lotInsert = sb.queriesFor("item_lots")[0]?.ops[0];
+    expect(lotInsert?.args[0]).toMatchObject({ opened_remaining: 0.5 });
+  });
+
+  test("バーコードあり: スタック先も復活対象もなければ新規 insert する", async () => {
+    const created = makeItem({ id: "fresh-item", barcode: "4999" });
+    // 1) スタック検索 null 2) 復活検索 null 3) insert
+    sb.enqueue("items", { data: null }, { data: null }, { data: created });
+    sb.enqueue("item_lots", { data: makeLot() });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateItem(), { wrapper });
+
+    let value: Item | undefined;
+    await act(async () => {
+      value = await result.current.mutateAsync({
+        values: { name: "新規", barcode: "4999", units: 1, content_amount: 1, content_unit: "個" },
+      });
+    });
+
+    expect(value?.id).toBe("fresh-item");
+    expect(sb.queriesFor("items")).toHaveLength(3);
+  });
+
+  test("復活対象の検索エラーは throw する", async () => {
+    sb.enqueue("items", { error: { message: "find failed" } });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateItem(), { wrapper });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          values: { name: "x", barcode: "1", units: 1, content_amount: 1, content_unit: "個" },
+          forceNew: true,
+        }),
+      ).rejects.toBeDefined();
+    });
+  });
+
+  test("復活の update エラーは throw する", async () => {
+    const deleted = makeItem({ id: "rev", barcode: "1", deleted_at: "2026-06-01" });
+    sb.enqueue("items", { data: deleted }, { error: { message: "revive failed" } });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateItem(), { wrapper });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          values: { name: "x", barcode: "1", units: 1, content_amount: 1, content_unit: "個" },
+          forceNew: true,
+        }),
+      ).rejects.toBeDefined();
+    });
+  });
+
+  test("更新: 削除済みになったアイテムは全リストキャッシュから除外される", async () => {
+    const original = makeItem({ id: "item-1", expiry_date: "2026-08-01" });
+    const softDeleted = makeItem({
+      id: "item-1",
+      expiry_date: "2026-08-01",
+      deleted_at: "2026-07-01T00:00:00Z",
+    });
+    sb.enqueue("items", { data: softDeleted });
+
+    const { wrapper, queryClient } = createHookWrapper();
+    queryClient.setQueryData(["items", {}, "created_at"], [original]);
+    queryClient.setQueryData(["items", "with-expiry"], [original]);
+
+    const { result } = renderHook(() => useUpdateItem("item-1"), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ name: "削除済み" });
+    });
+
+    expect(queryClient.getQueryData<Item[]>(["items", {}, "created_at"])).toEqual([]);
+    expect(queryClient.getQueryData<Item[]>(["items", "with-expiry"])).toEqual([]);
+  });
+
+  test("更新: 保管場所フィルタ不一致 / purchase_date ソート / 文字列キーのキャッシュ", async () => {
+    const updated = makeItem({ id: "item-1", purchase_date: "2026-06-01" });
+    sb.enqueue("items", { data: updated });
+
+    const { wrapper, queryClient } = createHookWrapper();
+    queryClient.setQueryData(
+      ["items", { storageLocationId: "loc-x" }, "created_at"],
+      [makeItem({ id: "item-1" })],
+    );
+    queryClient.setQueryData(["items", {}, "purchase_date"], []);
+    queryClient.setQueryData(["items", "custom-key", "created_at"], []);
+
+    const { result } = renderHook(() => useUpdateItem("item-1"), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ purchase_date: "2026-06-01" });
+    });
+
+    // 保管場所フィルタに一致しない → 除外
+    expect(
+      queryClient.getQueryData<Item[]>(["items", { storageLocationId: "loc-x" }, "created_at"]),
+    ).toEqual([]);
+    // purchase_date ソートのリストへ upsert
+    expect(
+      queryClient.getQueryData<Item[]>(["items", {}, "purchase_date"])?.map((item) => item.id),
+    ).toEqual(["item-1"]);
+    // オブジェクトでないフィルタキーは空フィルタとして扱われ upsert
+    expect(
+      queryClient
+        .getQueryData<Item[]>(["items", "custom-key", "created_at"])
+        ?.map((item) => item.id),
+    ).toEqual(["item-1"]);
+  });
+});

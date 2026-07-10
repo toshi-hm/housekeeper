@@ -166,3 +166,18 @@ describe("computeMonthlyConsumption", () => {
     expect(result[0]?.total).toBe(0.3);
   });
 });
+
+// --- Branch カバレッジ補完: デフォルト引数 ---
+
+describe("デフォルト引数の分岐", () => {
+  test("computeExpiryDistribution は warningDays 省略時に既定値を使う", () => {
+    const items = [{ units: 1, expiry_date: fmt(addDays(1)) }];
+    const result = computeExpiryDistribution(items);
+    expect(result[0]?.status).toBe("expiring-soon");
+  });
+
+  test("computeMonthlyConsumption は months / now 省略時に既定値を使う", () => {
+    const result = computeMonthlyConsumption([]);
+    expect(result).toHaveLength(6);
+  });
+});

@@ -115,3 +115,18 @@ describe("ExpiryCheckItem", () => {
     await waitFor(() => expect(onCheck).toHaveBeenCalledTimes(1));
   });
 });
+
+describe("ExpiryCheckItem (不正な日付文字列の分岐)", () => {
+  it("expiry_date が不完全でもフォールバックして描画する", () => {
+    const stub = makeStubToast();
+    const { container } = render(
+      <ExpiryCheckItem
+        item={{ ...baseItem, expiry_date: "2026" }}
+        categoryColor={null}
+        onCheck={() => Promise.resolve()}
+      />,
+      { wrapper: makeWrapper(stub) },
+    );
+    expect(container.textContent).toContain("牛乳 1L");
+  });
+});

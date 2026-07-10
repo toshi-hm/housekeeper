@@ -89,3 +89,39 @@ describe("groupShoppingItemsByCategory", () => {
     expect(groups[2]?.items.map((i) => i.id)).toEqual(["x"]);
   });
 });
+
+// --- Branch カバレッジ補完: 未分類カテゴリの分岐 ---
+
+describe("sortShoppingItems (カテゴリ未解決の分岐)", () => {
+  const resolver: CategoryResolver = (item) =>
+    item.linked_item_id === "linked-food" ? categories.food! : undefined;
+
+  test("category ソートで未分類は末尾に回る", () => {
+    const noCategory = makeItem({ id: "s-none", name: "ぬ未分類" });
+    const withCategory = makeItem({
+      id: "s-food",
+      name: "あ食品",
+      linked_item_id: "linked-food",
+    });
+    const result = sortShoppingItems([noCategory, withCategory], "category", resolver);
+    expect(result.map((item) => item.id)).toEqual(["s-food", "s-none"]);
+
+    // 逆順でも未分類が末尾
+    const result2 = sortShoppingItems([withCategory, noCategory], "category", resolver);
+    expect(result2.map((item) => item.id)).toEqual(["s-food", "s-none"]);
+  });
+
+  test("groupShoppingItemsByCategory で未分類グループは末尾に回る", () => {
+    const noCategory = makeItem({ id: "s-none", name: "未分類品" });
+    const withCategory = makeItem({
+      id: "s-food",
+      name: "食品アイテム",
+      linked_item_id: "linked-food",
+    });
+    const groups = groupShoppingItemsByCategory([noCategory, withCategory], resolver);
+    expect(groups[groups.length - 1]?.categoryName).toBeNull();
+
+    const groups2 = groupShoppingItemsByCategory([withCategory, noCategory], resolver);
+    expect(groups2[0]?.categoryName).toBe("食品");
+  });
+});

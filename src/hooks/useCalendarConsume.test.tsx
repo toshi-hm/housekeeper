@@ -215,3 +215,52 @@ describe("useCalendarConsume", () => {
     expect(result.current.pendingRemovalList).toHaveLength(1);
   });
 });
+
+describe("Branch カバレッジ補完 (useCalendarConsume)", () => {
+  test("units=0 でも開封済みロットは消化対象になり、ログなしでも pending に入る", async () => {
+    const item = makeItem({ id: "item-open", name: "開封品" });
+    sb.enqueue(
+      "item_lots",
+      { data: [{ id: "lot-open", units: 0, opened_remaining: 0.5, expiry_date: todayStr() }] },
+      { error: null },
+      { data: [] },
+    );
+    // ログ insert が null を返す (id なし)
+    sb.enqueue("consumption_logs", { data: null });
+    sb.enqueue("items", { error: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCalendarConsume(), { wrapper });
+
+    await act(async () => {
+      await result.current.check(item);
+    });
+
+    expect(result.current.pendingRemovalList).toEqual([
+      { itemId: "item-open", itemName: "開封品" },
+    ]);
+
+    // オフラインで undo → offline トースト、pending は残る
+    setNavigatorOnline(false);
+    await act(async () => {
+      await result.current.undo("item-open");
+    });
+    expect(result.current.pendingRemovalList).toHaveLength(1);
+    setNavigatorOnline(true);
+
+    // logId が null の undo はログ削除をスキップして成功する
+    sb.enqueue("item_lots", { error: null }, { data: [] });
+    sb.enqueue("items", { error: null });
+
+    await act(async () => {
+      await result.current.undo("item-open");
+    });
+
+    expect(result.current.pendingRemovalList).toEqual([]);
+    expect(
+      sb
+        .queriesFor("consumption_logs")
+        .filter((query) => query.ops.some((op) => op.method === "delete")),
+    ).toHaveLength(0);
+  });
+});

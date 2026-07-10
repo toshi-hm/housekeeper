@@ -139,3 +139,47 @@ describe("normalizeUpdateValues", () => {
     });
   });
 });
+
+// --- Branch カバレッジ補完: 日付比較・正規化の分岐 ---
+
+describe("upsertItemInListCache (日付比較の分岐)", () => {
+  test("expiry_date が同一/null のアイテムの並び替え", () => {
+    const sameA = makeItem({ id: "same-a", expiry_date: "2026-05-01" });
+    const sameB = makeItem({ id: "same-b", expiry_date: "2026-05-01" });
+    const noExpiry = makeItem({ id: "no-expiry", expiry_date: null });
+    const incoming = makeItem({ id: "same-b", expiry_date: "2026-05-01" });
+
+    const result = upsertItemInListCache([sameA, sameB, noExpiry], incoming, "expiry_date");
+    // null は末尾
+    expect(result?.[result.length - 1]?.id).toBe("no-expiry");
+  });
+
+  test("purchase_date が同一/null のアイテムの並び替え (降順)", () => {
+    const sameA = makeItem({ id: "same-a", purchase_date: "2026-05-01" });
+    const sameB = makeItem({ id: "same-b", purchase_date: "2026-05-01" });
+    const noPurchase = makeItem({ id: "no-purchase", purchase_date: null });
+    const incoming = makeItem({ id: "same-a", purchase_date: "2026-05-01" });
+
+    const result = upsertItemInListCache([noPurchase, sameA, sameB], incoming, "purchase_date");
+    expect(result?.[result.length - 1]?.id).toBe("no-purchase");
+  });
+});
+
+describe("normalizeUpdateValues (undefined 分岐の補完)", () => {
+  test("units / content_amount / content_unit / name が undefined なら omit する", () => {
+    const result = normalizeUpdateValues({
+      name: undefined,
+      units: undefined,
+      content_amount: undefined,
+      content_unit: undefined,
+      opened_remaining: 2,
+    });
+    expect(result).toEqual({ opened_remaining: 2 });
+  });
+
+  test("minimum_stock は値あり/null 両方を正規化する", () => {
+    expect(normalizeUpdateValues({ minimum_stock: 5 })).toEqual({ minimum_stock: 5 });
+    expect(normalizeUpdateValues({ minimum_stock: null })).toEqual({ minimum_stock: null });
+    expect(normalizeUpdateValues({ minimum_stock: undefined })).toEqual({ minimum_stock: null });
+  });
+});

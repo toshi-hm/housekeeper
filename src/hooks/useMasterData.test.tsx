@@ -456,3 +456,84 @@ describe("useUpdateStorageLocation / useDeleteStorageLocation", () => {
     await waitFor(() => expect(toastCalls.some((call) => call.variant === "error")).toBe(true));
   });
 });
+
+describe("Branch カバレッジ補完 (useMasterData)", () => {
+  test("カテゴリ: 23505 後の既存検索が null なら元のエラーを throw する", async () => {
+    sb.enqueue(
+      "categories",
+      { error: { message: "duplicate", code: "23505" } },
+      { data: null, error: null },
+    );
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateCategory(), { wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync({ name: "食品" })).rejects.toBeDefined();
+    });
+  });
+
+  test("保管場所: 23505 後の既存検索が null なら元のエラーを throw する", async () => {
+    sb.enqueue(
+      "storage_locations",
+      { error: { message: "duplicate", code: "23505" } },
+      { data: null, error: null },
+    );
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useCreateStorageLocation(), { wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync("冷蔵庫")).rejects.toBeDefined();
+    });
+  });
+
+  test("オフラインでカテゴリ更新すると offline トーストを出す", async () => {
+    setNavigatorOnline(false);
+
+    const { wrapper, toastCalls } = createHookWrapper();
+    const { result } = renderHook(() => useUpdateCategory(), { wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync({ id: "cat-1", name: "x" })).rejects.toThrow();
+    });
+
+    await waitFor(() => expect(toastCalls.some((call) => call.variant === "error")).toBe(true));
+  });
+
+  test("オフラインで保管場所削除すると offline トーストを出す", async () => {
+    setNavigatorOnline(false);
+
+    const { wrapper, toastCalls } = createHookWrapper();
+    const { result } = renderHook(() => useDeleteStorageLocation(), { wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync("loc-1")).rejects.toThrow();
+    });
+
+    await waitFor(() => expect(toastCalls.some((call) => call.variant === "error")).toBe(true));
+  });
+
+  test("checkLocationUsage: count が null なら 0", async () => {
+    sb.enqueue("items", { count: null, error: null });
+    expect(await checkLocationUsage("loc-1")).toBe(0);
+  });
+
+  test("保管場所作成: キャッシュ未初期化なら新規配列 / 重複 id は追加しない", async () => {
+    const created = makeLocation({ id: "loc-new" });
+    sb.enqueue("storage_locations", { data: created }, { data: created });
+
+    const { wrapper, queryClient } = createHookWrapper();
+    const { result } = renderHook(() => useCreateStorageLocation(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync("新しい棚");
+    });
+    expect(queryClient.getQueryData<StorageLocation[]>(["locations"])).toEqual([created]);
+
+    await act(async () => {
+      await result.current.mutateAsync("新しい棚");
+    });
+    expect(queryClient.getQueryData<StorageLocation[]>(["locations"])).toEqual([created]);
+  });
+});

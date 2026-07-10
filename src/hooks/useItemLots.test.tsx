@@ -274,3 +274,42 @@ describe("useUpdateLot", () => {
     await waitFor(() => expect(toastCalls.some((call) => call.variant === "error")).toBe(true));
   });
 });
+
+describe("Branch カバレッジ補完 (useItemLots)", () => {
+  test("fetchLots: null データは空配列になる", async () => {
+    sb.enqueue("item_lots", { data: null });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useItemLots("item-1"), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([]);
+  });
+
+  test("syncItemAggregate: lots が null でも units=0 で更新する", async () => {
+    sb.enqueue("item_lots", { data: null });
+    sb.enqueue("items", { error: null });
+
+    await syncItemAggregate("item-1");
+
+    const [itemsQuery] = sb.queriesFor("items");
+    expect(itemsQuery?.ops[0]?.args[0]).toMatchObject({ units: 0, expiry_date: null });
+  });
+
+  test("consumeLot: ロット更新エラーは throw する", async () => {
+    sb.enqueue("item_lots", { error: { message: "update failed" } });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useConsumeLot(), { wrapper });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          lot: makeLot({ units: 2 }),
+          item: { content_amount: 1, content_unit: "個" },
+          deltaAmount: 1,
+        }),
+      ).rejects.toBeDefined();
+    });
+  });
+});

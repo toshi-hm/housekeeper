@@ -133,3 +133,58 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("ConfirmDialog (キーボード操作の分岐)", () => {
+  it("Escape キーで onCancel が呼ばれる (isConfirming 中は無視)", () => {
+    const onCancel = mock(() => {});
+    const { rerender } = render(
+      <ConfirmDialog
+        open={true}
+        title="確認"
+        message="よろしいですか？"
+        onConfirm={() => {}}
+        onCancel={onCancel}
+      />,
+      { wrapper },
+    );
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+
+    // isConfirming 中は Escape を無視する
+    rerender(
+      <I18nextProvider i18n={i18n}>
+        <ConfirmDialog
+          open={true}
+          title="確認"
+          message="よろしいですか？"
+          isConfirming={true}
+          onConfirm={() => {}}
+          onCancel={onCancel}
+        />
+      </I18nextProvider>,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+
+    // Escape 以外のキーは無視する
+    fireEvent.keyDown(document, { key: "Enter" });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("isConfirming 中は確定ボタンにスピナーを表示する (既定ラベル)", () => {
+    const { container } = render(
+      <ConfirmDialog
+        open={true}
+        title="確認"
+        message="よろしいですか？"
+        isConfirming={true}
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+      { wrapper },
+    );
+
+    expect(container.querySelector('[role="status"], .animate-spin')).not.toBeNull();
+  });
+});

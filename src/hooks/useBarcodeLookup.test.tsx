@@ -156,3 +156,54 @@ describe("useBarcodeLookup", () => {
     expect(result.current.error).toBe("not_found");
   });
 });
+
+describe("Branch カバレッジ補完 (useBarcodeLookup)", () => {
+  test("fnError の message が undefined でも not_found になる", async () => {
+    sb.enqueue("items", { data: null });
+    sb.setInvokeResponse({ data: null, error: {} as { message: string } });
+
+    const { result } = renderHook(() => useBarcodeLookup());
+
+    await act(async () => {
+      await result.current.lookup("4910");
+    });
+
+    expect(result.current.error).toBe("not_found");
+  });
+
+  test("ローカルヒットで署名 URL が取得できなければ image_url は undefined", async () => {
+    sb.enqueue("items", { data: { name: "画像なし牛乳", image_path: "user-1/x.jpg" } });
+    sb.setSignedUrlResponse({ data: null, error: null });
+
+    const { result } = renderHook(() => useBarcodeLookup());
+
+    let lookup: BarcodeLookupResult | undefined;
+    await act(async () => {
+      lookup = await result.current.lookup("4911");
+    });
+
+    expect(lookup?.product).toEqual({ name: "画像なし牛乳", image_url: undefined });
+  });
+
+  test("API 商品の description / brand が null なら undefined になる", async () => {
+    sb.enqueue("items", { data: null });
+    sb.setInvokeResponse({
+      data: { product: { name: "素の商品", description: null, image_url: null, brand: null } },
+      error: null,
+    });
+
+    const { result } = renderHook(() => useBarcodeLookup());
+
+    let lookup: BarcodeLookupResult | undefined;
+    await act(async () => {
+      lookup = await result.current.lookup("4912");
+    });
+
+    expect(lookup?.product).toEqual({
+      name: "素の商品",
+      image_url: undefined,
+      description: undefined,
+      brand: undefined,
+    });
+  });
+});

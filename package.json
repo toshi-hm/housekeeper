@@ -12,6 +12,7 @@
     "format:check": "oxfmt --check .",
     "check": "bun run lint && bun run typecheck",
     "preview": "vite preview",
+    "coverage:istanbul": "ISTANBUL_COVERAGE=1 bun test --preload ./scripts/istanbul-coverage-preload.ts --preload ./src/test/setup.ts && nyc report --reporter=text --reporter=text-summary",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "knip": "knip",
@@ -44,6 +45,9 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/preset-react": "^8.0.1",
+    "@babel/preset-typescript": "^8.0.1",
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
     "@eslint/js": "^10.0.1",
@@ -62,6 +66,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "babel-plugin-istanbul": "^8.0.0",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
@@ -69,6 +74,7 @@
     "globals": "^17.5.0",
     "i18next-parser": "^9.4.0",
     "knip": "^6.17.1",
+    "nyc": "^18.0.0",
     "oxfmt": "^0.47.0",
     "oxlint": "1.62.0",
     "reg-cli": "^0.18.14",
