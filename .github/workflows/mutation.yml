@@ -31,6 +31,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
 
@@ -45,8 +47,20 @@ jobs:
           restore-keys: |
             stryker-incremental-
 
+      # command ランナーは Stryker からテストが 1 個の不透明な塊に見えるため、
+      # テストファイルだけ変わった場合に incremental が古い結果を再利用してしまう。
+      # テストが変わった PR では --force でフル再実行して正しいスコアを出す。
+      - name: Detect test changes (incremental cache invalidation)
+        id: diff
+        if: github.event_name == 'pull_request'
+        run: |
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+            | grep -qE '\.test\.(ts|tsx)$|^src/test/'; then
+            echo "force=--force" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run Stryker mutation testing
-        run: bunx stryker run
+        run: bunx stryker run ${{ steps.diff.outputs.force }}
 
       - name: Build mutation report comment
         id: report
