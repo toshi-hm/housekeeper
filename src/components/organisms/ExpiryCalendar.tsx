@@ -4,15 +4,19 @@ import { useTranslation } from "react-i18next";
 
 import { ColorDot } from "@/components/atoms/ColorDot";
 import { Button } from "@/components/ui/button";
-import type { Category, Item } from "@/types/item";
+import { type Category, type ExpiryStatus, getExpiryStatus, type Item } from "@/types/item";
 
 interface ExpiryCalendarProps {
   items: Item[];
   categories: Category[];
+  warningDays?: number;
   labels: {
     close: string;
     noItemsOnDate: string;
     expiryItemsOnDate: (date: string) => string;
+    legendExpired: string;
+    legendSoon: string;
+    legendOk: string;
   };
 }
 
@@ -22,7 +26,27 @@ const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month
 const toDateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-export const ExpiryCalendar = ({ items, categories, labels }: ExpiryCalendarProps) => {
+/** その日に期限を迎えるアイテム群のうち、最も緊急な期限ステータスを返す。 */
+const mostUrgentStatus = (items: Item[], warningDays?: number): ExpiryStatus => {
+  let result: ExpiryStatus = "unknown";
+  for (const item of items) {
+    const status = getExpiryStatus(item.expiry_date, warningDays);
+    if (status === "expired") return "expired";
+    if (status === "expiring-soon") result = "expiring-soon";
+    else if (status === "ok" && result !== "expiring-soon") result = "ok";
+  }
+  return result;
+};
+
+/** 期限ステータス → カレンダーの日付セル上辺ボーダー色（赤/黄/緑）。 */
+const statusBorderClass: Record<ExpiryStatus, string> = {
+  expired: "border-t-red-400",
+  "expiring-soon": "border-t-yellow-400",
+  ok: "border-t-green-400",
+  unknown: "",
+};
+
+export const ExpiryCalendar = ({ items, categories, warningDays, labels }: ExpiryCalendarProps) => {
   const { i18n, t } = useTranslation("calendar");
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -192,13 +216,14 @@ export const ExpiryCalendar = ({ items, categories, labels }: ExpiryCalendarProp
           const dayItems = itemsByDate.get(dateKey) ?? [];
           const isToday = dateKey === todayKey;
           const dow = (firstDay + i) % 7;
+          const status = dayItems.length > 0 ? mostUrgentStatus(dayItems, warningDays) : "unknown";
 
           return (
             <button
               key={day}
               type="button"
               onClick={() => setSelectedDateKey(dateKey)}
-              className={`flex min-h-[56px] flex-col items-center border-t pt-1 text-left transition-colors hover:bg-muted/50 ${isToday ? "bg-primary/5" : ""}`}
+              className={`flex min-h-[56px] flex-col items-center border-t-2 pt-1 text-left transition-colors hover:bg-muted/50 ${statusBorderClass[status]} ${isToday ? "bg-primary/5" : ""}`}
             >
               <span
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${
@@ -228,6 +253,22 @@ export const ExpiryCalendar = ({ items, categories, labels }: ExpiryCalendarProp
             </button>
           );
         })}
+      </div>
+
+      {/* Expiry status legend */}
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2 w-3 rounded-sm bg-red-400" />
+          {labels.legendExpired}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2 w-3 rounded-sm bg-yellow-400" />
+          {labels.legendSoon}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2 w-3 rounded-sm bg-green-400" />
+          {labels.legendOk}
+        </span>
       </div>
 
       {selectedDateKey && (
