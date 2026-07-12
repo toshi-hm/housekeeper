@@ -83,8 +83,19 @@ Service Worker は `vite-plugin-pwa` の `injectManifest` 戦略で書く（PWA 
 - `pg_cron` でスケジュール
 - VAPID 鍵生成と環境変数設定の手順を README に追記
 
+## 定期送信（pg_cron + pg_net）#354
+
+- `pg_cron` で **毎時** `send-expiry-notifications?scheduled=true` を呼び出す（`pg_net.http_post`）。
+- Edge Function は `scheduled=true` のとき、各ユーザーの `notification_preferences.notify_at`（JST）の「時」と
+  現在時刻(JST)が一致する場合のみ送信する。これにより「朝7時」などユーザー指定時刻に配信できる。
+- `notification_logs(user_id, sent_on)` の UNIQUE 制約 + `ignoreDuplicates` upsert で**1 ユーザー 1 日 1 通**に制限。
+- 手動呼び出し（クエリなし）は従来どおり全有効ユーザーへ即時送信（デバッグ用途）。
+- セットアップ:
+  - マイグレーション `20260628000002_create_notification_logs.sql` / `20260628000003_schedule_expiry_notifications.sql`
+  - Vault に `project_url` と `service_role_key` を登録（`select vault.create_secret(...)`）。
+
 ## Backlog
 
-- ユーザータイムゾーン対応
+- ユーザータイムゾーン対応（現状は JST 固定）
 - 通知種別の細分化（期限切れ / 在庫切れ / 補充提案）
 - アプリ内通知センター
