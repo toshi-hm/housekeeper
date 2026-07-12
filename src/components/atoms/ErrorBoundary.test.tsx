@@ -36,7 +36,10 @@ describe("ErrorBoundary", () => {
       </ErrorBoundary>,
       { wrapper },
     );
-    expect(getByText(UNKNOWN_ERROR_TEXT)).not.toBeNull();
+    const message = getByText(UNKNOWN_ERROR_TEXT);
+    expect(message).not.toBeNull();
+    expect(message.className).toContain("text-muted-foreground");
+    expect(message.className).not.toContain("text-gray-500");
     expect(getByText(RETRY_TEXT)).not.toBeNull();
     consoleSpy.mockRestore();
   });
