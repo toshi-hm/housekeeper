@@ -20,6 +20,7 @@
   "itemName": "商品名",
   "itemNamePlaceholder": "商品名を入力",
   "markPurchased": "在庫に追加",
+  "nameRequired": "商品名を入力してください",
   "noItems": "買い物リストは空です",
   "noPurchased": "購入済みアイテムはありません",
   "note": "メモ",

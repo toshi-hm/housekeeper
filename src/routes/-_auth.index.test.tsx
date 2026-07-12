@@ -5,7 +5,8 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
@@ -173,5 +174,28 @@ describe("DashboardPage", () => {
     // filtered には ok アイテムのみが入るが、urgentItems は全アイテムから計算されるため
     // 期限切れアイテムがある警告バナーは引き続き表示されるべき
     expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
+  });
+
+  it("検索欄への入力はデバウンスされ、キー入力ごとにuseItemsを再クエリしない (#452)", async () => {
+    const user = userEvent.setup();
+    const { getByPlaceholderText } = await renderPage();
+
+    const searchInput = getByPlaceholderText(/search by name|商品名・バーコードで検索/i);
+    await user.type(searchInput, "milk");
+
+    // デバウンス時間(300ms)内はuseItemsに新しいsearchがまだ渡らない
+    const lastCallRightAfterTyping = itemsspy.mock.calls.at(-1)?.[0] as
+      | { search?: string }
+      | undefined;
+    expect(lastCallRightAfterTyping?.search).not.toBe("milk");
+
+    // デバウンス完了後、URLに反映されuseItemsが新しいsearchで呼ばれる
+    await waitFor(
+      () => {
+        const lastCall = itemsspy.mock.calls.at(-1)?.[0] as { search?: string } | undefined;
+        expect(lastCall?.search).toBe("milk");
+      },
+      { timeout: 2000 },
+    );
   });
 });

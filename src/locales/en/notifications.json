@@ -3,6 +3,8 @@
   "emailAddress": "Email Address",
   "emailEnabled": "Email Notifications",
   "invalidEmailAddress": "Please enter a valid email address",
+  "invalidNotifyAt": "Please enter a notification time",
+  "invalidThresholdDays": "Please enter a value between 0 and 30",
   "notifyAt": "Notification time",
   "pushEnabled": "Push Notifications",
   "pushNotSupported": "Push notifications are not supported in this browser. Please use email notifications instead.",

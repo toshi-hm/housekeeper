@@ -95,7 +95,10 @@ export const NotificationSettings = () => {
 
   const handleThresholdBlur = async (val: string) => {
     const days = parseInt(val, 10);
-    if (isNaN(days) || days < 0 || days > 30) return;
+    if (isNaN(days) || days < 0 || days > 30) {
+      toast(t("invalidThresholdDays"), "error");
+      return;
+    }
     try {
       await updatePrefs.mutateAsync({ threshold_days: days });
     } catch (error) {
@@ -106,7 +109,10 @@ export const NotificationSettings = () => {
   };
 
   const handleNotifyAtBlur = async (val: string) => {
-    if (!val) return;
+    if (!val) {
+      toast(t("invalidNotifyAt"), "error");
+      return;
+    }
     try {
       await updatePrefs.mutateAsync({ notify_at: val });
     } catch (error) {
