@@ -9,6 +9,6 @@
     "src/**/*.stories.tsx"
   ],
   "project": ["src/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["tailwindcss", "i18next-parser"],
+  "ignoreDependencies": ["tailwindcss", "i18next-parser", "@stryker-mutator/command-runner"],
   "ignoreBinaries": ["wait-on"]
 }

@@ -17,7 +17,7 @@ const ErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
   const { t } = useTranslation("common");
   return (
     <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 p-6 text-center">
-      <p className="text-sm text-gray-500">{t("unknownError")}</p>
+      <p className="text-sm text-muted-foreground">{t("unknownError")}</p>
       <Button variant="outline" size="sm" onClick={onRetry}>
         {t("retry")}
       </Button>
