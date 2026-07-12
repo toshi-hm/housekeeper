@@ -7,10 +7,13 @@ interface ItemImageProps {
   imagePath: string | null | undefined;
   alt?: string;
   className?: string;
+  /** Pre-resolved signed URL (e.g. from useSignedItemImages) to skip this component's own fetch. */
+  signedUrl?: string;
 }
 
-export const ItemImage = ({ imagePath, alt = "", className }: ItemImageProps) => {
-  const { data: url } = useSignedItemImage(imagePath);
+export const ItemImage = ({ imagePath, alt = "", className, signedUrl }: ItemImageProps) => {
+  const { data: fetchedUrl } = useSignedItemImage(imagePath, { enabled: !signedUrl });
+  const url = signedUrl ?? fetchedUrl;
 
   if (!imagePath || !url) {
     return (

@@ -11,7 +11,7 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
 
@@ -25,7 +25,7 @@ jobs:
     name: Deno Edge Function Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: denoland/setup-deno@v2
         with:
@@ -36,4 +36,5 @@ jobs:
           deno test --no-check \
             supabase/functions/alexa-skill/response.test.ts \
             supabase/functions/alexa-skill/inventory-formatters.test.ts \
-            supabase/functions/alexa-skill/signature-verifier.test.ts
+            supabase/functions/alexa-skill/signature-verifier.test.ts \
+            supabase/functions/barcode-lookup/validation.test.ts

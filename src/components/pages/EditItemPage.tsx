@@ -96,7 +96,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
       await qc.invalidateQueries({ queryKey: ["items"] });
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
-      toast(t("common:unknownError"), "error");
+      // error is handled by the mutation's onError
     } finally {
       setIsSubmitting(false);
     }
