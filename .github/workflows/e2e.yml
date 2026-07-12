@@ -1,0 +1,41 @@
+name: E2E
+
+# Playwright による E2E テスト (#178 / #350)。
+# コスト抑制のため、PR に `e2e` ラベルが付いたとき（または手動実行）のみ走らせる。
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e'))
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browser (chromium)
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: bun run test:e2e
+
+      - name: Upload report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: playwright-report/
+          retention-days: 7
