@@ -33,13 +33,43 @@ const getSignedUrl = async (path: string): Promise<string> => {
   return data.signedUrl;
 };
 
-export const useSignedItemImage = (imagePath: string | null | undefined) =>
+export const useSignedItemImage = (
+  imagePath: string | null | undefined,
+  options?: { enabled?: boolean },
+) =>
   useQuery({
     queryKey: ["item-image", imagePath],
     queryFn: () => getSignedUrl(imagePath!),
-    enabled: !!imagePath,
+    enabled: !!imagePath && (options?.enabled ?? true),
     staleTime: SIGNED_URL_TTL * 1000 - 60_000, // refresh 1 min before expiry
   });
+
+const getSignedUrls = async (paths: string[]): Promise<Record<string, string>> => {
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrls(paths, SIGNED_URL_TTL);
+  if (error) throw new Error(error.message);
+  const urlsByPath: Record<string, string> = {};
+  for (const entry of data ?? []) {
+    if (entry.path && entry.signedUrl) urlsByPath[entry.path] = entry.signedUrl;
+  }
+  return urlsByPath;
+};
+
+/**
+ * Batches signed-URL creation for many items in a single Storage API call
+ * (createSignedUrls) instead of one createSignedUrl call per rendered item.
+ */
+export const useSignedItemImages = (imagePaths: Array<string | null | undefined>) => {
+  const paths = [...new Set(imagePaths.filter((path): path is string => !!path))].sort();
+
+  return useQuery({
+    queryKey: ["item-images", paths],
+    queryFn: () => getSignedUrls(paths),
+    enabled: paths.length > 0,
+    staleTime: SIGNED_URL_TTL * 1000 - 60_000,
+  });
+};
 
 interface UploadImageParams {
   itemId: string;
