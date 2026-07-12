@@ -39,6 +39,19 @@ const matchesItemFilters = (item: Item, filters: ItemFilters): boolean => {
   return true;
 };
 
+/**
+ * PostgREST の `.or()` フィルタ構文で予約されている文字（`,` `(` `)`）を含む検索語でも
+ * 安全に渡せるよう、値をダブルクォートで囲みエスケープする。
+ * （`\` と `"` はダブルクォート内で意味を持つためエスケープが必要）
+ */
+export const escapeOrFilterValue = (value: string) =>
+  value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+export const buildNameOrBarcodeSearchFilter = (search: string): string => {
+  const escaped = escapeOrFilterValue(search);
+  return `name.ilike."%${escaped}%",barcode.ilike."%${escaped}%"`;
+};
+
 const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
@@ -46,7 +59,7 @@ const fetchItems = async (
   let query = supabase.from("items").select("*").is("deleted_at", null);
 
   if (filters.search) {
-    query = query.or(`name.ilike.%${filters.search}%,barcode.ilike.%${filters.search}%`);
+    query = query.or(buildNameOrBarcodeSearchFilter(filters.search));
   }
   if (filters.categoryId) {
     query = query.eq("category_id", filters.categoryId);
@@ -66,8 +79,13 @@ const fetchItems = async (
   return (data ?? []) as Item[];
 };
 
-const fetchItem = async (id: string): Promise<Item> => {
-  const { data, error } = await supabase.from("items").select("*").eq("id", id).single();
+export const fetchItem = async (id: string): Promise<Item> => {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .single();
   if (error) throw error;
   return data as Item;
 };
@@ -137,12 +155,12 @@ export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
  * バーコードが一致するアクティブなアイテムを探す。
  * 見つかった場合は新規ロットを追加してそのアイテムを返す。なければ null。
  */
-const tryStackToActiveItem = async (
+export const tryStackToActiveItem = async (
   barcode: string,
   values: ItemFormValues,
   userId: string,
 ): Promise<Item | null> => {
-  const { data } = await supabase
+  const { data, error: findError } = await supabase
     .from("items")
     .select("*")
     .eq("user_id", userId)
@@ -150,6 +168,7 @@ const tryStackToActiveItem = async (
     .is("deleted_at", null)
     .limit(1)
     .maybeSingle();
+  if (findError) throw findError;
   if (!data) return null;
 
   const item = data as Item;
@@ -161,7 +180,12 @@ const tryStackToActiveItem = async (
   });
   await syncItemAggregate(item.id);
 
-  const { data: updated } = await supabase.from("items").select("*").eq("id", item.id).single();
+  const { data: updated, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("id", item.id)
+    .single();
+  if (error) throw error;
   return updated as Item;
 };
 

@@ -12,7 +12,14 @@ interface NotificationPreference {
   email_enabled: boolean;
   email_address: string | null;
   threshold_days: number;
+  notify_at: string | null;
 }
+
+/** JST(UTC+9)基準の「YYYY-MM-DD」と時(0-23)を返す。 */
+const jstNow = () => {
+  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return { date: jst.toISOString().split("T")[0], hour: jst.getUTCHours() };
+};
 
 interface PushSubscription {
   id: string;
@@ -39,10 +46,16 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   const today = new Date().toISOString().split("T")[0];
 
+  // pg_cron からの定期実行（?scheduled=true）では、ユーザーごとの notify_at(JST) に
+  // 一致する時刻のみ送信し、notification_logs で 1 日 1 通に制限する。
+  // 手動呼び出し（クエリなし）では従来どおり全有効ユーザーへ即時送信する。
+  const scheduled = new URL(req.url).searchParams.get("scheduled") === "true";
+  const jst = jstNow();
+
   // Fetch all users with notifications enabled
   const { data: prefs, error: prefsError } = await supabase
     .from("notification_preferences")
-    .select("user_id, push_enabled, email_enabled, email_address, threshold_days")
+    .select("user_id, push_enabled, email_enabled, email_address, threshold_days, notify_at")
     .or("push_enabled.eq.true,email_enabled.eq.true");
 
   if (prefsError) {
@@ -55,6 +68,12 @@ Deno.serve(async (req: Request) => {
 
   const results = await Promise.allSettled(
     (prefs as NotificationPreference[]).map(async (pref) => {
+      // 定期実行時は、ユーザーが設定した通知時刻(JST)の「時」に一致する場合のみ送信する
+      if (scheduled) {
+        const notifyHour = pref.notify_at ? parseInt(pref.notify_at.split(":")[0], 10) : 8;
+        if (notifyHour !== jst.hour) return;
+      }
+
       // Calculate the threshold date
       const thresholdDate = new Date();
       thresholdDate.setDate(thresholdDate.getDate() + pref.threshold_days);
@@ -73,6 +92,20 @@ Deno.serve(async (req: Request) => {
       if (!items || items.length === 0) return;
 
       const count = (items as ExpiringItem[]).length;
+
+      // 定期実行時は notification_logs で当日分の送信枠を確保（重複送信防止）。
+      // ignoreDuplicates のため、既に当日送信済みなら空配列が返る → スキップ。
+      if (scheduled) {
+        const { data: claimed } = await supabase
+          .from("notification_logs")
+          .upsert(
+            { user_id: pref.user_id, sent_on: jst.date, item_count: count },
+            { onConflict: "user_id,sent_on", ignoreDuplicates: true },
+          )
+          .select();
+        if (!claimed || claimed.length === 0) return;
+      }
+
       const title = `${count}件の食材が期限間近です`;
       const body = (items as ExpiringItem[])
         .slice(0, 3)

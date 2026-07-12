@@ -1,0 +1,67 @@
+name: Mutation Testing
+
+on:
+  pull_request:
+    paths:
+      - "src/hooks/**"
+      - "src/lib/**"
+      - "src/types/**"
+      - "stryker.config.json"
+      - "scripts/mutation-report.ts"
+      - ".github/workflows/mutation.yml"
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: "Pull request number to post the report comment to (optional; only needed for a manual run)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: mutation-${{ github.event.pull_request.number || inputs.pull_request_number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Mutation Testing (Stryker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Restore incremental mutation cache
+        uses: actions/cache@v4
+        with:
+          path: reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.run_id }}
+          restore-keys: |
+            stryker-incremental-
+
+      - name: Run Stryker mutation testing
+        run: bunx stryker run
+
+      - name: Build mutation report comment
+        id: report
+        if: always()
+        run: |
+          {
+            echo "comment<<MUTATION_REPORT_EOF"
+            bun run mutation:report
+            echo "MUTATION_REPORT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post or update mutation report comment
+        if: always() && (github.event_name == 'pull_request' || inputs.pull_request_number != '')
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: mutation-report
+          number: ${{ github.event.pull_request.number || inputs.pull_request_number }}
+          message: ${{ steps.report.outputs.comment }}

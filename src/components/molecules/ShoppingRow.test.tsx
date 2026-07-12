@@ -171,6 +171,68 @@ describe("ShoppingRow", () => {
     expect(spinner).not.toBeNull();
   });
 
+  it("Enterキーで名前欄が空のまま保存しようとするとブロックされエラーを表示する (#457)", () => {
+    // name="" は「編集中に名前欄を全消去した」状態と等価（editName の初期値は name prop）。
+    const onEditSave = mock(() => {});
+    const { container, getByPlaceholderText } = render(
+      <ShoppingRow
+        id="abc"
+        name=""
+        desiredUnits={2}
+        isEditing
+        onEditSave={onEditSave}
+        onEditCancel={() => {}}
+      />,
+      { wrapper },
+    );
+    const nameInput = getByPlaceholderText(/商品名|item name/i) as HTMLInputElement;
+    fireEvent.keyDown(nameInput, { key: "Enter" });
+
+    expect(onEditSave).not.toHaveBeenCalled();
+    expect(container.textContent).toMatch(/商品名を入力してください|Please enter an item name/);
+  });
+
+  it("Saveボタンは名前欄が空の間disabledになる(ボタン/Enterの非対称解消)", () => {
+    const { getAllByRole } = render(
+      <ShoppingRow
+        id="1"
+        name=""
+        desiredUnits={2}
+        isEditing
+        onEditSave={() => {}}
+        onEditCancel={() => {}}
+      />,
+      { wrapper },
+    );
+    const buttons = getAllByRole("button");
+    const saveBtn = buttons.find((b) => !b.querySelector("svg") && b.className.includes("flex-1"));
+    expect((saveBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("名前欄を再入力すると、エラーが消えて保存できる", async () => {
+    const onEditSave = mock(() => {});
+    const user = userEvent.setup();
+    const { getByRole, queryByText, getByPlaceholderText } = render(
+      <ShoppingRow
+        id="1"
+        name=""
+        desiredUnits={2}
+        isEditing
+        onEditSave={onEditSave}
+        onEditCancel={() => {}}
+      />,
+      { wrapper },
+    );
+    const nameInput = getByPlaceholderText(/商品名|item name/i);
+    fireEvent.keyDown(nameInput, { key: "Enter" });
+    expect(queryByText(/商品名を入力してください|Please enter an item name/)).not.toBeNull();
+
+    await user.type(nameInput, "卵");
+    await user.click(getByRole("button", { name: /保存|Save/i }));
+    expect(queryByText(/商品名を入力してください|Please enter an item name/)).toBeNull();
+    expect(onEditSave).toHaveBeenCalledWith("1", expect.objectContaining({ name: "卵" }));
+  });
+
   it("shows validation error when saving with invalid units", async () => {
     const onEditSave = mock(() => {});
     const user = userEvent.setup();

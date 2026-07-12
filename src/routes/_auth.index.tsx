@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useConsumeItem } from "@/hooks/useConsumeItem";
+import { useSignedItemImages } from "@/hooks/useItemImage";
 import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
@@ -27,7 +28,42 @@ const dashboardSearchSchema = z.object({
   expiry: z.string().optional().default(""),
 });
 
-const DashboardPage = () => {
+const SEARCH_DEBOUNCE_MS = 300;
+
+interface SearchInputProps {
+  initialValue: string;
+  placeholder: string;
+  onDebouncedChange: (value: string) => void;
+}
+
+/**
+ * キー入力ごとのURL遷移/Supabase再クエリを避けるため、ローカルstateで入力を受けてからデバウンスする。
+ * 親で `key={search}` を指定し、URLのsearchが外部要因(戻る/進む等)で変わったら再マウントで追従させる。
+ */
+const SearchInput = ({ initialValue, placeholder, onDebouncedChange }: SearchInputProps) => {
+  const [value, setValue] = useState(initialValue);
+
+  useEffect(() => {
+    if (value === initialValue) return;
+    const timer = setTimeout(() => onDebouncedChange(value), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <div className="relative flex-1">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        className="pl-9"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+    </div>
+  );
+};
+
+export const DashboardPage = () => {
   const { t } = useTranslation("items");
   const { t: tc } = useTranslation("common");
   const { data: categories = [] } = useCategories();
@@ -122,6 +158,9 @@ const DashboardPage = () => {
   }, [filtered.length]);
 
   const visibleItems = filtered.slice(0, displayCount);
+  const { data: imageUrlsByPath } = useSignedItemImages(
+    visibleItems.map((item) => item.image_path),
+  );
 
   const expiredCount = baseFiltered.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
@@ -135,7 +174,7 @@ const DashboardPage = () => {
     void updateAppBadge(urgentCount);
   }, [urgentCount]);
 
-  const urgentItems = baseFiltered.filter((item) => {
+  const urgentItems = items.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
   });
@@ -303,15 +342,12 @@ const DashboardPage = () => {
 
       {/* Search */}
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder={t("searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        <SearchInput
+          key={search}
+          initialValue={search}
+          placeholder={t("searchPlaceholder")}
+          onDebouncedChange={setSearch}
+        />
         <Button
           variant={showFilters ? "default" : "outline"}
           size="icon"
@@ -485,6 +521,7 @@ const DashboardPage = () => {
                 onQuickConsume={(i) => {
                   void handleQuickConsume(i);
                 }}
+                imageUrl={item.image_path ? imageUrlsByPath?.[item.image_path] : undefined}
               />
             ))}
           </div>

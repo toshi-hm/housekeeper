@@ -11,6 +11,7 @@ interface CalendarPageProps {
   items: Item[];
   categories: Category[];
   isLoading: boolean;
+  warningDays?: number;
   onCheck: (item: Item) => Promise<void>;
   onUndo: (itemId: string) => Promise<void>;
   pendingRemovals: { itemId: string; itemName: string }[];
@@ -20,6 +21,7 @@ export const CalendarPage = ({
   items,
   categories,
   isLoading,
+  warningDays,
   onCheck,
   onUndo,
   pendingRemovals,
@@ -159,10 +161,14 @@ export const CalendarPage = ({
       <ExpiryCalendar
         items={items}
         categories={categories}
+        warningDays={warningDays}
         labels={{
           close: t("close"),
           noItemsOnDate: t("noItemsOnDate"),
           expiryItemsOnDate: (date) => t("expiryItemsOnDate", { date }),
+          legendExpired: t("legendExpired"),
+          legendSoon: t("legendSoon"),
+          legendOk: t("legendOk"),
         }}
       />
     </div>

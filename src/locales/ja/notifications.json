@@ -3,6 +3,8 @@
   "emailAddress": "メールアドレス",
   "emailEnabled": "メール通知",
   "invalidEmailAddress": "有効なメールアドレスを入力してください",
+  "invalidNotifyAt": "通知時刻を入力してください",
+  "invalidThresholdDays": "0〜30の範囲で入力してください",
   "notifyAt": "通知時刻",
   "pushEnabled": "プッシュ通知",
   "pushNotSupported": "このブラウザはプッシュ通知に対応していません。メール通知をご利用ください。",

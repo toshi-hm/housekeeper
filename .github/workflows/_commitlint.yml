@@ -16,7 +16,7 @@ jobs:
     name: Conventional Commits Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -27,7 +27,8 @@ jobs:
 
       - name: Lint commit messages
         run: |
+          FROM=$(git merge-base HEAD origin/main 2>/dev/null || echo "${{ inputs.base_sha || 'HEAD~1' }}")
           bunx commitlint \
-            --from ${{ inputs.base_sha || github.event.pull_request.base.sha || 'HEAD~1' }} \
+            --from "$FROM" \
             --to HEAD \
             --verbose
