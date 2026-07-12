@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, ShoppingCart } from "lucide-react";
+import { LayoutList, Plus, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/atoms/Skeleton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
 import { ShoppingRow } from "@/components/molecules/ShoppingRow";
+import { ShoppingTemplatesPanel } from "@/components/organisms/ShoppingTemplatesPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,12 @@ import {
   useUpsertShoppingItem,
 } from "@/hooks/useShoppingList";
 import {
+  useApplyShoppingTemplate,
+  useDeleteShoppingTemplate,
+  useSaveShoppingTemplate,
+  useShoppingTemplates,
+} from "@/hooks/useShoppingTemplates";
+import {
   type CategoryResolver,
   groupShoppingItemsByCategory,
   isShoppingSortKey,
@@ -31,7 +38,7 @@ import {
 } from "@/lib/shoppingView";
 import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
-import type { ShoppingItem } from "@/types/shopping";
+import type { ShoppingItem, ShoppingTemplateWithItems } from "@/types/shopping";
 
 import { PurchaseDialog } from "../components/molecules/PurchaseDialog";
 
@@ -63,6 +70,8 @@ const ShoppingPage = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showClearPurchased, setShowClearPurchased] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null);
   const [sort, setSort] = useState<ShoppingSortKey>(() => {
     const saved = localStorage.getItem(SORT_STORAGE_KEY);
     return saved && isShoppingSortKey(saved) ? saved : "added";
@@ -70,12 +79,16 @@ const ShoppingPage = () => {
 
   const { data: items = [], isLoading } = useShoppingList(tab);
   const { data: plannedItems = [] } = useShoppingList("planned");
+  const { data: templates = [] } = useShoppingTemplates();
   const { data: inventoryItems = [] } = useItems();
   const { data: categories = [] } = useCategories();
   const upsert = useUpsertShoppingItem();
   const deleteItem = useDeleteShoppingItem();
   const purchase = usePurchaseShoppingItem();
   const clearPurchased = useDeleteAllPurchasedItems();
+  const saveTemplate = useSaveShoppingTemplate();
+  const deleteTemplate = useDeleteShoppingTemplate();
+  const applyTemplate = useApplyShoppingTemplate();
 
   const handleAdd = async () => {
     if (!addName.trim()) return;
@@ -141,6 +154,44 @@ const ShoppingPage = () => {
       toast(t("purchaseSuccess"), "success");
     } catch {
       // Error toast is handled by usePurchaseShoppingItem.onError
+    }
+  };
+
+  const handleApplyTemplate = async (template: ShoppingTemplateWithItems) => {
+    setApplyingTemplateId(template.id);
+    try {
+      const result = await applyTemplate.mutateAsync(template);
+      if (result.added === 0) {
+        toast(t("templateAllExisting"), "success");
+      } else {
+        toast(t("templateApplied", { added: result.added, skipped: result.skipped }), "success");
+      }
+    } catch {
+      // Error toast is handled by useApplyShoppingTemplate.onError
+    } finally {
+      setApplyingTemplateId(null);
+    }
+  };
+
+  const handleSaveTemplate = async (input: {
+    id?: string;
+    name: string;
+    items: { name: string; desired_units: number }[];
+  }) => {
+    try {
+      await saveTemplate.mutateAsync(input);
+      toast(t("templateSaved"), "success");
+    } catch {
+      // Error toast is handled by useSaveShoppingTemplate.onError
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    try {
+      await deleteTemplate.mutateAsync(id);
+      toast(t("templateDeleted"), "success");
+    } catch {
+      // Error toast is handled by useDeleteShoppingTemplate.onError
     }
   };
 
@@ -244,12 +295,37 @@ const ShoppingPage = () => {
               label={t("share")}
             />
           )}
+          <Button
+            size="sm"
+            variant={showTemplates ? "default" : "outline"}
+            onClick={() => setShowTemplates((v) => !v)}
+          >
+            <LayoutList className="mr-1 h-4 w-4" />
+            {t("templates")}
+          </Button>
           <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
             <Plus className="mr-1 h-4 w-4" />
             {t("addItem")}
           </Button>
         </div>
       </div>
+
+      {showTemplates && (
+        <ShoppingTemplatesPanel
+          templates={templates}
+          onApply={(template) => {
+            void handleApplyTemplate(template);
+          }}
+          onSave={(input) => {
+            void handleSaveTemplate(input);
+          }}
+          onDelete={(id) => {
+            void handleDeleteTemplate(id);
+          }}
+          isSaving={saveTemplate.isPending}
+          applyingId={applyingTemplateId}
+        />
+      )}
 
       {/* Add form */}
       {showAdd && (
