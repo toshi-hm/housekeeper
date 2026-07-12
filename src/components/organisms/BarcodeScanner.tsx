@@ -16,6 +16,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   const { t } = useTranslation("items");
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
+  const hasScannedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(true);
   const [showManual, setShowManual] = useState(false);
@@ -26,6 +27,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   const startScanning = useCallback(
     async (deviceId?: string) => {
       controlsRef.current?.stop();
+      hasScannedRef.current = false;
       setError(null);
       setIsStarting(true);
       try {
@@ -38,7 +40,9 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
           deviceId,
           videoRef.current,
           (result, err) => {
-            if (result) {
+            if (result && !hasScannedRef.current) {
+              hasScannedRef.current = true;
+              controlsRef.current?.stop();
               onScan(result.getText());
             }
             if (err && !(err instanceof NotFoundException)) {
