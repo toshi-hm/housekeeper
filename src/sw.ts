@@ -1,7 +1,7 @@
 import { ExpirationPlugin } from "workbox-expiration";
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
-import { StaleWhileRevalidate } from "workbox-strategies";
+import { NetworkFirst } from "workbox-strategies";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -10,12 +10,17 @@ cleanupOutdatedCaches();
 // Precache the app shell (injected by vite-plugin-pwa)
 precacheAndRoute(self.__WB_MANIFEST);
 
-// Runtime cache: Supabase PostgREST GET requests with stale-while-revalidate
+// Runtime cache: Supabase PostgREST GET requests with network-first.
+// StaleWhileRevalidate would serve cached (stale) data to the refetch that
+// TanStack Query fires right after a mutation, so the UI would keep showing
+// pre-update values. NetworkFirst always returns fresh data while online and
+// falls back to the cache only when the network is unavailable (offline read).
 registerRoute(
   ({ url }: { url: URL }) =>
     url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/rest/v1/"),
-  new StaleWhileRevalidate({
+  new NetworkFirst({
     cacheName: "supabase-rest-v1",
+    networkTimeoutSeconds: 5,
     plugins: [
       new ExpirationPlugin({
         maxEntries: 100,

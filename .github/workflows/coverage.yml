@@ -12,7 +12,7 @@ jobs:
     name: Test Coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
 
@@ -49,7 +49,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Post or update coverage comment
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: coverage-report
           message: ${{ steps.parse.outputs.comment }}
