@@ -27,6 +27,9 @@ concurrency:
 jobs:
   mutation:
     name: Mutation Testing (Stryker)
+    # フルスイートを繰り返し実行するミューテーションテストは main 向け PR のみ。
+    # 手動実行 (workflow_dispatch) は常に許可する。
+    if: github.event_name != 'pull_request' || github.base_ref == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

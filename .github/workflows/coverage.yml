@@ -10,6 +10,9 @@ permissions:
 jobs:
   coverage:
     name: Test Coverage
+    # フルスイートを回すカバレッジ計測は main 向け PR のみ。
+    # feature ブランチ同士の PR は _test.yml の差分テストだけで十分とする。
+    if: github.base_ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
