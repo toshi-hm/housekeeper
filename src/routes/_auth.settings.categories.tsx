@@ -122,6 +122,7 @@ const CategoriesPage = () => {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder={t("categoryName")}
+            maxLength={40}
             disabled={createCategory.isPending}
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleCreate();
@@ -160,6 +161,7 @@ const CategoriesPage = () => {
                       onChange={(e) => setEditName(e.target.value)}
                       className="flex-1"
                       autoFocus
+                      maxLength={40}
                       disabled={updateCategory.isPending}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") void handleUpdate();
