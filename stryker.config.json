@@ -16,6 +16,16 @@
     "!src/**/*.stories.tsx",
     "!src/types/supabase.ts"
   ],
+  "ignorePatterns": [
+    ".claude",
+    "reports",
+    "e2e",
+    "supabase",
+    "docs",
+    "storybook-static",
+    "dist",
+    "coverage"
+  ],
   "reporters": ["progress", "html", "json"],
   "htmlReporter": {
     "fileName": "reports/mutation/html/index.html"
