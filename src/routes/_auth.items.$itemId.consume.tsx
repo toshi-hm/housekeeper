@@ -17,6 +17,7 @@ import {
   type ConsumptionError,
   getLotRemainingAmount,
   type ItemLot,
+  roundFloat,
 } from "@/types/item";
 
 const consumptionErrorKey = {
@@ -163,7 +164,7 @@ export const ItemConsumePage = () => {
         })
     : null;
 
-  const totalLotAmount = selectedLot ? getLotTotal(selectedLot) : 0;
+  const totalLotAmount = selectedLot ? roundFloat(getLotTotal(selectedLot)) : 0;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
