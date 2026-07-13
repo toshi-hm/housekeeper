@@ -95,9 +95,11 @@ Service Worker は `vite-plugin-pwa` の `injectManifest` 戦略で書く（PWA 
   現在時刻(JST)が一致する場合のみ送信する。これにより「朝7時」などユーザー指定時刻に配信できる。
 - `notification_logs(user_id, sent_on)` の UNIQUE 制約 + `ignoreDuplicates` upsert で**1 ユーザー 1 日 1 通**に制限。
 - 手動呼び出し（クエリなし）は従来どおり全有効ユーザーへ即時送信（デバッグ用途）。
+- `X-Cron-Secret` ヘッダーによる呼び出し元認証（#444）を pg_net の呼び出しにも付与する。
 - セットアップ:
-  - マイグレーション `20260628000002_create_notification_logs.sql` / `20260628000003_schedule_expiry_notifications.sql`
-  - Vault に `project_url` と `service_role_key` を登録（`select vault.create_secret(...)`）。
+  - マイグレーション `20260628000002_create_notification_logs.sql` / `20260628000003_schedule_expiry_notifications.sql` / `20260712000001_add_cron_secret_to_expiry_notifications.sql`
+  - Vault に `project_url` / `service_role_key` / `cron_secret` を登録（`select vault.create_secret(...)`）。
+  - Edge Function 側に `supabase secrets set CRON_SECRET=<cron_secret と同じ値>` を設定。
 
 ## Backlog
 
