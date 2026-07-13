@@ -8,6 +8,7 @@ import {
   getLotRemainingAmount,
   itemFormSchema,
   itemLotSchema,
+  roundFloat,
 } from "./item";
 
 // --- itemFormSchema ---
@@ -202,6 +203,20 @@ describe("getExpiryStatus", () => {
   test("custom warningDays", () => {
     expect(getExpiryStatus(fmt(addDays(5)), 7)).toBe("expiring-soon");
     expect(getExpiryStatus(fmt(addDays(8)), 7)).toBe("ok");
+  });
+});
+
+// --- roundFloat ---
+
+describe("roundFloat", () => {
+  test("removes native floating-point noise", () => {
+    expect(0.1 * 3).not.toBe(0.3);
+    expect(roundFloat(0.1 * 3)).toBe(0.3);
+  });
+
+  test("leaves already-precise values unchanged", () => {
+    expect(roundFloat(1.5)).toBe(1.5);
+    expect(roundFloat(0)).toBe(0);
   });
 });
 
