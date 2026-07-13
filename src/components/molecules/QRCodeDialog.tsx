@@ -10,6 +10,14 @@ interface QRCodeDialogProps {
   onClose: () => void;
 }
 
+const escapeHtml = (input: string) =>
+  input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 const QRCodeCanvas = ({
   value,
   canvasRef,
@@ -35,9 +43,11 @@ export const QRCodeDialog = ({ value, title, onClose }: QRCodeDialogProps) => {
     const dataUrl = canvas.toDataURL("image/png");
     const win = window.open("", "_blank");
     if (!win) return;
+    const safeTitle = escapeHtml(title);
+    const safeValue = escapeHtml(value);
     win.document.write(
-      `<html><head><title>${title}</title><style>body{display:flex;flex-direction:column;align-items:center;font-family:sans-serif;padding:24px}img{width:200px;height:200px}h2{margin:12px 0 4px}@media print{button{display:none}}</style></head>` +
-        `<body><img src="${dataUrl}"><h2>${title}</h2><p style="color:#666;font-size:12px">${value}</p>` +
+      `<html><head><title>${safeTitle}</title><style>body{display:flex;flex-direction:column;align-items:center;font-family:sans-serif;padding:24px}img{width:200px;height:200px}h2{margin:12px 0 4px}@media print{button{display:none}}</style></head>` +
+        `<body><img src="${dataUrl}"><h2>${safeTitle}</h2><p style="color:#666;font-size:12px">${safeValue}</p>` +
         `<button onclick="window.print()">${t("qrPrint")}</button></body></html>`,
     );
     win.document.close();
