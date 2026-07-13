@@ -9,7 +9,14 @@ import type { NotificationPreferences, UpdatePrefs } from "@/types/user";
 const PREFS_KEY = ["notification-preferences"] as const;
 
 const fetchPreferences = async (): Promise<NotificationPreferences | null> => {
-  const { data, error } = await supabase.from("notification_preferences").select("*").maybeSingle();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("notification_preferences")
+    .select("*")
+    .eq("user_id", userData.user.id)
+    .maybeSingle();
   if (error) throw error;
   return data as NotificationPreferences | null;
 };
