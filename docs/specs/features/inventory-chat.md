@@ -8,7 +8,7 @@
 - ページトップの **AI ボタン**を押すとチャットパネルが開く
 - 自然言語で「牛乳ある？」「卵の賞味期限は？」などを質問
 - Gemini が在庫データを参照して会話形式で回答する
-- **Gemini 無料枠（`gemini-3.5-flash`）の範囲で利用すること**を前提とする
+- **Gemini 無料枠（`gemini-2.5-flash`）の範囲で利用すること**を前提とする
 
 ## 2. 制約 / 前提
 
@@ -35,7 +35,7 @@
    │ 3. 在庫コンテキスト + 会話履歴を Gemini に投げる
    │ 4. { reply, items } を返す
    ▼
-[Gemini API gemini-3.5-flash (無料枠)]
+[Gemini API gemini-2.5-flash (無料枠)]
 ```
 
 ### 3.1 Edge Function `inventory-chat`
@@ -72,7 +72,7 @@ interface ChatResponse {
 
 #### Gemini 呼び出しの方針
 
-- モデル: `gemini-3.5-flash`（無料枠 / GA）
+- モデル: `gemini-2.5-flash`（無料枠 / GA）
 - `responseMimeType: application/json` + `responseSchema` で `{ reply, items }` を強制
 - `temperature: 0.2`、`thinkingConfig.thinkingLevel: "low"`（Gemini 3.x は `thinkingBudget` ではなく `thinkingLevel`。低めでコスト/レイテンシ抑制）
 - 会話履歴を `contents` に user/model ロールで積む（マルチターン）
@@ -110,7 +110,7 @@ interface ChatResponse {
 
 ## 5. 無料枠への配慮
 
-- `gemini-3.5-flash` は無料枠あり。`thinkingLevel` を "low" に抑え、会話履歴は直近数件に制限。
+- `gemini-2.5-flash` は無料枠あり。`thinkingLevel` を "low" に抑え、会話履歴は直近数件に制限。
 - 在庫コンテキストは必要列のみを JSON 化して送信（トークン削減）。
 
 ## 6. テスト / CI

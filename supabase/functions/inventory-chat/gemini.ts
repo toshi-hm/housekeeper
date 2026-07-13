@@ -10,7 +10,7 @@ import type {
   RecentlyConsumedItem,
 } from "./types.ts";
 
-const GEMINI_MODEL = "gemini-3.5-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 // The web client has no hard latency cap like Alexa's 8s, so allow more headroom.
 const GEMINI_TIMEOUT_MS = 20000;
 // Cap history to keep token usage within the free tier.
