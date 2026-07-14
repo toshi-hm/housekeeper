@@ -49,21 +49,49 @@ const dashboardSearchSchema = z.object({
 const SEARCH_DEBOUNCE_MS = 300;
 
 interface SearchInputProps {
-  initialValue: string;
+  value: string;
   placeholder: string;
   onDebouncedChange: (value: string) => void;
 }
 
 /**
  * キー入力ごとのURL遷移/Supabase再クエリを避けるため、ローカルstateで入力を受けてからデバウンスする。
- * 親で `key={search}` を指定し、URLのsearchが外部要因(戻る/進む等)で変わったら再マウントで追従させる。
+ *
+ * 以前は親で `key={value}` を指定して外部変化(戻る/進む等)に再マウントで追従していたが、
+ * デバウンス確定 → URL更新 → key変化 で入力中にコンポーネントが毎回作り直され、
+ * フォーカスが外れて入力を継続できず、IME変換中は文字が重複する不具合があった (#527)。
+ *
+ * そのため再マウントはやめ、以下で追従する:
+ * - IME変換中 (isComposing) はデバウンス発火を抑止し、変換確定時にまとめて反映する
+ * - 自分が発火した更新の「エコー」はスキップし、外部要因の変化のみローカルstateへ同期する
  */
-const SearchInput = ({ initialValue, placeholder, onDebouncedChange }: SearchInputProps) => {
-  const [value, setValue] = useState(initialValue);
+const SearchInput = ({
+  value: externalValue,
+  placeholder,
+  onDebouncedChange,
+}: SearchInputProps) => {
+  const [value, setValue] = useState(externalValue);
+  const isComposingRef = useRef(false);
+  // 最後に emit / 同期した値。自分の更新のエコーと外部変化を区別するために使う
+  const lastSyncedRef = useRef(externalValue);
+
+  // 戻る/進む等の外部要因でURLのsearchが変わったときだけローカルstateへ同期する。
+  // 自分がemitした値のエコー (externalValue === lastSyncedRef) では上書きしない。
+  useEffect(() => {
+    if (externalValue !== lastSyncedRef.current) {
+      lastSyncedRef.current = externalValue;
+      setValue(externalValue);
+    }
+  }, [externalValue]);
 
   useEffect(() => {
-    if (value === initialValue) return;
-    const timer = setTimeout(() => onDebouncedChange(value), SEARCH_DEBOUNCE_MS);
+    // IME変換中はまだ確定していないため、デバウンス発火しない
+    if (isComposingRef.current) return;
+    if (value === lastSyncedRef.current) return;
+    const timer = setTimeout(() => {
+      lastSyncedRef.current = value;
+      onDebouncedChange(value);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
@@ -76,6 +104,14 @@ const SearchInput = ({ initialValue, placeholder, onDebouncedChange }: SearchInp
         placeholder={placeholder}
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        onCompositionStart={() => {
+          isComposingRef.current = true;
+        }}
+        onCompositionEnd={(e) => {
+          isComposingRef.current = false;
+          // 変換確定後の値でstateを更新し、デバウンスeffectを発火させる
+          setValue(e.currentTarget.value);
+        }}
       />
     </div>
   );
@@ -424,8 +460,7 @@ export const DashboardPage = () => {
       {/* Search */}
       <div className="flex gap-2">
         <SearchInput
-          key={search}
-          initialValue={search}
+          value={search}
           placeholder={t("searchPlaceholder")}
           onDebouncedChange={setSearch}
         />
