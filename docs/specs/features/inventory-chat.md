@@ -74,7 +74,7 @@ interface ChatResponse {
 
 - モデル: `gemini-2.5-flash`（無料枠 / GA）
 - `responseMimeType: application/json` + `responseSchema` で `{ reply, items }` を強制
-- `temperature: 0.2`、`thinkingConfig.thinkingLevel: "low"`（Gemini 3.x は `thinkingBudget` ではなく `thinkingLevel`。低めでコスト/レイテンシ抑制）
+- `temperature: 0.2`、`thinkingConfig.thinkingBudget: 1024`（`gemini-2.5-flash` は `thinkingLevel` ではなく `thinkingBudget`。`thinkingLevel` は Gemini 3.x 専用パラメータで、2.5 系に送るとAPIエラーになる）
 - 会話履歴を `contents` に user/model ロールで積む（マルチターン）
 - システムプロンプトに在庫コンテキスト（JSON）を埋め込む
 - タイムアウト: 20s（Web は Alexa の 8s 制約がないため余裕を持たせる）
@@ -110,7 +110,7 @@ interface ChatResponse {
 
 ## 5. 無料枠への配慮
 
-- `gemini-2.5-flash` は無料枠あり。`thinkingLevel` を "low" に抑え、会話履歴は直近数件に制限。
+- `gemini-2.5-flash` は無料枠あり。`thinkingBudget` を低めに抑え、会話履歴は直近数件に制限。
 - 在庫コンテキストは必要列のみを JSON 化して送信（トークン削減）。
 
 ## 6. テスト / CI
