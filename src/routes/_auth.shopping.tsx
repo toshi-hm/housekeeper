@@ -192,12 +192,10 @@ const ShoppingPage = () => {
     name: string;
     items: { name: string; desired_units: number }[];
   }) => {
-    try {
-      await saveTemplate.mutateAsync(input);
-      toast(t("templateSaved"), "success");
-    } catch {
-      // Error toast is handled by useSaveShoppingTemplate.onError
-    }
+    // 失敗時は例外を伝播させ、パネル側でエディタを閉じずに入力内容を保持できるようにする (#521)。
+    // エラートーストは useSaveShoppingTemplate.onError が表示する。
+    await saveTemplate.mutateAsync(input);
+    toast(t("templateSaved"), "success");
   };
 
   const handleDeleteTemplate = async (id: string) => {
@@ -380,9 +378,7 @@ const ShoppingPage = () => {
           onApply={(template) => {
             void handleApplyTemplate(template);
           }}
-          onSave={(input) => {
-            void handleSaveTemplate(input);
-          }}
+          onSave={handleSaveTemplate}
           onDelete={(id) => {
             void handleDeleteTemplate(id);
           }}
