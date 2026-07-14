@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, mock, test } from "bun:test";
 import { createElement, type ReactNode } from "react";
 
@@ -47,5 +47,20 @@ describe("ItemImage", () => {
   test("imagePathがない場合はフォールバックアイコンを表示する", () => {
     const { container } = render(<ItemImage imagePath={null} />, { wrapper });
     expect(container.querySelector("img")).toBeNull();
+  });
+
+  test("画像の読み込みに失敗したらフォールバックアイコンに切り替える (#456)", () => {
+    const { container } = render(
+      <ItemImage imagePath="a/1.jpg" signedUrl="https://signed.example/broken.jpg" />,
+      { wrapper },
+    );
+
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+
+    fireEvent.error(img!);
+
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("svg")).not.toBeNull();
   });
 });
