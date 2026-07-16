@@ -74,6 +74,10 @@ const SearchInput = ({
   const isComposingRef = useRef(false);
   // 最後に emit / 同期した値。自分の更新のエコーと外部変化を区別するために使う
   const lastSyncedRef = useRef(externalValue);
+  // IME変換確定を検知するためのカウンタ。React 19 は変換中も onChange を発火するため、
+  // 確定時の値が変換中の最終値と同一になり setValue が bail-out してデバウンスが動かない。
+  // 確定のたびにこの値を増やして、値が同一でもデバウンスeffectを再実行させる。
+  const [compositionSeq, setCompositionSeq] = useState(0);
 
   // 戻る/進む等の外部要因でURLのsearchが変わったときだけローカルstateへ同期する。
   // 自分がemitした値のエコー (externalValue === lastSyncedRef) では上書きしない。
@@ -94,7 +98,7 @@ const SearchInput = ({
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, compositionSeq]);
 
   return (
     <div className="relative flex-1">
@@ -109,8 +113,10 @@ const SearchInput = ({
         }}
         onCompositionEnd={(e) => {
           isComposingRef.current = false;
-          // 変換確定後の値でstateを更新し、デバウンスeffectを発火させる
+          // 変換確定後の値でstateを更新し、デバウンスeffectを発火させる。
+          // 値が変換中の最終値と同一でも、compositionSeq を増やして確実に再発火させる。
           setValue(e.currentTarget.value);
+          setCompositionSeq((n) => n + 1);
         }}
       />
     </div>
