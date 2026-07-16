@@ -220,4 +220,25 @@ describe("DashboardPage", () => {
       { timeout: 2000 },
     );
   });
+
+  it("検索がデバウンス確定してもフォーカスが外れない（再マウントしない） (#527)", async () => {
+    const user = userEvent.setup();
+    const { getByPlaceholderText } = await renderPage();
+
+    const searchInput = getByPlaceholderText(
+      /search by name|商品名・バーコードで検索/i,
+    ) as HTMLInputElement;
+    searchInput.focus();
+    await user.type(searchInput, "milk");
+
+    // デバウンス確定 → URL更新 → 再レンダリング後もフォーカスが保持されている
+    await waitFor(
+      () => {
+        const lastCall = itemsspy.mock.calls.at(-1)?.[0] as { search?: string } | undefined;
+        expect(lastCall?.search).toBe("milk");
+      },
+      { timeout: 2000 },
+    );
+    expect(document.activeElement).toBe(searchInput);
+  });
 });
