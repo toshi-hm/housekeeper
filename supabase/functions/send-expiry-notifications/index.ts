@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 import { isAuthorizedCronRequest } from "./auth.ts";
+import { addDaysToDateStr, jstNow } from "./dates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,12 +17,6 @@ interface NotificationPreference {
   threshold_days: number;
   notify_at: string | null;
 }
-
-/** JST(UTC+9)基準の「YYYY-MM-DD」と時(0-23)を返す。 */
-const jstNow = () => {
-  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  return { date: jst.toISOString().split("T")[0], hour: jst.getUTCHours() };
-};
 
 interface PushSubscription {
   id: string;
@@ -53,7 +48,6 @@ Deno.serve(async (req: Request) => {
   const resendFrom = Deno.env.get("RESEND_FROM_ADDRESS") ?? "housekeeper <noreply@example.com>";
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const today = new Date().toISOString().split("T")[0];
 
   // pg_cron からの定期実行（?scheduled=true）では、ユーザーごとの notify_at(JST) に
   // 一致する時刻のみ送信し、notification_logs で 1 日 1 通に制限する。
@@ -83,20 +77,20 @@ Deno.serve(async (req: Request) => {
         if (notifyHour !== jst.hour) return;
       }
 
-      // Calculate the threshold date
-      const thresholdDate = new Date();
-      thresholdDate.setDate(thresholdDate.getDate() + pref.threshold_days);
-      const thresholdStr = thresholdDate.toISOString().split("T")[0];
+      // Calculate the threshold date (JST基準の today から加算する。#520)
+      const thresholdStr = addDaysToDateStr(jst.date, pref.threshold_days);
 
-      // Fetch expiring items for this user
+      // Fetch expiring/expired items for this user.
+      // 下限(gte today)は設けない — 既に期限切れの item も対象に含める（#445）。
+      // opened_remaining = 0（開封済み・空）の item は対象外とする（#445）。
       const { data: items } = await supabase
         .from("items")
         .select("name, expiry_date")
         .eq("user_id", pref.user_id)
         .not("expiry_date", "is", null)
         .lte("expiry_date", thresholdStr)
-        .gte("expiry_date", today)
-        .gt("units", 0);
+        .gt("units", 0)
+        .or("opened_remaining.is.null,opened_remaining.neq.0");
 
       if (!items || items.length === 0) return;
 

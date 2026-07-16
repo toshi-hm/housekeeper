@@ -39,4 +39,5 @@ jobs:
             supabase/functions/alexa-skill/signature-verifier.test.ts \
             supabase/functions/barcode-lookup/validation.test.ts \
             supabase/functions/send-expiry-notifications/auth.test.ts \
+            supabase/functions/send-expiry-notifications/dates.test.ts \
             supabase/functions/inventory-chat/chat.test.ts
