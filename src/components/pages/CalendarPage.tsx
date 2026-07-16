@@ -66,7 +66,7 @@ export const CalendarPage = ({
     <div className="space-y-4">
       <h1 className="text-xl font-bold">{t("title")}</h1>
       {pendingRemovals.length > 0 && (
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm">
+        <div className="rounded-lg border border-warning/50 bg-warning p-3 text-sm text-warning-foreground">
           <p className="mb-2 font-medium">{t("pendingRemovalMessage")}</p>
           <div className="flex flex-wrap gap-2">
             {pendingRemovals.map(({ itemId, itemName }) => (
@@ -78,7 +78,7 @@ export const CalendarPage = ({
                     toast(t("undoError"), "error");
                   });
                 }}
-                className="rounded-md border border-yellow-400 bg-white px-2 py-1 text-xs font-medium hover:bg-yellow-100"
+                className="rounded-md border border-warning-foreground/30 bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-warning-foreground/10"
               >
                 {t("undo")} ({itemName})
               </button>
