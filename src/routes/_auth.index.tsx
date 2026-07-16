@@ -205,18 +205,9 @@ export const DashboardPage = () => {
     visibleItems.map((item) => item.image_path),
   );
 
-  const expiredCount = baseFiltered.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
-  ).length;
-  const expiringSoonCount = baseFiltered.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
-  ).length;
-  const urgentCount = expiredCount + expiringSoonCount;
-
-  useEffect(() => {
-    void updateAppBadge(urgentCount);
-  }, [urgentCount]);
-
+  // 期限バナー（見出し件数・アコーディオン内訳・一括追加ボタン）は在庫が残っている
+  // (units > 0) 期限切れ/期限間近アイテムのみを対象にする。見出しの urgentCount も
+  // この units > 0 の集合から算出し、内訳・ボタン対象と件数を一致させる (#450)。
   const urgentItems = items.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
@@ -227,6 +218,20 @@ export const DashboardPage = () => {
   const expiringSoonItems = urgentItems.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   );
+  const urgentCount = urgentItems.length;
+
+  useEffect(() => {
+    void updateAppBadge(urgentCount);
+  }, [urgentCount]);
+
+  // クイックフィルターチップの件数。チップをタップしたときに表示される filtered
+  // (baseFiltered を期限状態で絞ったもの) と一致させるため baseFiltered 基準で数える。
+  const expiredCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
+  ).length;
+  const expiringSoonCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
+  ).length;
 
   const lowStockItems = baseFiltered.filter(
     (item) =>

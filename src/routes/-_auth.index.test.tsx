@@ -147,6 +147,28 @@ describe("DashboardPage", () => {
     expect(queryByText(URGENT_BANNER_RE)).toBeNull();
   });
 
+  it("hideEmpty=off でも在庫0の期限切れは警告バナー見出し件数に含めない (#450)", async () => {
+    // 使い切り在庫を表示（hideEmpty=off）にした状態で、在庫あり1件＋在庫0の1件が
+    // ともに期限切れのとき、見出し件数は在庫あり(units>0)の1件のみと一致すべき。
+    localStorage.setItem("dashboard.hideEmpty", "false");
+    try {
+      itemsspy.mockReturnValue({
+        data: [
+          makeItem({ id: "in-stock", expiry_date: "2000-01-01", units: 2 }),
+          makeItem({ id: "empty", expiry_date: "2000-01-01", units: 0 }),
+        ],
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof useItemsModule.useItems>);
+      const { getByText, queryByText } = await renderPage();
+      // 在庫あり1件のみが見出しに反映され、内訳・一括追加ボタンの対象件数と一致する
+      expect(getByText(/1 item is expired or expiring soon|1件の在庫が期限切れ/)).not.toBeNull();
+      expect(queryByText(/2 items are expired or expiring soon|2件の在庫が期限切れ/)).toBeNull();
+    } finally {
+      localStorage.removeItem("dashboard.hideEmpty");
+    }
+  });
+
   it("期限フィルターを「正常」にしても期限切れ警告バナーが表示され続ける (#391)", async () => {
     itemsspy.mockReturnValue({
       data: [
