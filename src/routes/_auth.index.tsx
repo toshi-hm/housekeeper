@@ -8,7 +8,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type CompositionEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
@@ -56,17 +56,36 @@ interface SearchInputProps {
 
 /**
  * キー入力ごとのURL遷移/Supabase再クエリを避けるため、ローカルstateで入力を受けてからデバウンスする。
- * 親で `key={search}` を指定し、URLのsearchが外部要因(戻る/進む等)で変わったら再マウントで追従させる。
+ * IME変換中（コンポジション中）はデバウンスのコミットを止め、変換確定後に確定値でコミットする（#527）。
+ * URLのsearchが自分自身のコミットで変わった場合は再同期しない（入力中のフォーカス落ちを防ぐ）よう、
+ * 直近コミット値をrefで保持して比較する。
  */
 const SearchInput = ({ initialValue, placeholder, onDebouncedChange }: SearchInputProps) => {
   const [value, setValue] = useState(initialValue);
+  const isComposingRef = useRef(false);
+  const lastCommittedRef = useRef(initialValue);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // 戻る/進むなど外部要因でURLのsearchが変わった場合のみローカルstateを追従させる。
+  useEffect(() => {
+    if (initialValue === lastCommittedRef.current) return;
+    lastCommittedRef.current = initialValue;
+    setValue(initialValue);
+  }, [initialValue]);
 
   useEffect(() => {
-    if (value === initialValue) return;
-    const timer = setTimeout(() => onDebouncedChange(value), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const scheduleCommit = (v: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      lastCommittedRef.current = v;
+      onDebouncedChange(v);
+    }, SEARCH_DEBOUNCE_MS);
+  };
 
   return (
     <div className="relative flex-1">
@@ -75,7 +94,21 @@ const SearchInput = ({ initialValue, placeholder, onDebouncedChange }: SearchInp
         className="pl-9"
         placeholder={placeholder}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          setValue(v);
+          if (!isComposingRef.current) scheduleCommit(v);
+        }}
+        onCompositionStart={() => {
+          isComposingRef.current = true;
+          if (timerRef.current) clearTimeout(timerRef.current);
+        }}
+        onCompositionEnd={(e: CompositionEvent<HTMLInputElement>) => {
+          isComposingRef.current = false;
+          const v = e.currentTarget.value;
+          setValue(v);
+          scheduleCommit(v);
+        }}
       />
     </div>
   );
@@ -205,11 +238,13 @@ export const DashboardPage = () => {
     visibleItems.map((item) => item.image_path),
   );
 
+  // バナー見出し・アコーディオン内訳・一括追加ボタンの対象件数を揃えるため、
+  // すべて units > 0 のアイテムのみを対象にする（#450）。
   const expiredCount = baseFiltered.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired" && item.units > 0,
   ).length;
   const expiringSoonCount = baseFiltered.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon" && item.units > 0,
   ).length;
   const urgentCount = expiredCount + expiringSoonCount;
 
@@ -424,7 +459,6 @@ export const DashboardPage = () => {
       {/* Search */}
       <div className="flex gap-2">
         <SearchInput
-          key={search}
           initialValue={search}
           placeholder={t("searchPlaceholder")}
           onDebouncedChange={setSearch}
