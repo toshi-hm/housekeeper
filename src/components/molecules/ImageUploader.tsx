@@ -57,7 +57,17 @@ export const ImageUploader = ({
   return (
     <div className="space-y-2">
       {previewUrl ? (
-        <div className="relative">
+        <div
+          className={`relative rounded-lg transition-shadow ${
+            isDragging ? "ring-2 ring-primary" : ""
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+        >
           <img src={previewUrl} alt="" className="h-40 w-full rounded-lg object-cover" />
           <div className="absolute right-2 top-2 flex gap-1">
             <Button
