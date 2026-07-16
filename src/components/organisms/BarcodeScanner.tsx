@@ -12,23 +12,37 @@ interface BarcodeScannerProps {
   onClose: () => void;
 }
 
+const SCAN_TIMEOUT_MS = 30_000;
+
 export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   const { t } = useTranslation("items");
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const hasScannedRef = useRef(false);
+  const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(true);
   const [showManual, setShowManual] = useState(false);
   const [manualValue, setManualValue] = useState("");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [deviceIndex, setDeviceIndex] = useState(0);
+  // 連続読み取り失敗（30秒超）でリトライ/キャンセル導線を表示する（#454）
+  const [scanTimedOut, setScanTimedOut] = useState(false);
+
+  const clearScanTimeout = () => {
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = null;
+    }
+  };
 
   const startScanning = useCallback(
     async (deviceId?: string) => {
       controlsRef.current?.stop();
       hasScannedRef.current = false;
+      clearScanTimeout();
       setError(null);
+      setScanTimedOut(false);
       setIsStarting(true);
       try {
         const reader = new BrowserMultiFormatReader();
@@ -43,6 +57,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
             if (result && !hasScannedRef.current) {
               hasScannedRef.current = true;
               controlsRef.current?.stop();
+              clearScanTimeout();
               onScan(result.getText());
             }
             if (err && !(err instanceof NotFoundException)) {
@@ -52,6 +67,9 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
         );
         controlsRef.current = controls;
         setIsStarting(false);
+        scanTimeoutRef.current = setTimeout(() => {
+          setScanTimedOut(true);
+        }, SCAN_TIMEOUT_MS);
       } catch (err) {
         setError(err instanceof Error ? err.message : t("scannerCameraAccessDenied"));
         setIsStarting(false);
@@ -118,6 +136,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
     return () => {
       cancelled = true;
       controlsRef.current?.stop();
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
     };
   }, [startScanning, t]);
 
@@ -217,6 +236,30 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
                   <div className="absolute bottom-0 right-0 h-8 w-8 border-b-4 border-r-4 border-white" />
                 </div>
               </div>
+              {/* 30秒間読み取り成功しない場合のリトライ/キャンセル導線（#454） */}
+              {scanTimedOut && !showManual && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-8 text-center text-white">
+                  <div>
+                    <p className="text-lg font-medium">{t("scannerTimeout")}</p>
+                    <p className="mt-2 text-sm text-white/70">{t("scannerTimeoutHint")}</p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-3">
+                      <Button onClick={handleRetry} variant="outline">
+                        {t("scannerRetry")}
+                      </Button>
+                      <Button
+                        onClick={() => setShowManual(true)}
+                        variant="outline"
+                        className="text-black"
+                      >
+                        {t("scannerManualInput")}
+                      </Button>
+                      <Button onClick={onClose} variant="ghost" className="text-white">
+                        {t("common:cancel")}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
