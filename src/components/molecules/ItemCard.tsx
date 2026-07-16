@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Calendar, Check, MapPin, Minus, Tag } from "lucide-react";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
@@ -113,31 +113,29 @@ export const ItemCard = ({
             </span>
           )}
         </span>
-        <div className="flex items-center gap-1">
-          {!isEmpty && !selectionMode && onQuickConsume && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-7 w-7 shrink-0"
-              aria-label={t("quickConsume")}
-              disabled={isQuickConsuming}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onQuickConsume(item);
-              }}
-            >
-              {isQuickConsuming ? (
-                <Spinner className="h-3.5 w-3.5" />
-              ) : (
-                <Minus className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          )}
-          <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />
-        </div>
+        <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />
       </CardFooter>
     </Card>
+  );
+
+  const handleQuickConsumeClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onQuickConsume?.(item);
+  };
+
+  // クイック消費ボタンは Link(<a>) の兄弟要素として重ねて配置する（button-in-anchorのネスト回避、#511）。
+  const quickConsumeButton = !isEmpty && !selectionMode && onQuickConsume && (
+    <Button
+      variant="outline"
+      size="icon"
+      className="absolute right-2 top-2 z-10 h-11 w-11 shrink-0 bg-background/95 shadow"
+      aria-label={t("quickConsume")}
+      disabled={isQuickConsuming}
+      onClick={handleQuickConsumeClick}
+    >
+      {isQuickConsuming ? <Spinner className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+    </Button>
   );
 
   if (selectionMode) {
@@ -153,9 +151,12 @@ export const ItemCard = ({
   }
 
   return (
-    <Link to="/items/$itemId" params={{ itemId: item.id }}>
-      {cardInner}
-    </Link>
+    <div className="relative h-full">
+      <Link to="/items/$itemId" params={{ itemId: item.id }} className="block h-full">
+        {cardInner}
+      </Link>
+      {quickConsumeButton}
+    </div>
   );
 };
 
