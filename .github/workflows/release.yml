@@ -1,0 +1,41 @@
+name: Release
+
+# Automatic versioning + CHANGELOG generation from Conventional Commits (#351),
+# building on the commitlint gate already enforced in ci.yml (#272).
+#
+# Bumps package.json's version, generates/updates CHANGELOG.md, tags, and
+# creates a GitHub Release on every push to main. No npm publish (private app).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Generate changelog & bump version
+    runs-on: ubuntu-latest
+    if: github.repository == 'toshi-hm/housekeeper'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Generate changelog & bump version
+        run: bunx changelogen --release --push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -18,6 +18,9 @@ jobs:
   audit:
     uses: ./.github/workflows/_audit.yml
 
+  secret-scan:
+    uses: ./.github/workflows/_secret-scan.yml
+
   knip:
     uses: ./.github/workflows/_knip.yml
 

@@ -1,0 +1,27 @@
+name: PR Preview Cleanup
+
+# Deletes the per-PR preview Worker created by pr-preview.yml once the PR is
+# closed (merged or abandoned), so preview Workers don't accumulate.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup-preview:
+    name: Delete preview Worker
+    runs-on: ubuntu-latest
+    if: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' || secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Delete preview Worker
+        uses: cloudflare/wrangler-action@v3
+        continue-on-error: true
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: delete --name housekeeper-pr-${{ github.event.pull_request.number }} --force
