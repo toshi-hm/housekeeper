@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { lotValuesFromForm } from "@/hooks/useShoppingList";
+import { findDuplicatePlannedItem, lotValuesFromForm } from "@/hooks/useShoppingList";
 import type { ItemFormValues } from "@/types/item";
+import type { ShoppingItem } from "@/types/shopping";
 
 const makeFormValues = (overrides: Partial<ItemFormValues> = {}): ItemFormValues => ({
   name: "テスト商品",
@@ -73,5 +74,51 @@ describe("lotValuesFromForm", () => {
     const result = lotValuesFromForm(values);
     expect(result.purchase_date).toBe("2026-01-15");
     expect(result.expiry_date).toBe("2026-07-20");
+  });
+});
+
+const makeShoppingItem = (overrides: Partial<ShoppingItem> = {}): ShoppingItem => ({
+  id: "row-1",
+  user_id: "u-1",
+  name: "牛乳",
+  desired_units: 1,
+  note: null,
+  linked_item_id: null,
+  status: "planned",
+  purchased_at: null,
+  created_item_id: null,
+  created_at: "2026-07-01T00:00:00Z",
+  updated_at: "2026-07-01T00:00:00Z",
+  ...overrides,
+});
+
+describe("findDuplicatePlannedItem", () => {
+  test("同一 linked_item_id を持つ行を重複として検出する (#522, #447)", () => {
+    const rows = [makeShoppingItem({ id: "row-1", name: "牛乳", linked_item_id: "item-1" })];
+    const duplicate = findDuplicatePlannedItem(rows, { name: "牛乳", linked_item_id: "item-1" });
+    expect(duplicate?.id).toBe("row-1");
+  });
+
+  test("linked_item_id が異なれば重複としない", () => {
+    const rows = [makeShoppingItem({ id: "row-1", name: "牛乳", linked_item_id: "item-1" })];
+    const duplicate = findDuplicatePlannedItem(rows, { name: "豆乳", linked_item_id: "item-2" });
+    expect(duplicate).toBeUndefined();
+  });
+
+  test("前後空白・大文字小文字を無視した同名一致で重複を検出する", () => {
+    const rows = [makeShoppingItem({ id: "row-1", name: "Milk", linked_item_id: null })];
+    const duplicate = findDuplicatePlannedItem(rows, { name: "  milk  ", linked_item_id: null });
+    expect(duplicate?.id).toBe("row-1");
+  });
+
+  test("名前が異なり linked_item_id もなければ重複としない", () => {
+    const rows = [makeShoppingItem({ id: "row-1", name: "牛乳", linked_item_id: null })];
+    const duplicate = findDuplicatePlannedItem(rows, { name: "卵", linked_item_id: null });
+    expect(duplicate).toBeUndefined();
+  });
+
+  test("行が空なら重複なし", () => {
+    const duplicate = findDuplicatePlannedItem([], { name: "牛乳", linked_item_id: null });
+    expect(duplicate).toBeUndefined();
   });
 });
