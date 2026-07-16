@@ -12,6 +12,8 @@ interface PurchaseDialogProps {
   onSubmit: (values: ItemFormValues) => void;
   onClose: () => void;
   isSubmitting?: boolean;
+  onPendingFileChange?: (file: File | null) => void;
+  onPendingImageUrlChange?: (url: string | null) => void;
 }
 
 export const PurchaseDialog = ({
@@ -20,6 +22,8 @@ export const PurchaseDialog = ({
   onSubmit,
   onClose,
   isSubmitting = false,
+  onPendingFileChange,
+  onPendingImageUrlChange,
 }: PurchaseDialogProps) => {
   const { t } = useTranslation("shopping");
   const { t: tCommon } = useTranslation("common");
@@ -61,6 +65,8 @@ export const PurchaseDialog = ({
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
           submitLabel={t("createItemFromPurchase")}
+          onPendingFileChange={onPendingFileChange}
+          onPendingImageUrlChange={onPendingImageUrlChange}
         />
       </div>
     </div>
