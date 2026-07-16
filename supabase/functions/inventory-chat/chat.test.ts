@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 
-import { buildContents, buildInventoryContext, isValidGeminiChatResult } from "./gemini.ts";
+import {
+  buildContents,
+  buildGeminiRequestBody,
+  buildInventoryContext,
+  isValidGeminiChatResult,
+} from "./gemini.ts";
 import type { InventoryItem } from "./types.ts";
 
 const makeItem = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
@@ -86,4 +91,11 @@ Deno.test("buildContents - caps history to the most recent turns", () => {
   // 8 capped history turns + 1 new message
   assert.strictEqual(contents.length, 9);
   assert.strictEqual(contents[contents.length - 1].parts[0].text, "now");
+});
+
+// buildGeminiRequestBody
+
+Deno.test("buildGeminiRequestBody - uses thinkingBudget, not thinkingLevel (gemini-2.5-flash only supports thinkingBudget)", () => {
+  const body = buildGeminiRequestBody("卵はある？", [], [makeItem()], []);
+  assert.deepStrictEqual(body.generationConfig?.thinkingConfig, { thinkingBudget: 1024 });
 });
