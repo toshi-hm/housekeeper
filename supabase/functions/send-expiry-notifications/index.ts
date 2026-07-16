@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 import { isAuthorizedCronRequest } from "./auth.ts";
+import { jstDateString, jstNow } from "./date.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,12 +17,6 @@ interface NotificationPreference {
   threshold_days: number;
   notify_at: string | null;
 }
-
-/** JST(UTC+9)基準の「YYYY-MM-DD」と時(0-23)を返す。 */
-const jstNow = () => {
-  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  return { date: jst.toISOString().split("T")[0], hour: jst.getUTCHours() };
-};
 
 interface PushSubscription {
   id: string;
@@ -53,7 +48,7 @@ Deno.serve(async (req: Request) => {
   const resendFrom = Deno.env.get("RESEND_FROM_ADDRESS") ?? "housekeeper <noreply@example.com>";
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const today = new Date().toISOString().split("T")[0];
+  const today = jstDateString();
 
   // pg_cron からの定期実行（?scheduled=true）では、ユーザーごとの notify_at(JST) に
   // 一致する時刻のみ送信し、notification_logs で 1 日 1 通に制限する。
@@ -83,10 +78,8 @@ Deno.serve(async (req: Request) => {
         if (notifyHour !== jst.hour) return;
       }
 
-      // Calculate the threshold date
-      const thresholdDate = new Date();
-      thresholdDate.setDate(thresholdDate.getDate() + pref.threshold_days);
-      const thresholdStr = thresholdDate.toISOString().split("T")[0];
+      // Calculate the threshold date (JST基準)
+      const thresholdStr = jstDateString(pref.threshold_days);
 
       // Fetch expiring items for this user
       const { data: items } = await supabase
