@@ -237,7 +237,7 @@ interface CreateItemInput {
   forceNew?: boolean;
 }
 
-const createItem = async ({
+export const createItem = async ({
   values,
   forceNew = false,
 }: CreateItemInput): Promise<Item & { _revived?: boolean; _stacked?: boolean }> => {
@@ -249,10 +249,10 @@ const createItem = async ({
     if (!forceNew) {
       const stacked = await tryStackToActiveItem(values.barcode, values, userData.user.id);
       if (stacked) return { ...stacked, _stacked: true };
-    }
 
-    const revived = await tryReviveItem(values.barcode, values, userData.user.id);
-    if (revived) return { ...revived, _revived: true };
+      const revived = await tryReviveItem(values.barcode, values, userData.user.id);
+      if (revived) return { ...revived, _revived: true };
+    }
   }
 
   const normalized = normalizeCreateValues(values);
