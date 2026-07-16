@@ -2,12 +2,15 @@ import { Check, ChevronDown, Loader2, Plus, X } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { MasterDataIcon } from "@/components/atoms/MasterDataIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface QuickAddOption {
   value: string;
   label: string;
+  /** lucide icon name (categories/storage_locations.icon), rendered before the label */
+  icon?: string | null;
 }
 
 interface QuickAddSelectProps {
@@ -203,7 +206,10 @@ export const QuickAddSelect = ({
         aria-expanded={isOpen}
         aria-controls={listboxId}
       >
-        <span className={selectedOption ? "text-foreground" : "text-muted-foreground"}>
+        <span
+          className={`flex items-center gap-1.5 ${selectedOption ? "text-foreground" : "text-muted-foreground"}`}
+        >
+          {selectedOption && <MasterDataIcon icon={selectedOption.icon} className="h-3.5 w-3.5" />}
           {selectedOption?.label ?? resolvedPlaceholder}
         </span>
         <ChevronDown
@@ -252,7 +258,10 @@ export const QuickAddSelect = ({
                   onClick={() => handleSelect(option.value)}
                   onKeyDown={(e) => handleOptionKeyDown(e, idx + 1)}
                 >
-                  {option.label}
+                  <span className="flex items-center gap-1.5">
+                    <MasterDataIcon icon={option.icon} className="h-3.5 w-3.5" />
+                    {option.label}
+                  </span>
                   {option.value === value && (
                     <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
                   )}

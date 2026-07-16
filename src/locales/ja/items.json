@@ -87,6 +87,7 @@
   "lowStockBannerDetails": "対象の商品を表示",
   "minimumStock": "最低在庫数アラート",
   "minimumStockHelp": "在庫数がこの数以下になったときにダッシュボードで警告を表示します",
+  "minimumStockNegative": "0以上の数を入力してください",
   "name": "商品名",
   "namePlaceholder": "商品名を入力",
   "noHistory": "消費履歴がありません",
