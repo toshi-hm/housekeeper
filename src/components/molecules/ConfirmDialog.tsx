@@ -52,12 +52,12 @@ export const ConfirmDialog = ({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-desc"
-        className="relative w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+        className="relative w-full max-w-sm rounded-xl bg-background p-6 shadow-xl"
       >
         <h2 id="confirm-dialog-title" className="text-lg font-semibold">
           {title}
         </h2>
-        <p id="confirm-dialog-desc" className="mt-2 text-sm text-gray-600">
+        <p id="confirm-dialog-desc" className="mt-2 text-sm text-muted-foreground">
           {message}
         </p>
         <div className="mt-6 flex justify-end gap-3">
