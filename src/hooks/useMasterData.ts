@@ -9,6 +9,26 @@ import type { Category, StorageLocation } from "@/types/item";
 const CATEGORIES_KEY = ["categories"] as const;
 const LOCATIONS_KEY = ["locations"] as const;
 
+const MAX_NAME_LENGTH = 40;
+
+export class DuplicateNameError extends Error {
+  constructor() {
+    super("Duplicate name");
+    this.name = "DuplicateNameError";
+  }
+}
+
+export class InvalidNameLengthError extends Error {
+  constructor() {
+    super("Name exceeds maximum length");
+    this.name = "InvalidNameLengthError";
+  }
+}
+
+const validateNameLength = (name: string): void => {
+  if (name.length < 1 || name.length > MAX_NAME_LENGTH) throw new InvalidNameLengthError();
+};
+
 // --- Categories ---
 
 const fetchCategories = async (): Promise<Category[]> => {
@@ -20,8 +40,9 @@ const fetchCategories = async (): Promise<Category[]> => {
   return (data ?? []) as Category[];
 };
 
-const createCategory = async (name: string, color?: string | null): Promise<Category> => {
+export const createCategory = async (name: string, color?: string | null): Promise<Category> => {
   requireOnline();
+  validateNameLength(name);
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
@@ -30,35 +51,29 @@ const createCategory = async (name: string, color?: string | null): Promise<Cate
     .select()
     .single();
   if (error) {
-    if (error.code === "23505") {
-      const { data: existing, error: findError } = await supabase
-        .from("categories")
-        .select()
-        .eq("user_id", userData.user.id)
-        .eq("name", name)
-        .single();
-      if (findError) throw findError;
-      if (!existing) throw error;
-      return existing as Category;
-    }
+    if (error.code === "23505") throw new DuplicateNameError();
     throw error;
   }
   return data as Category;
 };
 
-const updateCategory = async (
+export const updateCategory = async (
   id: string,
   name: string,
   color?: string | null,
 ): Promise<Category> => {
   requireOnline();
+  validateNameLength(name);
   const { data, error } = await supabase
     .from("categories")
     .update({ name, color: color ?? null, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") throw new DuplicateNameError();
+    throw error;
+  }
   return data as Category;
 };
 
@@ -101,6 +116,9 @@ export const useCreateCategory = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else if (error instanceof DuplicateNameError)
+        toast(t("settings:duplicateCategoryName"), "error");
+      else if (error instanceof InvalidNameLengthError) toast(t("settings:nameTooLong"), "error");
       else toast(t("unknownError"), "error");
     },
   });
@@ -118,6 +136,9 @@ export const useUpdateCategory = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else if (error instanceof DuplicateNameError)
+        toast(t("settings:duplicateCategoryName"), "error");
+      else if (error instanceof InvalidNameLengthError) toast(t("settings:nameTooLong"), "error");
       else toast(t("unknownError"), "error");
     },
   });
@@ -153,8 +174,9 @@ const fetchStorageLocations = async (): Promise<StorageLocation[]> => {
   return (data ?? []) as StorageLocation[];
 };
 
-const createStorageLocation = async (name: string): Promise<StorageLocation> => {
+export const createStorageLocation = async (name: string): Promise<StorageLocation> => {
   requireOnline();
+  validateNameLength(name);
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
@@ -163,31 +185,25 @@ const createStorageLocation = async (name: string): Promise<StorageLocation> => 
     .select()
     .single();
   if (error) {
-    if (error.code === "23505") {
-      const { data: existing, error: findError } = await supabase
-        .from("storage_locations")
-        .select()
-        .eq("user_id", userData.user.id)
-        .eq("name", name)
-        .single();
-      if (findError) throw findError;
-      if (!existing) throw error;
-      return existing as StorageLocation;
-    }
+    if (error.code === "23505") throw new DuplicateNameError();
     throw error;
   }
   return data as StorageLocation;
 };
 
-const updateStorageLocation = async (id: string, name: string): Promise<StorageLocation> => {
+export const updateStorageLocation = async (id: string, name: string): Promise<StorageLocation> => {
   requireOnline();
+  validateNameLength(name);
   const { data, error } = await supabase
     .from("storage_locations")
     .update({ name, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") throw new DuplicateNameError();
+    throw error;
+  }
   return data as StorageLocation;
 };
 
@@ -229,6 +245,9 @@ export const useCreateStorageLocation = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else if (error instanceof DuplicateNameError)
+        toast(t("settings:duplicateLocationName"), "error");
+      else if (error instanceof InvalidNameLengthError) toast(t("settings:nameTooLong"), "error");
       else toast(t("unknownError"), "error");
     },
   });
@@ -245,6 +264,9 @@ export const useUpdateStorageLocation = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else if (error instanceof DuplicateNameError)
+        toast(t("settings:duplicateLocationName"), "error");
+      else if (error instanceof InvalidNameLengthError) toast(t("settings:nameTooLong"), "error");
       else toast(t("unknownError"), "error");
     },
   });

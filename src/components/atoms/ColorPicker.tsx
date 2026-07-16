@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 const PALETTE = [
   "#ef4444",
   "#f97316",
@@ -23,12 +25,13 @@ export const ColorPicker = ({ value, onChange }: ColorPickerProps) => (
         key={color}
         type="button"
         aria-label={color}
+        aria-pressed={value === color}
         onClick={() => onChange(color)}
-        className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110"
-        style={{
-          backgroundColor: color,
-          borderColor: value === color ? "#000" : "transparent",
-        }}
+        className={cn(
+          "h-7 w-7 rounded-full border-2 border-transparent transition-transform hover:scale-110",
+          value === color && "ring-2 ring-ring ring-offset-2 ring-offset-background",
+        )}
+        style={{ backgroundColor: color }}
       />
     ))}
   </div>

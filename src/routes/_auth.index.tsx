@@ -1,20 +1,39 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Plus, Search, ShoppingCart, SlidersHorizontal } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckSquare,
+  Plus,
+  Search,
+  ShoppingCart,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { BulkActionBar } from "@/components/molecules/BulkActionBar";
+import { BulkMoveDialog } from "@/components/molecules/BulkMoveDialog";
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useConsumeItem } from "@/hooks/useConsumeItem";
-import { type ItemFilters, type ItemSortKey, useItems } from "@/hooks/useItems";
+import { useSignedItemImages } from "@/hooks/useItemImage";
+import {
+  type BulkAction,
+  type ItemFilters,
+  type ItemSortKey,
+  useBulkItemAction,
+  useItems,
+} from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { updateAppBadge } from "@/lib/pwa";
+import { toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus, type Item } from "@/types/item";
 
@@ -26,6 +45,83 @@ const dashboardSearchSchema = z.object({
   loc: z.string().optional().default(""),
   expiry: z.string().optional().default(""),
 });
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+interface SearchInputProps {
+  value: string;
+  placeholder: string;
+  onDebouncedChange: (value: string) => void;
+}
+
+/**
+ * キー入力ごとのURL遷移/Supabase再クエリを避けるため、ローカルstateで入力を受けてからデバウンスする。
+ *
+ * 以前は親で `key={value}` を指定して外部変化(戻る/進む等)に再マウントで追従していたが、
+ * デバウンス確定 → URL更新 → key変化 で入力中にコンポーネントが毎回作り直され、
+ * フォーカスが外れて入力を継続できず、IME変換中は文字が重複する不具合があった (#527)。
+ *
+ * そのため再マウントはやめ、以下で追従する:
+ * - IME変換中 (isComposing) はデバウンス発火を抑止し、変換確定時にまとめて反映する
+ * - 自分が発火した更新の「エコー」はスキップし、外部要因の変化のみローカルstateへ同期する
+ */
+const SearchInput = ({
+  value: externalValue,
+  placeholder,
+  onDebouncedChange,
+}: SearchInputProps) => {
+  const [value, setValue] = useState(externalValue);
+  const isComposingRef = useRef(false);
+  // 最後に emit / 同期した値。自分の更新のエコーと外部変化を区別するために使う
+  const lastSyncedRef = useRef(externalValue);
+  // IME変換確定を検知するためのカウンタ。React 19 は変換中も onChange を発火するため、
+  // 確定時の値が変換中の最終値と同一になり setValue が bail-out してデバウンスが動かない。
+  // 確定のたびにこの値を増やして、値が同一でもデバウンスeffectを再実行させる。
+  const [compositionSeq, setCompositionSeq] = useState(0);
+
+  // 戻る/進む等の外部要因でURLのsearchが変わったときだけローカルstateへ同期する。
+  // 自分がemitした値のエコー (externalValue === lastSyncedRef) では上書きしない。
+  useEffect(() => {
+    if (externalValue !== lastSyncedRef.current) {
+      lastSyncedRef.current = externalValue;
+      setValue(externalValue);
+    }
+  }, [externalValue]);
+
+  useEffect(() => {
+    // IME変換中はまだ確定していないため、デバウンス発火しない
+    if (isComposingRef.current) return;
+    if (value === lastSyncedRef.current) return;
+    const timer = setTimeout(() => {
+      lastSyncedRef.current = value;
+      onDebouncedChange(value);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, compositionSeq]);
+
+  return (
+    <div className="relative flex-1">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        className="pl-9"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onCompositionStart={() => {
+          isComposingRef.current = true;
+        }}
+        onCompositionEnd={(e) => {
+          isComposingRef.current = false;
+          // 変換確定後の値でstateを更新し、デバウンスeffectを発火させる。
+          // 値が変換中の最終値と同一でも、compositionSeq を増やして確実に再発火させる。
+          setValue(e.currentTarget.value);
+          setCompositionSeq((n) => n + 1);
+        }}
+      />
+    </div>
+  );
+};
 
 export const DashboardPage = () => {
   const { t } = useTranslation("items");
@@ -60,6 +156,31 @@ export const DashboardPage = () => {
     return saved !== null ? saved === "true" : true;
   });
   const [quickConsumingId, setQuickConsumingId] = useState<string | null>(null);
+
+  // 一括操作（#359）
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkMoveDialog, setBulkMoveDialog] = useState<"location" | "category" | null>(null);
+  const [bulkConfirm, setBulkConfirm] = useState<"consume" | "delete" | null>(null);
+  const bulkAction = useBulkItemAction();
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkMoveDialog(null);
+    setBulkConfirm(null);
+  };
+
+  const runBulkAction = async (action: BulkAction, targetId?: string | null) => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    try {
+      await bulkAction.mutateAsync({ action, ids, targetId });
+      exitSelectionMode();
+    } catch {
+      // Error toast is handled by useBulkItemAction.onError
+    }
+  };
 
   const handleQuickConsume = async (item: Item) => {
     if (quickConsumingId) return;
@@ -122,19 +243,13 @@ export const DashboardPage = () => {
   }, [filtered.length]);
 
   const visibleItems = filtered.slice(0, displayCount);
+  const { data: imageUrlsByPath } = useSignedItemImages(
+    visibleItems.map((item) => item.image_path),
+  );
 
-  const expiredCount = baseFiltered.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
-  ).length;
-  const expiringSoonCount = baseFiltered.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
-  ).length;
-  const urgentCount = expiredCount + expiringSoonCount;
-
-  useEffect(() => {
-    void updateAppBadge(urgentCount);
-  }, [urgentCount]);
-
+  // 期限バナー（見出し件数・アコーディオン内訳・一括追加ボタン）は在庫が残っている
+  // (units > 0) 期限切れ/期限間近アイテムのみを対象にする。見出しの urgentCount も
+  // この units > 0 の集合から算出し、内訳・ボタン対象と件数を一致させる (#450)。
   const urgentItems = items.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
@@ -145,6 +260,20 @@ export const DashboardPage = () => {
   const expiringSoonItems = urgentItems.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   );
+  const urgentCount = urgentItems.length;
+
+  useEffect(() => {
+    void updateAppBadge(urgentCount);
+  }, [urgentCount]);
+
+  // クイックフィルターチップの件数。チップをタップしたときに表示される filtered
+  // (baseFiltered を期限状態で絞ったもの) と一致させるため baseFiltered 基準で数える。
+  const expiredCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
+  ).length;
+  const expiringSoonCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
+  ).length;
 
   const lowStockItems = baseFiltered.filter(
     (item) =>
@@ -182,20 +311,61 @@ export const DashboardPage = () => {
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {filtered.length === items.length
-              ? t("itemCountLabel", { count: items.length })
-              : t("itemCountLabelFiltered", { filtered: filtered.length, total: items.length })}
+            {filtered.length === baseFiltered.length
+              ? t("itemCountLabel", { count: baseFiltered.length })
+              : t("itemCountLabelFiltered", {
+                  filtered: filtered.length,
+                  total: baseFiltered.length,
+                })}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/items/new">
-            <Button size="sm">
-              <Plus className="mr-1 h-4 w-4" />
-              {t("addItem")}
+          {selectionMode ? (
+            <Button size="sm" variant="outline" onClick={exitSelectionMode}>
+              <X className="mr-1 h-4 w-4" />
+              {tc("cancel")}
             </Button>
-          </Link>
+          ) : (
+            <>
+              {items.length > 0 && (
+                <Button size="sm" variant="outline" onClick={() => setSelectionMode(true)}>
+                  <CheckSquare className="mr-1 h-4 w-4" />
+                  {t("bulkSelect")}
+                </Button>
+              )}
+              <Link to="/items/new">
+                <Button size="sm">
+                  <Plus className="mr-1 h-4 w-4" />
+                  {t("addItem")}
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Selection mode sub-header */}
+      {selectionMode && (
+        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
+          <span className="text-sm font-medium">
+            {t("bulkSelectedCount", { count: selectedIds.size })}
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              setSelectedIds(
+                toggleSelectAll(
+                  selectedIds,
+                  filtered.map((i) => i.id),
+                ),
+              )
+            }
+          >
+            {selectedIds.size === filtered.length ? t("bulkDeselectAll") : t("bulkSelectAll")}
+          </Button>
+        </div>
+      )}
 
       {/* Expiry alert banner */}
       {urgentCount > 0 && (
@@ -300,15 +470,11 @@ export const DashboardPage = () => {
 
       {/* Search */}
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder={t("searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        <SearchInput
+          value={search}
+          placeholder={t("searchPlaceholder")}
+          onDebouncedChange={setSearch}
+        />
         <Button
           variant={showFilters ? "default" : "outline"}
           size="icon"
@@ -482,12 +648,82 @@ export const DashboardPage = () => {
                 onQuickConsume={(i) => {
                   void handleQuickConsume(i);
                 }}
+                imageUrl={item.image_path ? imageUrlsByPath?.[item.image_path] : undefined}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(item.id)}
+                onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
               />
             ))}
           </div>
           <div ref={sentinelRef} className="h-1" />
         </>
       )}
+
+      {/* Bulk operation bar & dialogs (#359) */}
+      {selectionMode && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          disabled={bulkAction.isPending}
+          onChangeLocation={() => setBulkMoveDialog("location")}
+          onChangeCategory={() => setBulkMoveDialog("category")}
+          onConsume={() => setBulkConfirm("consume")}
+          onDelete={() => setBulkConfirm("delete")}
+        />
+      )}
+
+      <BulkMoveDialog
+        open={bulkMoveDialog === "location"}
+        title={t("bulkChangeLocation")}
+        noneLabel={t("bulkNoneOption")}
+        confirmLabel={tc("save")}
+        cancelLabel={tc("cancel")}
+        options={locations.map((l) => ({ id: l.id, name: l.name }))}
+        isSubmitting={bulkAction.isPending}
+        onConfirm={(targetId) => {
+          setBulkMoveDialog(null);
+          void runBulkAction("updateLocation", targetId);
+        }}
+        onClose={() => setBulkMoveDialog(null)}
+      />
+      <BulkMoveDialog
+        open={bulkMoveDialog === "category"}
+        title={t("bulkChangeCategory")}
+        noneLabel={t("bulkNoneOption")}
+        confirmLabel={tc("save")}
+        cancelLabel={tc("cancel")}
+        options={categories.map((c) => ({ id: c.id, name: c.name }))}
+        isSubmitting={bulkAction.isPending}
+        onConfirm={(targetId) => {
+          setBulkMoveDialog(null);
+          void runBulkAction("updateCategory", targetId);
+        }}
+        onClose={() => setBulkMoveDialog(null)}
+      />
+      <ConfirmDialog
+        open={bulkConfirm === "consume"}
+        title={t("bulkConsume")}
+        message={t("bulkConsumeConfirm", { count: selectedIds.size })}
+        confirmLabel={t("bulkConsume")}
+        isConfirming={bulkAction.isPending}
+        onConfirm={() => {
+          setBulkConfirm(null);
+          void runBulkAction("consume");
+        }}
+        onCancel={() => setBulkConfirm(null)}
+      />
+      <ConfirmDialog
+        open={bulkConfirm === "delete"}
+        title={t("bulkDelete")}
+        message={t("bulkDeleteConfirm", { count: selectedIds.size })}
+        confirmLabel={tc("delete")}
+        variant="destructive"
+        isConfirming={bulkAction.isPending}
+        onConfirm={() => {
+          setBulkConfirm(null);
+          void runBulkAction("delete");
+        }}
+        onCancel={() => setBulkConfirm(null)}
+      />
     </div>
   );
 };

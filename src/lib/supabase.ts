@@ -378,6 +378,117 @@ export interface Database {
         };
         Relationships: [];
       };
+      shopping_list_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      shopping_list_template_items: {
+        Row: {
+          id: string;
+          template_id: string;
+          user_id: string;
+          name: string;
+          desired_units: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          user_id: string;
+          name: string;
+          desired_units?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          user_id?: string;
+          name?: string;
+          desired_units?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_template_items_template_id_fkey";
+            columns: ["template_id"];
+            referencedRelation: "shopping_list_templates";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      item_tags: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          color: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          color?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          color?: string | null;
+        };
+        Relationships: [];
+      };
+      items_to_tags: {
+        Row: {
+          item_id: string;
+          tag_id: string;
+          user_id: string;
+        };
+        Insert: {
+          item_id: string;
+          tag_id: string;
+          user_id: string;
+        };
+        Update: {
+          item_id?: string;
+          tag_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "items_to_tags_item_id_fkey";
+            columns: ["item_id"];
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "items_to_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            referencedRelation: "item_tags";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

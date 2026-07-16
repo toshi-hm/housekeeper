@@ -39,6 +39,19 @@ const matchesItemFilters = (item: Item, filters: ItemFilters): boolean => {
   return true;
 };
 
+/**
+ * PostgREST の `.or()` フィルタ構文で予約されている文字（`,` `(` `)`）を含む検索語でも
+ * 安全に渡せるよう、値をダブルクォートで囲みエスケープする。
+ * （`\` と `"` はダブルクォート内で意味を持つためエスケープが必要）
+ */
+export const escapeOrFilterValue = (value: string) =>
+  value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+export const buildNameOrBarcodeSearchFilter = (search: string): string => {
+  const escaped = escapeOrFilterValue(search);
+  return `name.ilike."%${escaped}%",barcode.ilike."%${escaped}%"`;
+};
+
 const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
@@ -46,7 +59,7 @@ const fetchItems = async (
   let query = supabase.from("items").select("*").is("deleted_at", null);
 
   if (filters.search) {
-    query = query.or(`name.ilike.%${filters.search}%,barcode.ilike.%${filters.search}%`);
+    query = query.or(buildNameOrBarcodeSearchFilter(filters.search));
   }
   if (filters.categoryId) {
     query = query.eq("category_id", filters.categoryId);
@@ -66,8 +79,13 @@ const fetchItems = async (
   return (data ?? []) as Item[];
 };
 
-const fetchItem = async (id: string): Promise<Item> => {
-  const { data, error } = await supabase.from("items").select("*").eq("id", id).single();
+export const fetchItem = async (id: string): Promise<Item> => {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .single();
   if (error) throw error;
   return data as Item;
 };
@@ -137,12 +155,12 @@ export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
  * バーコードが一致するアクティブなアイテムを探す。
  * 見つかった場合は新規ロットを追加してそのアイテムを返す。なければ null。
  */
-const tryStackToActiveItem = async (
+export const tryStackToActiveItem = async (
   barcode: string,
   values: ItemFormValues,
   userId: string,
 ): Promise<Item | null> => {
-  const { data } = await supabase
+  const { data, error: findError } = await supabase
     .from("items")
     .select("*")
     .eq("user_id", userId)
@@ -150,6 +168,7 @@ const tryStackToActiveItem = async (
     .is("deleted_at", null)
     .limit(1)
     .maybeSingle();
+  if (findError) throw findError;
   if (!data) return null;
 
   const item = data as Item;
@@ -161,7 +180,12 @@ const tryStackToActiveItem = async (
   });
   await syncItemAggregate(item.id);
 
-  const { data: updated } = await supabase.from("items").select("*").eq("id", item.id).single();
+  const { data: updated, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("id", item.id)
+    .single();
+  if (error) throw error;
   return updated as Item;
 };
 
@@ -310,6 +334,43 @@ export const useItem = (id: string) =>
     enabled: !!id,
   });
 
+/**
+ * items系リストキャッシュ（フィルタ・ソート違いの複数クエリ）へ、フィルタ条件を尊重して1件を反映する。
+ * 条件に一致しなければ（既存キャッシュから）除外し、一致すれば upsert する。
+ * 新規作成・更新のどちらの成功ハンドラからも同じ挙動にするため共通化している。
+ */
+export const applyItemToListCaches = (qc: ReturnType<typeof useQueryClient>, item: Item): void => {
+  const listQueries = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
+  for (const [queryKey, cachedItems] of listQueries) {
+    if (!Array.isArray(cachedItems) || !Array.isArray(queryKey)) continue;
+    const [, rawFilters, rawSort] = queryKey;
+    const sort = rawSort === "expiry_date" || rawSort === "purchase_date" ? rawSort : "created_at";
+
+    if (rawFilters === "with-expiry") {
+      const next =
+        !item.deleted_at && item.expiry_date
+          ? upsertItemInListCache(cachedItems, item, "expiry_date")
+          : cachedItems.filter((cached) => cached.id !== item.id);
+      qc.setQueryData(queryKey, next);
+      continue;
+    }
+
+    const filters =
+      rawFilters && typeof rawFilters === "object"
+        ? (rawFilters as ItemFilters)
+        : ({} as ItemFilters);
+
+    if (matchesItemFilters(item, filters)) {
+      qc.setQueryData(queryKey, upsertItemInListCache(cachedItems, item, sort));
+    } else {
+      qc.setQueryData(
+        queryKey,
+        cachedItems.filter((cached) => cached.id !== item.id),
+      );
+    }
+  }
+};
+
 export const useCreateItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -319,9 +380,7 @@ export const useCreateItem = () => {
     onSuccess: async (data) => {
       const result = data as Item & { _revived?: boolean; _stacked?: boolean };
 
-      qc.setQueriesData<Item[]>({ queryKey: ITEMS_KEY }, (old) =>
-        upsertItemInListCache(old, result),
-      );
+      applyItemToListCaches(qc, result);
       qc.setQueryData<Item>([...ITEMS_KEY, result.id], result);
 
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
@@ -347,37 +406,7 @@ export const useUpdateItem = (id: string) => {
     mutationFn: (values: Partial<ItemFormValues>) => updateItem(id, values),
     onSuccess: async (updatedItem) => {
       qc.setQueryData<Item>([...ITEMS_KEY, updatedItem.id], updatedItem);
-
-      const listQueries = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
-      for (const [queryKey, cachedItems] of listQueries) {
-        if (!Array.isArray(cachedItems) || !Array.isArray(queryKey)) continue;
-        const [, rawFilters, rawSort] = queryKey;
-        const sort =
-          rawSort === "expiry_date" || rawSort === "purchase_date" ? rawSort : "created_at";
-
-        if (rawFilters === "with-expiry") {
-          const next =
-            !updatedItem.deleted_at && updatedItem.expiry_date
-              ? upsertItemInListCache(cachedItems, updatedItem, "expiry_date")
-              : cachedItems.filter((item) => item.id !== updatedItem.id);
-          qc.setQueryData(queryKey, next);
-          continue;
-        }
-
-        const filters =
-          rawFilters && typeof rawFilters === "object"
-            ? (rawFilters as ItemFilters)
-            : ({} as ItemFilters);
-
-        if (matchesItemFilters(updatedItem, filters)) {
-          qc.setQueryData(queryKey, upsertItemInListCache(cachedItems, updatedItem, sort));
-        } else {
-          qc.setQueryData(
-            queryKey,
-            cachedItems.filter((item) => item.id !== updatedItem.id),
-          );
-        }
-      }
+      applyItemToListCaches(qc, updatedItem);
 
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
@@ -411,3 +440,93 @@ export const useItemsWithExpiry = () =>
     queryFn: fetchItemsWithExpiry,
     staleTime: 30_000,
   });
+
+// --- Bulk operations (#359) ---
+
+/** 複数アイテムの保管場所 / カテゴリを一括更新する。 */
+const bulkUpdateItems = async (
+  ids: string[],
+  values: Pick<Partial<ItemFormValues>, "category_id" | "storage_location_id">,
+): Promise<void> => {
+  requireOnline();
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from("items")
+    .update({ ...normalizeUpdateValues(values), updated_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) throw error;
+};
+
+/** 複数アイテムをソフトデリートする。 */
+const bulkSoftDeleteItems = async (ids: string[]): Promise<void> => {
+  requireOnline();
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from("items")
+    .update({ deleted_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) throw error;
+};
+
+/** 複数アイテムを全消費（units=0）にする。ロットを削除して在庫を 0 にリセットする。 */
+const bulkConsumeItems = async (ids: string[]): Promise<void> => {
+  requireOnline();
+  if (ids.length === 0) return;
+  const { error: lotError } = await supabase.from("item_lots").delete().in("item_id", ids);
+  if (lotError) throw lotError;
+  const { error } = await supabase
+    .from("items")
+    .update({
+      units: 0,
+      opened_remaining: null,
+      expiry_date: null,
+      updated_at: new Date().toISOString(),
+    })
+    .in("id", ids);
+  if (error) throw error;
+};
+
+export type BulkAction = "updateLocation" | "updateCategory" | "consume" | "delete";
+
+interface BulkActionInput {
+  action: BulkAction;
+  ids: string[];
+  /** updateLocation / updateCategory のときの対象ID（null = 未設定にする） */
+  targetId?: string | null;
+}
+
+export const useBulkItemAction = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation(["common", "items"]);
+  return useMutation({
+    mutationFn: async ({ action, ids, targetId = null }: BulkActionInput) => {
+      switch (action) {
+        case "updateLocation":
+          await bulkUpdateItems(ids, { storage_location_id: targetId });
+          break;
+        case "updateCategory":
+          await bulkUpdateItems(ids, { category_id: targetId });
+          break;
+        case "consume":
+          await bulkConsumeItems(ids);
+          break;
+        case "delete":
+          await bulkSoftDeleteItems(ids);
+          break;
+      }
+      return { action, count: ids.length };
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: LOTS_KEY, refetchType: "all" }),
+      ]);
+      toast(t("items:bulkActionSuccess"), "success");
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
+      else toast(t("common:unknownError"), "error");
+    },
+  });
+};

@@ -38,8 +38,13 @@
 - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`
 - `RESEND_API_KEY`（Email プロバイダ）
 - `RESEND_FROM_ADDRESS`
+- `CRON_SECRET`（`send-expiry-notifications` の呼び出し元認証用の共有シークレット）
 
 クライアント側には `VITE_VAPID_PUBLIC_KEY` を埋め込み、購読作成時に使用。
+
+### `send-expiry-notifications` の認証
+
+この Function は `pg_cron` からのみ呼ばれることを想定した非対話的エンドポイントであり、エンドユーザーの JWT を持たない。そのため呼び出し元は `X-Cron-Secret` ヘッダーに Edge Function 側の環境変数 `CRON_SECRET` と同じ値を含める必要があり、一致しない場合は 401 を返す。`pg_cron` からのスケジュール発火は `net.http_post` の `headers` 引数で `X-Cron-Secret` を付与する。
 
 ## 配信ロジック
 
@@ -83,8 +88,21 @@ Service Worker は `vite-plugin-pwa` の `injectManifest` 戦略で書く（PWA 
 - `pg_cron` でスケジュール
 - VAPID 鍵生成と環境変数設定の手順を README に追記
 
+## 定期送信（pg_cron + pg_net）#354
+
+- `pg_cron` で **毎時** `send-expiry-notifications?scheduled=true` を呼び出す（`pg_net.http_post`）。
+- Edge Function は `scheduled=true` のとき、各ユーザーの `notification_preferences.notify_at`（JST）の「時」と
+  現在時刻(JST)が一致する場合のみ送信する。これにより「朝7時」などユーザー指定時刻に配信できる。
+- `notification_logs(user_id, sent_on)` の UNIQUE 制約 + `ignoreDuplicates` upsert で**1 ユーザー 1 日 1 通**に制限。
+- 手動呼び出し（クエリなし）は従来どおり全有効ユーザーへ即時送信（デバッグ用途）。
+- `X-Cron-Secret` ヘッダーによる呼び出し元認証（#444）を pg_net の呼び出しにも付与する。
+- セットアップ:
+  - マイグレーション `20260628000002_create_notification_logs.sql` / `20260628000003_schedule_expiry_notifications.sql` / `20260712000001_add_cron_secret_to_expiry_notifications.sql`
+  - Vault に `project_url` / `service_role_key` / `cron_secret` を登録（`select vault.create_secret(...)`）。
+  - Edge Function 側に `supabase secrets set CRON_SECRET=<cron_secret と同じ値>` を設定。
+
 ## Backlog
 
-- ユーザータイムゾーン対応
+- ユーザータイムゾーン対応（現状は JST 固定）
 - 通知種別の細分化（期限切れ / 在庫切れ / 補充提案）
 - アプリ内通知センター

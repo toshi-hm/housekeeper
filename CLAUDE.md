@@ -54,11 +54,40 @@ Read the relevant spec file before implementing any feature.
 
 ### issue-sync Skill（自動発動）
 
-以下のいずれかに該当するときは **必ず** `.claude/skills/issue-sync/SKILL.md` を読み込んで実行すること:
+以下のいずれかに該当するときは **必ず** `.claude/skills/project/issue-sync/SKILL.md` を読み込んで実行すること:
 
 - 「PLANS.md を GitHub と同期」「issue を起票して」「未起票タスクを Issue 化」など、PLANS.md と GitHub Issues の同期を求められた
 - 「issue-sync」「issue sync」という言葉が出た
 - PLANS.md のチェックボックスを更新した後に「Issues に反映して」と言われた
+
+## Skills
+
+`.claude/skills/` に定期作業のスキルを同梱している。該当する依頼が来たら **対応する SKILL.md を読み込んでから** 作業すること。
+
+- 実体はカテゴリ別ディレクトリ（`project/` = このリポジトリ固有、`dev/` = 開発系汎用、`life/` = 生活系汎用）に置き、
+  `.claude/skills/` 直下には discovery 用のシンボリックリンクを置いている（スキル追加時はリンクも張ること）
+- 各スキルは汎用コア（SKILL.md）+ プロジェクト設定（PROJECT.md、任意）の 2 層構造で、他リポジトリへコピーして再利用できる
+- 設計方針とカタログは `docs/skills/README.md` を参照
+
+| スキル              | 分類    | 使いどき                                                      |
+| ------------------- | ------- | ------------------------------------------------------------- |
+| `issue-sync`        | project | PLANS.md ⇔ GitHub Issues の同期（上記参照）                   |
+| `react-component`   | dev     | 新規コンポーネント作成（Atomic 分類 → 実装 → Story → テスト） |
+| `ts-quality`        | dev     | TypeScript の実装・リファクタリング（strict 規約の適用）      |
+| `unit-test`         | dev     | 単体テストの作成・修正（bun test 基盤）                       |
+| `pwa-doctor`        | dev     | PWA / オフライン / Service Worker の診断・修正                |
+| `uiux-review`       | dev     | UI/UX・アクセシビリティのレビュー                             |
+| `feature-proposal`  | dev     | 新機能の提案 → spec ドラフト → PLANS.md 反映                  |
+| `systematic-debug`  | dev     | バグ調査・体系的デバッグ（再現 → 切り分け → 修正 → 回帰防止） |
+| `perf-audit`        | dev     | パフォーマンス診断と改善（計測 → ボトルネック → 検証）        |
+| `dependency-update` | dev     | 依存ライブラリの安全な更新（段階的 + 検証）                   |
+| `git-workflow`      | dev     | コミット整理・メッセージ・PR 説明の作成                       |
+| `recipe-from-stock` | life    | 在庫から献立・レシピ提案                                      |
+| `pantry-review`     | life    | 週次の在庫・期限・食品ロスレビュー                            |
+| `travel-planner`    | life    | 旅行・おでかけの行程・持ち物・予算プラン（完全汎用）          |
+| `household-budget`  | life    | 家計の振り返り・節約提案（完全汎用）                          |
+| `cleaning-planner`  | life    | 掃除・片付けの計画とチェックリスト（完全汎用）                |
+| `formal-writing`    | life    | 日本語フォーマル文書・連絡文の作成（完全汎用）                |
 
 ## Commands
 

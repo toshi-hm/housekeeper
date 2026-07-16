@@ -5,8 +5,10 @@ import {
   DEFAULT_EXPIRY_WARNING_DAYS,
   formatRemaining,
   getExpiryStatus,
+  getLotRemainingAmount,
   itemFormSchema,
   itemLotSchema,
+  roundFloat,
 } from "./item";
 
 // --- itemFormSchema ---
@@ -138,6 +140,30 @@ describe("formatRemaining", () => {
   });
 });
 
+// --- getLotRemainingAmount ---
+
+describe("getLotRemainingAmount", () => {
+  test("all sealed: units × content_amount", () => {
+    expect(getLotRemainingAmount(3, 1000, null)).toBe(3000);
+  });
+
+  test("one opened unit: (units-1) × amount + opened_remaining", () => {
+    expect(getLotRemainingAmount(3, 1000, 350)).toBe(2350);
+  });
+
+  test("units=0 and opened_remaining=null => 0 (fully depleted)", () => {
+    expect(getLotRemainingAmount(0, 500, null)).toBe(0);
+  });
+
+  test("units=1 and opened_remaining=0 => 0 (opened package used up)", () => {
+    expect(getLotRemainingAmount(1, 500, 0)).toBe(0);
+  });
+
+  test("units=2 and opened_remaining=0 => remaining sealed unit still counts", () => {
+    expect(getLotRemainingAmount(2, 500, 0)).toBe(500);
+  });
+});
+
 // --- getExpiryStatus ---
 
 describe("getExpiryStatus", () => {
@@ -177,6 +203,20 @@ describe("getExpiryStatus", () => {
   test("custom warningDays", () => {
     expect(getExpiryStatus(fmt(addDays(5)), 7)).toBe("expiring-soon");
     expect(getExpiryStatus(fmt(addDays(8)), 7)).toBe("ok");
+  });
+});
+
+// --- roundFloat ---
+
+describe("roundFloat", () => {
+  test("removes native floating-point noise", () => {
+    expect(0.1 * 3).not.toBe(0.3);
+    expect(roundFloat(0.1 * 3)).toBe(0.3);
+  });
+
+  test("leaves already-precise values unchanged", () => {
+    expect(roundFloat(1.5)).toBe(1.5);
+    expect(roundFloat(0)).toBe(0);
   });
 });
 

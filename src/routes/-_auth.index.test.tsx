@@ -5,7 +5,8 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
@@ -146,6 +147,28 @@ describe("DashboardPage", () => {
     expect(queryByText(URGENT_BANNER_RE)).toBeNull();
   });
 
+  it("hideEmpty=off でも在庫0の期限切れは警告バナー見出し件数に含めない (#450)", async () => {
+    // 使い切り在庫を表示（hideEmpty=off）にした状態で、在庫あり1件＋在庫0の1件が
+    // ともに期限切れのとき、見出し件数は在庫あり(units>0)の1件のみと一致すべき。
+    localStorage.setItem("dashboard.hideEmpty", "false");
+    try {
+      itemsspy.mockReturnValue({
+        data: [
+          makeItem({ id: "in-stock", expiry_date: "2000-01-01", units: 2 }),
+          makeItem({ id: "empty", expiry_date: "2000-01-01", units: 0 }),
+        ],
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof useItemsModule.useItems>);
+      const { getByText, queryByText } = await renderPage();
+      // 在庫あり1件のみが見出しに反映され、内訳・一括追加ボタンの対象件数と一致する
+      expect(getByText(/1 item is expired or expiring soon|1件の在庫が期限切れ/)).not.toBeNull();
+      expect(queryByText(/2 items are expired or expiring soon|2件の在庫が期限切れ/)).toBeNull();
+    } finally {
+      localStorage.removeItem("dashboard.hideEmpty");
+    }
+  });
+
   it("期限フィルターを「正常」にしても期限切れ警告バナーが表示され続ける (#391)", async () => {
     itemsspy.mockReturnValue({
       data: [
@@ -173,5 +196,49 @@ describe("DashboardPage", () => {
     // filtered には ok アイテムのみが入るが、urgentItems は全アイテムから計算されるため
     // 期限切れアイテムがある警告バナーは引き続き表示されるべき
     expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
+  });
+
+  it("検索欄への入力はデバウンスされ、キー入力ごとにuseItemsを再クエリしない (#452)", async () => {
+    const user = userEvent.setup();
+    const { getByPlaceholderText } = await renderPage();
+
+    const searchInput = getByPlaceholderText(/search by name|商品名・バーコードで検索/i);
+    await user.type(searchInput, "milk");
+
+    // デバウンス時間(300ms)内はuseItemsに新しいsearchがまだ渡らない
+    const lastCallRightAfterTyping = itemsspy.mock.calls.at(-1)?.[0] as
+      | { search?: string }
+      | undefined;
+    expect(lastCallRightAfterTyping?.search).not.toBe("milk");
+
+    // デバウンス完了後、URLに反映されuseItemsが新しいsearchで呼ばれる
+    await waitFor(
+      () => {
+        const lastCall = itemsspy.mock.calls.at(-1)?.[0] as { search?: string } | undefined;
+        expect(lastCall?.search).toBe("milk");
+      },
+      { timeout: 2000 },
+    );
+  });
+
+  it("検索がデバウンス確定してもフォーカスが外れない（再マウントしない） (#527)", async () => {
+    const user = userEvent.setup();
+    const { getByPlaceholderText } = await renderPage();
+
+    const searchInput = getByPlaceholderText(
+      /search by name|商品名・バーコードで検索/i,
+    ) as HTMLInputElement;
+    searchInput.focus();
+    await user.type(searchInput, "milk");
+
+    // デバウンス確定 → URL更新 → 再レンダリング後もフォーカスが保持されている
+    await waitFor(
+      () => {
+        const lastCall = itemsspy.mock.calls.at(-1)?.[0] as { search?: string } | undefined;
+        expect(lastCall?.search).toBe("milk");
+      },
+      { timeout: 2000 },
+    );
+    expect(document.activeElement).toBe(searchInput);
   });
 });

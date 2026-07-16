@@ -40,6 +40,9 @@ const labels = {
   close: "閉じる",
   noItemsOnDate: "この日に期限を迎えるアイテムはありません",
   expiryItemsOnDate: (date: string) => `${date} の期限アイテム`,
+  legendExpired: "期限切れ",
+  legendSoon: "期限間近",
+  legendOk: "期限内",
 };
 
 describe("ExpiryCalendar", () => {

@@ -6,9 +6,11 @@
     "src/test/setup.ts",
     "src/mocks/supabase.ts",
     "src/**/*.test.{ts,tsx}",
-    "src/**/*.stories.tsx"
+    "src/**/*.stories.tsx",
+    "playwright.config.ts",
+    "e2e/**/*.spec.ts"
   ],
-  "project": ["src/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["tailwindcss", "i18next-parser"],
+  "project": ["src/**/*.{ts,tsx}", "e2e/**/*.ts"],
+  "ignoreDependencies": ["tailwindcss", "i18next-parser", "@stryker-mutator/command-runner"],
   "ignoreBinaries": ["wait-on"]
 }

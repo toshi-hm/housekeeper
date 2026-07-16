@@ -1,6 +1,7 @@
+import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, test } from "bun:test";
 
-import { normalizeUpdateValues } from "@/hooks/useItems";
+import { applyItemToListCaches, normalizeUpdateValues } from "@/hooks/useItems";
 import { upsertItemInListCache } from "@/lib/itemCache";
 import type { Item } from "@/types/item";
 
@@ -82,6 +83,56 @@ describe("upsertItemInListCache", () => {
     upsertItemInListCache(original, makeItem({ id: "new-item" }));
     expect(original).toBe(originalRef);
     expect(original).toHaveLength(1);
+  });
+});
+
+describe("applyItemToListCaches", () => {
+  const ITEMS_KEY = ["items"] as const;
+
+  test("新規作成時、フィルタ条件に一致しないキャッシュ済み一覧には追加しない (#435)", () => {
+    const qc = new QueryClient();
+    const categoryAQuery = [...ITEMS_KEY, { categoryId: "cat-a" }, "created_at"];
+    const existing = makeItem({ id: "existing", category_id: "cat-a" });
+    qc.setQueryData(categoryAQuery, [existing]);
+
+    const created = makeItem({ id: "new-item", category_id: "cat-b" });
+    applyItemToListCaches(qc, created);
+
+    expect(qc.getQueryData<Item[]>(categoryAQuery)).toEqual([existing]);
+  });
+
+  test("新規作成時、フィルタ条件に一致するキャッシュ済み一覧には追加する", () => {
+    const qc = new QueryClient();
+    const categoryAQuery = [...ITEMS_KEY, { categoryId: "cat-a" }, "created_at"];
+    const existing = makeItem({ id: "existing", category_id: "cat-a" });
+    qc.setQueryData(categoryAQuery, [existing]);
+
+    const created = makeItem({ id: "new-item", category_id: "cat-a" });
+    applyItemToListCaches(qc, created);
+
+    expect(qc.getQueryData<Item[]>(categoryAQuery)).toEqual([existing, created]);
+  });
+
+  test("有効期限なしの新規アイテムはwith-expiry一覧に追加しない", () => {
+    const qc = new QueryClient();
+    const withExpiryQuery = [...ITEMS_KEY, "with-expiry"];
+    qc.setQueryData(withExpiryQuery, []);
+
+    const created = makeItem({ id: "new-item", expiry_date: null });
+    applyItemToListCaches(qc, created);
+
+    expect(qc.getQueryData<Item[]>(withExpiryQuery)).toEqual([]);
+  });
+
+  test("有効期限ありの新規アイテムはwith-expiry一覧に追加する", () => {
+    const qc = new QueryClient();
+    const withExpiryQuery = [...ITEMS_KEY, "with-expiry"];
+    qc.setQueryData(withExpiryQuery, []);
+
+    const created = makeItem({ id: "new-item", expiry_date: "2026-02-01" });
+    applyItemToListCaches(qc, created);
+
+    expect(qc.getQueryData<Item[]>(withExpiryQuery)).toEqual([created]);
   });
 });
 

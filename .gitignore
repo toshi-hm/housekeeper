@@ -26,8 +26,16 @@ __diff__
 reg-report.html
 reg.json
 
+# Playwright E2E
+test-results
+playwright-report
+/playwright/.cache
+
 # Supabase CLI temp files
 supabase/.temp/
+
+# Stryker mutation testing reports/temp
+reports/
 
 # Serena MCP local metadata
 .serena/

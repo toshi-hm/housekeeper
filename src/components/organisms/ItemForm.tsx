@@ -1,5 +1,5 @@
 import { Barcode, Loader2, Search } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ImageUploader } from "@/components/molecules/ImageUploader";
@@ -35,6 +35,8 @@ interface ItemFormProps {
   onPendingImageUrlChange?: (url: string | null) => void;
   /** Called after a barcode is scanned or manually looked up */
   onBarcodeScanned?: (barcode: string, source: "db" | "api" | null) => void;
+  /** カテゴリ・保管場所の下に差し込む追加フィールド（タグ選択など） */
+  extraFields?: ReactNode;
 }
 
 export const ItemForm = ({
@@ -45,6 +47,7 @@ export const ItemForm = ({
   onPendingFileChange,
   onPendingImageUrlChange,
   onBarcodeScanned,
+  extraFields,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
   const { t: ts } = useTranslation("settings");
@@ -80,6 +83,7 @@ export const ItemForm = ({
   const [nameError, setNameError] = useState("");
   const [unitsError, setUnitsError] = useState("");
   const [contentAmountError, setContentAmountError] = useState("");
+  const [minimumStockError, setMinimumStockError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
@@ -195,6 +199,14 @@ export const ItemForm = ({
     const parsedContentAmount = Math.round(parseFloat(contentAmountRaw) * 100) / 100;
     if (contentAmountRaw.trim() === "" || isNaN(parsedContentAmount) || parsedContentAmount <= 0) {
       setContentAmountError(t("contentAmountRequired"));
+      hasError = true;
+    }
+
+    if (
+      typeof values.minimum_stock === "number" &&
+      (isNaN(values.minimum_stock) || values.minimum_stock < 0)
+    ) {
+      setMinimumStockError(t("minimumStockInvalid"));
       hasError = true;
     }
 
@@ -340,6 +352,8 @@ export const ItemForm = ({
           />
         </div>
 
+        {extraFields}
+
         {/* Quantity (units × content_amount content_unit) */}
         <div className="space-y-2">
           <Label htmlFor="units">{t("units")}</Label>
@@ -451,9 +465,17 @@ export const ItemForm = ({
             placeholder="—"
             onChange={(e) => {
               const v = e.target.value;
-              set("minimum_stock", v === "" ? null : parseInt(v, 10));
+              if (v === "") {
+                set("minimum_stock", null);
+                setMinimumStockError("");
+                return;
+              }
+              const parsed = parseInt(v, 10);
+              set("minimum_stock", isNaN(parsed) ? null : parsed);
+              setMinimumStockError(!isNaN(parsed) && parsed < 0 ? t("minimumStockInvalid") : "");
             }}
           />
+          {minimumStockError && <p className="text-sm text-destructive">{minimumStockError}</p>}
         </div>
 
         {/* Image */}

@@ -1,0 +1,55 @@
+name: Chromatic
+
+# Storybook を Chromatic に公開し、ビジュアルリグレッションをクラウドで検出する (#290)。
+# CHROMATIC_PROJECT_TOKEN シークレットが未設定のリポジトリ（fork 等）では自動的にスキップする。
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromatic:
+    name: Chromatic
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check token
+        id: guard
+        run: |
+          if [ -z "${{ secrets.CHROMATIC_PROJECT_TOKEN }}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CHROMATIC_PROJECT_TOKEN is not set — skipping Chromatic."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.guard.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+        with:
+          # Chromatic は TurboSnap / baseline 判定に履歴を使うため全履歴を取得する
+          fetch-depth: 0
+
+      - name: Setup bun
+        if: steps.guard.outputs.enabled == 'true'
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        if: steps.guard.outputs.enabled == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Publish to Chromatic
+        if: steps.guard.outputs.enabled == 'true'
+        uses: chromaui/action@latest
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          # 差分があってもビルドは失敗させず、Chromatic 上のレビューで承認する運用
+          exitZeroOnChanges: true
+          # Storybook ビルドコマンド（Supabase 環境変数はプレースホルダで充足）
+          buildScriptName: build-storybook
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'placeholder-key' }}

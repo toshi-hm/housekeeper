@@ -1,9 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
+import { isAuthorizedCronRequest } from "./auth.ts";
+import { jstDateString, jstNow } from "./date.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 interface NotificationPreference {
@@ -12,6 +15,7 @@ interface NotificationPreference {
   email_enabled: boolean;
   email_address: string | null;
   threshold_days: number;
+  notify_at: string | null;
 }
 
 interface PushSubscription {
@@ -31,18 +35,31 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (!isAuthorizedCronRequest(req, Deno.env.get("CRON_SECRET"))) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const resendFrom = Deno.env.get("RESEND_FROM_ADDRESS") ?? "housekeeper <noreply@example.com>";
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const today = new Date().toISOString().split("T")[0];
+  const today = jstDateString();
+
+  // pg_cron からの定期実行（?scheduled=true）では、ユーザーごとの notify_at(JST) に
+  // 一致する時刻のみ送信し、notification_logs で 1 日 1 通に制限する。
+  // 手動呼び出し（クエリなし）では従来どおり全有効ユーザーへ即時送信する。
+  const scheduled = new URL(req.url).searchParams.get("scheduled") === "true";
+  const jst = jstNow();
 
   // Fetch all users with notifications enabled
   const { data: prefs, error: prefsError } = await supabase
     .from("notification_preferences")
-    .select("user_id, push_enabled, email_enabled, email_address, threshold_days")
+    .select("user_id, push_enabled, email_enabled, email_address, threshold_days, notify_at")
     .or("push_enabled.eq.true,email_enabled.eq.true");
 
   if (prefsError) {
@@ -55,10 +72,14 @@ Deno.serve(async (req: Request) => {
 
   const results = await Promise.allSettled(
     (prefs as NotificationPreference[]).map(async (pref) => {
-      // Calculate the threshold date
-      const thresholdDate = new Date();
-      thresholdDate.setDate(thresholdDate.getDate() + pref.threshold_days);
-      const thresholdStr = thresholdDate.toISOString().split("T")[0];
+      // 定期実行時は、ユーザーが設定した通知時刻(JST)の「時」に一致する場合のみ送信する
+      if (scheduled) {
+        const notifyHour = pref.notify_at ? parseInt(pref.notify_at.split(":")[0], 10) : 8;
+        if (notifyHour !== jst.hour) return;
+      }
+
+      // Calculate the threshold date (JST基準)
+      const thresholdStr = jstDateString(pref.threshold_days);
 
       // Fetch expiring items for this user
       const { data: items } = await supabase
@@ -73,6 +94,20 @@ Deno.serve(async (req: Request) => {
       if (!items || items.length === 0) return;
 
       const count = (items as ExpiringItem[]).length;
+
+      // 定期実行時は notification_logs で当日分の送信枠を確保（重複送信防止）。
+      // ignoreDuplicates のため、既に当日送信済みなら空配列が返る → スキップ。
+      if (scheduled) {
+        const { data: claimed } = await supabase
+          .from("notification_logs")
+          .upsert(
+            { user_id: pref.user_id, sent_on: jst.date, item_count: count },
+            { onConflict: "user_id,sent_on", ignoreDuplicates: true },
+          )
+          .select();
+        if (!claimed || claimed.length === 0) return;
+      }
+
       const title = `${count}件の食材が期限間近です`;
       const body = (items as ExpiringItem[])
         .slice(0, 3)

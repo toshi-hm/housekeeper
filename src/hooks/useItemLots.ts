@@ -4,7 +4,12 @@ import { useTranslation } from "react-i18next";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import { computeConsumption, type ConsumeLotParams, type ItemLot } from "@/types/item";
+import {
+  computeConsumption,
+  type ConsumeLotParams,
+  getLotRemainingAmount,
+  type ItemLot,
+} from "@/types/item";
 
 export const LOTS_KEY = ["item-lots"] as const;
 
@@ -72,23 +77,39 @@ const updateLot = async (
 
 /** Recompute and update the item aggregate (units, expiry_date, opened_remaining) from its lots. */
 export const syncItemAggregate = async (itemId: string): Promise<void> => {
-  const { data: lots, error: lotsError } = await supabase
-    .from("item_lots")
-    .select("units, expiry_date, opened_remaining")
-    .eq("item_id", itemId);
+  const [{ data: lots, error: lotsError }, { data: itemRow, error: itemError }] = await Promise.all(
+    [
+      supabase
+        .from("item_lots")
+        .select("units, expiry_date, opened_remaining")
+        .eq("item_id", itemId),
+      supabase.from("items").select("content_amount").eq("id", itemId).single(),
+    ],
+  );
   if (lotsError) throw lotsError;
+  if (itemError) throw itemError;
 
   const rows = lots ?? [];
   const totalUnits = rows.reduce((sum, l) => sum + (l.units as number), 0);
 
-  const expiryDates = rows
+  // Only lots with actual remaining stock should count toward the item's
+  // aggregate expiry_date / opened_remaining, otherwise a depleted lot's
+  // leftover expiry_date keeps the item showing up in the expiry calendar.
+  const contentAmount = itemRow.content_amount as number;
+  const activeRows = rows.filter(
+    (l) =>
+      getLotRemainingAmount(l.units as number, contentAmount, l.opened_remaining as number | null) >
+      0,
+  );
+
+  const expiryDates = activeRows
     .map((l) => l.expiry_date as string | null)
     .filter((d): d is string => d !== null);
   const earliestExpiry = expiryDates.length > 0 ? expiryDates.sort()[0] : null;
 
   // Keep opened_remaining on items only when exactly one lot is open,
   // so the card can display an accurate total remaining amount.
-  const openLots = rows.filter((l) => l.opened_remaining !== null);
+  const openLots = activeRows.filter((l) => l.opened_remaining !== null);
   const aggregateOpenedRemaining = openLots.length === 1 ? openLots[0]!.opened_remaining : null;
 
   const { error: updateError } = await supabase
