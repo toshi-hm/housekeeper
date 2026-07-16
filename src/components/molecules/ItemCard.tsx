@@ -95,7 +95,7 @@ export const ItemCard = ({
           )}
         </div>
       </CardContent>
-      <CardFooter className="relative z-10 flex items-center justify-between p-3 pt-0">
+      <CardFooter className="flex items-center justify-between p-3 pt-0">
         <span className="text-sm font-medium">
           {isEmpty ? (
             <span className="text-muted-foreground">{t("emptyStock")}</span>
@@ -118,7 +118,7 @@ export const ItemCard = ({
             <Button
               variant="outline"
               size="icon"
-              className="relative h-7 w-7 shrink-0 after:absolute after:-inset-2 after:content-['']"
+              className="relative z-10 h-7 w-7 shrink-0 after:absolute after:-inset-2 after:content-['']"
               aria-label={t("quickConsume")}
               disabled={isQuickConsuming}
               onClick={() => onQuickConsume(item)}
