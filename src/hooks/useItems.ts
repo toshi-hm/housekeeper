@@ -56,7 +56,14 @@ const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
 ): Promise<Item[]> => {
-  let query = supabase.from("items").select("*").is("deleted_at", null);
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
+  let query = supabase
+    .from("items")
+    .select("*")
+    .eq("user_id", userData.user.id)
+    .is("deleted_at", null);
 
   if (filters.search) {
     query = query.or(buildNameOrBarcodeSearchFilter(filters.search));
@@ -310,9 +317,13 @@ export const findActiveItemByBarcode = async (barcode: string): Promise<Item | n
 
 /** カレンダー用: expiry_date を持つアクティブアイテムのみ返す */
 const fetchItemsWithExpiry = async (): Promise<Item[]> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
   const { data, error } = await supabase
     .from("items")
     .select("*")
+    .eq("user_id", userData.user.id)
     .is("deleted_at", null)
     .not("expiry_date", "is", null)
     .order("expiry_date", { ascending: true });

@@ -19,9 +19,15 @@ export const useShoppingList = (status: ShoppingStatus = "planned") => {
   return useQuery<ShoppingItem[]>({
     queryKey: [QUERY_KEY, status],
     queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from("shopping_list_items")
         .select("*")
+        .eq("user_id", user.id)
         .eq("status", status)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
