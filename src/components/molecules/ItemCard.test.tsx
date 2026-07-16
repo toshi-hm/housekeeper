@@ -99,4 +99,13 @@ describe("ItemCard", () => {
     const btn = container.querySelector("button");
     expect(btn).toBeNull();
   });
+
+  it("does not nest the quick consume button inside the card link (invalid HTML)", async () => {
+    const { container } = await renderCard({
+      item: baseItem,
+      onQuickConsume: () => {},
+    });
+    const link = container.querySelector("a");
+    expect(link?.querySelector("button")).toBeNull();
+  });
 });

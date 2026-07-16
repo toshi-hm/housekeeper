@@ -38,7 +38,7 @@ const meta = {
   parameters: { layout: "padded" },
   args: {
     onApply: () => {},
-    onSave: () => {},
+    onSave: () => Promise.resolve(),
     onDelete: () => {},
   },
 } satisfies Meta<typeof ShoppingTemplatesPanel>;
