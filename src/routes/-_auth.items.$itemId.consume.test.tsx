@@ -222,4 +222,34 @@ describe("ItemConsumePage", () => {
     const { queryByRole } = renderPage();
     expect(queryByRole("radiogroup")).toBeNull();
   });
+
+  it("falls back to the sole active lot when the URL lotId is stale/nonexistent (#485)", () => {
+    // Only one active lot remains, but the URL still points at a lotId that
+    // no longer exists (already consumed, concurrent update, stale back/forward
+    // navigation, ...). The form must still render instead of going blank.
+    searchspy.mockReturnValue({
+      lotId: "stale-nonexistent-lot-id",
+    } as ReturnType<typeof Route.useSearch>);
+    const { getByRole, queryByText } = renderPage();
+    expect(getByRole("spinbutton")).toBeDefined();
+    expect(queryByText(/selectLotHint|Select a lot above|上からロットを選んでください/)).toBeNull();
+  });
+
+  it("shows the select-lot hint (not a blank form) when a stale lotId is given and multiple active lots remain", () => {
+    const lot1: ItemLot = { ...baseLot, id: "lot-1" };
+    const lot2: ItemLot = { ...baseLot, id: "lot-2" };
+    lotsspy.mockReturnValue({
+      data: [lot1, lot2],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useItemLotsModule.useItemLots>);
+    searchspy.mockReturnValue({
+      lotId: "stale-nonexistent-lot-id",
+    } as ReturnType<typeof Route.useSearch>);
+    const { getByText, queryByRole } = renderPage();
+    expect(queryByRole("spinbutton")).toBeNull();
+    expect(
+      getByText(/selectLotHint|Select a lot above|上からロットを選んでください/),
+    ).toBeDefined();
+  });
 });

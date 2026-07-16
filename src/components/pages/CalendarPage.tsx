@@ -13,8 +13,8 @@ interface CalendarPageProps {
   isLoading: boolean;
   warningDays?: number;
   onCheck: (item: Item) => Promise<void>;
-  onUndo: (itemId: string) => Promise<void>;
-  pendingRemovals: { itemId: string; itemName: string }[];
+  onUndo: (lotId: string) => Promise<void>;
+  pendingRemovals: { lotId: string; itemId: string; itemName: string }[];
 }
 
 export const CalendarPage = ({
@@ -69,12 +69,12 @@ export const CalendarPage = ({
         <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm">
           <p className="mb-2 font-medium">{t("pendingRemovalMessage")}</p>
           <div className="flex flex-wrap gap-2">
-            {pendingRemovals.map(({ itemId, itemName }) => (
+            {pendingRemovals.map(({ lotId, itemName }) => (
               <button
-                key={itemId}
+                key={lotId}
                 type="button"
                 onClick={() => {
-                  onUndo(itemId).catch(() => {
+                  onUndo(lotId).catch(() => {
                     toast(t("undoError"), "error");
                   });
                 }}
