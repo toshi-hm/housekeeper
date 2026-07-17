@@ -202,14 +202,12 @@ export const ItemForm = ({
       hasError = true;
     }
 
-    // #509: minimum_stock must be >= 0. The DB has a CHECK constraint, but
-    // without this client-side check a negative value only surfaces as a
-    // generic unknownError toast from the raw Postgres error.
-    if (values.minimum_stock !== null && values.minimum_stock !== undefined) {
-      if (isNaN(values.minimum_stock) || values.minimum_stock < 0) {
-        setMinimumStockError(t("minimumStockNegative"));
-        hasError = true;
-      }
+    if (
+      typeof values.minimum_stock === "number" &&
+      (isNaN(values.minimum_stock) || values.minimum_stock < 0)
+    ) {
+      setMinimumStockError(t("minimumStockInvalid"));
+      hasError = true;
     }
 
     if (hasError) return;
@@ -467,11 +465,14 @@ export const ItemForm = ({
             placeholder="—"
             onChange={(e) => {
               const v = e.target.value;
-              const parsed = v === "" ? null : parseInt(v, 10);
-              setMinimumStockError(
-                parsed !== null && (isNaN(parsed) || parsed < 0) ? t("minimumStockNegative") : "",
-              );
-              set("minimum_stock", parsed);
+              if (v === "") {
+                set("minimum_stock", null);
+                setMinimumStockError("");
+                return;
+              }
+              const parsed = parseInt(v, 10);
+              set("minimum_stock", isNaN(parsed) ? null : parsed);
+              setMinimumStockError(!isNaN(parsed) && parsed < 0 ? t("minimumStockInvalid") : "");
             }}
           />
           {minimumStockError && <p className="text-sm text-destructive">{minimumStockError}</p>}

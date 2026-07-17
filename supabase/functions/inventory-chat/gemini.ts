@@ -104,6 +104,34 @@ export const buildContents = (message: string, history: ChatHistoryTurn[]): Gemi
   return [...trimmed, { role: "user", parts: [{ text: message }] }];
 };
 
+// Build the Gemini `generateContent` request body. Exported so tests can pin the
+// generationConfig without mocking network calls (see chat.test.ts).
+export const buildGeminiRequestBody = (
+  message: string,
+  history: ChatHistoryTurn[],
+  items: InventoryItem[],
+  recentlyConsumed: RecentlyConsumedItem[],
+): GeminiRequest => {
+  const inventoryContext = buildInventoryContext(items, recentlyConsumed);
+  return {
+    systemInstruction: {
+      parts: [
+        {
+          text: `${SYSTEM_PROMPT}\n\n在庫データ(inventory=現在の在庫, recently_consumed=過去2か月以内に使い切ったアイテム):\n${inventoryContext}`,
+        },
+      ],
+    },
+    contents: buildContents(message, history),
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA,
+      temperature: 0.2,
+      // gemini-2.5-flash uses thinkingBudget, not thinkingLevel (Gemini 3.x only).
+      thinkingConfig: { thinkingBudget: 1024 },
+    },
+  };
+};
+
 export const queryGeminiChat = async (
   message: string,
   history: ChatHistoryTurn[],
@@ -117,25 +145,7 @@ export const queryGeminiChat = async (
   }
 
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  const inventoryContext = buildInventoryContext(items, recentlyConsumed);
-
-  const body: GeminiRequest = {
-    systemInstruction: {
-      parts: [
-        {
-          text: `${SYSTEM_PROMPT}\n\n在庫データ(inventory=現在の在庫, recently_consumed=過去2か月以内に使い切ったアイテム):\n${inventoryContext}`,
-        },
-      ],
-    },
-    contents: buildContents(message, history),
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA,
-      temperature: 0.2,
-      // Gemini 3.x: use thinkingLevel ("low" keeps it fast/cheap for simple lookups).
-      thinkingConfig: { thinkingLevel: "low" },
-    },
-  };
+  const body = buildGeminiRequestBody(message, history, items, recentlyConsumed);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);

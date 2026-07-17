@@ -52,9 +52,13 @@ const validateNameLength = (name: string): void => {
 // --- Categories ---
 
 const fetchCategories = async (): Promise<Category[]> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
   const { data, error } = await supabase
     .from("categories")
     .select("*")
+    .eq("user_id", userData.user.id)
     .order("name", { ascending: true });
   if (error) throw error;
   return (data ?? []) as Category[];
@@ -221,9 +225,13 @@ export const useDeleteCategory = () => {
 // --- Storage Locations ---
 
 const fetchStorageLocations = async (): Promise<StorageLocation[]> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
   const { data, error } = await supabase
     .from("storage_locations")
     .select("*")
+    .eq("user_id", userData.user.id)
     .order("name", { ascending: true });
   if (error) throw error;
   return (data ?? []) as StorageLocation[];

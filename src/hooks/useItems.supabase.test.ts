@@ -27,10 +27,12 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     is: chainMethod("is"),
     not: chainMethod("not"),
     or: chainMethod("or"),
+    in: chainMethod("in"),
     limit: chainMethod("limit"),
     order: chainMethod("order"),
     insert: chainMethod("insert"),
     update: chainMethod("update"),
+    delete: chainMethod("delete"),
     single: () => {
       callLog.push({ table, method: "single", args: [] });
       return Promise.resolve(response);
@@ -51,12 +53,20 @@ const fromMock = mock((table: string) => {
   return makeBuilder(table, response);
 });
 
+const getUserMock = mock(() => Promise.resolve({ data: { user: { id: "user-1" } }, error: null }));
+
 mock.module("@/lib/supabase", () => ({
-  supabase: { from: fromMock },
+  supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { fetchItem, tryStackToActiveItem, buildNameOrBarcodeSearchFilter, escapeOrFilterValue } =
-  await import("@/hooks/useItems");
+const {
+  fetchItem,
+  tryStackToActiveItem,
+  createItem,
+  buildNameOrBarcodeSearchFilter,
+  escapeOrFilterValue,
+  bulkConsumeItems,
+} = await import("@/hooks/useItems");
 
 const makeItem = (overrides: Partial<Item> = {}): Item => ({
   id: "item-1",
@@ -119,6 +129,96 @@ describe("tryStackToActiveItem", () => {
     responseQueues.items = [{ data: null, error: null }];
     const result = await tryStackToActiveItem("000000", { name: "Test", units: 1 }, "user-1");
     expect(result).toBeNull();
+  });
+});
+
+describe("bulkConsumeItems", () => {
+  test("削除対象ロットごとにconsumption_logsへ記録してから削除する (#541)", async () => {
+    responseQueues.item_lots = [
+      {
+        data: [
+          { id: "lot-1", item_id: "item-1", units: 2, opened_remaining: null },
+          { id: "lot-2", item_id: "item-2", units: 1, opened_remaining: 0.5 },
+        ],
+        error: null,
+      },
+    ];
+    responseQueues.items = [
+      {
+        data: [
+          { id: "item-1", content_amount: 1, content_unit: "個" },
+          { id: "item-2", content_amount: 1, content_unit: "本" },
+        ],
+        error: null,
+      },
+    ];
+
+    await bulkConsumeItems(["item-1", "item-2"]);
+
+    const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
+    expect(logInsert).toBeTruthy();
+    const rows = logInsert?.args[0] as Array<Record<string, unknown>>;
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ item_id: "item-1", delta_amount: 2, units_before: 2 });
+    expect(rows[1]).toMatchObject({ item_id: "item-2", delta_amount: 0.5, units_before: 1 });
+
+    const lotDelete = callLog.find((c) => c.table === "item_lots" && c.method === "delete");
+    expect(lotDelete).toBeTruthy();
+  });
+
+  test("在庫が既に0のロットはログを作らない", async () => {
+    responseQueues.item_lots = [
+      { data: [{ id: "lot-1", item_id: "item-1", units: 0, opened_remaining: null }], error: null },
+    ];
+    responseQueues.items = [
+      { data: [{ id: "item-1", content_amount: 1, content_unit: "個" }], error: null },
+    ];
+
+    await bulkConsumeItems(["item-1"]);
+
+    const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
+    expect(logInsert).toBeUndefined();
+  });
+});
+
+describe("createItem", () => {
+  test("forceNew=true の場合、stack判定・revive判定を両方スキップして常に新規INSERTする (#484)", async () => {
+    responseQueues.items = [{ data: makeItem({ id: "item-new" }), error: null }]; // insert().select().single()
+    responseQueues.item_lots = [
+      { data: { id: "lot-1" }, error: null }, // createLot insert
+    ];
+
+    const result = await createItem({
+      values: { name: "Test", units: 1, barcode: "123456" },
+      forceNew: true,
+    });
+
+    expect(result.id).toBe("item-new");
+    expect(result._stacked).toBeUndefined();
+    expect(result._revived).toBeUndefined();
+
+    // Only one "items" query should occur: the direct insert. No stack/revive lookups (which use
+    // select/eq/is/not/limit/maybeSingle) should have been issued beforehand.
+    const itemsCalls = callLog.filter((c) => c.table === "items");
+    expect(itemsCalls.some((c) => c.method === "not")).toBe(false);
+    expect(itemsCalls.some((c) => c.method === "maybeSingle")).toBe(false);
+    expect(itemsCalls.some((c) => c.method === "insert")).toBe(true);
+  });
+
+  test("forceNew=false かつスタック・復活対象がなければ新規INSERTする", async () => {
+    responseQueues.items = [
+      { data: null, error: null }, // tryStackToActiveItem: no active match
+      { data: null, error: null }, // tryReviveItem: no soft-deleted match
+      { data: makeItem({ id: "item-new-2" }), error: null }, // insert().select().single()
+    ];
+    responseQueues.item_lots = [{ data: { id: "lot-2" }, error: null }];
+
+    const result = await createItem({
+      values: { name: "Test", units: 1, barcode: "999999" },
+      forceNew: false,
+    });
+
+    expect(result.id).toBe("item-new-2");
   });
 });
 

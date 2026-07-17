@@ -46,12 +46,16 @@ export const ItemConsumePage = () => {
   const activeLots = lots.filter((l) => getLotTotal(l) > 0);
   const hasMultipleLots = activeLots.length > 1;
 
+  // A `lotId` carried over from a stale link (browser back/forward, another
+  // tab/device consuming the last of that lot concurrently, etc.) may no
+  // longer exist among the active lots. Treat that the same as "no lot
+  // selected" instead of leaving selectedLot permanently null when exactly
+  // one active lot remains — otherwise the form renders blank with no way
+  // to consume the only remaining lot (#485).
+  const requestedLot =
+    selectedLotId !== null ? (activeLots.find((l) => l.id === selectedLotId) ?? null) : null;
   const selectedLot: ItemLot | null =
-    selectedLotId !== null
-      ? (activeLots.find((l) => l.id === selectedLotId) ?? null)
-      : activeLots.length === 1
-        ? activeLots[0]!
-        : null;
+    requestedLot ?? (activeLots.length === 1 ? activeLots[0]! : null);
 
   const deltaNum = parseFloat(delta);
   const preview =
