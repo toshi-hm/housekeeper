@@ -1,0 +1,16 @@
+title = "housekeeper gitleaks config"
+
+# Extend the default gitleaks ruleset (secrets, API keys, private keys, etc.)
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known-safe placeholder values used in this repo's CI/tests, not real secrets"
+regexes = [
+  '''placeholder-anon-key''',
+  '''fake-key-for-tests''',
+  '''fake-vapid-key-for-tests''',
+  '''e2e-fake-access-token''',
+  '''e2e-fake-refresh-token''',
+]
+paths = ['''\.env\.test$''', '''e2e/fixtures/supabaseMock\.ts$''']

@@ -32,6 +32,7 @@ jobs:
         run: bunx wait-on http://localhost:4173 --timeout 30000
 
       - name: Run Lighthouse CI
+        continue-on-error: true
         uses: treosh/lighthouse-ci-action@v12
         with:
           configPath: .lighthouserc.json

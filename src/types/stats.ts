@@ -11,7 +11,7 @@ export interface ExpiryDistributionEntry {
   count: number;
 }
 
-export interface UnitTotal {
+interface UnitTotal {
   unit: string;
   total: number;
 }
