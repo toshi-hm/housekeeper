@@ -436,6 +436,7 @@ const ShoppingPage = () => {
             void handleDeleteTemplate(id);
           }}
           isSaving={saveTemplate.isPending}
+          isDeleting={deleteTemplate.isPending}
           applyingId={applyingTemplateId}
         />
       )}

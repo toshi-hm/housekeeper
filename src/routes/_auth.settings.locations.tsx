@@ -3,6 +3,8 @@ import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { IconPicker } from "@/components/atoms/IconPicker";
+import { MasterDataIcon } from "@/components/atoms/MasterDataIcon";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -27,16 +29,19 @@ const LocationsPage = () => {
   const { toast } = useToast();
 
   const [newName, setNewName] = useState("");
+  const [newIcon, setNewIcon] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editIcon, setEditIcon] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
     try {
-      await createLocation.mutateAsync(newName.trim());
+      await createLocation.mutateAsync({ name: newName.trim(), icon: newIcon });
       setNewName("");
+      setNewIcon(null);
       toast(t("common:saveSuccess"), "success");
     } catch {
       // error is handled by the mutation's onError
@@ -46,7 +51,7 @@ const LocationsPage = () => {
   const handleUpdate = async () => {
     if (!editId || !editName.trim()) return;
     try {
-      await updateLocation.mutateAsync({ id: editId, name: editName.trim() });
+      await updateLocation.mutateAsync({ id: editId, name: editName.trim(), icon: editIcon });
       setEditId(null);
       toast(t("common:saveSuccess"), "success");
     } catch {
@@ -129,6 +134,7 @@ const LocationsPage = () => {
           <Plus className="h-4 w-4" />
         </Button>
       </div>
+      <IconPicker value={newIcon} onChange={setNewIcon} />
 
       {/* List */}
       {isLoading ? (
@@ -140,35 +146,39 @@ const LocationsPage = () => {
       ) : (
         <ul className="divide-y rounded-lg border">
           {locations.map((l) => (
-            <li key={l.id} className="flex items-center gap-3 p-3">
+            <li key={l.id} className="space-y-2 p-3">
               {editId === l.id ? (
                 <>
-                  <Input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="flex-1"
-                    autoFocus
-                    maxLength={40}
-                    disabled={updateLocation.isPending}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void handleUpdate();
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      void handleUpdate();
-                    }}
-                    disabled={updateLocation.isPending || !editName.trim()}
-                  >
-                    {tc("save")}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>
-                    {tc("cancel")}
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="flex-1"
+                      autoFocus
+                      maxLength={40}
+                      disabled={updateLocation.isPending}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleUpdate();
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        void handleUpdate();
+                      }}
+                      disabled={updateLocation.isPending || !editName.trim()}
+                    >
+                      {tc("save")}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>
+                      {tc("cancel")}
+                    </Button>
+                  </div>
+                  <IconPicker value={editIcon} onChange={setEditIcon} />
                 </>
               ) : (
-                <>
+                <div className="flex items-center gap-3">
+                  <MasterDataIcon icon={l.icon} />
                   <span className="flex-1">{l.name}</span>
                   <Button
                     size="icon"
@@ -177,6 +187,7 @@ const LocationsPage = () => {
                     onClick={() => {
                       setEditId(l.id);
                       setEditName(l.name);
+                      setEditIcon(l.icon ?? null);
                     }}
                   >
                     <Pencil className="h-4 w-4" />
@@ -197,7 +208,7 @@ const LocationsPage = () => {
                       <Trash2 className="h-4 w-4" />
                     )}
                   </Button>
-                </>
+                </div>
               )}
             </li>
           ))}

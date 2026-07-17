@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
@@ -6,7 +6,14 @@ import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import type { Item, ItemFilters, ItemFormValues, ItemSortKey } from "@/types/item";
+import {
+  getLotRemainingAmount,
+  type Item,
+  type ItemFilters,
+  type ItemFormValues,
+  type ItemSortKey,
+  roundFloat,
+} from "@/types/item";
 
 export type { ItemFilters, ItemSortKey };
 
@@ -56,7 +63,14 @@ const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
 ): Promise<Item[]> => {
-  let query = supabase.from("items").select("*").is("deleted_at", null);
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
+  let query = supabase
+    .from("items")
+    .select("*")
+    .eq("user_id", userData.user.id)
+    .is("deleted_at", null);
 
   if (filters.search) {
     query = query.or(buildNameOrBarcodeSearchFilter(filters.search));
@@ -237,7 +251,7 @@ interface CreateItemInput {
   forceNew?: boolean;
 }
 
-const createItem = async ({
+export const createItem = async ({
   values,
   forceNew = false,
 }: CreateItemInput): Promise<Item & { _revived?: boolean; _stacked?: boolean }> => {
@@ -249,10 +263,10 @@ const createItem = async ({
     if (!forceNew) {
       const stacked = await tryStackToActiveItem(values.barcode, values, userData.user.id);
       if (stacked) return { ...stacked, _stacked: true };
-    }
 
-    const revived = await tryReviveItem(values.barcode, values, userData.user.id);
-    if (revived) return { ...revived, _revived: true };
+      const revived = await tryReviveItem(values.barcode, values, userData.user.id);
+      if (revived) return { ...revived, _revived: true };
+    }
   }
 
   const normalized = normalizeCreateValues(values);
@@ -310,9 +324,13 @@ export const findActiveItemByBarcode = async (barcode: string): Promise<Item | n
 
 /** カレンダー用: expiry_date を持つアクティブアイテムのみ返す */
 const fetchItemsWithExpiry = async (): Promise<Item[]> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
   const { data, error } = await supabase
     .from("items")
     .select("*")
+    .eq("user_id", userData.user.id)
     .is("deleted_at", null)
     .not("expiry_date", "is", null)
     .order("expiry_date", { ascending: true });
@@ -320,26 +338,16 @@ const fetchItemsWithExpiry = async (): Promise<Item[]> => {
   return (data ?? []) as Item[];
 };
 
-export const useItems = (filters: ItemFilters = {}, sort: ItemSortKey = "created_at") =>
-  useQuery({
-    queryKey: [...ITEMS_KEY, filters, sort],
-    queryFn: () => fetchItems(filters, sort),
-    staleTime: 30_000,
-  });
-
-export const useItem = (id: string) =>
-  useQuery({
-    queryKey: [...ITEMS_KEY, id],
-    queryFn: () => fetchItem(id),
-    enabled: !!id,
-  });
-
 /**
- * items系リストキャッシュ（フィルタ・ソート違いの複数クエリ）へ、フィルタ条件を尊重して1件を反映する。
- * 条件に一致しなければ（既存キャッシュから）除外し、一致すれば upsert する。
- * 新規作成・更新のどちらの成功ハンドラからも同じ挙動にするため共通化している。
+ * `ITEMS_KEY` にマッチする全てのキャッシュ済みリストに対し、`item` をそのリストの
+ * フィルタ条件（category / storageLocation / search、`with-expiry` 種別）に基づいて
+ * 反映する。一致しないリストには一切書き込まない（#435: フィルタ無視によるチラつき対策）。
+ *
+ * - 一致する → upsert（新規追加 or 更新）
+ * - 元々キャッシュに存在していたが一致しなくなった → 除外
+ * - 元々存在せず、かつ一致しない → 何もしない（新規作成時の誤挿入を防ぐ）
  */
-export const applyItemToListCaches = (qc: ReturnType<typeof useQueryClient>, item: Item): void => {
+export const applyItemToListCaches = (qc: QueryClient, item: Item) => {
   const listQueries = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
   for (const [queryKey, cachedItems] of listQueries) {
     if (!Array.isArray(cachedItems) || !Array.isArray(queryKey)) continue;
@@ -362,7 +370,7 @@ export const applyItemToListCaches = (qc: ReturnType<typeof useQueryClient>, ite
 
     if (matchesItemFilters(item, filters)) {
       qc.setQueryData(queryKey, upsertItemInListCache(cachedItems, item, sort));
-    } else {
+    } else if (cachedItems.some((cached) => cached.id === item.id)) {
       qc.setQueryData(
         queryKey,
         cachedItems.filter((cached) => cached.id !== item.id),
@@ -370,6 +378,20 @@ export const applyItemToListCaches = (qc: ReturnType<typeof useQueryClient>, ite
     }
   }
 };
+
+export const useItems = (filters: ItemFilters = {}, sort: ItemSortKey = "created_at") =>
+  useQuery({
+    queryKey: [...ITEMS_KEY, filters, sort],
+    queryFn: () => fetchItems(filters, sort),
+    staleTime: 30_000,
+  });
+
+export const useItem = (id: string) =>
+  useQuery({
+    queryKey: [...ITEMS_KEY, id],
+    queryFn: () => fetchItem(id),
+    enabled: !!id,
+  });
 
 export const useCreateItem = () => {
   const qc = useQueryClient();
@@ -468,10 +490,59 @@ const bulkSoftDeleteItems = async (ids: string[]): Promise<void> => {
   if (error) throw error;
 };
 
-/** 複数アイテムを全消費（units=0）にする。ロットを削除して在庫を 0 にリセットする。 */
-const bulkConsumeItems = async (ids: string[]): Promise<void> => {
+/** 複数アイテムを全消費（units=0）にする。ロットを削除して在庫を 0 にリセットする。
+ *  削除対象ロットごとに consumption_logs へ記録してから削除する（#541）。 */
+export const bulkConsumeItems = async (ids: string[]): Promise<void> => {
   requireOnline();
   if (ids.length === 0) return;
+
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
+  const [{ data: lots, error: lotsFetchError }, { data: itemsRows, error: itemsFetchError }] =
+    await Promise.all([
+      supabase.from("item_lots").select("id, item_id, units, opened_remaining").in("item_id", ids),
+      supabase.from("items").select("id, content_amount, content_unit").in("id", ids),
+    ]);
+  if (lotsFetchError) throw lotsFetchError;
+  if (itemsFetchError) throw itemsFetchError;
+
+  const itemMap = new Map(
+    (itemsRows ?? []).map((i) => [
+      i.id as string,
+      i as { content_amount: number; content_unit: string },
+    ]),
+  );
+
+  const logRows = (lots ?? [])
+    .map((lot) => {
+      const units = lot.units as number;
+      const openedRemaining = lot.opened_remaining as number | null;
+      const item = itemMap.get(lot.item_id as string);
+      const contentAmount = item?.content_amount ?? 1;
+      const deltaAmount = roundFloat(getLotRemainingAmount(units, contentAmount, openedRemaining));
+      return {
+        user_id: userData.user.id,
+        item_id: lot.item_id,
+        delta_amount: deltaAmount,
+        delta_unit: item?.content_unit ?? "個",
+        units_before: units,
+        units_after: 0,
+        opened_remaining_before: openedRemaining,
+        opened_remaining_after: null,
+      };
+    })
+    .filter((row) => row.delta_amount > 0);
+
+  if (logRows.length > 0) {
+    const { error: logError } = await supabase.from("consumption_logs").insert(logRows);
+    if (logError) {
+      // Non-fatal: stock is still reset below. Log for debugging (#441).
+      // oxlint-disable-next-line no-console
+      console.warn("bulkConsumeItems: consumption_logs insert failed", logError);
+    }
+  }
+
   const { error: lotError } = await supabase.from("item_lots").delete().in("item_id", ids);
   if (lotError) throw lotError;
   const { error } = await supabase

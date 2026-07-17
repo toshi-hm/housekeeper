@@ -2,6 +2,7 @@ import { ListPlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ interface ShoppingTemplatesPanelProps {
   onSave: (input: SaveInput) => Promise<void>;
   onDelete: (id: string) => void;
   isSaving?: boolean;
+  isDeleting?: boolean;
   applyingId?: string | null;
 }
 
@@ -32,12 +34,14 @@ export const ShoppingTemplatesPanel = ({
   onSave,
   onDelete,
   isSaving = false,
+  isDeleting = false,
   applyingId = null,
 }: ShoppingTemplatesPanelProps) => {
   const { t } = useTranslation("shopping");
   const [editor, setEditor] = useState<EditorState>({ mode: "closed" });
   const [name, setName] = useState("");
   const [rows, setRows] = useState<TemplateItemInput[]>([emptyRow()]);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const openNew = () => {
     setEditor({ mode: "new" });
@@ -79,6 +83,18 @@ export const ShoppingTemplatesPanel = ({
 
   return (
     <div className="space-y-3 rounded-lg border p-4">
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title={t("common:confirmDeleteTitle")}
+        message={t("templateDeleteConfirm")}
+        confirmLabel={t("common:delete")}
+        isConfirming={isDeleting}
+        onConfirm={() => {
+          if (deleteTargetId) onDelete(deleteTargetId);
+          setDeleteTargetId(null);
+        }}
+        onCancel={() => setDeleteTargetId(null)}
+      />
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{t("templatesTitle")}</h2>
         {editor.mode === "closed" && (
@@ -128,7 +144,7 @@ export const ShoppingTemplatesPanel = ({
                     variant="ghost"
                     className="h-8 w-8 text-destructive hover:text-destructive"
                     aria-label={t("templateDelete")}
-                    onClick={() => onDelete(template.id)}
+                    onClick={() => setDeleteTargetId(template.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
