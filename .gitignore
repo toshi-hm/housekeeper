@@ -50,3 +50,6 @@ reports/
 *.njsproj
 *.sln
 *.sw?
+
+# Ephemeral subagent git worktrees
+.claude/worktrees/
