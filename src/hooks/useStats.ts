@@ -40,9 +40,15 @@ const useAllConsumptionLogs = () =>
   useQuery<RawLog[]>({
     queryKey: ["consumption-logs-all"],
     queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from("consumption_logs")
         .select("delta_amount, delta_unit, occurred_at")
+        .eq("user_id", user.id)
         .order("occurred_at", { ascending: true });
       if (error) throw new Error(error.message);
       return (data ?? []) as RawLog[];
