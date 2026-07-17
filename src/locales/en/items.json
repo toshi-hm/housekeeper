@@ -95,6 +95,7 @@
   "lowStockBannerDetails": "Show low-stock items",
   "minimumStock": "Minimum stock alert",
   "minimumStockHelp": "Get a warning on the dashboard when units drop to or below this number",
+  "minimumStockInvalid": "Enter 0 or more",
   "name": "Product Name",
   "namePlaceholder": "Enter product name",
   "noHistory": "No consumption history",

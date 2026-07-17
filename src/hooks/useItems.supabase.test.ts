@@ -62,6 +62,7 @@ mock.module("@/lib/supabase", () => ({
 const {
   fetchItem,
   tryStackToActiveItem,
+  createItem,
   buildNameOrBarcodeSearchFilter,
   escapeOrFilterValue,
   bulkConsumeItems,
@@ -177,6 +178,47 @@ describe("bulkConsumeItems", () => {
 
     const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
     expect(logInsert).toBeUndefined();
+  });
+});
+
+describe("createItem", () => {
+  test("forceNew=true の場合、stack判定・revive判定を両方スキップして常に新規INSERTする (#484)", async () => {
+    responseQueues.items = [{ data: makeItem({ id: "item-new" }), error: null }]; // insert().select().single()
+    responseQueues.item_lots = [
+      { data: { id: "lot-1" }, error: null }, // createLot insert
+    ];
+
+    const result = await createItem({
+      values: { name: "Test", units: 1, barcode: "123456" },
+      forceNew: true,
+    });
+
+    expect(result.id).toBe("item-new");
+    expect(result._stacked).toBeUndefined();
+    expect(result._revived).toBeUndefined();
+
+    // Only one "items" query should occur: the direct insert. No stack/revive lookups (which use
+    // select/eq/is/not/limit/maybeSingle) should have been issued beforehand.
+    const itemsCalls = callLog.filter((c) => c.table === "items");
+    expect(itemsCalls.some((c) => c.method === "not")).toBe(false);
+    expect(itemsCalls.some((c) => c.method === "maybeSingle")).toBe(false);
+    expect(itemsCalls.some((c) => c.method === "insert")).toBe(true);
+  });
+
+  test("forceNew=false かつスタック・復活対象がなければ新規INSERTする", async () => {
+    responseQueues.items = [
+      { data: null, error: null }, // tryStackToActiveItem: no active match
+      { data: null, error: null }, // tryReviveItem: no soft-deleted match
+      { data: makeItem({ id: "item-new-2" }), error: null }, // insert().select().single()
+    ];
+    responseQueues.item_lots = [{ data: { id: "lot-2" }, error: null }];
+
+    const result = await createItem({
+      values: { name: "Test", units: 1, barcode: "999999" },
+      forceNew: false,
+    });
+
+    expect(result.id).toBe("item-new-2");
   });
 });
 

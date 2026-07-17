@@ -16,7 +16,7 @@ interface SaveInput {
 interface ShoppingTemplatesPanelProps {
   templates: ShoppingTemplateWithItems[];
   onApply: (template: ShoppingTemplateWithItems) => void;
-  onSave: (input: SaveInput) => void;
+  onSave: (input: SaveInput) => Promise<void>;
   onDelete: (id: string) => void;
   isSaving?: boolean;
   applyingId?: string | null;
@@ -57,14 +57,20 @@ export const ShoppingTemplatesPanel = ({
 
   const closeEditor = () => setEditor({ mode: "closed" });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) return;
-    onSave({
-      id: editor.mode === "edit" ? editor.id : undefined,
-      name: name.trim(),
-      items: rows.filter((r) => r.name.trim().length > 0),
-    });
-    closeEditor();
+    try {
+      await onSave({
+        id: editor.mode === "edit" ? editor.id : undefined,
+        name: name.trim(),
+        items: rows.filter((r) => r.name.trim().length > 0),
+      });
+      // 保存成功後にのみエディタを閉じる。失敗時は入力内容を保持して再試行できるようにする
+      // (同ルート内の handleEdit / handlePurchase と同じパターン)。エラートーストは呼び出し側で表示。
+      closeEditor();
+    } catch {
+      // 保存失敗時はエディタを開いたままにして入力内容を保持する
+    }
   };
 
   const updateRow = (index: number, patch: Partial<TemplateItemInput>) => {
@@ -185,7 +191,11 @@ export const ShoppingTemplatesPanel = ({
             </Button>
           </div>
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={handleSave} disabled={!name.trim() || isSaving}>
+            <Button
+              className="flex-1"
+              onClick={() => void handleSave()}
+              disabled={!name.trim() || isSaving}
+            >
               {t("editSave")}
             </Button>
             <Button variant="outline" onClick={closeEditor} disabled={isSaving}>

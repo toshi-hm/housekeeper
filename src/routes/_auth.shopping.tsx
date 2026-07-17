@@ -1,6 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { LayoutList, Plus, ScanLine, ShoppingCart } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ShareButton } from "@/components/atoms/ShareButton";
@@ -16,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
+import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
 import {
@@ -31,6 +33,7 @@ import {
   useSaveShoppingTemplate,
   useShoppingTemplates,
 } from "@/hooks/useShoppingTemplates";
+import { OfflineError } from "@/lib/requireOnline";
 import {
   type CategoryResolver,
   groupShoppingItemsByCategory,
@@ -71,6 +74,10 @@ const tabLabelKey = {
 const ShoppingPage = () => {
   const { t } = useTranslation("shopping");
   const { toast } = useToast();
+  const qc = useQueryClient();
+  // 購入ダイアログ内の ItemForm で選択された画像。購入成功後にアップロードする (#453)
+  const pendingPurchaseFileRef = useRef<File | null>(null);
+  const pendingPurchaseImageUrlRef = useRef<string | null>(null);
   const [tab, setTab] = useState<ShoppingTab>("planned");
   const [addName, setAddName] = useState("");
   const [addNote, setAddNote] = useState("");
@@ -159,11 +166,41 @@ const ShoppingPage = () => {
     }
   };
 
+  const clearPendingPurchaseImage = () => {
+    pendingPurchaseFileRef.current = null;
+    pendingPurchaseImageUrlRef.current = null;
+  };
+
   const handlePurchase = async (values: ItemFormValues) => {
     if (!pendingPurchaseId) return;
     const id = pendingPurchaseId;
     try {
-      await purchase.mutateAsync({ shoppingItemId: id, itemValues: values });
+      const newItem = await purchase.mutateAsync({ shoppingItemId: id, itemValues: values });
+
+      // 購入で作成したアイテムに、ダイアログで選択された画像をアップロードする (#453)。
+      // NewItemPage と同じく、アイテム作成後に itemId 指定で uploadItemImage する。
+      // 既存アイテムへのスタック時(_stacked)はアップロードしない。既存アイテムの
+      // 画像を選択画像で上書きしてしまうため（NewItemPage.tsx と同じガード）。
+      const pendingFile = pendingPurchaseFileRef.current;
+      const pendingImageUrl = pendingPurchaseImageUrlRef.current;
+      if ((pendingFile || pendingImageUrl) && !newItem._stacked) {
+        try {
+          const file =
+            pendingFile ??
+            (pendingImageUrl ? await downloadExternalImageAsFile(pendingImageUrl) : null);
+          if (file) {
+            await uploadItemImage({ itemId: newItem.id, file });
+            await qc.invalidateQueries({ queryKey: ["items"] });
+          }
+        } catch (err) {
+          toast(
+            err instanceof OfflineError ? t("common:offlineError") : t("items:imageUploadFailed"),
+            err instanceof OfflineError ? "error" : "warning",
+          );
+        }
+      }
+
+      clearPendingPurchaseImage();
       setPendingPurchaseId(null);
       toast(t("purchaseSuccess"), "success");
     } catch {
@@ -192,12 +229,10 @@ const ShoppingPage = () => {
     name: string;
     items: { name: string; desired_units: number }[];
   }) => {
-    try {
-      await saveTemplate.mutateAsync(input);
-      toast(t("templateSaved"), "success");
-    } catch {
-      // Error toast is handled by useSaveShoppingTemplate.onError
-    }
+    // 失敗時は例外を伝播させ、パネル側でエディタを閉じずに入力内容を保持できるようにする (#521)。
+    // エラートーストは useSaveShoppingTemplate.onError が表示する。
+    await saveTemplate.mutateAsync(input);
+    toast(t("templateSaved"), "success");
   };
 
   const handleDeleteTemplate = async (id: string) => {
@@ -280,7 +315,14 @@ const ShoppingPage = () => {
       isPurchased={item.status === "purchased"}
       isEditing={editId === item.id}
       isSaving={savingId === item.id}
-      onPurchase={tab === "planned" ? (id) => setPendingPurchaseId(id) : undefined}
+      onPurchase={
+        tab === "planned"
+          ? (id) => {
+              clearPendingPurchaseImage();
+              setPendingPurchaseId(id);
+            }
+          : undefined
+      }
       onDelete={(id) => setDeleteId(id)}
       onEdit={tab === "planned" ? (id) => setEditId(id) : undefined}
       onEditSave={(id, data) => {
@@ -324,9 +366,18 @@ const ShoppingPage = () => {
             void handlePurchase(values);
           }}
           onClose={() => {
-            if (!purchase.isPending) setPendingPurchaseId(null);
+            if (!purchase.isPending) {
+              clearPendingPurchaseImage();
+              setPendingPurchaseId(null);
+            }
           }}
           isSubmitting={purchase.isPending}
+          onPendingFileChange={(file) => {
+            pendingPurchaseFileRef.current = file;
+          }}
+          onPendingImageUrlChange={(url) => {
+            pendingPurchaseImageUrlRef.current = url;
+          }}
         />
       )}
 
@@ -380,9 +431,7 @@ const ShoppingPage = () => {
           onApply={(template) => {
             void handleApplyTemplate(template);
           }}
-          onSave={(input) => {
-            void handleSaveTemplate(input);
-          }}
+          onSave={handleSaveTemplate}
           onDelete={(id) => {
             void handleDeleteTemplate(id);
           }}
