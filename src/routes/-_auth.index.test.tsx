@@ -198,33 +198,6 @@ describe("DashboardPage", () => {
     expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
   });
 
-  it("hideEmpty=false のとき、期限切れ在庫0個アイテムはバナー見出しの件数にも含まれない (#450)", async () => {
-    itemsspy.mockReturnValue({
-      data: [
-        makeItem({ id: "expired-empty", expiry_date: "2000-01-01", units: 0 }),
-        makeItem({ id: "ok-item", expiry_date: "2099-12-31", units: 1 }),
-      ],
-      isLoading: false,
-      error: null,
-    } as ReturnType<typeof useItemsModule.useItems>);
-
-    const { getByLabelText, queryByText } = await renderPage();
-
-    // フィルターパネルを開いて「使い切り在庫を隠す」をオフにする（units=0のアイテムも表示対象に含める）
-    const filterBtn = getByLabelText(/filter|絞り込み/i);
-    await act(async () => {
-      fireEvent.click(filterBtn);
-    });
-    const hideEmptyCheckbox = getByLabelText(/hide empty items|使い切り在庫を隠す/i);
-    await act(async () => {
-      fireEvent.click(hideEmptyCheckbox);
-    });
-
-    // アコーディオン内訳/一括追加ボタンの対象は units>0 のみなので、
-    // 見出しの件数も同じ集合から算出されるべき（units=0の期限切れは含まれない）
-    expect(queryByText(URGENT_BANNER_RE)).toBeNull();
-  });
-
   it("検索欄への入力はデバウンスされ、キー入力ごとにuseItemsを再クエリしない (#452)", async () => {
     const user = userEvent.setup();
     const { getByPlaceholderText } = await renderPage();

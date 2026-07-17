@@ -127,8 +127,6 @@
   "scannerRetry": "Retry",
   "scannerStarting": "Starting camera...",
   "scannerSwitchCamera": "Switch Camera",
-  "scannerTimeout": "No barcode detected",
-  "scannerTimeoutHint": "We couldn't detect a barcode for 30 seconds. Try retrying or enter it manually.",
   "searchBarcode": "Search product by barcode",
   "searchPlaceholder": "Search by name or barcode",
   "selectLot": "Select lot to use",
