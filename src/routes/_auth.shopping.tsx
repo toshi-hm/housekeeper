@@ -179,9 +179,11 @@ const ShoppingPage = () => {
 
       // 購入で作成したアイテムに、ダイアログで選択された画像をアップロードする (#453)。
       // NewItemPage と同じく、アイテム作成後に itemId 指定で uploadItemImage する。
+      // 既存アイテムへのスタック時(_stacked)はアップロードしない。既存アイテムの
+      // 画像を選択画像で上書きしてしまうため（NewItemPage.tsx と同じガード）。
       const pendingFile = pendingPurchaseFileRef.current;
       const pendingImageUrl = pendingPurchaseImageUrlRef.current;
-      if (pendingFile || pendingImageUrl) {
+      if ((pendingFile || pendingImageUrl) && !newItem._stacked) {
         try {
           const file =
             pendingFile ??

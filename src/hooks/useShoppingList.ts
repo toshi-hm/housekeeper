@@ -206,7 +206,10 @@ export const usePurchaseShoppingItem = () => {
   const { toast } = useToast();
   const { t } = useTranslation("common");
   return useMutation({
-    mutationFn: async ({ shoppingItemId, itemValues }: PurchaseInput) => {
+    mutationFn: async ({
+      shoppingItemId,
+      itemValues,
+    }: PurchaseInput): Promise<Item & { _stacked?: boolean; _revived?: boolean }> => {
       requireOnline();
       const {
         data: { user },
@@ -278,7 +281,9 @@ export const usePurchaseShoppingItem = () => {
           await createLot(user.id, activeItem.id, lotValuesFromForm(itemValues));
           await syncItemAggregate(activeItem.id);
           await markShoppingItemPurchased(shoppingItemId, activeItem.id);
-          return activeItem as Item;
+          // 既存アイテムへのスタック。呼び出し側が画像アップロードで既存画像を
+          // 上書きしないよう _stacked を立てる（NewItemPage と同じ規約）。
+          return { ...(activeItem as Item), _stacked: true };
         }
 
         // Fix #212: ソフトデリート済みアイテムを復活
@@ -302,7 +307,7 @@ export const usePurchaseShoppingItem = () => {
           await createLot(user.id, deletedItem.id, lotValuesFromForm(itemValues));
           await syncItemAggregate(deletedItem.id);
           await markShoppingItemPurchased(shoppingItemId, revived.id);
-          return revived as Item;
+          return { ...(revived as Item), _revived: true };
         }
       }
 

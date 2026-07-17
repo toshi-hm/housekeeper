@@ -47,7 +47,7 @@ export const ItemCard = ({
   const cardInner = (
     <Card
       className={cn(
-        "relative h-full cursor-pointer transition-shadow hover:shadow-md",
+        "relative h-full transition-shadow group-hover:shadow-md",
         isUrgent && !isEmpty && "border-yellow-400",
         expiryStatus === "expired" && !isEmpty && "border-red-400",
         isEmpty && "opacity-50",
@@ -95,7 +95,7 @@ export const ItemCard = ({
           )}
         </div>
       </CardContent>
-      <CardFooter className="flex items-center justify-between p-3 pt-0">
+      <CardFooter className="relative z-10 flex items-center justify-between p-3 pt-0">
         <span className="text-sm font-medium">
           {isEmpty ? (
             <span className="text-muted-foreground">{t("emptyStock")}</span>
@@ -118,14 +118,10 @@ export const ItemCard = ({
             <Button
               variant="outline"
               size="icon"
-              className="h-7 w-7 shrink-0"
+              className="relative h-7 w-7 shrink-0 after:absolute after:-inset-2 after:content-['']"
               aria-label={t("quickConsume")}
               disabled={isQuickConsuming}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onQuickConsume(item);
-              }}
+              onClick={() => onQuickConsume(item)}
             >
               {isQuickConsuming ? (
                 <Spinner className="h-3.5 w-3.5" />
@@ -153,9 +149,15 @@ export const ItemCard = ({
   }
 
   return (
-    <Link to="/items/$itemId" params={{ itemId: item.id }}>
+    <div className="group relative h-full">
       {cardInner}
-    </Link>
+      <Link
+        to="/items/$itemId"
+        params={{ itemId: item.id }}
+        aria-label={item.name}
+        className="absolute inset-0 z-0"
+      />
+    </div>
   );
 };
 

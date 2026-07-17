@@ -237,7 +237,7 @@ interface CreateItemInput {
   forceNew?: boolean;
 }
 
-const createItem = async ({
+export const createItem = async ({
   values,
   forceNew = false,
 }: CreateItemInput): Promise<Item & { _revived?: boolean; _stacked?: boolean }> => {
@@ -249,10 +249,10 @@ const createItem = async ({
     if (!forceNew) {
       const stacked = await tryStackToActiveItem(values.barcode, values, userData.user.id);
       if (stacked) return { ...stacked, _stacked: true };
-    }
 
-    const revived = await tryReviveItem(values.barcode, values, userData.user.id);
-    if (revived) return { ...revived, _revived: true };
+      const revived = await tryReviveItem(values.barcode, values, userData.user.id);
+      if (revived) return { ...revived, _revived: true };
+    }
   }
 
   const normalized = normalizeCreateValues(values);
@@ -334,6 +334,43 @@ export const useItem = (id: string) =>
     enabled: !!id,
   });
 
+/**
+ * items系リストキャッシュ（フィルタ・ソート違いの複数クエリ）へ、フィルタ条件を尊重して1件を反映する。
+ * 条件に一致しなければ（既存キャッシュから）除外し、一致すれば upsert する。
+ * 新規作成・更新のどちらの成功ハンドラからも同じ挙動にするため共通化している。
+ */
+export const applyItemToListCaches = (qc: ReturnType<typeof useQueryClient>, item: Item): void => {
+  const listQueries = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
+  for (const [queryKey, cachedItems] of listQueries) {
+    if (!Array.isArray(cachedItems) || !Array.isArray(queryKey)) continue;
+    const [, rawFilters, rawSort] = queryKey;
+    const sort = rawSort === "expiry_date" || rawSort === "purchase_date" ? rawSort : "created_at";
+
+    if (rawFilters === "with-expiry") {
+      const next =
+        !item.deleted_at && item.expiry_date
+          ? upsertItemInListCache(cachedItems, item, "expiry_date")
+          : cachedItems.filter((cached) => cached.id !== item.id);
+      qc.setQueryData(queryKey, next);
+      continue;
+    }
+
+    const filters =
+      rawFilters && typeof rawFilters === "object"
+        ? (rawFilters as ItemFilters)
+        : ({} as ItemFilters);
+
+    if (matchesItemFilters(item, filters)) {
+      qc.setQueryData(queryKey, upsertItemInListCache(cachedItems, item, sort));
+    } else {
+      qc.setQueryData(
+        queryKey,
+        cachedItems.filter((cached) => cached.id !== item.id),
+      );
+    }
+  }
+};
+
 export const useCreateItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -343,9 +380,7 @@ export const useCreateItem = () => {
     onSuccess: async (data) => {
       const result = data as Item & { _revived?: boolean; _stacked?: boolean };
 
-      qc.setQueriesData<Item[]>({ queryKey: ITEMS_KEY }, (old) =>
-        upsertItemInListCache(old, result),
-      );
+      applyItemToListCaches(qc, result);
       qc.setQueryData<Item>([...ITEMS_KEY, result.id], result);
 
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
@@ -371,37 +406,7 @@ export const useUpdateItem = (id: string) => {
     mutationFn: (values: Partial<ItemFormValues>) => updateItem(id, values),
     onSuccess: async (updatedItem) => {
       qc.setQueryData<Item>([...ITEMS_KEY, updatedItem.id], updatedItem);
-
-      const listQueries = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
-      for (const [queryKey, cachedItems] of listQueries) {
-        if (!Array.isArray(cachedItems) || !Array.isArray(queryKey)) continue;
-        const [, rawFilters, rawSort] = queryKey;
-        const sort =
-          rawSort === "expiry_date" || rawSort === "purchase_date" ? rawSort : "created_at";
-
-        if (rawFilters === "with-expiry") {
-          const next =
-            !updatedItem.deleted_at && updatedItem.expiry_date
-              ? upsertItemInListCache(cachedItems, updatedItem, "expiry_date")
-              : cachedItems.filter((item) => item.id !== updatedItem.id);
-          qc.setQueryData(queryKey, next);
-          continue;
-        }
-
-        const filters =
-          rawFilters && typeof rawFilters === "object"
-            ? (rawFilters as ItemFilters)
-            : ({} as ItemFilters);
-
-        if (matchesItemFilters(updatedItem, filters)) {
-          qc.setQueryData(queryKey, upsertItemInListCache(cachedItems, updatedItem, sort));
-        } else {
-          qc.setQueryData(
-            queryKey,
-            cachedItems.filter((item) => item.id !== updatedItem.id),
-          );
-        }
-      }
+      applyItemToListCaches(qc, updatedItem);
 
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
