@@ -491,7 +491,18 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      // #491: atomic "delete only if unused" RPCs — see
+      // supabase/migrations/20260716000001_atomic_delete_master_data.sql
+      delete_category_if_unused: {
+        Args: { p_id: string };
+        Returns: void;
+      };
+      delete_storage_location_if_unused: {
+        Args: { p_id: string };
+        Returns: void;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

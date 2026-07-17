@@ -69,7 +69,7 @@ export const useCalendarConsume = () => {
         targetLot.opened_remaining,
         item.content_amount,
       );
-      const { data: logData } = await supabase
+      const { data: logData, error: logError } = await supabase
         .from("consumption_logs")
         .insert({
           user_id: user.id,
@@ -83,13 +83,24 @@ export const useCalendarConsume = () => {
         })
         .select("id")
         .single();
+      if (logError) {
+        // Non-fatal: the lot is already zeroed and undo is still available
+        // via pendingRemovals. Warn so the missing history entry doesn't go
+        // unnoticed (#441).
+        // oxlint-disable-next-line no-console
+        console.warn("useCalendarConsume.check: consumption_logs insert failed", logError);
+        toast(t("consumptionLogFailed"), "warning");
+      }
 
       await syncItemAggregate(item.id);
       await invalidateCalendarQueries(qc, item.id);
 
+      // Keyed by lotId (not itemId) so that checking multiple lots of the
+      // same item in a row keeps every removal independently undo-able
+      // instead of the latest one overwriting the previous entry (#486).
       setPendingRemovals((prev) => ({
         ...prev,
-        [item.id]: {
+        [targetLot.id]: {
           lotId: targetLot.id,
           itemId: item.id,
           itemName: item.name,
@@ -104,10 +115,10 @@ export const useCalendarConsume = () => {
     }
   };
 
-  const undo = async (itemId: string): Promise<void> => {
+  const undo = async (lotId: string): Promise<void> => {
     try {
       requireOnline();
-      const pending = pendingRemovals[itemId];
+      const pending = pendingRemovals[lotId];
       if (!pending) return;
 
       const { error } = await supabase
@@ -129,7 +140,7 @@ export const useCalendarConsume = () => {
 
       setPendingRemovals((prev) => {
         const next = { ...prev };
-        delete next[itemId];
+        delete next[lotId];
         return next;
       });
     } catch (err) {
@@ -137,7 +148,8 @@ export const useCalendarConsume = () => {
     }
   };
 
-  const pendingRemovalList = Object.values(pendingRemovals).map(({ itemId, itemName }) => ({
+  const pendingRemovalList = Object.values(pendingRemovals).map(({ lotId, itemId, itemName }) => ({
+    lotId,
     itemId,
     itemName,
   }));

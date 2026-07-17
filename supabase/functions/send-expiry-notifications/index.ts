@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 import { isAuthorizedCronRequest } from "./auth.ts";
-import { addDaysToDateStr, jstNow } from "./dates.ts";
+import { jstDateString, jstNow } from "./date.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,8 +77,8 @@ Deno.serve(async (req: Request) => {
         if (notifyHour !== jst.hour) return;
       }
 
-      // Calculate the threshold date (JST基準の today から加算する。#520)
-      const thresholdStr = addDaysToDateStr(jst.date, pref.threshold_days);
+      // Calculate the threshold date (JST基準)
+      const thresholdStr = jstDateString(pref.threshold_days);
 
       // Fetch expiring/expired items for this user.
       // 下限(gte today)は設けない — 既に期限切れの item も対象に含める（#445）。

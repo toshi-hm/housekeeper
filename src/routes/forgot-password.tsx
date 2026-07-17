@@ -56,11 +56,12 @@ const Step1 = ({ onNext }: Step1Props) => {
       const { question } = await callEdge<{ question: string | null }>("get-security-question", {
         email,
       });
-      if (!question) {
-        setError(t("userNotFound"));
-        return;
-      }
-      onNext(email, question);
+      // Always proceed to the answer step regardless of whether the email is
+      // registered, so the UI does not leak email existence (see #449).
+      // A generic question is shown when no account/question exists; the
+      // subsequent verify-security-answer call always returns the same
+      // generic error for both "unknown email" and "wrong answer".
+      onNext(email, question ?? t("genericSecurityQuestion"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("common:unknownError"));
     } finally {

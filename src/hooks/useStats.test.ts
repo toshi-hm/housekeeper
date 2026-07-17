@@ -123,10 +123,9 @@ describe("computeMonthlyConsumption", () => {
     expect(result.map((r) => r.month)).toEqual(["2026/02", "2026/03", "2026/04"]);
   });
 
-  test("zero total for months with no logs", () => {
+  test("empty totals for months with no logs", () => {
     const result = computeMonthlyConsumption([], 2, fixedNow);
-    expect(result[0]?.total).toBe(0);
-    expect(result[0]?.unit).toBe("");
+    expect(result[0]?.totals).toEqual([]);
   });
 
   test("sums delta_amount for the correct month", () => {
@@ -135,8 +134,7 @@ describe("computeMonthlyConsumption", () => {
       { delta_amount: 200, delta_unit: "mL", occurred_at: "2026-04-15T10:00:00Z" },
     ];
     const result = computeMonthlyConsumption(logs, 1, fixedNow);
-    expect(result[0]?.total).toBe(300);
-    expect(result[0]?.unit).toBe("mL");
+    expect(result[0]?.totals).toEqual([{ unit: "mL", total: 300 }]);
   });
 
   test("ignores logs from other months", () => {
@@ -144,17 +142,35 @@ describe("computeMonthlyConsumption", () => {
       { delta_amount: 500, delta_unit: "g", occurred_at: "2025-12-01T10:00:00Z" },
     ];
     const result = computeMonthlyConsumption(logs, 1, fixedNow);
-    expect(result[0]?.total).toBe(0);
+    expect(result[0]?.totals).toEqual([]);
   });
 
-  test("picks dominant unit when multiple units in a month", () => {
+  test("keeps every unit as a separate series when multiple units occur in a month", () => {
     const logs: RawLog[] = [
       { delta_amount: 50, delta_unit: "g", occurred_at: "2026-04-10T00:00:00Z" },
       { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-04-11T00:00:00Z" },
     ];
     const result = computeMonthlyConsumption(logs, 1, fixedNow);
-    expect(result[0]?.unit).toBe("mL");
-    expect(result[0]?.total).toBe(300);
+    // Sorted descending by total, but both units must be present — neither
+    // is discarded just because it isn't the largest.
+    expect(result[0]?.totals).toEqual([
+      { unit: "mL", total: 300 },
+      { unit: "g", total: 50 },
+    ]);
+  });
+
+  test("handles three or more mixed units in a single month without dropping any", () => {
+    const logs: RawLog[] = [
+      { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-04-01T00:00:00Z" },
+      { delta_amount: 150, delta_unit: "g", occurred_at: "2026-04-02T00:00:00Z" },
+      { delta_amount: 4, delta_unit: "個", occurred_at: "2026-04-03T00:00:00Z" },
+    ];
+    const result = computeMonthlyConsumption(logs, 1, fixedNow);
+    expect(result[0]?.totals).toHaveLength(3);
+    const units = result[0]?.totals.map((t) => t.unit);
+    expect(units).toContain("mL");
+    expect(units).toContain("g");
+    expect(units).toContain("個");
   });
 
   test("rounds totals to 2 decimal places", () => {
@@ -163,6 +179,6 @@ describe("computeMonthlyConsumption", () => {
       { delta_amount: 0.2, delta_unit: "g", occurred_at: "2026-04-02T00:00:00Z" },
     ];
     const result = computeMonthlyConsumption(logs, 1, fixedNow);
-    expect(result[0]?.total).toBe(0.3);
+    expect(result[0]?.totals).toEqual([{ unit: "g", total: 0.3 }]);
   });
 });

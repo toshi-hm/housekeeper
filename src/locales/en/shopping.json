@@ -47,6 +47,7 @@
   "templateApply": "Apply",
   "templateCreate": "Create template",
   "templateDelete": "Delete",
+  "templateDeleteConfirm": "Delete this template? This cannot be undone.",
   "templateDeleted": "Template deleted",
   "templateEdit": "Edit",
   "templateItemCount_one": "{{count}} item",
