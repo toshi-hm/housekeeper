@@ -47,6 +47,13 @@ export const ImageUploader = ({
     e.target.value = "";
   };
 
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
@@ -58,14 +65,9 @@ export const ImageUploader = ({
     <div className="space-y-2">
       {previewUrl ? (
         <div
-          className={`relative rounded-lg transition-shadow ${
-            isDragging ? "ring-2 ring-primary" : ""
-          }`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
+          className={`relative rounded-lg ${isDragging ? "ring-2 ring-primary ring-offset-2" : ""}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
           <img src={previewUrl} alt="" className="h-40 w-full rounded-lg object-cover" />
@@ -105,11 +107,8 @@ export const ImageUploader = ({
             isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/30"
           }`}
           onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
           <Upload className="h-8 w-8 text-muted-foreground" />

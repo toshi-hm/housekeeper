@@ -8,7 +8,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { type CompositionEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
@@ -49,43 +49,56 @@ const dashboardSearchSchema = z.object({
 const SEARCH_DEBOUNCE_MS = 300;
 
 interface SearchInputProps {
-  initialValue: string;
+  value: string;
   placeholder: string;
   onDebouncedChange: (value: string) => void;
 }
 
 /**
  * キー入力ごとのURL遷移/Supabase再クエリを避けるため、ローカルstateで入力を受けてからデバウンスする。
- * IME変換中（コンポジション中）はデバウンスのコミットを止め、変換確定後に確定値でコミットする（#527）。
- * URLのsearchが自分自身のコミットで変わった場合は再同期しない（入力中のフォーカス落ちを防ぐ）よう、
- * 直近コミット値をrefで保持して比較する。
+ *
+ * 以前は親で `key={value}` を指定して外部変化(戻る/進む等)に再マウントで追従していたが、
+ * デバウンス確定 → URL更新 → key変化 で入力中にコンポーネントが毎回作り直され、
+ * フォーカスが外れて入力を継続できず、IME変換中は文字が重複する不具合があった (#527)。
+ *
+ * そのため再マウントはやめ、以下で追従する:
+ * - IME変換中 (isComposing) はデバウンス発火を抑止し、変換確定時にまとめて反映する
+ * - 自分が発火した更新の「エコー」はスキップし、外部要因の変化のみローカルstateへ同期する
  */
-const SearchInput = ({ initialValue, placeholder, onDebouncedChange }: SearchInputProps) => {
-  const [value, setValue] = useState(initialValue);
+const SearchInput = ({
+  value: externalValue,
+  placeholder,
+  onDebouncedChange,
+}: SearchInputProps) => {
+  const [value, setValue] = useState(externalValue);
   const isComposingRef = useRef(false);
-  const lastCommittedRef = useRef(initialValue);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // 最後に emit / 同期した値。自分の更新のエコーと外部変化を区別するために使う
+  const lastSyncedRef = useRef(externalValue);
+  // IME変換確定を検知するためのカウンタ。React 19 は変換中も onChange を発火するため、
+  // 確定時の値が変換中の最終値と同一になり setValue が bail-out してデバウンスが動かない。
+  // 確定のたびにこの値を増やして、値が同一でもデバウンスeffectを再実行させる。
+  const [compositionSeq, setCompositionSeq] = useState(0);
 
-  // 戻る/進むなど外部要因でURLのsearchが変わった場合のみローカルstateを追従させる。
+  // 戻る/進む等の外部要因でURLのsearchが変わったときだけローカルstateへ同期する。
+  // 自分がemitした値のエコー (externalValue === lastSyncedRef) では上書きしない。
   useEffect(() => {
-    if (initialValue === lastCommittedRef.current) return;
-    lastCommittedRef.current = initialValue;
-    setValue(initialValue);
-  }, [initialValue]);
+    if (externalValue !== lastSyncedRef.current) {
+      lastSyncedRef.current = externalValue;
+      setValue(externalValue);
+    }
+  }, [externalValue]);
 
   useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  const scheduleCommit = (v: string) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      lastCommittedRef.current = v;
-      onDebouncedChange(v);
+    // IME変換中はまだ確定していないため、デバウンス発火しない
+    if (isComposingRef.current) return;
+    if (value === lastSyncedRef.current) return;
+    const timer = setTimeout(() => {
+      lastSyncedRef.current = value;
+      onDebouncedChange(value);
     }, SEARCH_DEBOUNCE_MS);
-  };
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, compositionSeq]);
 
   return (
     <div className="relative flex-1">
@@ -94,20 +107,16 @@ const SearchInput = ({ initialValue, placeholder, onDebouncedChange }: SearchInp
         className="pl-9"
         placeholder={placeholder}
         value={value}
-        onChange={(e) => {
-          const v = e.target.value;
-          setValue(v);
-          if (!isComposingRef.current) scheduleCommit(v);
-        }}
+        onChange={(e) => setValue(e.target.value)}
         onCompositionStart={() => {
           isComposingRef.current = true;
-          if (timerRef.current) clearTimeout(timerRef.current);
         }}
-        onCompositionEnd={(e: CompositionEvent<HTMLInputElement>) => {
+        onCompositionEnd={(e) => {
           isComposingRef.current = false;
-          const v = e.currentTarget.value;
-          setValue(v);
-          scheduleCommit(v);
+          // 変換確定後の値でstateを更新し、デバウンスeffectを発火させる。
+          // 値が変換中の最終値と同一でも、compositionSeq を増やして確実に再発火させる。
+          setValue(e.currentTarget.value);
+          setCompositionSeq((n) => n + 1);
         }}
       />
     </div>
@@ -238,20 +247,9 @@ export const DashboardPage = () => {
     visibleItems.map((item) => item.image_path),
   );
 
-  // バナー見出し・アコーディオン内訳・一括追加ボタンの対象件数を揃えるため、
-  // すべて units > 0 のアイテムのみを対象にする（#450）。
-  const expiredCount = baseFiltered.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired" && item.units > 0,
-  ).length;
-  const expiringSoonCount = baseFiltered.filter(
-    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon" && item.units > 0,
-  ).length;
-  const urgentCount = expiredCount + expiringSoonCount;
-
-  useEffect(() => {
-    void updateAppBadge(urgentCount);
-  }, [urgentCount]);
-
+  // 期限バナー（見出し件数・アコーディオン内訳・一括追加ボタン）は在庫が残っている
+  // (units > 0) 期限切れ/期限間近アイテムのみを対象にする。見出しの urgentCount も
+  // この units > 0 の集合から算出し、内訳・ボタン対象と件数を一致させる (#450)。
   const urgentItems = items.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
@@ -262,6 +260,20 @@ export const DashboardPage = () => {
   const expiringSoonItems = urgentItems.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   );
+  const urgentCount = urgentItems.length;
+
+  useEffect(() => {
+    void updateAppBadge(urgentCount);
+  }, [urgentCount]);
+
+  // クイックフィルターチップの件数。チップをタップしたときに表示される filtered
+  // (baseFiltered を期限状態で絞ったもの) と一致させるため baseFiltered 基準で数える。
+  const expiredCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
+  ).length;
+  const expiringSoonCount = baseFiltered.filter(
+    (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
+  ).length;
 
   const lowStockItems = baseFiltered.filter(
     (item) =>
@@ -459,7 +471,7 @@ export const DashboardPage = () => {
       {/* Search */}
       <div className="flex gap-2">
         <SearchInput
-          initialValue={search}
+          value={search}
           placeholder={t("searchPlaceholder")}
           onDebouncedChange={setSearch}
         />

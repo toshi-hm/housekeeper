@@ -47,6 +47,7 @@
   "templateApply": "適用",
   "templateCreate": "テンプレートを作成",
   "templateDelete": "削除",
+  "templateDeleteConfirm": "このテンプレートを削除しますか？この操作は取り消せません。",
   "templateDeleted": "テンプレートを削除しました",
   "templateEdit": "編集",
   "templateItemCount_other": "{{count}}品",

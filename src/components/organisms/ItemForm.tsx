@@ -83,6 +83,7 @@ export const ItemForm = ({
   const [nameError, setNameError] = useState("");
   const [unitsError, setUnitsError] = useState("");
   const [contentAmountError, setContentAmountError] = useState("");
+  const [minimumStockError, setMinimumStockError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
@@ -143,7 +144,7 @@ export const ItemForm = ({
   };
 
   const handleAddLocation = async (name: string) => {
-    const location = await addLocation(name);
+    const location = await addLocation({ name });
     set("storage_location_id", location.id);
   };
 
@@ -198,6 +199,14 @@ export const ItemForm = ({
     const parsedContentAmount = Math.round(parseFloat(contentAmountRaw) * 100) / 100;
     if (contentAmountRaw.trim() === "" || isNaN(parsedContentAmount) || parsedContentAmount <= 0) {
       setContentAmountError(t("contentAmountRequired"));
+      hasError = true;
+    }
+
+    if (
+      typeof values.minimum_stock === "number" &&
+      (isNaN(values.minimum_stock) || values.minimum_stock < 0)
+    ) {
+      setMinimumStockError(t("minimumStockInvalid"));
       hasError = true;
     }
 
@@ -314,7 +323,7 @@ export const ItemForm = ({
             id="category_id"
             value={values.category_id ?? ""}
             onChange={(value) => set("category_id", value || null)}
-            options={categories.map((c) => ({ value: c.id, label: c.name }))}
+            options={categories.map((c) => ({ value: c.id, label: c.name, icon: c.icon }))}
             placeholder={t("categoryPlaceholder")}
             onAdd={handleAddCategory}
             onDelete={handleDeleteCategory}
@@ -332,7 +341,7 @@ export const ItemForm = ({
             id="storage_location_id"
             value={values.storage_location_id ?? ""}
             onChange={(value) => set("storage_location_id", value || null)}
-            options={locations.map((l) => ({ value: l.id, label: l.name }))}
+            options={locations.map((l) => ({ value: l.id, label: l.name, icon: l.icon }))}
             placeholder={t("storageLocationPlaceholder")}
             onAdd={handleAddLocation}
             onDelete={handleDeleteLocation}
@@ -456,9 +465,17 @@ export const ItemForm = ({
             placeholder="—"
             onChange={(e) => {
               const v = e.target.value;
-              set("minimum_stock", v === "" ? null : parseInt(v, 10));
+              if (v === "") {
+                set("minimum_stock", null);
+                setMinimumStockError("");
+                return;
+              }
+              const parsed = parseInt(v, 10);
+              set("minimum_stock", isNaN(parsed) ? null : parsed);
+              setMinimumStockError(!isNaN(parsed) && parsed < 0 ? t("minimumStockInvalid") : "");
             }}
           />
+          {minimumStockError && <p className="text-sm text-destructive">{minimumStockError}</p>}
         </div>
 
         {/* Image */}

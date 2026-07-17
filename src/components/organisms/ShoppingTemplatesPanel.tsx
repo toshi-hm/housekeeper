@@ -2,6 +2,7 @@ import { ListPlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,9 +17,10 @@ interface SaveInput {
 interface ShoppingTemplatesPanelProps {
   templates: ShoppingTemplateWithItems[];
   onApply: (template: ShoppingTemplateWithItems) => void;
-  onSave: (input: SaveInput) => void;
+  onSave: (input: SaveInput) => Promise<void>;
   onDelete: (id: string) => void;
   isSaving?: boolean;
+  isDeleting?: boolean;
   applyingId?: string | null;
 }
 
@@ -32,12 +34,14 @@ export const ShoppingTemplatesPanel = ({
   onSave,
   onDelete,
   isSaving = false,
+  isDeleting = false,
   applyingId = null,
 }: ShoppingTemplatesPanelProps) => {
   const { t } = useTranslation("shopping");
   const [editor, setEditor] = useState<EditorState>({ mode: "closed" });
   const [name, setName] = useState("");
   const [rows, setRows] = useState<TemplateItemInput[]>([emptyRow()]);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const openNew = () => {
     setEditor({ mode: "new" });
@@ -57,14 +61,20 @@ export const ShoppingTemplatesPanel = ({
 
   const closeEditor = () => setEditor({ mode: "closed" });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) return;
-    onSave({
-      id: editor.mode === "edit" ? editor.id : undefined,
-      name: name.trim(),
-      items: rows.filter((r) => r.name.trim().length > 0),
-    });
-    closeEditor();
+    try {
+      await onSave({
+        id: editor.mode === "edit" ? editor.id : undefined,
+        name: name.trim(),
+        items: rows.filter((r) => r.name.trim().length > 0),
+      });
+      // 保存成功後にのみエディタを閉じる。失敗時は入力内容を保持して再試行できるようにする
+      // (同ルート内の handleEdit / handlePurchase と同じパターン)。エラートーストは呼び出し側で表示。
+      closeEditor();
+    } catch {
+      // 保存失敗時はエディタを開いたままにして入力内容を保持する
+    }
   };
 
   const updateRow = (index: number, patch: Partial<TemplateItemInput>) => {
@@ -73,6 +83,18 @@ export const ShoppingTemplatesPanel = ({
 
   return (
     <div className="space-y-3 rounded-lg border p-4">
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title={t("common:confirmDeleteTitle")}
+        message={t("templateDeleteConfirm")}
+        confirmLabel={t("common:delete")}
+        isConfirming={isDeleting}
+        onConfirm={() => {
+          if (deleteTargetId) onDelete(deleteTargetId);
+          setDeleteTargetId(null);
+        }}
+        onCancel={() => setDeleteTargetId(null)}
+      />
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{t("templatesTitle")}</h2>
         {editor.mode === "closed" && (
@@ -122,7 +144,7 @@ export const ShoppingTemplatesPanel = ({
                     variant="ghost"
                     className="h-8 w-8 text-destructive hover:text-destructive"
                     aria-label={t("templateDelete")}
-                    onClick={() => onDelete(template.id)}
+                    onClick={() => setDeleteTargetId(template.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -185,7 +207,11 @@ export const ShoppingTemplatesPanel = ({
             </Button>
           </div>
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={handleSave} disabled={!name.trim() || isSaving}>
+            <Button
+              className="flex-1"
+              onClick={() => void handleSave()}
+              disabled={!name.trim() || isSaving}
+            >
               {t("editSave")}
             </Button>
             <Button variant="outline" onClick={closeEditor} disabled={isSaving}>

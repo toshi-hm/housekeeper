@@ -1,221 +1,140 @@
 // Alexa request signature verification
 // https://developer.amazon.com/en-US/docs/alexa/custom-skills/host-a-custom-skill-as-a-web-service.html
+//
+// Per Amazon's spec, verification requires walking the full certificate
+// chain presented by SignatureCertChainUrl up to a certificate issued by a
+// trusted root CA — not merely checking date/SAN/signature on the leaf cert
+// in isolation (see #492). We use Node's `node:crypto` X509Certificate API
+// (available in Deno via the node: compat layer) to do proper chain
+// validation: each certificate in the chain must be issued by, and its
+// signature verified against, the next certificate up, terminating at one
+// of our pinned trusted root CAs.
 
-// --- DER parsing helpers ---
+import { X509Certificate } from "node:crypto";
 
-const readDERLen = (data: Uint8Array, pos: number): { len: number; end: number } => {
-  if (data[pos] < 0x80) return { len: data[pos], end: pos + 1 };
-  const n = data[pos] & 0x7f;
-  let len = 0;
-  for (let i = 0; i < n; i++) len = (len << 8) | data[pos + 1 + i];
-  return { len, end: pos + 1 + n };
+// --- Pinned trusted root CAs ---
+//
+// These are the root CAs Amazon has used (historically and currently) to
+// issue certificates for echo-api.amazon.com: the legacy Starfield root
+// (Starfield Services Root Certificate Authority - G2) and the current
+// Amazon Trust Services root (Amazon Root CA 1). Sourced verbatim from the
+// Mozilla-maintained CA bundle distributed via the `certifi` project
+// (https://github.com/certifi/python-certifi), which tracks Mozilla's
+// canonical root store.
+export const TRUSTED_ROOT_PEMS = [
+  // Starfield Services Root Certificate Authority - G2
+  // SHA256 fingerprint: 56:8D:69:05:A2:C8:87:08:A4:B3:02:51:90:ED:CF:ED:B1:97:4A:60:6A:13:C6:E5:29:0F:CB:2A:E6:3E:DA:B5
+  `-----BEGIN CERTIFICATE-----
+MIID7zCCAtegAwIBAgIBADANBgkqhkiG9w0BAQsFADCBmDELMAkGA1UEBhMCVVMx
+EDAOBgNVBAgTB0FyaXpvbmExEzARBgNVBAcTClNjb3R0c2RhbGUxJTAjBgNVBAoT
+HFN0YXJmaWVsZCBUZWNobm9sb2dpZXMsIEluYy4xOzA5BgNVBAMTMlN0YXJmaWVs
+ZCBTZXJ2aWNlcyBSb290IENlcnRpZmljYXRlIEF1dGhvcml0eSAtIEcyMB4XDTA5
+MDkwMTAwMDAwMFoXDTM3MTIzMTIzNTk1OVowgZgxCzAJBgNVBAYTAlVTMRAwDgYD
+VQQIEwdBcml6b25hMRMwEQYDVQQHEwpTY290dHNkYWxlMSUwIwYDVQQKExxTdGFy
+ZmllbGQgVGVjaG5vbG9naWVzLCBJbmMuMTswOQYDVQQDEzJTdGFyZmllbGQgU2Vy
+dmljZXMgUm9vdCBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkgLSBHMjCCASIwDQYJKoZI
+hvcNAQEBBQADggEPADCCAQoCggEBANUMOsQq+U7i9b4Zl1+OiFOxHz/Lz58gE20p
+OsgPfTz3a3Y4Y9k2YKibXlwAgLIvWX/2h/klQ4bnaRtSmpDhcePYLQ1Ob/bISdm2
+8xpWriu2dBTrz/sm4xq6HZYuajtYlIlHVv8loJNwU4PahHQUw2eeBGg6345AWh1K
+Ts9DkTvnVtYAcMtS7nt9rjrnvDH5RfbCYM8TWQIrgMw0R9+53pBlbQLPLJGmpufe
+hRhJfGZOozptqbXuNC66DQO4M99H67FrjSXZm86B0UVGMpZwh94CDklDhbZsc7tk
+6mFBrMnUVN+HL8cisibMn1lUaJ/8viovxFUcdUBgF4UCVTmLfwUCAwEAAaNCMEAw
+DwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFJxfAN+q
+AdcwKziIorhtSpzyEZGDMA0GCSqGSIb3DQEBCwUAA4IBAQBLNqaEd2ndOxmfZyMI
+bw5hyf2E3F/YNoHN2BtBLZ9g3ccaaNnRbobhiCPPE95Dz+I0swSdHynVv/heyNXB
+ve6SbzJ08pGCL72CQnqtKrcgfU28elUSwhXqvfdqlS5sdJ/PHLTyxQGjhdByPq1z
+qwubdQxtRbeOlKyWN7Wg0I8VRw7j6IPdj/3vQQF3zCepYoUz8jcI73HPdwbeyBkd
+iEDPfUYd/x7H4c7/I9vG+o1VTqkC50cRRj70/b17KSa7qWFiNyi2LSr2EIZkyXCn
+0q23KXB56jzaYyWf/Wi3MOxw+3WKt21gZ7IeyLnp2KhvAotnDU0mV3HaIPzBSlCN
+sSi6
+-----END CERTIFICATE-----`,
+  // Amazon Root CA 1
+  // SHA256 fingerprint: 8E:CD:E6:88:4F:3D:87:B1:12:5B:A3:1A:C3:FC:B1:3D:70:16:DE:7F:57:CC:90:4F:E1:CB:97:C6:AE:98:19:6E
+  `-----BEGIN CERTIFICATE-----
+MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF
+ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6
+b24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL
+MAkGA1UEBhMCVVMxDzANBgNVBAoTBkFtYXpvbjEZMBcGA1UEAxMQQW1hem9uIFJv
+b3QgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALJ4gHHKeNXj
+ca9HgFB0fW7Y14h29Jlo91ghYPl0hAEvrAIthtOgQ3pOsqTQNroBvo3bSMgHFzZM
+9O6II8c+6zf1tRn4SWiw3te5djgdYZ6k/oI2peVKVuRF4fn9tBb6dNqcmzU5L/qw
+IFAGbHrQgLKm+a/sRxmPUDgH3KKHOVj4utWp+UhnMJbulHheb4mjUcAwhmahRWa6
+VOujw5H5SNz/0egwLX0tdHA114gk957EWW67c4cX8jJGKLhD+rcdqsq08p8kDi1L
+93FcXmn/6pUCyziKrlA4b9v7LWIbxcceVOF34GfID5yHI9Y/QCB/IIDEgEw+OyQm
+jgSubJrIqg0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMC
+AYYwHQYDVR0OBBYEFIQYzIU07LwMlJQuCFmcx7IQTgoIMA0GCSqGSIb3DQEBCwUA
+A4IBAQCY8jdaQZChGsV2USggNiMOruYou6r4lK5IpDB/G/wkjUu0yKGX9rbxenDI
+U5PMCCjjmCXPI6T53iHTfIUJrU6adTrCC2qJeHZERxhlbI1Bjjt/msv0tadQ1wUs
+N+gDS63pYaACbvXy8MWy7Vu33PqUXHeeE6V/Uq2V8viTO96LXFvKWlJbYK8U90vv
+o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU
+5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy
+rqXRfboQnoZsG4q5WTP468SQvvG5
+-----END CERTIFICATE-----`,
+];
+
+let trustedRootsCache: X509Certificate[] | null = null;
+const getTrustedRoots = (): X509Certificate[] => {
+  trustedRootsCache ??= TRUSTED_ROOT_PEMS.map((pem) => new X509Certificate(pem));
+  return trustedRootsCache;
 };
 
-// rsaEncryption OID: 1.2.840.113549.1.1.1
-const RSA_OID = new Uint8Array([0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01]);
-// id-ce-subjectAltName OID: 2.5.29.17
-const SAN_OID = new Uint8Array([0x55, 0x1d, 0x11]);
+// --- Chain parsing & validation ---
 
-const oidEq = (a: Uint8Array, b: Uint8Array): boolean =>
-  a.length === b.length && a.every((v, i) => v === b[i]);
+const PEM_CERT_REGEX = /-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g;
 
-// Navigate to TBSCertificate content bounds
-const getTBSBounds = (certDer: Uint8Array): { start: number; end: number } | null => {
-  if (certDer[0] !== 0x30) return null;
-  const cert = readDERLen(certDer, 1);
-  if (certDer[cert.end] !== 0x30) return null;
-  const tbs = readDERLen(certDer, cert.end + 1);
-  return { start: tbs.end, end: tbs.end + tbs.len };
+export const parseCertChain = (pemText: string): X509Certificate[] => {
+  const matches = pemText.match(PEM_CERT_REGEX) ?? [];
+  return matches.map((pem) => new X509Certificate(pem));
 };
 
-// --- Certificate field extractors ---
+const TARGET_HOST = "echo-api.amazon.com";
 
-// Extract SubjectPublicKeyInfo bytes (identified by rsaEncryption AlgorithmIdentifier inside)
-const extractSPKI = (certDer: Uint8Array): Uint8Array | null => {
-  try {
-    const bounds = getTBSBounds(certDer);
-    if (!bounds) return null;
-    let pos = bounds.start;
-    while (pos < bounds.end) {
-      const tag = certDer[pos];
-      const field = readDERLen(certDer, pos + 1);
-      const fieldEnd = field.end + field.len;
-      // SubjectPublicKeyInfo: SEQUENCE { SEQUENCE { OID rsaEncryption, ... }, BIT STRING }
-      // Distinguishes from plain AlgorithmIdentifiers which start directly with OID (0x06)
-      if (tag === 0x30 && certDer[field.end] === 0x30) {
-        const algo = readDERLen(certDer, field.end + 1);
-        if (certDer[algo.end] === 0x06) {
-          const oid = readDERLen(certDer, algo.end + 1);
-          if (oidEq(certDer.slice(oid.end, oid.end + oid.len), RSA_OID)) {
-            return certDer.slice(pos, fieldEnd);
-          }
-        }
-      }
-      pos = fieldEnd;
-    }
-    return null;
-  } catch {
-    return null;
+const isValidNow = (cert: X509Certificate, now: Date): boolean =>
+  new Date(cert.validFrom) <= now && now <= new Date(cert.validTo);
+
+// Validates the full certificate chain per Amazon's signature verification spec:
+//   1. The leaf certificate is currently valid and its SAN covers echo-api.amazon.com.
+//   2. Every certificate in the chain is currently valid, was issued by the
+//      next certificate up, and its signature verifies against that issuer's
+//      public key.
+//   3. The chain terminates at (or below) one of our pinned trusted root CAs.
+// Returns the earliest `validTo` across the whole chain on success (used for
+// cache expiry), or null if the chain fails validation.
+export const validateCertChain = (chain: X509Certificate[]): number | null => {
+  if (chain.length === 0) return null;
+  const now = new Date();
+
+  const leaf = chain[0];
+  if (!isValidNow(leaf, now)) return null;
+  if (leaf.checkHost(TARGET_HOST) == null) return null;
+
+  let minNotAfter = new Date(leaf.validTo).getTime();
+
+  for (let i = 0; i < chain.length - 1; i++) {
+    const child = chain[i];
+    const issuer = chain[i + 1];
+    if (!isValidNow(issuer, now)) return null;
+    if (!child.checkIssued(issuer)) return null;
+    if (!child.verify(issuer.publicKey)) return null;
+    minNotAfter = Math.min(minNotAfter, new Date(issuer.validTo).getTime());
   }
-};
 
-// Parse UTCTime (0x17) or GeneralizedTime (0x18) from DER bytes; returns ms timestamp
-const parseDERTime = (data: Uint8Array, pos: number, len: number, tag: number): number | null => {
-  try {
-    const s = new TextDecoder("ascii").decode(data.slice(pos, pos + len));
-    if (tag === 0x17) {
-      // UTCTime: YYMMDDHHMMSSZ — year 00-49 = 2000-2049, 50-99 = 1950-1999
-      const yr = parseInt(s.slice(0, 2), 10);
-      return new Date(
-        `${yr >= 50 ? 1900 + yr : 2000 + yr}-${s.slice(2, 4)}-${s.slice(4, 6)}` +
-          `T${s.slice(6, 8)}:${s.slice(8, 10)}:${s.slice(10, 12)}Z`,
-      ).getTime();
-    }
-    if (tag === 0x18) {
-      // GeneralizedTime: YYYYMMDDHHMMSSZ
-      return new Date(
-        `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` +
-          `T${s.slice(8, 10)}:${s.slice(10, 12)}:${s.slice(12, 14)}Z`,
-      ).getTime();
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
+  const last = chain[chain.length - 1];
+  const trustedRoots = getTrustedRoots();
+  const chainsToTrustedRoot = trustedRoots.some((root) => {
+    if (last.fingerprint256 === root.fingerprint256) return true; // last cert IS a pinned root
+    return last.checkIssued(root) && last.verify(root.publicKey); // last cert is signed by a pinned root
+  });
+  if (!chainsToTrustedRoot) return null;
 
-// Validate notBefore <= now <= notAfter from the certificate Validity SEQUENCE.
-// Returns the notAfter timestamp (ms) on success, or null if invalid/expired.
-const validateCertDates = (certDer: Uint8Array): number | null => {
-  try {
-    const bounds = getTBSBounds(certDer);
-    if (!bounds) return null;
-    let pos = bounds.start;
-    while (pos < bounds.end) {
-      const tag = certDer[pos];
-      const field = readDERLen(certDer, pos + 1);
-      const fieldEnd = field.end + field.len;
-      // Validity SEQUENCE: first inner element is UTCTime (0x17) or GeneralizedTime (0x18)
-      if (tag === 0x30 && (certDer[field.end] === 0x17 || certDer[field.end] === 0x18)) {
-        const nbTag = certDer[field.end];
-        const nbLen = readDERLen(certDer, field.end + 1);
-        const notBefore = parseDERTime(certDer, nbLen.end, nbLen.len, nbTag);
-        const naPos = nbLen.end + nbLen.len;
-        if (naPos < fieldEnd) {
-          const naTag = certDer[naPos];
-          const naLen = readDERLen(certDer, naPos + 1);
-          const notAfter = parseDERTime(certDer, naLen.end, naLen.len, naTag);
-          if (notBefore !== null && notAfter !== null) {
-            const now = Date.now();
-            if (now >= notBefore && now <= notAfter) {
-              return notAfter;
-            }
-            return null;
-          }
-        }
-      }
-      pos = fieldEnd;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-// Check dNSName against target, supporting a single leading wildcard (*.example.com).
-// A wildcard matches exactly one additional label: *.example.com matches sub.example.com
-// but NOT a.b.example.com (multi-label depth).
-export const dnsMatches = (name: string, target: string): boolean => {
-  const n = name.toLowerCase();
-  const t = target.toLowerCase();
-  if (n === t) return true;
-  if (n.startsWith("*.")) {
-    const suffix = n.slice(1); // ".example.com"
-    if (!t.endsWith(suffix)) return false;
-    const label = t.slice(0, t.length - suffix.length);
-    return label.length > 0 && !label.includes(".");
-  }
-  return false;
-};
-
-// Validate SubjectAltName extension contains a dNSName for echo-api.amazon.com
-const validateCertDomain = (certDer: Uint8Array): boolean => {
-  const TARGET = "echo-api.amazon.com";
-  try {
-    const bounds = getTBSBounds(certDer);
-    if (!bounds) return false;
-    let pos = bounds.start;
-    while (pos < bounds.end) {
-      const tag = certDer[pos];
-      const field = readDERLen(certDer, pos + 1);
-      const fieldEnd = field.end + field.len;
-
-      // Extensions section: [3] EXPLICIT (tag 0xa3)
-      if (tag === 0xa3) {
-        if (certDer[field.end] !== 0x30) return false;
-        const exts = readDERLen(certDer, field.end + 1);
-        let extPos = exts.end;
-        const extsEnd = exts.end + exts.len;
-
-        while (extPos < extsEnd) {
-          if (certDer[extPos] !== 0x30) break;
-          const ext = readDERLen(certDer, extPos + 1);
-          const extEnd = ext.end + ext.len;
-
-          if (certDer[ext.end] === 0x06) {
-            const oidLen = readDERLen(certDer, ext.end + 1);
-            const oidBytes = certDer.slice(oidLen.end, oidLen.end + oidLen.len);
-
-            if (oidEq(oidBytes, SAN_OID)) {
-              // Skip optional critical BOOLEAN, then read OCTET STRING wrapper
-              let valPos = oidLen.end + oidLen.len;
-              if (certDer[valPos] === 0x01) {
-                const bLen = readDERLen(certDer, valPos + 1);
-                valPos = bLen.end + bLen.len;
-              }
-              if (certDer[valPos] !== 0x04) return false;
-              const octet = readDERLen(certDer, valPos + 1);
-              valPos = octet.end;
-
-              // GeneralNames SEQUENCE
-              if (certDer[valPos] !== 0x30) return false;
-              const gn = readDERLen(certDer, valPos + 1);
-              let gnPos = gn.end;
-              const gnEnd = gn.end + gn.len;
-
-              while (gnPos < gnEnd) {
-                const gnTag = certDer[gnPos];
-                const gnField = readDERLen(certDer, gnPos + 1);
-                if (gnTag === 0x82) {
-                  // dNSName [2] IMPLICIT IA5String
-                  const name = new TextDecoder("ascii").decode(
-                    certDer.slice(gnField.end, gnField.end + gnField.len),
-                  );
-                  if (dnsMatches(name, TARGET)) return true;
-                }
-                gnPos = gnField.end + gnField.len;
-              }
-              return false; // SAN found but no matching dNSName
-            }
-          }
-          extPos = extEnd;
-        }
-        return false; // Extensions scanned, no SAN found
-      }
-      pos = fieldEnd;
-    }
-    return false;
-  } catch {
-    return false;
-  }
+  return minNotAfter;
 };
 
 // ---
 
-const PEM_CERT_REGEX = /-----BEGIN CERTIFICATE-----([^-]+)-----END CERTIFICATE-----/;
-
 // Module-level cache: Alexa rotates certs infrequently; caching avoids per-request S3 fetches.
-// notAfterMs is re-checked on every hit so an expired cached cert is never accepted.
+// notAfterMs (earliest expiry across the validated chain) is re-checked on every
+// hit so an expired cached chain is never accepted.
 let certCache: { url: string; spki: Uint8Array; notAfterMs: number } | null = null;
 
 export const verifyAlexaSignature = async (
@@ -250,32 +169,30 @@ export const verifyAlexaSignature = async (
       // Keep timeout active during body read — slow transfers can still be aborted
       const pem = await certRes.text();
       clearTimeout(timeout);
-      const pemMatch = PEM_CERT_REGEX.exec(pem);
-      if (!pemMatch) {
-        console.error("[alexa-skill] No certificate found in PEM response");
+
+      let chain: X509Certificate[];
+      try {
+        chain = parseCertChain(pem);
+      } catch (parseErr) {
+        console.error("[alexa-skill] Failed to parse certificate chain:", parseErr);
+        return false;
+      }
+      if (chain.length === 0) {
+        console.error("[alexa-skill] No certificates found in PEM response");
         return false;
       }
 
-      const certDer = Uint8Array.from(atob(pemMatch[1].replace(/\s/g, "")), (c) => c.charCodeAt(0));
-
-      const notAfterMs = validateCertDates(certDer);
+      const notAfterMs = validateCertChain(chain);
       if (notAfterMs === null) {
-        console.error("[alexa-skill] Certificate is expired or not yet valid");
+        console.error(
+          "[alexa-skill] Certificate chain failed validation (expired, wrong domain, broken chain, or untrusted root)",
+        );
         return false;
       }
 
-      if (!validateCertDomain(certDer)) {
-        console.error("[alexa-skill] Certificate SAN does not include echo-api.amazon.com");
-        return false;
-      }
-
-      const extracted = extractSPKI(certDer);
-      if (!extracted) {
-        console.error("[alexa-skill] Failed to extract SPKI from certificate");
-        return false;
-      }
-
-      spki = extracted;
+      // Export the leaf's SubjectPublicKeyInfo (DER) for the actual request-body
+      // signature check below.
+      spki = new Uint8Array(chain[0].publicKey.export({ type: "spki", format: "der" }));
       certCache = { url: certChainUrl, spki, notAfterMs };
     }
 

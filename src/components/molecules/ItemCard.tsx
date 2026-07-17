@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Calendar, Check, MapPin, Minus, Tag } from "lucide-react";
-import type { MouseEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
@@ -47,7 +47,7 @@ export const ItemCard = ({
   const cardInner = (
     <Card
       className={cn(
-        "relative h-full cursor-pointer transition-shadow hover:shadow-md",
+        "relative h-full transition-shadow group-hover:shadow-md",
         isUrgent && !isEmpty && "border-yellow-400",
         expiryStatus === "expired" && !isEmpty && "border-red-400",
         isEmpty && "opacity-50",
@@ -95,7 +95,7 @@ export const ItemCard = ({
           )}
         </div>
       </CardContent>
-      <CardFooter className="flex items-center justify-between p-3 pt-0">
+      <CardFooter className="relative z-10 flex items-center justify-between p-3 pt-0">
         <span className="text-sm font-medium">
           {isEmpty ? (
             <span className="text-muted-foreground">{t("emptyStock")}</span>
@@ -113,29 +113,27 @@ export const ItemCard = ({
             </span>
           )}
         </span>
-        <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />
+        <div className="flex items-center gap-1">
+          {!isEmpty && !selectionMode && onQuickConsume && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="relative h-7 w-7 shrink-0 after:absolute after:-inset-2 after:content-['']"
+              aria-label={t("quickConsume")}
+              disabled={isQuickConsuming}
+              onClick={() => onQuickConsume(item)}
+            >
+              {isQuickConsuming ? (
+                <Spinner className="h-3.5 w-3.5" />
+              ) : (
+                <Minus className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          )}
+          <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />
+        </div>
       </CardFooter>
     </Card>
-  );
-
-  const handleQuickConsumeClick = (e: MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onQuickConsume?.(item);
-  };
-
-  // クイック消費ボタンは Link(<a>) の兄弟要素として重ねて配置する（button-in-anchorのネスト回避、#511）。
-  const quickConsumeButton = !isEmpty && !selectionMode && onQuickConsume && (
-    <Button
-      variant="outline"
-      size="icon"
-      className="absolute right-2 top-2 z-10 h-11 w-11 shrink-0 bg-background/95 shadow"
-      aria-label={t("quickConsume")}
-      disabled={isQuickConsuming}
-      onClick={handleQuickConsumeClick}
-    >
-      {isQuickConsuming ? <Spinner className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-    </Button>
   );
 
   if (selectionMode) {
@@ -151,11 +149,14 @@ export const ItemCard = ({
   }
 
   return (
-    <div className="relative h-full">
-      <Link to="/items/$itemId" params={{ itemId: item.id }} className="block h-full">
-        {cardInner}
-      </Link>
-      {quickConsumeButton}
+    <div className="group relative h-full">
+      {cardInner}
+      <Link
+        to="/items/$itemId"
+        params={{ itemId: item.id }}
+        aria-label={item.name}
+        className="absolute inset-0 z-0"
+      />
     </div>
   );
 };

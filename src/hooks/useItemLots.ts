@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
-import { OfflineError, requireOnline } from "@/lib/requireOnline";
+import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 import {
@@ -9,6 +9,7 @@ import {
   type ConsumeLotParams,
   getLotRemainingAmount,
   type ItemLot,
+  roundFloat,
 } from "@/types/item";
 
 export const LOTS_KEY = ["item-lots"] as const;
@@ -107,15 +108,42 @@ export const syncItemAggregate = async (itemId: string): Promise<void> => {
     .filter((d): d is string => d !== null);
   const earliestExpiry = expiryDates.length > 0 ? expiryDates.sort()[0] : null;
 
-  // Keep opened_remaining on items only when exactly one lot is open,
-  // so the card can display an accurate total remaining amount.
-  const openLots = activeRows.filter((l) => l.opened_remaining !== null);
-  const aggregateOpenedRemaining = openLots.length === 1 ? openLots[0]!.opened_remaining : null;
+  // Aggregate opened_remaining/units: sum each lot's *actual* remaining
+  // amount (getLotRemainingAmount already accounts for the opened package
+  // within a lot) and re-derive a single (units, opened_remaining) pair that
+  // reproduces that exact total via getLotRemainingAmount. Previously this
+  // only kept opened_remaining when exactly one lot was open and fell back
+  // to raw unit counts otherwise, which over-reported stock whenever two or
+  // more lots were open at the same time (#438).
+  let aggregateUnits = totalUnits;
+  let aggregateOpenedRemaining: number | null = null;
+  if (contentAmount > 0) {
+    const totalRemaining = roundFloat(
+      activeRows.reduce(
+        (sum, l) =>
+          sum +
+          getLotRemainingAmount(
+            l.units as number,
+            contentAmount,
+            l.opened_remaining as number | null,
+          ),
+        0,
+      ),
+    );
+    const sealedUnits = Math.floor(roundFloat(totalRemaining / contentAmount));
+    const openedAfter = roundFloat(totalRemaining - sealedUnits * contentAmount);
+    if (openedAfter > 0) {
+      aggregateUnits = sealedUnits + 1;
+      aggregateOpenedRemaining = openedAfter;
+    } else {
+      aggregateUnits = sealedUnits;
+    }
+  }
 
   const { error: updateError } = await supabase
     .from("items")
     .update({
-      units: totalUnits,
+      units: aggregateUnits,
       expiry_date: earliestExpiry,
       opened_remaining: aggregateOpenedRemaining,
       updated_at: new Date().toISOString(),
@@ -124,11 +152,18 @@ export const syncItemAggregate = async (itemId: string): Promise<void> => {
   if (updateError) throw updateError;
 };
 
+export interface ConsumeLotResult extends ItemLot {
+  /** True when the lot itself updated successfully but the consumption_logs
+   *  insert failed (non-fatal — stock is already correct, but the history
+   *  entry is missing). Callers should warn the user. See #441. */
+  _logInsertFailed?: boolean;
+}
+
 export const consumeLot = async ({
   lot,
   item,
   deltaAmount,
-}: ConsumeLotParams): Promise<ItemLot> => {
+}: ConsumeLotParams): Promise<ConsumeLotResult> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
@@ -142,7 +177,12 @@ export const consumeLot = async ({
   const result = computeConsumption(virtual, deltaAmount);
   if (result.error) throw new Error(result.error);
 
-  const { data, error } = await supabase
+  // Optimistic concurrency: only apply the update if the lot still has the
+  // exact units/opened_remaining we based our calculation on. If another
+  // request already consumed from this lot in the meantime, no row matches
+  // and we surface a conflict instead of silently overwriting the other
+  // request's update (lost update, #432).
+  let query = supabase
     .from("item_lots")
     .update({
       units: result.units_after,
@@ -150,9 +190,15 @@ export const consumeLot = async ({
       updated_at: new Date().toISOString(),
     })
     .eq("id", lot.id)
-    .select()
-    .single();
+    .eq("units", lot.units);
+  query =
+    lot.opened_remaining === null || lot.opened_remaining === undefined
+      ? query.is("opened_remaining", null)
+      : query.eq("opened_remaining", lot.opened_remaining);
+
+  const { data, error } = await query.select().maybeSingle();
   if (error) throw error;
+  if (!data) throw new ConcurrentUpdateError();
 
   const { error: logError } = await supabase.from("consumption_logs").insert({
     user_id: userData.user.id,
@@ -165,14 +211,15 @@ export const consumeLot = async ({
     opened_remaining_after: result.opened_remaining_after,
   });
   if (logError) {
-    // Non-fatal: stock is already updated. Log for debugging.
+    // Non-fatal: stock is already updated. Surfaced via _logInsertFailed so
+    // the caller can warn the user (#441).
     // oxlint-disable-next-line no-console
     console.warn("consumeLot: consumption_logs insert failed", logError);
   }
 
   await syncItemAggregate(lot.item_id);
 
-  return data as ItemLot;
+  return { ...(data as ItemLot), _logInsertFailed: !!logError };
 };
 
 export const useItemLots = (itemId: string) =>
@@ -189,16 +236,18 @@ export const useConsumeLot = () => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: consumeLot,
-    onSuccess: async (_data, variables) => {
+    onSuccess: async (data, variables) => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: [...LOTS_KEY, variables.lot.item_id] }),
         qc.invalidateQueries({ queryKey: ["items"] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs", variables.lot.item_id] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
       ]);
+      if (data._logInsertFailed) toast(t("consumptionLogFailed"), "warning");
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else if (error instanceof ConcurrentUpdateError) toast(t("lotConflictError"), "error");
       else toast(t("unknownError"), "error");
     },
   });
