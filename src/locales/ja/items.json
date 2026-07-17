@@ -118,6 +118,8 @@
   "scannerRetry": "再試行",
   "scannerStarting": "カメラを起動中...",
   "scannerSwitchCamera": "カメラを切り替え",
+  "scannerTimeout": "バーコードを検出できません",
+  "scannerTimeoutHint": "30秒間バーコードを検出できませんでした。再試行するか手動で入力してください。",
   "searchBarcode": "バーコードで商品を検索",
   "searchPlaceholder": "商品名・バーコードで検索",
   "selectLot": "使うロットを選択",
