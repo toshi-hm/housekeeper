@@ -144,7 +144,7 @@ export const ItemForm = ({
   };
 
   const handleAddLocation = async (name: string) => {
-    const location = await addLocation(name);
+    const location = await addLocation({ name });
     set("storage_location_id", location.id);
   };
 
@@ -323,7 +323,7 @@ export const ItemForm = ({
             id="category_id"
             value={values.category_id ?? ""}
             onChange={(value) => set("category_id", value || null)}
-            options={categories.map((c) => ({ value: c.id, label: c.name }))}
+            options={categories.map((c) => ({ value: c.id, label: c.name, icon: c.icon }))}
             placeholder={t("categoryPlaceholder")}
             onAdd={handleAddCategory}
             onDelete={handleDeleteCategory}
@@ -341,7 +341,7 @@ export const ItemForm = ({
             id="storage_location_id"
             value={values.storage_location_id ?? ""}
             onChange={(value) => set("storage_location_id", value || null)}
-            options={locations.map((l) => ({ value: l.id, label: l.name }))}
+            options={locations.map((l) => ({ value: l.id, label: l.name, icon: l.icon }))}
             placeholder={t("storageLocationPlaceholder")}
             onAdd={handleAddLocation}
             onDelete={handleDeleteLocation}

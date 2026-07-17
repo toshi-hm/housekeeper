@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 
 import { ColorDot } from "@/components/atoms/ColorDot";
 import { ColorPicker } from "@/components/atoms/ColorPicker";
+import { IconPicker } from "@/components/atoms/IconPicker";
+import { MasterDataIcon } from "@/components/atoms/MasterDataIcon";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -32,18 +34,21 @@ const CategoriesPage = () => {
 
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState<string | null>(null);
+  const [newIcon, setNewIcon] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState<string | null>(null);
+  const [editIcon, setEditIcon] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
     try {
-      await createCategory.mutateAsync({ name: newName.trim(), color: newColor });
+      await createCategory.mutateAsync({ name: newName.trim(), color: newColor, icon: newIcon });
       setNewName("");
       setNewColor(null);
+      setNewIcon(null);
       toast(t("common:saveSuccess"), "success");
     } catch {
       // error is handled by the mutation's onError
@@ -53,7 +58,12 @@ const CategoriesPage = () => {
   const handleUpdate = async () => {
     if (!editId || !editName.trim()) return;
     try {
-      await updateCategory.mutateAsync({ id: editId, name: editName.trim(), color: editColor });
+      await updateCategory.mutateAsync({
+        id: editId,
+        name: editName.trim(),
+        color: editColor,
+        icon: editIcon,
+      });
       setEditId(null);
       toast(t("common:saveSuccess"), "success");
     } catch {
@@ -139,6 +149,7 @@ const CategoriesPage = () => {
           </Button>
         </div>
         <ColorPicker value={newColor} onChange={setNewColor} />
+        <IconPicker value={newIcon} onChange={setNewIcon} />
       </div>
 
       {/* List */}
@@ -181,10 +192,12 @@ const CategoriesPage = () => {
                     </Button>
                   </div>
                   <ColorPicker value={editColor} onChange={setEditColor} />
+                  <IconPicker value={editIcon} onChange={setEditIcon} />
                 </>
               ) : (
                 <div className="flex items-center gap-3">
                   <ColorDot color={c.color ?? DEFAULT_COLOR} className="h-5 w-5 shrink-0" />
+                  <MasterDataIcon icon={c.icon} />
                   <span className="flex-1">{c.name}</span>
                   <Button
                     size="icon"
@@ -194,6 +207,7 @@ const CategoriesPage = () => {
                       setEditId(c.id);
                       setEditName(c.name);
                       setEditColor(c.color ?? null);
+                      setEditIcon(c.icon ?? null);
                     }}
                   >
                     <Pencil className="h-4 w-4" />
