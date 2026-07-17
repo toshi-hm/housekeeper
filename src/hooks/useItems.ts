@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
@@ -338,26 +338,16 @@ const fetchItemsWithExpiry = async (): Promise<Item[]> => {
   return (data ?? []) as Item[];
 };
 
-export const useItems = (filters: ItemFilters = {}, sort: ItemSortKey = "created_at") =>
-  useQuery({
-    queryKey: [...ITEMS_KEY, filters, sort],
-    queryFn: () => fetchItems(filters, sort),
-    staleTime: 30_000,
-  });
-
-export const useItem = (id: string) =>
-  useQuery({
-    queryKey: [...ITEMS_KEY, id],
-    queryFn: () => fetchItem(id),
-    enabled: !!id,
-  });
-
 /**
- * items系リストキャッシュ（フィルタ・ソート違いの複数クエリ）へ、フィルタ条件を尊重して1件を反映する。
- * 条件に一致しなければ（既存キャッシュから）除外し、一致すれば upsert する。
- * 新規作成・更新のどちらの成功ハンドラからも同じ挙動にするため共通化している。
+ * `ITEMS_KEY` にマッチする全てのキャッシュ済みリストに対し、`item` をそのリストの
+ * フィルタ条件（category / storageLocation / search、`with-expiry` 種別）に基づいて
+ * 反映する。一致しないリストには一切書き込まない（#435: フィルタ無視によるチラつき対策）。
+ *
+ * - 一致する → upsert（新規追加 or 更新）
+ * - 元々キャッシュに存在していたが一致しなくなった → 除外
+ * - 元々存在せず、かつ一致しない → 何もしない（新規作成時の誤挿入を防ぐ）
  */
-export const applyItemToListCaches = (qc: ReturnType<typeof useQueryClient>, item: Item): void => {
+export const applyItemToListCaches = (qc: QueryClient, item: Item) => {
   const listQueries = qc.getQueriesData<Item[]>({ queryKey: ITEMS_KEY });
   for (const [queryKey, cachedItems] of listQueries) {
     if (!Array.isArray(cachedItems) || !Array.isArray(queryKey)) continue;
@@ -380,7 +370,7 @@ export const applyItemToListCaches = (qc: ReturnType<typeof useQueryClient>, ite
 
     if (matchesItemFilters(item, filters)) {
       qc.setQueryData(queryKey, upsertItemInListCache(cachedItems, item, sort));
-    } else {
+    } else if (cachedItems.some((cached) => cached.id === item.id)) {
       qc.setQueryData(
         queryKey,
         cachedItems.filter((cached) => cached.id !== item.id),
@@ -388,6 +378,20 @@ export const applyItemToListCaches = (qc: ReturnType<typeof useQueryClient>, ite
     }
   }
 };
+
+export const useItems = (filters: ItemFilters = {}, sort: ItemSortKey = "created_at") =>
+  useQuery({
+    queryKey: [...ITEMS_KEY, filters, sort],
+    queryFn: () => fetchItems(filters, sort),
+    staleTime: 30_000,
+  });
+
+export const useItem = (id: string) =>
+  useQuery({
+    queryKey: [...ITEMS_KEY, id],
+    queryFn: () => fetchItem(id),
+    enabled: !!id,
+  });
 
 export const useCreateItem = () => {
   const qc = useQueryClient();
