@@ -48,6 +48,7 @@ Deno.serve(async (req: Request) => {
   const resendFrom = Deno.env.get("RESEND_FROM_ADDRESS") ?? "housekeeper <noreply@example.com>";
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const today = jstDateString();
 
   // pg_cron からの定期実行（?scheduled=true）では、ユーザーごとの notify_at(JST) に
   // 一致する時刻のみ送信し、notification_logs で 1 日 1 通に制限する。
@@ -80,17 +81,15 @@ Deno.serve(async (req: Request) => {
       // Calculate the threshold date (JST基準)
       const thresholdStr = jstDateString(pref.threshold_days);
 
-      // Fetch expiring/expired items for this user.
-      // 下限(gte today)は設けない — 既に期限切れの item も対象に含める（#445）。
-      // opened_remaining = 0（開封済み・空）の item は対象外とする（#445）。
+      // Fetch expiring items for this user
       const { data: items } = await supabase
         .from("items")
         .select("name, expiry_date")
         .eq("user_id", pref.user_id)
         .not("expiry_date", "is", null)
         .lte("expiry_date", thresholdStr)
-        .gt("units", 0)
-        .or("opened_remaining.is.null,opened_remaining.neq.0");
+        .gte("expiry_date", today)
+        .gt("units", 0);
 
       if (!items || items.length === 0) return;
 

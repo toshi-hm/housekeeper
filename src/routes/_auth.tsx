@@ -15,7 +15,6 @@ import { useTranslation } from "react-i18next";
 
 import { InventoryChatPanel } from "@/components/organisms/InventoryChatPanel";
 import { Button } from "@/components/ui/button";
-import { useAppBadge } from "@/hooks/useAppBadge";
 import { useRealtimeItems } from "@/hooks/useRealtimeItems";
 import { supabase } from "@/lib/supabase";
 
@@ -35,10 +34,6 @@ const AuthLayout = () => {
 
   // 複数デバイス間の在庫・買い物リストをリアルタイム同期する
   useRealtimeItems();
-
-  // ダッシュボードのフィルター状態に依存せず、常時マウントされるレイアウトで
-  // アプリバッジ（期限接近/切れ件数）を同期する（#451）
-  useAppBadge();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

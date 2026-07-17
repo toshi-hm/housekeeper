@@ -44,25 +44,7 @@ self.addEventListener("push", (event: PushEvent) => {
   );
 });
 
-const NOTIFICATION_TARGET_URL = "/";
-
 self.addEventListener("notificationclick", (event: NotificationEvent) => {
   event.notification.close();
-  event.waitUntil(
-    (async () => {
-      const targetUrl = new URL(NOTIFICATION_TARGET_URL, self.location.origin).href;
-      const allClients = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      });
-      const existing = allClients.find(
-        (client): client is WindowClient => "focus" in client && client.url === targetUrl,
-      );
-      if (existing) {
-        await existing.focus();
-      } else {
-        await self.clients.openWindow(NOTIFICATION_TARGET_URL);
-      }
-    })(),
-  );
+  event.waitUntil((self.clients as Clients).openWindow("/"));
 });

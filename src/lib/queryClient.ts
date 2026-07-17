@@ -10,7 +10,11 @@ export const queryClient = new QueryClient({
       gcTime: 1000 * 60 * 60 * 24, // 24h — required for persistence
     },
     mutations: {
-      networkMode: "online",
+      // "online"（デフォルト）だとオフライン時に mutationFn が呼ばれず pause され、
+      // 再接続時にユーザーの意図しないタイミングで実行されてしまう（#469）。
+      // "always" にして requireOnline() が確実に呼ばれ、即座に「オフライン」トーストを
+      // 出せるようにする（docs/specs/features/pwa.md: 編集オフラインキューイングは作らない）。
+      networkMode: "always",
     },
   },
 });

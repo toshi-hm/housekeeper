@@ -207,173 +207,188 @@ export const useDeleteAllPurchasedItems = () => {
   });
 };
 
+/**
+ * ショッピングリストのアイテムを「購入済み」にし、対応する在庫アイテムを
+ * 作成/スタック/復活させる。各クエリの `error` を必ず検査し、失敗時は
+ * throw して mutation を失敗させることで、重複アイテム作成を防ぐ（#440）。
+ */
+export const purchaseShoppingItem = async ({
+  shoppingItemId,
+  itemValues,
+}: PurchaseInput): Promise<Item & { _stacked?: boolean; _revived?: boolean }> => {
+  requireOnline();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Fix #447: linked_item_id（「補充」等で元アイテムに紐付けられた行）があれば、
+  // バーコード一致より優先して元アイテムへ統合する。バーコード未登録のアイテムでも
+  // 別行に分裂せず、正しく元アイテムに戻せるようにする。
+  const { data: shoppingRowForLink, error: shoppingRowForLinkError } = await supabase
+    .from("shopping_list_items")
+    .select("linked_item_id")
+    .eq("id", shoppingItemId)
+    .maybeSingle();
+  if (shoppingRowForLinkError) throw shoppingRowForLinkError;
+  const linkedItemId = shoppingRowForLink?.linked_item_id ?? null;
+
+  if (linkedItemId) {
+    const { data: linkedActiveItem, error: linkedActiveItemError } = await supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("id", linkedItemId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (linkedActiveItemError) throw linkedActiveItemError;
+
+    if (linkedActiveItem) {
+      await createLot(user.id, linkedActiveItem.id, lotValuesFromForm(itemValues));
+      await syncItemAggregate(linkedActiveItem.id);
+      await markShoppingItemPurchased(shoppingItemId, linkedActiveItem.id);
+      return linkedActiveItem as Item;
+    }
+
+    const { data: linkedDeletedItem, error: linkedDeletedItemError } = await supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("id", linkedItemId)
+      .not("deleted_at", "is", null)
+      .maybeSingle();
+    if (linkedDeletedItemError) throw linkedDeletedItemError;
+
+    if (linkedDeletedItem) {
+      const { data: revivedLinked, error: reviveLinkedError } = await supabase
+        .from("items")
+        .update({ deleted_at: null, updated_at: new Date().toISOString() })
+        .eq("id", linkedDeletedItem.id)
+        .select()
+        .single();
+      if (reviveLinkedError) throw reviveLinkedError;
+      await createLot(user.id, linkedDeletedItem.id, lotValuesFromForm(itemValues));
+      await syncItemAggregate(linkedDeletedItem.id);
+      await markShoppingItemPurchased(shoppingItemId, revivedLinked.id);
+      return revivedLinked as Item;
+    }
+    // 元アイテムが見つからない（削除済みでも復元できない等）場合はバーコード/新規作成に fallback
+  }
+
+  // Fix #212: バーコードが一致するアクティブなアイテムにスタック
+  if (itemValues.barcode) {
+    const { data: activeItem, error: activeItemError } = await supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("barcode", itemValues.barcode)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+    if (activeItemError) throw activeItemError;
+
+    if (activeItem) {
+      await createLot(user.id, activeItem.id, lotValuesFromForm(itemValues));
+      await syncItemAggregate(activeItem.id);
+      await markShoppingItemPurchased(shoppingItemId, activeItem.id);
+      // 既存アイテムへのスタック。呼び出し側が画像アップロードで既存画像を
+      // 上書きしないよう _stacked を立てる（NewItemPage と同じ規約）。
+      return { ...(activeItem as Item), _stacked: true };
+    }
+
+    // Fix #212: ソフトデリート済みアイテムを復活
+    const { data: deletedItem, error: deletedItemError } = await supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("barcode", itemValues.barcode)
+      .not("deleted_at", "is", null)
+      .limit(1)
+      .maybeSingle();
+    if (deletedItemError) throw deletedItemError;
+
+    if (deletedItem) {
+      const { data: revived, error: reviveError } = await supabase
+        .from("items")
+        .update({ deleted_at: null, updated_at: new Date().toISOString() })
+        .eq("id", deletedItem.id)
+        .select()
+        .single();
+      if (reviveError) throw reviveError;
+      await createLot(user.id, deletedItem.id, lotValuesFromForm(itemValues));
+      await syncItemAggregate(deletedItem.id);
+      await markShoppingItemPurchased(shoppingItemId, revived.id);
+      return { ...(revived as Item), _revived: true };
+    }
+  }
+
+  // バーコードなし or 既存アイテムなし → 新規作成（冪等化）
+  // created_item_id が既に設定されている場合はリトライ: 同じIDでupsert
+  const { data: shoppingRow, error: shoppingRowError } = await supabase
+    .from("shopping_list_items")
+    .select("created_item_id")
+    .eq("id", shoppingItemId)
+    .maybeSingle();
+  if (shoppingRowError) throw shoppingRowError;
+  const reservedItemId = shoppingRow?.created_item_id ?? null;
+  const newItemId = reservedItemId ?? crypto.randomUUID();
+
+  // アイテム作成前に created_item_id を予約（失敗時のリトライで重複作成を防ぐ）
+  if (!reservedItemId) {
+    const { error: reserveError } = await supabase
+      .from("shopping_list_items")
+      .update({ created_item_id: newItemId })
+      .eq("id", shoppingItemId);
+    if (reserveError) throw reserveError;
+  }
+
+  const { data: newItem, error: itemError } = await supabase
+    .from("items")
+    .upsert(
+      {
+        id: newItemId,
+        user_id: user.id,
+        name: itemValues.name,
+        barcode: itemValues.barcode ?? null,
+        category_id: itemValues.category_id ?? null,
+        storage_location_id: itemValues.storage_location_id ?? null,
+        units: itemValues.units,
+        content_amount: itemValues.content_amount,
+        content_unit: itemValues.content_unit,
+        opened_remaining: itemValues.opened_remaining ?? null,
+        purchase_date: itemValues.purchase_date ?? null,
+        expiry_date: itemValues.expiry_date ?? null,
+        notes: itemValues.notes ?? null,
+      },
+      { onConflict: "id" },
+    )
+    .select()
+    .single();
+  if (itemError) throw new Error(itemError.message);
+
+  // Fix #211: ロットが未作成の場合のみ追加（リトライ時の重複を防ぐ）
+  const { data: existingLots, error: existingLotsError } = await supabase
+    .from("item_lots")
+    .select("id")
+    .eq("item_id", newItemId)
+    .limit(1);
+  if (existingLotsError) throw existingLotsError;
+  if (!existingLots || existingLots.length === 0) {
+    await createLot(user.id, newItem.id, lotValuesFromForm(itemValues));
+  }
+
+  await syncItemAggregate(newItem.id);
+  await markShoppingItemPurchased(shoppingItemId, newItem.id);
+
+  return newItem as Item;
+};
+
 export const usePurchaseShoppingItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("common");
   return useMutation({
-    mutationFn: async ({
-      shoppingItemId,
-      itemValues,
-    }: PurchaseInput): Promise<Item & { _stacked?: boolean; _revived?: boolean }> => {
-      requireOnline();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // Fix #447: linked_item_id（「補充」等で元アイテムに紐付けられた行）があれば、
-      // バーコード一致より優先して元アイテムへ統合する。バーコード未登録のアイテムでも
-      // 別行に分裂せず、正しく元アイテムに戻せるようにする。
-      const { data: shoppingRowForLink } = await supabase
-        .from("shopping_list_items")
-        .select("linked_item_id")
-        .eq("id", shoppingItemId)
-        .maybeSingle();
-      const linkedItemId = shoppingRowForLink?.linked_item_id ?? null;
-
-      if (linkedItemId) {
-        const { data: linkedActiveItem } = await supabase
-          .from("items")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("id", linkedItemId)
-          .is("deleted_at", null)
-          .maybeSingle();
-
-        if (linkedActiveItem) {
-          await createLot(user.id, linkedActiveItem.id, lotValuesFromForm(itemValues));
-          await syncItemAggregate(linkedActiveItem.id);
-          await markShoppingItemPurchased(shoppingItemId, linkedActiveItem.id);
-          return linkedActiveItem as Item;
-        }
-
-        const { data: linkedDeletedItem } = await supabase
-          .from("items")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("id", linkedItemId)
-          .not("deleted_at", "is", null)
-          .maybeSingle();
-
-        if (linkedDeletedItem) {
-          const { data: revivedLinked, error: reviveLinkedError } = await supabase
-            .from("items")
-            .update({ deleted_at: null, updated_at: new Date().toISOString() })
-            .eq("id", linkedDeletedItem.id)
-            .select()
-            .single();
-          if (reviveLinkedError) throw reviveLinkedError;
-          await createLot(user.id, linkedDeletedItem.id, lotValuesFromForm(itemValues));
-          await syncItemAggregate(linkedDeletedItem.id);
-          await markShoppingItemPurchased(shoppingItemId, revivedLinked.id);
-          return revivedLinked as Item;
-        }
-        // 元アイテムが見つからない（削除済みでも復元できない等）場合はバーコード/新規作成に fallback
-      }
-
-      // Fix #212: バーコードが一致するアクティブなアイテムにスタック
-      if (itemValues.barcode) {
-        const { data: activeItem } = await supabase
-          .from("items")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("barcode", itemValues.barcode)
-          .is("deleted_at", null)
-          .limit(1)
-          .maybeSingle();
-
-        if (activeItem) {
-          await createLot(user.id, activeItem.id, lotValuesFromForm(itemValues));
-          await syncItemAggregate(activeItem.id);
-          await markShoppingItemPurchased(shoppingItemId, activeItem.id);
-          // 既存アイテムへのスタック。呼び出し側が画像アップロードで既存画像を
-          // 上書きしないよう _stacked を立てる（NewItemPage と同じ規約）。
-          return { ...(activeItem as Item), _stacked: true };
-        }
-
-        // Fix #212: ソフトデリート済みアイテムを復活
-        const { data: deletedItem } = await supabase
-          .from("items")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("barcode", itemValues.barcode)
-          .not("deleted_at", "is", null)
-          .limit(1)
-          .maybeSingle();
-
-        if (deletedItem) {
-          const { data: revived, error: reviveError } = await supabase
-            .from("items")
-            .update({ deleted_at: null, updated_at: new Date().toISOString() })
-            .eq("id", deletedItem.id)
-            .select()
-            .single();
-          if (reviveError) throw reviveError;
-          await createLot(user.id, deletedItem.id, lotValuesFromForm(itemValues));
-          await syncItemAggregate(deletedItem.id);
-          await markShoppingItemPurchased(shoppingItemId, revived.id);
-          return { ...(revived as Item), _revived: true };
-        }
-      }
-
-      // バーコードなし or 既存アイテムなし → 新規作成（冪等化）
-      // created_item_id が既に設定されている場合はリトライ: 同じIDでupsert
-      const { data: shoppingRow } = await supabase
-        .from("shopping_list_items")
-        .select("created_item_id")
-        .eq("id", shoppingItemId)
-        .maybeSingle();
-      const reservedItemId = shoppingRow?.created_item_id ?? null;
-      const newItemId = reservedItemId ?? crypto.randomUUID();
-
-      // アイテム作成前に created_item_id を予約（失敗時のリトライで重複作成を防ぐ）
-      if (!reservedItemId) {
-        await supabase
-          .from("shopping_list_items")
-          .update({ created_item_id: newItemId })
-          .eq("id", shoppingItemId);
-      }
-
-      const { data: newItem, error: itemError } = await supabase
-        .from("items")
-        .upsert(
-          {
-            id: newItemId,
-            user_id: user.id,
-            name: itemValues.name,
-            barcode: itemValues.barcode ?? null,
-            category_id: itemValues.category_id ?? null,
-            storage_location_id: itemValues.storage_location_id ?? null,
-            units: itemValues.units,
-            content_amount: itemValues.content_amount,
-            content_unit: itemValues.content_unit,
-            opened_remaining: itemValues.opened_remaining ?? null,
-            purchase_date: itemValues.purchase_date ?? null,
-            expiry_date: itemValues.expiry_date ?? null,
-            notes: itemValues.notes ?? null,
-          },
-          { onConflict: "id" },
-        )
-        .select()
-        .single();
-      if (itemError) throw new Error(itemError.message);
-
-      // Fix #211: ロットが未作成の場合のみ追加（リトライ時の重複を防ぐ）
-      const { data: existingLots } = await supabase
-        .from("item_lots")
-        .select("id")
-        .eq("item_id", newItemId)
-        .limit(1);
-      if (!existingLots || existingLots.length === 0) {
-        await createLot(user.id, newItem.id, lotValuesFromForm(itemValues));
-      }
-
-      await syncItemAggregate(newItem.id);
-      await markShoppingItemPurchased(shoppingItemId, newItem.id);
-
-      return newItem as Item;
-    },
+    mutationFn: purchaseShoppingItem,
     onSuccess: async (data) => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: [QUERY_KEY] }),

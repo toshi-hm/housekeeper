@@ -66,7 +66,6 @@ export const useUpdateUserSettings = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
-      else toast(t("unknownError"), "error");
     },
   });
 };
