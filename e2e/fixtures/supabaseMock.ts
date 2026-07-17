@@ -13,8 +13,8 @@ import type { Page, Route } from "@playwright/test";
  * See e2e/README.md for the tradeoffs.
  */
 
-export const FAKE_USER_ID = "00000000-0000-4000-8000-000000000001";
-export const FAKE_USER_EMAIL = "e2e@example.test";
+const FAKE_USER_ID = "00000000-0000-4000-8000-000000000001";
+const FAKE_USER_EMAIL = "e2e@example.test";
 
 interface Filter {
   column: string;

@@ -56,7 +56,7 @@ export const MASTER_DATA_ICON_NAMES = [
   "Sparkles",
 ] as const;
 
-export type MasterDataIconName = (typeof MASTER_DATA_ICON_NAMES)[number];
+type MasterDataIconName = (typeof MASTER_DATA_ICON_NAMES)[number];
 
 const ICON_COMPONENTS: Record<MasterDataIconName, LucideIcon> = {
   Refrigerator,

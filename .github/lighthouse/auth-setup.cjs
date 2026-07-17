@@ -112,8 +112,13 @@ module.exports = async (page, context) => {
   await page.goto(`${targetUrl.origin}/login`, { waitUntil: "networkidle0" });
   await page.type("#email", FAKE_USER_EMAIL);
   await page.type("#password", "lighthouse-password-not-checked");
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: "networkidle0" }),
-    page.click('form button[type="submit"]'),
-  ]);
+  await page.click(`form button[type="submit"]`);
+  // The app uses client-side routing, so login does not trigger a full page
+  // navigation -- waitForNavigation would time out and throw. Wait for the SPA
+  // to leave /login, then load the actual target URL directly (request
+  // interception + the persisted session carry over to the authenticated page).
+  await page
+    .waitForFunction(() => window.location.pathname !== "/login", { timeout: 15000 })
+    .catch(() => {});
+  await page.goto(context.url, { waitUntil: "networkidle0" });
 };

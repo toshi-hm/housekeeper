@@ -4,11 +4,11 @@ name: Release
 # building on the commitlint gate already enforced in ci.yml (#272).
 #
 # Bumps package.json's version, generates/updates CHANGELOG.md, tags, and
-# creates a GitHub Release on every push to main. No npm publish (private app).
+# creates a GitHub Release. Triggered manually (workflow_dispatch) — automatic
+# push-to-main firing is disabled because main has branch protection that
+# rejects the bot push.  Run from the Actions tab to cut a release.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
