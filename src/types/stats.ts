@@ -28,11 +28,12 @@ export interface RawLog {
 }
 
 export const computeCategoryStats = (
-  items: Pick<Item, "category_id">[],
+  items: Pick<Item, "category_id" | "units">[],
   categoryMap: Record<string, string>,
 ): CategoryStat[] => {
   const countMap = new Map<string | null, number>();
   for (const item of items) {
+    if (item.units === 0) continue;
     const key = item.category_id ?? null;
     countMap.set(key, (countMap.get(key) ?? 0) + 1);
   }

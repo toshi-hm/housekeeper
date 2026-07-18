@@ -25,7 +25,11 @@ describe("computeCategoryStats", () => {
   });
 
   test("groups by category_id and resolves names", () => {
-    const items = [{ category_id: "cat-1" }, { category_id: "cat-1" }, { category_id: "cat-2" }];
+    const items = [
+      { category_id: "cat-1", units: 1 },
+      { category_id: "cat-1", units: 1 },
+      { category_id: "cat-2", units: 1 },
+    ];
     const categoryMap = { "cat-1": "Food", "cat-2": "Drink" };
     const result = computeCategoryStats(items, categoryMap);
     expect(result).toHaveLength(2);
@@ -34,28 +38,43 @@ describe("computeCategoryStats", () => {
   });
 
   test("null category_id → __uncategorized__", () => {
-    const items = [{ category_id: null }, { category_id: null }];
+    const items = [
+      { category_id: null, units: 1 },
+      { category_id: null, units: 1 },
+    ];
     const result = computeCategoryStats(items, {});
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({ categoryId: null, name: "__uncategorized__", count: 2 });
   });
 
   test("unknown category_id → '?'", () => {
-    const items = [{ category_id: "unknown-id" }];
+    const items = [{ category_id: "unknown-id", units: 1 }];
     const result = computeCategoryStats(items, {});
     expect(result[0]?.name).toBe("?");
   });
 
   test("sorted descending by count", () => {
     const items = [
-      { category_id: "a" },
-      { category_id: "b" },
-      { category_id: "b" },
-      { category_id: "b" },
+      { category_id: "a", units: 1 },
+      { category_id: "b", units: 1 },
+      { category_id: "b", units: 1 },
+      { category_id: "b", units: 1 },
     ];
     const result = computeCategoryStats(items, { a: "A", b: "B" });
     expect(result[0]?.categoryId).toBe("b");
     expect(result[1]?.categoryId).toBe("a");
+  });
+
+  test("skips items with units=0 (used-up items excluded from counts)", () => {
+    const items = [
+      { category_id: "cat-1", units: 0 },
+      { category_id: "cat-1", units: 1 },
+      { category_id: "cat-2", units: 0 },
+    ];
+    const categoryMap = { "cat-1": "Food", "cat-2": "Drink" };
+    const result = computeCategoryStats(items, categoryMap);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({ categoryId: "cat-1", name: "Food", count: 1 });
   });
 });
 
