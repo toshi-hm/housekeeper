@@ -45,7 +45,8 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
 
   const handleSend = async (text: string) => {
     const history = toHistory(messages);
-    const userMessage: ChatMessage = { id: createId(), role: "user", text };
+    const userMessageId = createId();
+    const userMessage: ChatMessage = { id: userMessageId, role: "user", text };
     setMessages((prev) => [...prev, userMessage]);
     try {
       const res = await ask({ message: text, history });
@@ -54,8 +55,11 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         { id: createId(), role: "assistant", text: res.reply, items: res.items },
       ]);
     } catch {
+      // Mark the unanswered user turn as an error too, so `toHistory` excludes it.
+      // Otherwise it lingers as an unpaired "user" turn and the next send appends
+      // another "user" turn, violating Gemini's alternating user/model constraint.
       setMessages((prev) => [
-        ...prev,
+        ...prev.map((m) => (m.id === userMessageId ? { ...m, isError: true } : m)),
         { id: createId(), role: "assistant", text: t("error"), isError: true },
       ]);
     }

@@ -82,6 +82,28 @@ Deno.test("buildContents - appends the new user message after history", () => {
   assert.strictEqual(contents[2].parts[0].text, "卵はある？");
 });
 
+Deno.test("buildContents - drops a trailing unpaired user turn instead of sending consecutive user roles (#554)", () => {
+  const contents = buildContents("卵はある？", [
+    { role: "user", text: "牛乳ある？" },
+    { role: "model", text: "2本あります。" },
+    { role: "user", text: "対になる応答が来なかったターン" },
+  ]);
+  assert.strictEqual(contents.length, 3);
+  assert.strictEqual(contents[0].role, "user");
+  assert.strictEqual(contents[1].role, "model");
+  assert.strictEqual(contents[2].role, "user");
+  assert.strictEqual(contents[2].parts[0].text, "卵はある？");
+});
+
+Deno.test("buildContents - drops multiple trailing unpaired user turns", () => {
+  const contents = buildContents("now", [
+    { role: "user", text: "u1" },
+    { role: "user", text: "u2" },
+  ]);
+  assert.strictEqual(contents.length, 1);
+  assert.strictEqual(contents[0].parts[0].text, "now");
+});
+
 Deno.test("buildContents - caps history to the most recent turns", () => {
   const history = Array.from({ length: 20 }, (_, i) => ({
     role: (i % 2 === 0 ? "user" : "model") as "user" | "model",

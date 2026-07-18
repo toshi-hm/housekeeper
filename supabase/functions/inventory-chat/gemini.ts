@@ -95,13 +95,21 @@ const RESPONSE_SCHEMA = {
 
 // Build the Gemini `contents` array from prior history plus the new message.
 export const buildContents = (message: string, history: ChatHistoryTurn[]): GeminiContent[] => {
-  const trimmed = history.slice(-MAX_HISTORY_TURNS).map(
+  const trimmed = history.slice(-MAX_HISTORY_TURNS);
+  // Defensive guard: Gemini requires strictly alternating user/model turns. If the
+  // trimmed history ends with an unpaired "user" turn (e.g. a caller failed to
+  // exclude a turn whose response never arrived), drop the trailing run of "user"
+  // turns so the appended new message doesn't collide with the same role.
+  while (trimmed.length > 0 && trimmed[trimmed.length - 1].role === "user") {
+    trimmed.pop();
+  }
+  const contents = trimmed.map(
     (turn): GeminiContent => ({
       role: turn.role,
       parts: [{ text: turn.text }],
     }),
   );
-  return [...trimmed, { role: "user", parts: [{ text: message }] }];
+  return [...contents, { role: "user", parts: [{ text: message }] }];
 };
 
 // Build the Gemini `generateContent` request body. Exported so tests can pin the
