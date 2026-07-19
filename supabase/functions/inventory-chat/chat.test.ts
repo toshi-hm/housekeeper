@@ -105,6 +105,42 @@ Deno.test("buildContents - caps history to the most recent turns", () => {
   assert.strictEqual(contents[contents.length - 1].parts[0].text, "now");
 });
 
+Deno.test("buildContents - drops a stray unpaired trailing user turn from history (#554)", () => {
+  // Simulates a previously failed send: the user's turn was never followed by
+  // a model reply, so it's left dangling at the end of history. The client is
+  // expected to purge this on its own, but this guard defends against it
+  // reaching Gemini regardless.
+  const contents = buildContents("卵は？", [
+    { role: "user", text: "牛乳ある？" },
+    { role: "model", text: "2本あります。" },
+    { role: "user", text: "パンは？" },
+  ]);
+  assert.strictEqual(contents.length, 3);
+  assert.strictEqual(contents[0].role, "user");
+  assert.strictEqual(contents[0].parts[0].text, "牛乳ある？");
+  assert.strictEqual(contents[1].role, "model");
+  assert.strictEqual(contents[2].role, "user");
+  assert.strictEqual(contents[2].parts[0].text, "卵は？");
+  for (let i = 1; i < contents.length; i++) {
+    assert.notStrictEqual(contents[i].role, contents[i - 1].role);
+  }
+});
+
+Deno.test("buildContents - collapses consecutive same-role turns anywhere in history", () => {
+  const contents = buildContents("new", [
+    { role: "user", text: "a" },
+    { role: "user", text: "b" },
+    { role: "model", text: "c" },
+  ]);
+  assert.strictEqual(contents.length, 3);
+  assert.strictEqual(contents[0].role, "user");
+  assert.strictEqual(contents[0].parts[0].text, "b");
+  assert.strictEqual(contents[1].role, "model");
+  assert.strictEqual(contents[1].parts[0].text, "c");
+  assert.strictEqual(contents[2].role, "user");
+  assert.strictEqual(contents[2].parts[0].text, "new");
+});
+
 // buildGeminiRequestBody
 
 Deno.test("buildGeminiRequestBody - uses thinkingBudget, not thinkingLevel (gemini-2.5-flash only supports thinkingBudget)", () => {

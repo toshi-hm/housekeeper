@@ -7,7 +7,8 @@ import { Spinner } from "@/components/atoms/Spinner";
 import { ChatComposer } from "@/components/molecules/ChatComposer";
 import { Button } from "@/components/ui/button";
 import { useInventoryChat } from "@/hooks/useInventoryChat";
-import type { ChatHistoryTurn, ChatMessage } from "@/types/chat";
+import { markMessageFailed, toHistory } from "@/lib/chatHistory";
+import type { ChatMessage } from "@/types/chat";
 
 interface InventoryChatPanelProps {
   open: boolean;
@@ -18,11 +19,6 @@ const createId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random()}`;
-
-const toHistory = (messages: ChatMessage[]): ChatHistoryTurn[] =>
-  messages
-    .filter((m) => !m.isError)
-    .map((m) => ({ role: m.role === "user" ? "user" : "model", text: m.text }));
 
 export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) => {
   const { t } = useTranslation("chat");
@@ -55,7 +51,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
       ]);
     } catch {
       setMessages((prev) => [
-        ...prev,
+        ...markMessageFailed(prev, userMessage.id),
         { id: createId(), role: "assistant", text: t("error"), isError: true },
       ]);
     }

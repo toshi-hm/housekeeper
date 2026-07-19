@@ -111,14 +111,26 @@ const RESPONSE_SCHEMA = {
 };
 
 // Build the Gemini `contents` array from prior history plus the new message.
+// Gemini requires strictly alternating user/model turns. If `history` contains
+// a stray unpaired turn (e.g. a previous request failed before a model reply
+// existed, and the client failed to purge the orphaned user turn), collapse
+// consecutive same-role turns down to the most recent one so `contents`
+// always alternates. This is a defense-in-depth guard: the client is expected
+// to keep history well-formed on its own (see InventoryChatPanel's
+// `markMessageFailed`, #554).
 export const buildContents = (message: string, history: ChatHistoryTurn[]): GeminiContent[] => {
-  const trimmed = history.slice(-MAX_HISTORY_TURNS).map(
-    (turn): GeminiContent => ({
-      role: turn.role,
-      parts: [{ text: turn.text }],
-    }),
-  );
-  return [...trimmed, { role: "user", parts: [{ text: message }] }];
+  const trimmed = history.slice(-MAX_HISTORY_TURNS);
+  const turns: ChatHistoryTurn[] = [...trimmed, { role: "user", text: message }];
+
+  const sanitized: ChatHistoryTurn[] = [];
+  for (const turn of turns) {
+    if (sanitized.length > 0 && sanitized[sanitized.length - 1].role === turn.role) {
+      sanitized.pop();
+    }
+    sanitized.push(turn);
+  }
+
+  return sanitized.map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] }));
 };
 
 // Build the Gemini `generateContent` request body. Exported so tests can pin the
