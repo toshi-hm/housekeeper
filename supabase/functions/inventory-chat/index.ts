@@ -1,12 +1,25 @@
+import { z } from "npm:zod@^4";
+
 import { queryGeminiChat } from "./gemini.ts";
 import { fetchAllItems, fetchRecentlyConsumedItems, getUserScopedClient } from "./inventory.ts";
 import type {
   ChatHistoryTurn,
+  ChatLang,
   ChatMatchedItem,
   ChatRequest,
   ChatResponse,
   InventoryItem,
 } from "./types.ts";
+
+// Never trust the client's language claim blindly (#555): fall back to "ja"
+// (the app's fallbackLng, see src/lib/i18n.ts) for anything unexpected.
+const chatLangSchema = z.enum(["ja", "en"]);
+const DEFAULT_CHAT_LANG: ChatLang = "ja";
+
+const resolveChatLang = (lang: unknown): ChatLang => {
+  const result = chatLangSchema.safeParse(lang);
+  return result.success ? result.data : DEFAULT_CHAT_LANG;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,6 +102,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "message is too long" }, 400);
   }
   const history = sanitizeHistory(parsed.history);
+  const lang = resolveChatLang(parsed.lang);
 
   const [items, recentlyConsumed] = await Promise.all([
     fetchAllItems(supabase),
@@ -98,7 +112,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "Failed to load inventory" }, 500);
   }
 
-  const result = await queryGeminiChat(message, history, items, recentlyConsumed);
+  const result = await queryGeminiChat(message, history, items, recentlyConsumed, lang);
   if (result.kind === "timeout") {
     return json({ error: "timeout" }, 504);
   }

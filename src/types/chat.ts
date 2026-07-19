@@ -18,6 +18,10 @@ export const chatResponseSchema = z.object({
 type ChatMatchedItem = z.infer<typeof chatMatchedItemSchema>;
 export type ChatResponse = z.infer<typeof chatResponseSchema>;
 
+// UI language sent to the `inventory-chat` Edge Function so the AI reply
+// matches the current locale instead of always being Japanese (#555).
+export type ChatLang = "ja" | "en";
+
 export type ChatRole = "user" | "assistant";
 
 // A message rendered in the chat panel.

@@ -96,6 +96,20 @@ Deno.test("buildContents - caps history to the most recent turns", () => {
 // buildGeminiRequestBody
 
 Deno.test("buildGeminiRequestBody - uses thinkingBudget, not thinkingLevel (gemini-2.5-flash only supports thinkingBudget)", () => {
-  const body = buildGeminiRequestBody("卵はある？", [], [makeItem()], []);
+  const body = buildGeminiRequestBody("卵はある？", [], [makeItem()], [], "ja");
   assert.deepStrictEqual(body.generationConfig?.thinkingConfig, { thinkingBudget: 1024 });
+});
+
+// buildGeminiRequestBody - reply language (#555)
+
+Deno.test("buildGeminiRequestBody - ja instructs a Japanese reply", () => {
+  const body = buildGeminiRequestBody("卵はある？", [], [makeItem()], [], "ja");
+  const text = body.systemInstruction?.parts[0]?.text ?? "";
+  assert.ok(text.includes("回答(reply)は日本語の自然な会話文で"));
+});
+
+Deno.test("buildGeminiRequestBody - en instructs an English reply", () => {
+  const body = buildGeminiRequestBody("do we have eggs?", [], [makeItem()], [], "en");
+  const text = body.systemInstruction?.parts[0]?.text ?? "";
+  assert.ok(text.includes("回答(reply)はEnglishの自然な会話文で"));
 });

@@ -27,10 +27,15 @@ export interface ChatHistoryTurn {
   text: string;
 }
 
+// UI language the client is currently using (from i18n.language). Drives the
+// language of the generated `reply` (#555).
+export type ChatLang = "ja" | "en";
+
 // Request body sent by the web client.
 export interface ChatRequest {
   message: string;
   history?: ChatHistoryTurn[];
+  lang?: ChatLang;
 }
 
 // A matched inventory item returned to the client for chip/card display.

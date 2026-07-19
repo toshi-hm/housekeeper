@@ -1,5 +1,6 @@
 import type {
   ChatHistoryTurn,
+  ChatLang,
   ChatMatchedItem,
   GeminiChatResult,
   GeminiContent,
@@ -58,11 +59,18 @@ export const buildInventoryContext = (
   return JSON.stringify({ inventory: inventoryList, recently_consumed: consumedList });
 };
 
-const SYSTEM_PROMPT = `あなたは家庭の在庫管理アシスタントです。
+// Reply language, keyed by the client's UI language (#555: the reply used to
+// be hardcoded to Japanese regardless of the user's i18n setting).
+const REPLY_LANGUAGE_LABEL = {
+  ja: "日本語",
+  en: "English",
+} as const satisfies Record<ChatLang, string>;
+
+const buildSystemPrompt = (lang: ChatLang): string => `あなたは家庭の在庫管理アシスタントです。
 ユーザーとチャット形式で会話し、提供された在庫データに基づいて在庫・賞味期限・保管場所・残量などの質問に答えます。
 
 ルール:
-- 回答(reply)は日本語の自然な会話文で、簡潔に。マークダウンの見出しや表は使わず、必要なら箇条書き程度に留める。
+- 回答(reply)は${REPLY_LANGUAGE_LABEL[lang]}の自然な会話文で、簡潔に。マークダウンの見出しや表は使わず、必要なら箇条書き程度に留める。
 - 在庫データ(inventory)に該当アイテムがあれば、残量(total_remaining)・賞味期限(expiry_date)・保管場所(storage_location)を踏まえて答える。
 - 該当アイテムが在庫になく recently_consumed にあれば「最近使い切った」旨を伝える。
 - どちらにもなければ「自宅にありません」と伝える。
@@ -111,13 +119,14 @@ export const buildGeminiRequestBody = (
   history: ChatHistoryTurn[],
   items: InventoryItem[],
   recentlyConsumed: RecentlyConsumedItem[],
+  lang: ChatLang,
 ): GeminiRequest => {
   const inventoryContext = buildInventoryContext(items, recentlyConsumed);
   return {
     systemInstruction: {
       parts: [
         {
-          text: `${SYSTEM_PROMPT}\n\n在庫データ(inventory=現在の在庫, recently_consumed=過去2か月以内に使い切ったアイテム):\n${inventoryContext}`,
+          text: `${buildSystemPrompt(lang)}\n\n在庫データ(inventory=現在の在庫, recently_consumed=過去2か月以内に使い切ったアイテム):\n${inventoryContext}`,
         },
       ],
     },
@@ -137,6 +146,7 @@ export const queryGeminiChat = async (
   history: ChatHistoryTurn[],
   items: InventoryItem[],
   recentlyConsumed: RecentlyConsumedItem[],
+  lang: ChatLang,
 ): Promise<GeminiResult> => {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) {
@@ -145,7 +155,7 @@ export const queryGeminiChat = async (
   }
 
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  const body = buildGeminiRequestBody(message, history, items, recentlyConsumed);
+  const body = buildGeminiRequestBody(message, history, items, recentlyConsumed, lang);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
