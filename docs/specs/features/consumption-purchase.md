@@ -120,8 +120,49 @@ end $$;
 `as const satisfies Record<...>` マップ経由で参照する（i18next-parser は動的キーを
 抽出できないため、対応する `items.json` のキーは手動管理）。
 
+## エクスポート（#66 / #358 / #381）
+
+設定ページ（`/_auth/settings`）に「データのエクスポート」セクションを設け、以下をクライアントサイドのみ
+（Edge Function 不要・`Blob` + `URL.createObjectURL`）でファイルダウンロードできる。
+
+### 在庫データ（#358）
+
+- CSV: スプレッドシート向け。ヘッダーは固定で
+  `名前,バーコード,カテゴリ,保管場所,個数,内容量,単位,期限,購入日,メモ`
+  （UI 言語に関わらず日本語ヘッダー。カテゴリ/保管場所は ID ではなく名前に解決する）
+- JSON: バックアップ向け。`{ exported_at: string, version: 1, items: Item[] }`
+- 対象は `useItems()` が返すアクティブな（`deleted_at IS NULL`）アイテムのみ
+- 将来のインポート機能は今回スコープ外（`itemsToJSON` はエクスポート専用）
+
+### 消費・購入履歴（#381）
+
+- CSV のみ。ヘッダーは固定で `種別,日付,アイテム名,カテゴリ,数量,単位,メモ`
+  （消費/購入をまとめて1ファイルに出せるよう「種別」列で区別する。値は「消費」/「購入」）
+- 期間: 過去30日 / 過去3ヶ月 / 全期間（`ExportPeriod`: `"30d" | "90d" | "all"`）
+- 対象: 消費履歴のみ / 購入履歴のみ / 両方
+- 消費履歴は `consumption_logs`（`occurred_at` を日付とする）、購入履歴は `item_lots`
+  （`purchase_date` を日付とする — 本 spec 冒頭の通り購入履歴専用テーブルは持たないため、
+  各ロットの `purchase_date` を購入イベントとして扱う。`purchase_date` が無いロットは除外）
+- 行の「アイテム名」「カテゴリ」「メモ」は、削除済み（ソフトデリート）アイテムの履歴でも
+  名前が引けるよう、`deleted_at` を無視した軽量ルックアップ（`useItemsForExport`）で解決する
+
+### 実装
+
+- 純粋関数（DOM 非依存・`bun test` でテスト）: `src/lib/export.ts`
+  - `itemsToCSV` / `itemsToJSON`
+  - `buildConsumptionHistoryRows` / `buildPurchaseHistoryRows` / `filterHistoryRowsByPeriod` /
+    `historyRowsToCSV`
+  - `buildExportFilename`（`base-YYYYMMDD.ext`）
+- DOM 依存のダウンロード処理のみ分離: `downloadTextFile`（`Blob` + `URL.createObjectURL`）
+- データ取得 hook:
+  - `useItemsForExport`（`src/hooks/useItems.ts`）: 削除済みも含む軽量ルックアップ
+  - `useAllConsumptionLogs`（`src/hooks/useConsumptionLogs.ts`）: 統計画面（`useStats.ts`）と共有
+  - `useAllItemLots`（`src/hooks/useItemLots.ts`）: 全ロットの `item_id, units, purchase_date`
+- UI organism: `src/components/organisms/DataExportPanel.tsx`（設定ページに埋め込み）
+
 ## Backlog
 
 - 単位換算（mL ⇔ L）
 - 消費の取り消し（log の rollback）
 - 購入履歴専用テーブル（同 SKU 再購入の集約）
+- CSV / JSON からのインポート（#66 系の将来拡張、今回は対象外）

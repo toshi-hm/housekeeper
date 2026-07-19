@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Bell,
   ChevronRight,
+  Download,
   Globe,
   MapPin,
   Moon,
@@ -18,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { LanguageToggle } from "@/components/atoms/LanguageToggle";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { ThemeToggle } from "@/components/atoms/ThemeToggle";
+import { DataExportPanel } from "@/components/organisms/DataExportPanel";
 import { NotificationSettings } from "@/components/organisms/NotificationSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -272,6 +274,15 @@ export const SettingsPage = () => {
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </Link>
+          </section>
+
+          {/* Data export */}
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Download className="h-4 w-4" />
+              {t("exportDataSection")}
+            </h2>
+            <DataExportPanel />
           </section>
 
           {/* Master data links */}

@@ -18,3 +18,33 @@ export const useConsumptionLogs = (itemId: string) =>
     },
     staleTime: 0,
   });
+
+/** 統計画面のグラフ集計とデータエクスポート（#381）の両方が使う、
+ *  全アイテム横断の消費ログ。`item_id` を含むのでエクスポート時の
+ *  アイテム名/カテゴリ解決にも使える。 */
+export interface ConsumptionLogForAggregation {
+  item_id: string;
+  delta_amount: number;
+  delta_unit: string;
+  occurred_at: string;
+}
+
+export const useAllConsumptionLogs = () =>
+  useQuery<ConsumptionLogForAggregation[]>({
+    queryKey: ["consumption-logs-all"],
+    queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("consumption_logs")
+        .select("item_id, delta_amount, delta_unit, occurred_at")
+        .eq("user_id", user.id)
+        .order("occurred_at", { ascending: true });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as ConsumptionLogForAggregation[];
+    },
+    staleTime: 0,
+  });
