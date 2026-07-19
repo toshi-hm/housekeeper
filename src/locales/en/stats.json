@@ -1,5 +1,7 @@
 {
   "categoryBreakdown": "Items by Category",
+  "categoryValueBreakdown": "Inventory Value by Category",
+  "categoryValueHint": "Excludes items without a recorded price",
   "consumptionTrend": "Monthly Consumption",
   "expiryBreakdown": "Expiry Status",
   "historyHint": "Stats will appear as you track items",

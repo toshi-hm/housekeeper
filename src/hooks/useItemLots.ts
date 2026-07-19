@@ -30,6 +30,7 @@ export const createLot = async (
   lot: {
     units: number;
     opened_remaining?: number | null;
+    unit_price?: number | null;
     purchase_date?: string | null;
     expiry_date?: string | null;
   },
@@ -41,6 +42,7 @@ export const createLot = async (
       item_id: itemId,
       units: lot.units,
       opened_remaining: lot.opened_remaining ?? null,
+      unit_price: lot.unit_price ?? null,
       purchase_date: lot.purchase_date ?? null,
       expiry_date: lot.expiry_date ?? null,
     })
@@ -55,6 +57,7 @@ const updateLot = async (
   values: {
     units?: number;
     opened_remaining?: number | null;
+    unit_price?: number | null;
     purchase_date?: string | null;
     expiry_date?: string | null;
   },
@@ -65,6 +68,7 @@ const updateLot = async (
     .update({
       units: values.units,
       opened_remaining: values.opened_remaining,
+      unit_price: values.unit_price,
       purchase_date: values.purchase_date,
       expiry_date: values.expiry_date,
       updated_at: new Date().toISOString(),
@@ -268,6 +272,7 @@ export const useUpdateLot = () => {
       values: {
         units?: number;
         opened_remaining?: number | null;
+        unit_price?: number | null;
         purchase_date?: string | null;
         expiry_date?: string | null;
       };

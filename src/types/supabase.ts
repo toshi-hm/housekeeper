@@ -92,6 +92,7 @@ export interface Database {
           id: string;
           item_id: string;
           opened_remaining: number | null;
+          unit_price: number | null;
           purchase_date: string | null;
           units: number;
           updated_at: string;
@@ -103,6 +104,7 @@ export interface Database {
           id?: string;
           item_id: string;
           opened_remaining?: number | null;
+          unit_price?: number | null;
           purchase_date?: string | null;
           units?: number;
           updated_at?: string;
@@ -114,6 +116,7 @@ export interface Database {
           id?: string;
           item_id?: string;
           opened_remaining?: number | null;
+          unit_price?: number | null;
           purchase_date?: string | null;
           units?: number;
           updated_at?: string;

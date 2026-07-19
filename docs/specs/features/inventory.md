@@ -87,9 +87,24 @@ if units < 0:
 - molecules: `ItemCard`, `ItemListRow`, `QuantityInput`, `ImageUploader`, `ImageLightbox`, `FilterChips`, `ConfirmDialog`
 - atoms: `ExpiryBadge`, `QuantityDisplay`, `UnitToggle`, `ItemImage`, `EmptyState`, `ViewModeToggle`
 
+## コスト管理（単価・在庫総額）
+
+`item_lots.unit_price`（円単位の整数、任意入力）でロットごとの購入単価を記録できる（#342）。
+
+- 入力: ロット追加フォーム（新規登録）／`PurchaseDialog`（買い物リストからの購入・追加購入時）。
+  いずれも `ItemForm` の「購入単価」フィールドで、未入力なら `null`（未設定）のまま保存される。
+- 編集: アイテム編集画面でロットを選択して単価を変更できる（ロット単位、`useUpdateLot`）。
+- 表示: アイテム詳細ページの在庫情報に「在庫総額」を表示する（例: `¥450（3点 × ¥150/点）`）。
+  単価が1件も設定されていないアイテムでは金額行自体を非表示にする。
+  計算ロジックは `src/lib/inventoryValue.ts` の `computeInventoryValue`（純関数）。
+- 集計: 統計ページ（`/_auth/stats`）に「カテゴリ別在庫金額」グラフを追加。単価未設定のロットは
+  集計から除外される（`computeCategoryValueStats`、`src/types/stats.ts`）。
+- 後方互換: 既存ロットは全て `unit_price = NULL`。`NULL` は「未設定」として扱い、金額計算・グラフ集計から
+  除外する（0円として扱わない）。
+
 ## データ
 
-`items` テーブル + `consumption_logs` + `categories` + `storage_locations`。
+`items` テーブル + `item_lots` + `consumption_logs` + `categories` + `storage_locations`。
 スキーマは `docs/specs/database.md` 参照。
 
 ## API（hook）

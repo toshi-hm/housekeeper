@@ -6,6 +6,19 @@ export interface CategoryStat {
   count: number;
 }
 
+export interface CategoryValueStat {
+  categoryId: string | null;
+  name: string;
+  /** カテゴリ内の在庫総額（円）。単価未設定のロットは含まれない。 */
+  value: number;
+}
+
+export interface LotValueRow {
+  item_id: string;
+  units: number;
+  unit_price: number | null;
+}
+
 export interface ExpiryDistributionEntry {
   status: ExpiryStatus;
   count: number;
@@ -47,6 +60,36 @@ export const computeCategoryStats = (
     });
   }
   stats.sort((a, b) => b.count - a.count);
+  return stats;
+};
+
+/**
+ * ロット単位の在庫データからカテゴリ別在庫総額を計算する（#342）。
+ * `unit_price` が null のロットは金額不明として除外する（後方互換）。
+ * `itemCategoryMap` は `item_id → category_id | null` のマッピング。
+ */
+export const computeCategoryValueStats = (
+  lots: LotValueRow[],
+  itemCategoryMap: Record<string, string | null>,
+  categoryMap: Record<string, string>,
+): CategoryValueStat[] => {
+  const valueMap = new Map<string | null, number>();
+  for (const lot of lots) {
+    if (lot.unit_price === null || lot.unit_price === undefined) continue;
+    if (lot.units <= 0) continue;
+    const categoryId = itemCategoryMap[lot.item_id] ?? null;
+    valueMap.set(categoryId, (valueMap.get(categoryId) ?? 0) + lot.units * lot.unit_price);
+  }
+
+  const stats: CategoryValueStat[] = [];
+  for (const [categoryId, value] of valueMap) {
+    stats.push({
+      categoryId,
+      name: categoryId ? (categoryMap[categoryId] ?? "?") : "__uncategorized__",
+      value,
+    });
+  }
+  stats.sort((a, b) => b.value - a.value);
   return stats;
 };
 

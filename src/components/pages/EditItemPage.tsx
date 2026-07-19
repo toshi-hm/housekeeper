@@ -64,7 +64,13 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
       // failed lot update would leave the items row polluted with partial,
       // lot-only values (#483). Only fall back to writing them directly on
       // items when the item has no lots at all.
-      const lotOnlyKeys = ["units", "opened_remaining", "purchase_date", "expiry_date"] as const;
+      const lotOnlyKeys = [
+        "units",
+        "opened_remaining",
+        "unit_price",
+        "purchase_date",
+        "expiry_date",
+      ] as const;
       const itemLevelValues: Partial<ItemFormValues> = { ...values };
       if (selectedLot) {
         for (const key of lotOnlyKeys) delete itemLevelValues[key];
@@ -84,6 +90,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
             values: {
               units: values.units,
               opened_remaining: values.opened_remaining ?? null,
+              unit_price: values.unit_price ?? null,
               purchase_date: values.purchase_date ?? null,
               expiry_date: values.expiry_date ?? null,
             },
@@ -202,6 +209,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           content_amount: item.content_amount,
           content_unit: item.content_unit,
           opened_remaining: selectedLot?.opened_remaining ?? item.opened_remaining,
+          unit_price: selectedLot?.unit_price ?? null,
           purchase_date: selectedLot?.purchase_date ?? item.purchase_date ?? undefined,
           expiry_date: selectedLot?.expiry_date ?? item.expiry_date ?? undefined,
           notes: item.notes ?? undefined,

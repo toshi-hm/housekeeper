@@ -3,10 +3,16 @@ import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { CategoryChart } from "@/components/organisms/CategoryChart";
+import { CategoryValueChart } from "@/components/organisms/CategoryValueChart";
 import { ConsumptionChart } from "@/components/organisms/ConsumptionChart";
 import { ExpiryChart } from "@/components/organisms/ExpiryChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCategoryStats, useExpiryDistribution, useMonthlyConsumption } from "@/hooks/useStats";
+import {
+  useCategoryStats,
+  useCategoryValueStats,
+  useExpiryDistribution,
+  useMonthlyConsumption,
+} from "@/hooks/useStats";
 import { useUserSettings } from "@/hooks/useUserSettings";
 
 const ChartCard = ({
@@ -54,6 +60,11 @@ const ChartCard = ({
 const StatsPage = () => {
   const { t } = useTranslation("stats");
   const { stats, isLoading: categoryLoading, isError: categoryError } = useCategoryStats();
+  const {
+    stats: valueStats,
+    isLoading: categoryValueLoading,
+    isError: categoryValueError,
+  } = useCategoryValueStats();
   const { data: userSettings } = useUserSettings();
   const {
     distribution,
@@ -81,6 +92,15 @@ const StatsPage = () => {
 
         <ChartCard title={t("expiryBreakdown")} isLoading={expiryLoading} isError={expiryError}>
           <ExpiryChart distribution={distribution} />
+        </ChartCard>
+
+        <ChartCard
+          title={t("categoryValueBreakdown")}
+          subtitle={t("categoryValueHint")}
+          isLoading={categoryValueLoading}
+          isError={categoryValueError}
+        >
+          <CategoryValueChart stats={valueStats} />
         </ChartCard>
       </div>
 

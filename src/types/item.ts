@@ -62,6 +62,8 @@ export const itemFormSchema = z.object({
   notes: z.string().optional(),
   image_path: z.string().optional(),
   minimum_stock: z.coerce.number().int().min(0).nullable().optional(),
+  /** 1点あたりの購入単価（円）。任意入力、未設定 = null。 */
+  unit_price: z.coerce.number().int().min(0).nullable().optional(),
 });
 
 export const itemLotSchema = z.object({
@@ -70,6 +72,8 @@ export const itemLotSchema = z.object({
   item_id: z.string().uuid(),
   units: z.number().int().min(0).default(1),
   opened_remaining: z.number().min(0).nullable().optional(),
+  /** 1点あたりの購入単価（円）。null = 未設定（後方互換）。 */
+  unit_price: z.number().int().min(0).nullable().optional(),
   purchase_date: z.string().nullable().optional(),
   expiry_date: z.string().nullable().optional(),
   created_at: z.string(),
