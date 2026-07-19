@@ -48,6 +48,9 @@
 | `types.ts`     | リクエスト / レスポンス / Gemini 型                             |
 | `chat.test.ts` | リクエスト検証・コンテキスト整形などの純粋関数テスト（Deno）    |
 
+`../_shared/rate-limit.ts` の `checkChatRateLimit`（#558）で、ハンドラの認証チェック直後に
+ユーザー単位のレート制限を行う（4.1 参照）。
+
 #### リクエスト / レスポンス
 
 ```ts
@@ -111,10 +114,33 @@ interface ChatResponse {
 - 入力 `language` はクライアントの申告を信用せず Zod（`z.enum(["ja", "en"])`）で検証し、
   不正/未指定時は `"ja"`（`fallbackLng`）にフォールバックする（#555）。
 
+### 4.1 レート制限（#558）
+
+有効なセッション（またはアクセストークン）からの連打・誤動作するクライアント（無限リトライ等）が
+Gemini 無料枠を無制限に消費してしまうのを防ぐため、ユーザー単位の簡易レート制限を設ける。
+
+- テーブル `public.chat_rate_limits`（`user_id` 主キー, `window_start`, `request_count`）で
+  固定ウィンドウ方式のリクエスト数を保持する。
+- Postgres 関数 `check_chat_rate_limit(p_max_requests default 20, p_window_seconds default 60)`
+  が `auth.uid()`（呼び出し元 JWT）を内部で参照し、直近 `p_window_seconds` 秒間の
+  リクエスト数が `p_max_requests` を超えていないかを原子的にチェック・カウントアップする。
+  `SECURITY DEFINER` で `authenticated` ロールにのみ `EXECUTE` を許可し、クライアントからの
+  テーブル直接アクセスは行わない（RLS はポリシーなしで有効化のみ）。
+- Edge Function 側は `supabase/functions/_shared/rate-limit.ts` の `checkChatRateLimit()` から
+  この RPC を呼び出し、`index.ts` のハンドラ冒頭（認証チェック直後・Gemini 呼び出し前）で
+  判定する。超過時は本文 `{ error: "rate_limited" }`、`Retry-After` ヘッダ付きで **429** を返す。
+- デフォルトのしきい値は **1 分あたり 20 リクエスト**。単一ユーザー前提のため厳密なブルート
+  フォース対策ではなく、無料枠を実効的に守るための最低限のガードという位置づけ。
+- クライアント (`useInventoryChat`) は 429 応答を `ChatRateLimitError` として区別し、
+  `InventoryChatPanel` はチャット枠に汎用エラーとは異なる `chat.rateLimited` メッセージを表示する
+  （UI 側の多重クリック防止 `isLoading` とは独立した、サーバ側の実効的なガード）。
+
 ## 5. 無料枠への配慮
 
 - `gemini-2.5-flash` は無料枠あり。`thinkingBudget` を低めに抑え、会話履歴は直近数件に制限。
 - 在庫コンテキストは必要列のみを JSON 化して送信（トークン削減）。
+- Edge Function 側のユーザー単位レート制限（4.1）により、短時間の連打や誤動作クライアントによる
+  無制限呼び出しを防ぎ、上記の設計を実効化する。
 
 ## 6. テスト / CI
 

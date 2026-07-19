@@ -6,7 +6,7 @@ import { ChatBubble } from "@/components/atoms/ChatBubble";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ChatComposer } from "@/components/molecules/ChatComposer";
 import { Button } from "@/components/ui/button";
-import { useInventoryChat } from "@/hooks/useInventoryChat";
+import { ChatRateLimitError, useInventoryChat } from "@/hooks/useInventoryChat";
 import { markMessageFailed, toHistory } from "@/lib/chatHistory";
 import type { ChatMessage } from "@/types/chat";
 
@@ -49,10 +49,11 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         ...prev,
         { id: createId(), role: "assistant", text: res.reply, items: res.items },
       ]);
-    } catch {
+    } catch (err) {
+      const errorText = err instanceof ChatRateLimitError ? t("rateLimited") : t("error");
       setMessages((prev) => [
         ...markMessageFailed(prev, userMessage.id),
-        { id: createId(), role: "assistant", text: t("error"), isError: true },
+        { id: createId(), role: "assistant", text: errorText, isError: true },
       ]);
     }
   };

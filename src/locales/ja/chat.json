@@ -6,6 +6,7 @@
   "inputLabel": "メッセージを入力",
   "openChat": "AIに在庫を質問",
   "placeholder": "在庫について質問する…",
+  "rateLimited": "短時間に質問しすぎました。1分ほど待ってからもう一度お試しください。",
   "send": "送信",
   "suggestion1": "牛乳はある？",
   "suggestion2": "今週賞味期限が切れるものは？",

@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
@@ -14,6 +15,16 @@ interface ChatRequestArgs {
 export const toChatLanguage = (language: string): "ja" | "en" =>
   language.toLowerCase().startsWith("en") ? "en" : "ja";
 
+// Thrown when the inventory-chat Edge Function responds 429 (per-user rate
+// limit, #558) so the UI can show a distinct message instead of the generic
+// error fallback.
+export class ChatRateLimitError extends Error {
+  constructor() {
+    super("Rate limit exceeded");
+    this.name = "ChatRateLimitError";
+  }
+}
+
 // Invoke the `inventory-chat` Edge Function. The user's access token is
 // attached automatically by supabase-js, so the function scopes data via RLS.
 const askInventoryChat = async (
@@ -23,7 +34,12 @@ const askInventoryChat = async (
   const { data, error } = await supabase.functions.invoke<unknown>("inventory-chat", {
     body: { message, history, language },
   });
-  if (error) throw error;
+  if (error) {
+    if (error instanceof FunctionsHttpError && error.context?.status === 429) {
+      throw new ChatRateLimitError();
+    }
+    throw error;
+  }
   return chatResponseSchema.parse(data);
 };
 

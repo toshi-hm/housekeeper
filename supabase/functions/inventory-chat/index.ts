@@ -1,3 +1,4 @@
+import { checkChatRateLimit } from "../_shared/rate-limit.ts";
 import { queryGeminiChat } from "./gemini.ts";
 import { fetchAllItems, fetchRecentlyConsumedItems, getUserScopedClient } from "./inventory.ts";
 import type {
@@ -17,10 +18,15 @@ const corsHeaders = {
 
 const MAX_MESSAGE_LENGTH = 500;
 const HISTORY_ROLES = new Set(["user", "model"]);
-const json = (body: unknown, status = 200): Response =>
+// Free-tier guard (#558): cap requests per user so a stuck/looping client or
+// a leaked token can't unboundedly burn through the Gemini free tier.
+const CHAT_RATE_LIMIT_MAX_REQUESTS = 20;
+const CHAT_RATE_LIMIT_WINDOW_SECONDS = 60;
+
+const json = (body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, ...extraHeaders, "Content-Type": "application/json" },
   });
 
 const sanitizeHistory = (history: unknown): ChatHistoryTurn[] => {
@@ -72,6 +78,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const supabase = getUserScopedClient(req.headers.get("Authorization"));
   if (!supabase) {
     return json({ error: "Unauthorized" }, 401);
+  }
+
+  const rateLimit = await checkChatRateLimit(
+    supabase,
+    CHAT_RATE_LIMIT_MAX_REQUESTS,
+    CHAT_RATE_LIMIT_WINDOW_SECONDS,
+  );
+  if (!rateLimit.allowed) {
+    return json({ error: "rate_limited" }, 429, {
+      "Retry-After": String(rateLimit.retryAfterSeconds),
+    });
   }
 
   let parsed: ChatRequest;
