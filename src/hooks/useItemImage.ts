@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { queryClient } from "@/lib/queryClient";
 import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 
@@ -107,6 +108,13 @@ export const uploadItemImage = async ({
     .update({ image_path: path })
     .eq("id", itemId);
   if (updateError) throw new Error(updateError.message);
+
+  // The signed URL is cached under a deterministic path (itemId + ext), so a
+  // same-extension re-upload keeps the same query key but stale content. Drop
+  // every cached signed URL rather than tracking which "item-images" list
+  // queries happen to include this path.
+  await queryClient.invalidateQueries({ queryKey: ["item-image"] });
+  await queryClient.invalidateQueries({ queryKey: ["item-images"] });
 
   return path;
 };
