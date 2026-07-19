@@ -351,3 +351,66 @@ export const computeForecastAlerts = (
   alerts.sort((a, b) => a.predictedRemainingDays - b.predictedRemainingDays);
   return alerts;
 };
+
+export interface ItemConsumptionPace {
+  /** 直近 `months` ヶ月分の月次消費量（アイテム詳細のミニグラフ表示用） */
+  monthly: MonthlyConsumptionEntry[];
+  /** 直近 `months` ヶ月の平均消費量（`unit` あたり/月）。対象ログが無ければ0 */
+  averagePerMonth: number;
+  /** averagePerMonth / 月次グラフで使う単位。対象ログが無ければnull */
+  unit: string | null;
+  /** 現在の在庫量 ÷ 週あたり消費ペースで算出した推定残り週数。
+   *  ペースを算出できない場合はnull、消費ペースはあるが在庫が0の場合は0 */
+  estimatedWeeksRemaining: number | null;
+}
+
+const DAYS_PER_MONTH = 30;
+const DAYS_PER_WEEK = 7;
+
+/**
+ * 単一アイテムの消費ログから、直近 `months` ヶ月分の消費ペースを算出する（issue #327）。
+ * 1) `consumption_logs` を月次集計（`computeMonthlyConsumption` を再利用）
+ * 2) 直近 `months` ヶ月の平均消費ペース（unit/月）を算出
+ * 3) 現在の在庫量 ÷ 週あたり平均消費ペース = 推定残り週数
+ *
+ * `currentStock` は `content_unit` 換算の総在庫量（例: `getLotRemainingAmount()` の結果）で渡すこと。
+ */
+export const computeItemConsumptionPace = (
+  logs: RawLog[],
+  currentStock: number,
+  stockUnit: string,
+  months = 3,
+  now = new Date(),
+): ItemConsumptionPace => {
+  const matchingLogs = logs.filter((log) => log.delta_unit === stockUnit);
+  const monthly = computeMonthlyConsumption(matchingLogs, months, now);
+
+  const unitTotals = new Map<string, number>();
+  for (const entry of monthly) {
+    for (const { unit, total } of entry.totals) {
+      unitTotals.set(unit, roundFloat((unitTotals.get(unit) ?? 0) + total));
+    }
+  }
+
+  if (unitTotals.size === 0) {
+    return { monthly, averagePerMonth: 0, unit: null, estimatedWeeksRemaining: null };
+  }
+
+  const total = unitTotals.get(stockUnit) ?? 0;
+  const unit = stockUnit;
+  const averagePerMonth = roundFloat(total / months);
+
+  if (averagePerMonth <= 0) {
+    return { monthly, averagePerMonth: 0, unit, estimatedWeeksRemaining: null };
+  }
+
+  if (currentStock <= 0) {
+    return { monthly, averagePerMonth, unit, estimatedWeeksRemaining: 0 };
+  }
+
+  const averagePerWeek = averagePerMonth / (DAYS_PER_MONTH / DAYS_PER_WEEK);
+  // Round to 1 decimal place for a readable "約X週" display.
+  const estimatedWeeksRemaining = Math.round((currentStock / averagePerWeek) * 10) / 10;
+
+  return { monthly, averagePerMonth, unit, estimatedWeeksRemaining };
+};
