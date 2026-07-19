@@ -6,8 +6,18 @@ import { ChatBubble } from "@/components/atoms/ChatBubble";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ChatComposer } from "@/components/molecules/ChatComposer";
 import { Button } from "@/components/ui/button";
-import { useInventoryChat } from "@/hooks/useInventoryChat";
+import {
+  classifyInventoryChatError,
+  type InventoryChatErrorKind,
+  useInventoryChat,
+} from "@/hooks/useInventoryChat";
 import type { ChatHistoryTurn, ChatMessage } from "@/types/chat";
+
+const errorMessageKey = {
+  tooLong: "errorTooLong",
+  unauthorized: "errorUnauthorized",
+  generic: "error",
+} as const satisfies Record<InventoryChatErrorKind, string>;
 
 interface InventoryChatPanelProps {
   open: boolean;
@@ -53,10 +63,11 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         ...prev,
         { id: createId(), role: "assistant", text: res.reply, items: res.items },
       ]);
-    } catch {
+    } catch (err) {
+      const kind = classifyInventoryChatError(err);
       setMessages((prev) => [
         ...prev,
-        { id: createId(), role: "assistant", text: t("error"), isError: true },
+        { id: createId(), role: "assistant", text: t(errorMessageKey[kind]), isError: true },
       ]);
     }
   };

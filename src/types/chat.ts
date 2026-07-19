@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Must match MAX_MESSAGE_LENGTH in supabase/functions/inventory-chat/index.ts.
+export const CHAT_MAX_MESSAGE_LENGTH = 500;
+
 // A single matched inventory item returned by the chat function.
 const chatMatchedItemSchema = z.object({
   id: z.string(),

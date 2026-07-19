@@ -1,8 +1,11 @@
 {
+  "charCount": "{{current}}/{{max}}",
   "clear": "Clear conversation",
   "close": "Close",
   "emptyHint": "Ask anything about your inventory. Try one of the prompts below.",
   "error": "Sorry, I couldn't answer that. Please try again in a moment.",
+  "errorTooLong": "Your message is too long. Please shorten it and try again.",
+  "errorUnauthorized": "Your session has expired. Please sign in again.",
   "inputLabel": "Type a message",
   "openChat": "Ask AI about inventory",
   "placeholder": "Ask about your inventory…",
