@@ -161,6 +161,7 @@ export interface Database {
       };
       items: {
         Row: {
+          auto_reorder: boolean;
           barcode: string | null;
           category_id: string | null;
           content_amount: number;
@@ -174,12 +175,14 @@ export interface Database {
           notes: string | null;
           opened_remaining: number | null;
           purchase_date: string | null;
+          reorder_threshold: number | null;
           storage_location_id: string | null;
           units: number;
           updated_at: string | null;
           user_id: string;
         };
         Insert: {
+          auto_reorder?: boolean;
           barcode?: string | null;
           category_id?: string | null;
           content_amount?: number;
@@ -193,12 +196,14 @@ export interface Database {
           notes?: string | null;
           opened_remaining?: number | null;
           purchase_date?: string | null;
+          reorder_threshold?: number | null;
           storage_location_id?: string | null;
           units?: number;
           updated_at?: string | null;
           user_id: string;
         };
         Update: {
+          auto_reorder?: boolean;
           barcode?: string | null;
           category_id?: string | null;
           content_amount?: number;
@@ -212,6 +217,7 @@ export interface Database {
           notes?: string | null;
           opened_remaining?: number | null;
           purchase_date?: string | null;
+          reorder_threshold?: number | null;
           storage_location_id?: string | null;
           units?: number;
           updated_at?: string | null;

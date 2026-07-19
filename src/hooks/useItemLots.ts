@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
+import { maybeAutoReorder } from "@/lib/autoReorder";
 import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -224,6 +225,7 @@ export const consumeLot = async ({
   }
 
   await syncItemAggregate(lot.item_id);
+  await maybeAutoReorder(lot.item_id);
 
   return { ...(data as ItemLot), _logInsertFailed: !!logError };
 };
@@ -277,6 +279,9 @@ export const useConsumeLot = () => {
         qc.invalidateQueries({ queryKey: ["items"] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs", variables.lot.item_id] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+        // 消費で auto_reorder がトリガーされ shopping_list_items に自動追加される
+        // ことがあるため、買い物リストのキャッシュも更新する (#353)。
+        qc.invalidateQueries({ queryKey: ["shopping"] }),
       ]);
       if (data._logInsertFailed) toast(t("consumptionLogFailed"), "warning");
     },

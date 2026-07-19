@@ -5,6 +5,10 @@
 買い物予定リスト。自由入力で追加できるほか、既存 item の「補充」操作からも自動追加できる。
 購入完了で `items` 行を生成して在庫に反映する。
 
+`items.auto_reorder = true` のアイテムは、消費操作（`consumeLot` / 全消費）の結果
+`units` が `reorder_threshold`（NULL の場合は 0）以下になったタイミングで、
+重複がなければ自動的に shopping list へ追加される（#353）。
+
 ## ユーザーストーリー
 
 - 自由入力で買うものを追加できる
@@ -13,6 +17,8 @@
 - 「購入済みをクリア」を実行すると、購入済み行は完全削除ではなく `shopping_list_archive` へ
   アーカイブされ、設定 > 購入履歴から「いつ・何を・いくつ」買ったか振り返れる（#365）
 - 履歴の各行から「再購入」でショッピングリスト（planned）に戻せる
+- 「定期購入」を設定したアイテムは、消費して在庫がしきい値以下になると自動でリストに追加される
+- 自動追加された行には「🔁 自動追加」バッジが表示される
 
 ## 画面
 
@@ -59,6 +65,19 @@
 グループ化して表示する。各行の「再購入」ボタンは `useUpsertShoppingItem()` を呼び出し、
 既存の planned 行との重複統合ロジック（`findDuplicatePlannedItem`）をそのまま利用する。
 
+### 定期購入の自動追加（#353）
+
+- `items.auto_reorder`（boolean, default false）と `items.reorder_threshold`（int, nullable）で制御する
+- トリガー元: `consumeLot`（`src/hooks/useItemLots.ts`）・`bulkConsumeItems`（`src/hooks/useItems.ts` の全消費）
+- 判定: 消費後に対象アイテムを再取得し、`auto_reorder = true` かつ
+  `units <= (reorder_threshold ?? 0)` なら追加対象
+- 重複防止: `shopping_list_items` に一意制約は無いため、`linked_item_id = <item.id>` かつ
+  `status = 'planned'` の行が既に存在しないかをアプリ側でチェックしてから insert する
+  （実装: `src/lib/autoReorder.ts` の `maybeAutoReorder`）
+- 失敗時は非致命（コンソール警告のみ）とし、消費操作自体は失敗させない
+- UI: 自動追加された行（`linked_item_id` が `auto_reorder = true` の item を指す planned 行）には
+  `ShoppingRow` に「🔁 自動追加」バッジを表示する
+
 ## バリデーション
 
 - `name`: 必須、1〜120 文字
@@ -73,6 +92,7 @@
 - 自由入力 + 補充
 - 購入完了で items 化
 - planned/purchased タブ
+- 定期購入の自動追加（#353）
 
 ## v1.2 範囲
 
@@ -82,5 +102,4 @@
 ## Backlog
 
 - 共有リスト（家族）
-- 定期購入の自動追加
 - 通知（買い忘れ）

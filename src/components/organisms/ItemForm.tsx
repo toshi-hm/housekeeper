@@ -81,6 +81,8 @@ export const ItemForm = ({
     image_path: defaultValues?.image_path ?? "",
     minimum_stock: defaultValues?.minimum_stock ?? null,
     unit_price: defaultValues?.unit_price ?? null,
+    auto_reorder: defaultValues?.auto_reorder ?? false,
+    reorder_threshold: defaultValues?.reorder_threshold ?? null,
   });
   const [unitsRaw, setUnitsRaw] = useState(String(defaultValues?.units ?? 1));
   const [contentAmountRaw, setContentAmountRaw] = useState(
@@ -92,6 +94,7 @@ export const ItemForm = ({
   const [contentAmountError, setContentAmountError] = useState("");
   const [minimumStockError, setMinimumStockError] = useState("");
   const [unitPriceError, setUnitPriceError] = useState("");
+  const [reorderThresholdError, setReorderThresholdError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
@@ -259,6 +262,14 @@ export const ItemForm = ({
       (isNaN(values.unit_price) || values.unit_price < 0)
     ) {
       setUnitPriceError(t("unitPriceInvalid"));
+      hasError = true;
+    }
+
+    if (
+      typeof values.reorder_threshold === "number" &&
+      (isNaN(values.reorder_threshold) || values.reorder_threshold < 0)
+    ) {
+      setReorderThresholdError(t("reorderThresholdInvalid"));
       hasError = true;
     }
 
@@ -568,6 +579,53 @@ export const ItemForm = ({
             <span className="text-sm text-muted-foreground">{t("unitPriceSuffix")}</span>
           </div>
           {unitPriceError && <p className="text-sm text-destructive">{unitPriceError}</p>}
+        </div>
+
+        {/* Auto reorder */}
+        <div className="space-y-2 rounded-lg border p-3">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={values.auto_reorder}
+              onChange={(e) => {
+                set("auto_reorder", e.target.checked);
+                if (!e.target.checked) setReorderThresholdError("");
+              }}
+              className="rounded"
+            />
+            {t("autoReorder")}
+          </label>
+          <p className="text-xs text-muted-foreground">{t("autoReorderHelp")}</p>
+          {values.auto_reorder && (
+            <div className="space-y-1 pl-6">
+              <Label htmlFor="reorder_threshold">{t("reorderThreshold")}</Label>
+              <p className="text-xs text-muted-foreground">{t("reorderThresholdHelp")}</p>
+              <Input
+                id="reorder_threshold"
+                type="number"
+                min={0}
+                className="w-28"
+                value={values.reorder_threshold ?? ""}
+                placeholder="0"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "") {
+                    set("reorder_threshold", null);
+                    setReorderThresholdError("");
+                    return;
+                  }
+                  const parsed = parseInt(v, 10);
+                  set("reorder_threshold", isNaN(parsed) ? null : parsed);
+                  setReorderThresholdError(
+                    !isNaN(parsed) && parsed < 0 ? t("reorderThresholdInvalid") : "",
+                  );
+                }}
+              />
+              {reorderThresholdError && (
+                <p className="text-sm text-destructive">{reorderThresholdError}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Image */}

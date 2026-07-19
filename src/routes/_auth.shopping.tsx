@@ -296,6 +296,9 @@ const ShoppingPage = () => {
 
   // linked_item_id → カテゴリを解決するためのマップを構築する
   const itemCategoryIdMap = new Map(inventoryItems.map((i) => [i.id, i.category_id ?? null]));
+  // auto_reorder が有効なアイテムの id 集合。消費操作で自動追加された行に
+  // 「🔁 自動追加」バッジを表示するために使う (#353)。
+  const autoReorderItemIds = new Set(inventoryItems.filter((i) => i.auto_reorder).map((i) => i.id));
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
   const resolveCategory: CategoryResolver = (shoppingItem) => {
     if (!shoppingItem.linked_item_id) return null;
@@ -317,6 +320,7 @@ const ShoppingPage = () => {
       desiredUnits={item.desired_units}
       note={item.note}
       isPurchased={item.status === "purchased"}
+      isAutoAdded={!!item.linked_item_id && autoReorderItemIds.has(item.linked_item_id)}
       isEditing={editId === item.id}
       isSaving={savingId === item.id}
       onPurchase={

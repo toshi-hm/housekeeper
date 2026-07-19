@@ -104,6 +104,8 @@ export interface Database {
           notes: string | null;
           image_path: string | null;
           minimum_stock: number | null;
+          auto_reorder: boolean;
+          reorder_threshold: number | null;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -124,6 +126,8 @@ export interface Database {
           notes?: string | null;
           image_path?: string | null;
           minimum_stock?: number | null;
+          auto_reorder?: boolean;
+          reorder_threshold?: number | null;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -144,6 +148,8 @@ export interface Database {
           notes?: string | null;
           image_path?: string | null;
           minimum_stock?: number | null;
+          auto_reorder?: boolean;
+          reorder_threshold?: number | null;
           deleted_at?: string | null;
           updated_at?: string;
         };

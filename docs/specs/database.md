@@ -55,6 +55,9 @@ create table items (
   expiry_date date,
   notes text,
   image_path text,                       -- Storage 内のオブジェクトキー（"<user_id>/<item_id>.<ext>"）
+  minimum_stock int check (minimum_stock is null or minimum_stock >= 0), -- ダッシュボード警告用
+  auto_reorder boolean not null default false,   -- 定期購入フラグ（#353）
+  reorder_threshold int check (reorder_threshold is null or reorder_threshold >= 0), -- 自動追加のしきい値。NULL = 0以下
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
