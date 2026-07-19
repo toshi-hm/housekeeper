@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { ShareButton } from "@/components/atoms/ShareButton";
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ScanToShoppingDialog } from "@/components/molecules/ScanToShoppingDialog";
 import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
@@ -467,16 +468,19 @@ const ShoppingPage = () => {
         <div className="space-y-3 rounded-lg border p-4">
           <div className="space-y-1">
             <Label htmlFor="add-name">{t("itemName")}</Label>
-            <Input
-              id="add-name"
-              value={addName}
-              onChange={(e) => setAddName(e.target.value)}
-              placeholder={t("itemNamePlaceholder")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void handleAdd();
-              }}
-              autoFocus
-            />
+            <div className="flex gap-2">
+              <Input
+                id="add-name"
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
+                placeholder={t("itemNamePlaceholder")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleAdd();
+                }}
+                autoFocus
+              />
+              <VoiceInputButton onResult={(transcript) => setAddName(transcript)} />
+            </div>
           </div>
           <div className="space-y-1">
             <Label htmlFor="add-note">{t("note")}</Label>

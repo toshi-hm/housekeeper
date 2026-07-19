@@ -26,5 +26,7 @@
   "save": "Save",
   "saveSuccess": "Saved",
   "select": "Select",
-  "unknownError": "An error occurred"
+  "unknownError": "An error occurred",
+  "voiceInput": "Voice input",
+  "voiceInputListening": "Listening..."
 }

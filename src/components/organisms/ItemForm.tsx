@@ -2,6 +2,7 @@ import { Barcode, Loader2, Search } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { ProductLookupResult } from "@/components/molecules/ProductLookupResult";
 import { QuickAddSelect } from "@/components/molecules/QuickAddSelect";
@@ -304,13 +305,14 @@ export const ItemForm = ({
                 />
               </div>
             )}
-            <div className="flex-1 min-w-0">
+            <div className="flex flex-1 min-w-0 gap-2">
               <Input
                 id="name"
                 value={values.name}
                 onChange={(e) => set("name", e.target.value)}
                 placeholder={t("namePlaceholder")}
               />
+              <VoiceInputButton onResult={(transcript) => set("name", transcript)} />
             </div>
           </div>
           {nameError && <p className="text-sm text-destructive">{nameError}</p>}
