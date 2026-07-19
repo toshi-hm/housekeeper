@@ -110,7 +110,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           const file =
             pendingFile ??
             (pendingImageUrl ? await downloadExternalImageAsFile(pendingImageUrl) : null);
-          if (file) await uploadItemImage({ itemId, file, oldImagePath });
+          if (file) await uploadItemImage({ itemId, file, oldImagePath, queryClient: qc });
         } catch (err) {
           toast(
             err instanceof OfflineError ? t("common:offlineError") : t("imageUploadFailed"),

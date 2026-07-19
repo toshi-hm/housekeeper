@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { type QueryClient, useQuery } from "@tanstack/react-query";
 
 import { compressImageForUpload } from "@/lib/imageCompress";
 import { requireOnline } from "@/lib/requireOnline";
@@ -72,16 +72,44 @@ export const useSignedItemImages = (imagePaths: Array<string | null | undefined>
   });
 };
 
+/**
+ * Invalidates the cached signed URL(s) for a given Storage path so that
+ * uploadItemImage's callers don't keep serving a stale pre-upload signed URL
+ * for up to staleTime (~49 min). Storage paths are derived deterministically
+ * from itemId + extension (see uploadItemImage), so replacing an image with
+ * one of the same extension reuses the same path/queryKey — without this,
+ * the old cached URL (pointing at the previous image bytes) would remain
+ * fresh and keep being served (#564).
+ */
+const invalidateSignedItemImageCache = (queryClient: QueryClient, path: string): Promise<void> =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["item-image", path] }),
+    queryClient.invalidateQueries({
+      predicate: (query) =>
+        query.queryKey[0] === "item-images" &&
+        Array.isArray(query.queryKey[1]) &&
+        (query.queryKey[1] as unknown[]).includes(path),
+    }),
+  ]).then(() => undefined);
+
 interface UploadImageParams {
   itemId: string;
   file: File;
   oldImagePath?: string | null;
+  /**
+   * Required so uploadItemImage can invalidate the signed-URL cache for the
+   * (possibly reused) Storage path after a successful upload — see
+   * invalidateSignedItemImageCache above. Pass the QueryClient from
+   * useQueryClient() at the call site.
+   */
+  queryClient: QueryClient;
 }
 
 export const uploadItemImage = async ({
   itemId,
   file,
   oldImagePath,
+  queryClient,
 }: UploadImageParams): Promise<string> => {
   requireOnline();
   const {
@@ -123,6 +151,8 @@ export const uploadItemImage = async ({
   if (oldImagePath && oldImagePath !== path) {
     await supabase.storage.from(BUCKET).remove([oldImagePath]);
   }
+
+  await invalidateSignedItemImageCache(queryClient, path);
 
   return path;
 };
