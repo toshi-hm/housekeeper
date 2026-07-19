@@ -40,6 +40,9 @@ reports/
 # Serena MCP local metadata
 .serena/
 
+# Claude Code agent worktrees (local, per-session working copies)
+.claude/worktrees/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
