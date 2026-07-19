@@ -25,6 +25,10 @@ interface InventoryChatPanelProps {
   onClose: () => void;
 }
 
+// Tab-trap候補: 非表示(disabled)を除くフォーカス可能要素
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 const createId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -35,11 +39,51 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
   const { ask, isLoading } = useInventoryChat();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  // パネルを開いたときに: (1) 開くトリガー要素を記憶し、(2) Textarea へ初期
+  // フォーカスを移す。閉じたら記憶しておいたトリガー要素へフォーカスを戻す。
+  useEffect(() => {
+    if (!open) return;
+    triggerRef.current = document.activeElement as HTMLElement | null;
+    textareaRef.current?.focus();
+    return () => {
+      triggerRef.current?.focus?.();
+      triggerRef.current = null;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      // フォーカストラップ: パネル内の先頭/末尾要素で Tab / Shift+Tab を折り返す
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement;
+
+      if (e.shiftKey) {
+        if (active === first || !panel.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last || !panel.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -79,6 +123,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
     <div className="fixed inset-0 z-50 flex justify-center sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={t("title")}
@@ -162,7 +207,11 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
           )}
         </div>
 
-        <ChatComposer onSend={(msg) => void handleSend(msg)} isLoading={isLoading} />
+        <ChatComposer
+          ref={textareaRef}
+          onSend={(msg) => void handleSend(msg)}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );
