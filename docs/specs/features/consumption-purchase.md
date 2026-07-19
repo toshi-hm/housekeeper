@@ -162,6 +162,13 @@ end $$;
     `item_id, purchased_units, purchase_date`
 - UI organism: `src/components/organisms/DataExportPanel.tsx`（設定ページに埋め込み）
 
+## v1.3 範囲（消費ペース予測）
+
+- `consumption_logs` を元にした消費ペース予測 / 補充タイミング予測（#68, #392）。
+  詳細は `docs/specs/features/stats.md`「消費ペース予測 / 補充タイミング予測」を参照
+- 計算ロジック（`computeConsumptionPaceForecast` など）は `src/types/stats.ts` に純粋関数として実装
+- アイテム詳細ページに予測残日数を表示、ダッシュボードの警告バナーに統合
+
 ## Backlog
 
 - 単位換算（mL ⇔ L）

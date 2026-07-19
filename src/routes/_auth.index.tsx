@@ -36,12 +36,13 @@ import {
 } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
+import { useForecastAlerts } from "@/hooks/useStats";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useViewMode } from "@/hooks/useViewMode";
 import { updateAppBadge } from "@/lib/pwa";
 import { toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
-import { getExpiryStatus, type Item } from "@/types/item";
+import { DEFAULT_LOW_STOCK_FORECAST_DAYS, getExpiryStatus, type Item } from "@/types/item";
 
 const PAGE_SIZE = 40;
 
@@ -307,6 +308,22 @@ export const DashboardPage = () => {
       item.units <= item.minimum_stock,
   );
 
+  // 消費ペースからの予測残日数が閾値以内のアイテム（#392）。既に minimum_stock ベースの
+  // 低在庫バナーに載っているアイテムは重複表示しない（補完する）。
+  const lowStockIds = new Set(lowStockItems.map((item) => item.id));
+  const forecastThresholdDays =
+    userSettings?.low_stock_forecast_days ?? DEFAULT_LOW_STOCK_FORECAST_DAYS;
+  const { alerts: forecastAlerts } = useForecastAlerts(baseFiltered, forecastThresholdDays);
+  const forecastAlertItems = forecastAlerts
+    .filter((forecastAlert) => !lowStockIds.has(forecastAlert.itemId))
+    .map((forecastAlert) => ({
+      forecastAlert,
+      item: baseFiltered.find((item) => item.id === forecastAlert.itemId),
+    }))
+    .filter((entry): entry is { forecastAlert: (typeof forecastAlerts)[number]; item: Item } =>
+      Boolean(entry.item),
+    );
+
   const handleBulkAddToShopping = async () => {
     if (isBulkAdding) return;
     setIsBulkAdding(true);
@@ -485,6 +502,39 @@ export const DashboardPage = () => {
                     params={{ itemId: item.id }}
                   >
                     {item.name} ({item.units} / {item.minimum_stock})
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
+
+      {/* Consumption-pace forecast banner (#392) */}
+      {forecastAlertItems.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p className="text-sm font-medium">
+              {t("forecastAlertBanner", { count: forecastAlertItems.length })}
+            </p>
+          </div>
+          <details className="rounded-md border border-blue-200 bg-blue-100/50 p-2">
+            <summary className="cursor-pointer text-sm font-medium">
+              {t("forecastAlertBannerDetails")}
+            </summary>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+              {forecastAlertItems.map(({ forecastAlert, item }) => (
+                <li key={item.id}>
+                  <Link
+                    className="underline decoration-blue-800 underline-offset-2 hover:opacity-80"
+                    to="/items/$itemId"
+                    params={{ itemId: item.id }}
+                  >
+                    {t("forecastAlertItemLine", {
+                      name: item.name,
+                      days: forecastAlert.predictedRemainingDays,
+                    })}
                   </Link>
                 </li>
               ))}

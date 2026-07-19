@@ -88,6 +88,8 @@ export interface UserSettings {
   notify_at: string;
   /** 期限切れ後の自動アーカイブ猶予日数。null = 無効（デフォルト） (#419) */
   auto_archive_after_days: number | null;
+  /** 消費ペースからの予測残日数がこの日数以内になったらダッシュボードで警告する（#68, #392）。 */
+  low_stock_forecast_days: number;
   created_at: string;
   updated_at: string;
 }
@@ -133,6 +135,7 @@ export type ConsumeReason = "cooking" | "expired" | "gift" | "other";
 export const CONSUME_REASONS: readonly ConsumeReason[] = ["cooking", "expired", "gift", "other"];
 
 export const DEFAULT_EXPIRY_WARNING_DAYS = 3;
+export const DEFAULT_LOW_STOCK_FORECAST_DAYS = 7;
 
 /** 自動アーカイブを有効化するときにデフォルトで提案する猶予日数 (#419) */
 export const DEFAULT_AUTO_ARCHIVE_AFTER_DAYS = 7;

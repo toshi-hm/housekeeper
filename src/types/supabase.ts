@@ -391,6 +391,7 @@ export interface Database {
           default_unit: string;
           expiry_warning_days: number;
           language: string;
+          low_stock_forecast_days: number;
           notify_at: string;
           updated_at: string;
           user_id: string;
@@ -401,6 +402,7 @@ export interface Database {
           default_unit?: string;
           expiry_warning_days?: number;
           language?: string;
+          low_stock_forecast_days?: number;
           notify_at?: string;
           updated_at?: string;
           user_id: string;
@@ -411,6 +413,7 @@ export interface Database {
           default_unit?: string;
           expiry_warning_days?: number;
           language?: string;
+          low_stock_forecast_days?: number;
           notify_at?: string;
           updated_at?: string;
           user_id?: string;

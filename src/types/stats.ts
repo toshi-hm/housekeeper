@@ -1,5 +1,11 @@
 import { getPricedEquivalentUnits } from "@/lib/inventoryValue";
-import { type ExpiryStatus, getExpiryStatus, type Item } from "@/types/item";
+import {
+  type ExpiryStatus,
+  getExpiryStatus,
+  getLotRemainingAmount,
+  type Item,
+  roundFloat,
+} from "@/types/item";
 
 export interface CategoryStat {
   categoryId: string | null;
@@ -154,4 +160,185 @@ export const computeMonthlyConsumption = (
   }
 
   return result;
+};
+
+// --- 消費ペース予測（補充タイミング予測 / 低在庫アラート強化 #68, #392） ---
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** 予測残日数計算のデフォルト参照期間（日）。過去30日の消費実績を基準にする。 */
+export const DEFAULT_FORECAST_LOOKBACK_DAYS = 30;
+
+/** 参照期間内の消費ログがこの件数未満なら「データ不足」として扱う。 */
+const MIN_LOGS_FOR_FORECAST = 2;
+
+export interface ConsumptionPaceForecast {
+  /** 参照期間内の1日あたり平均消費量。データ不足時は null。 */
+  dailyRate: number | null;
+  /** 予測残日数。在庫が既に0の場合は 0、データ不足の場合は null。 */
+  predictedRemainingDays: number | null;
+  /** 参照期間内に見つかった消費ログの件数（「データ不足（X回分の消費記録あり）」表示に使う）。 */
+  logCount: number;
+}
+
+/**
+ * アイテム1件の消費ログと現在の在庫量から、平均消費ペース（1日あたり）と予測残日数を計算する。
+ *
+ * - 在庫が0以下: 消費ペースに関わらず predictedRemainingDays = 0
+ * - 参照期間 (lookbackDays) 内のログが `MIN_LOGS_FOR_FORECAST` 件未満、または合計消費量が0以下:
+ *   データ不足として dailyRate / predictedRemainingDays は null（logCount のみ返す）
+ * - それ以外: dailyRate = 参照期間内の合計消費量 / lookbackDays、
+ *   predictedRemainingDays = floor(現在庫 / dailyRate)
+ */
+export const computeConsumptionPaceForecast = (
+  logs: Pick<RawLog, "delta_amount" | "occurred_at">[],
+  currentStock: number,
+  lookbackDays = DEFAULT_FORECAST_LOOKBACK_DAYS,
+  now = new Date(),
+): ConsumptionPaceForecast => {
+  const cutoff = new Date(now.getTime() - lookbackDays * MS_PER_DAY);
+  const relevant = logs.filter((log) => {
+    const occurredAt = new Date(log.occurred_at);
+    return occurredAt >= cutoff && occurredAt <= now;
+  });
+  const logCount = relevant.length;
+
+  if (currentStock <= 0) {
+    return { dailyRate: null, predictedRemainingDays: 0, logCount };
+  }
+
+  const totalConsumed = relevant.reduce((sum, log) => sum + log.delta_amount, 0);
+  if (logCount < MIN_LOGS_FOR_FORECAST || totalConsumed <= 0) {
+    return { dailyRate: null, predictedRemainingDays: null, logCount };
+  }
+
+  const dailyRate = roundFloat(totalConsumed / lookbackDays);
+  const predictedRemainingDays = Math.floor(currentStock / dailyRate);
+  return { dailyRate, predictedRemainingDays, logCount };
+};
+
+export interface ItemConsumptionLogEntry {
+  item_id: string;
+  delta_amount: number;
+  occurred_at: string;
+}
+
+export type ConsumptionTrend = "accelerating" | "decelerating" | "steady" | "insufficient-data";
+
+export interface ConsumptionSpeedEntry {
+  itemId: string;
+  /** 直近 windowDays 日間の1日あたり平均消費量 */
+  dailyRate: number;
+  /** 直近 windowDays 日間のログ件数 */
+  logCount: number;
+  trend: ConsumptionTrend;
+}
+
+// 直前の期間比でこの倍率を超えて増えたら加速、下回ったら減速と判定する。
+const TREND_ACCELERATION_RATIO = 1.2;
+const TREND_DECELERATION_RATIO = 0.8;
+
+/**
+ * アイテムごとの消費速度ランキングを計算する。
+ *
+ * 直近 windowDays 日間の1日あたり平均消費量で降順ソートする。あわせて、その1つ前の
+ * windowDays 日間（windowDays〜2*windowDays日前）と比較し、加速中 (accelerating) /
+ * 減速中 (decelerating) / 横ばい (steady) を判定する。前の期間にログが無い場合は
+ * 比較できないため insufficient-data とする。
+ */
+export const computeConsumptionSpeedRanking = (
+  logs: ItemConsumptionLogEntry[],
+  windowDays = DEFAULT_FORECAST_LOOKBACK_DAYS,
+  now = new Date(),
+): ConsumptionSpeedEntry[] => {
+  const recentStart = new Date(now.getTime() - windowDays * MS_PER_DAY);
+  const priorStart = new Date(now.getTime() - 2 * windowDays * MS_PER_DAY);
+
+  const byItem = new Map<string, { recent: number[]; prior: number[] }>();
+  for (const log of logs) {
+    const occurredAt = new Date(log.occurred_at);
+    if (occurredAt > now) continue;
+    const entry = byItem.get(log.item_id) ?? { recent: [], prior: [] };
+    if (occurredAt >= recentStart) {
+      entry.recent.push(log.delta_amount);
+    } else if (occurredAt >= priorStart) {
+      entry.prior.push(log.delta_amount);
+    }
+    byItem.set(log.item_id, entry);
+  }
+
+  const result: ConsumptionSpeedEntry[] = [];
+  for (const [itemId, { recent, prior }] of byItem) {
+    if (recent.length === 0) continue;
+    const recentTotal = recent.reduce((sum, v) => sum + v, 0);
+    const dailyRate = roundFloat(recentTotal / windowDays);
+
+    let trend: ConsumptionTrend = "insufficient-data";
+    if (prior.length > 0) {
+      const priorTotal = prior.reduce((sum, v) => sum + v, 0);
+      const priorDailyRate = priorTotal / windowDays;
+      if (dailyRate > priorDailyRate * TREND_ACCELERATION_RATIO) {
+        trend = "accelerating";
+      } else if (dailyRate < priorDailyRate * TREND_DECELERATION_RATIO) {
+        trend = "decelerating";
+      } else {
+        trend = "steady";
+      }
+    }
+
+    result.push({ itemId, dailyRate, logCount: recent.length, trend });
+  }
+
+  result.sort((a, b) => b.dailyRate - a.dailyRate);
+  return result;
+};
+
+export interface ForecastAlertEntry {
+  itemId: string;
+  predictedRemainingDays: number;
+}
+
+/**
+ * 在庫があるアイテムのうち、消費ペースからの予測残日数が thresholdDays 以内のものを抽出する。
+ * `minimum_stock` による既存の低在庫バナー（#230/#382）とは独立した、消費ペースベースの予測。
+ * 予測残日数が短い順（=急ぐ順）にソートして返す。
+ */
+export const computeForecastAlerts = (
+  items: Array<Pick<Item, "id" | "units" | "content_amount" | "opened_remaining">>,
+  logs: ItemConsumptionLogEntry[],
+  thresholdDays: number,
+  lookbackDays = DEFAULT_FORECAST_LOOKBACK_DAYS,
+  now = new Date(),
+): ForecastAlertEntry[] => {
+  const logsByItem = new Map<string, ItemConsumptionLogEntry[]>();
+  for (const log of logs) {
+    const arr = logsByItem.get(log.item_id) ?? [];
+    arr.push(log);
+    logsByItem.set(log.item_id, arr);
+  }
+
+  const alerts: ForecastAlertEntry[] = [];
+  for (const item of items) {
+    if (item.units <= 0) continue;
+    const stock = getLotRemainingAmount(
+      item.units,
+      item.content_amount,
+      item.opened_remaining ?? null,
+    );
+    const forecast = computeConsumptionPaceForecast(
+      logsByItem.get(item.id) ?? [],
+      stock,
+      lookbackDays,
+      now,
+    );
+    if (
+      forecast.predictedRemainingDays !== null &&
+      forecast.predictedRemainingDays <= thresholdDays
+    ) {
+      alerts.push({ itemId: item.id, predictedRemainingDays: forecast.predictedRemainingDays });
+    }
+  }
+
+  alerts.sort((a, b) => a.predictedRemainingDays - b.predictedRemainingDays);
+  return alerts;
 };

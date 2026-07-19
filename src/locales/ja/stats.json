@@ -2,12 +2,23 @@
   "categoryBreakdown": "カテゴリ別在庫",
   "categoryValueBreakdown": "カテゴリ別在庫金額",
   "categoryValueHint": "単価未設定の在庫は含まれません",
+  "consumptionSpeedRanking": "消費速度ランキング",
+  "consumptionSpeedRankingSubtitle": "直近30日間の1日あたり消費量順",
   "consumptionTrend": "月別消費量",
+  "dailyRateLabel": "1日あたり",
   "expiryBreakdown": "期限ステータス分布",
   "historyHint": "履歴が貯まると表示されます",
   "itemCount": "件",
+  "itemNameLabel": "商品名",
   "last6Months": "直近6ヶ月",
   "noData": "データがありません",
   "title": "統計",
+  "trend": {
+    "accelerating": "加速中",
+    "decelerating": "減速中",
+    "insufficientData": "データ不足",
+    "steady": "横ばい"
+  },
+  "trendLabel": "傾向",
   "uncategorized": "未分類"
 }
