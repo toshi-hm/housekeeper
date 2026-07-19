@@ -270,6 +270,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      shopping_list_archive: {
+        Row: {
+          archived_at: string;
+          desired_units: number;
+          id: string;
+          name: string;
+          note: string | null;
+          user_id: string;
+        };
+        Insert: {
+          archived_at?: string;
+          desired_units?: number;
+          id?: string;
+          name: string;
+          note?: string | null;
+          user_id: string;
+        };
+        Update: {
+          archived_at?: string;
+          desired_units?: number;
+          id?: string;
+          name?: string;
+          note?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       shopping_list_items: {
         Row: {
           created_at: string;

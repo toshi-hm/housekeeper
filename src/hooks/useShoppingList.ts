@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { PURCHASE_HISTORY_KEY } from "@/hooks/usePurchaseHistory";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -176,26 +177,64 @@ export const lotValuesFromForm = (itemValues: ItemFormValues) => ({
   expiry_date: itemValues.expiry_date || null,
 });
 
+/**
+ * 「購入済みをクリア」時の処理 (#365)。購入済み行を完全削除する前に
+ * shopping_list_archive へコピーし、「いつ何をいくつ買ったか」を履歴として残す。
+ * 1) 購入済み行を取得 → 2) アーカイブへ insert → 3) 元の行を delete、の順で実行する。
+ * insert に失敗した場合は delete まで到達しないため、履歴を残さず削除してしまう
+ * ことはない（DBトランザクションではないが、失敗時の安全側に倒す順序）。
+ */
+export const archivePurchasedItems = async (): Promise<void> => {
+  requireOnline();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: purchasedRows, error: fetchError } = await supabase
+    .from("shopping_list_items")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("status", "purchased");
+  if (fetchError) throw new Error(fetchError.message);
+
+  const rows = (purchasedRows ?? []) as ShoppingItem[];
+  if (rows.length > 0) {
+    // 同一クリア操作でアーカイブされた行を「同じ日の購入」として扱えるよう、
+    // archived_at はクライアントで一度だけ生成して全行に揃える。
+    const archivedAt = new Date().toISOString();
+    const archiveRows = rows.map((row) => ({
+      user_id: user.id,
+      name: row.name,
+      desired_units: row.desired_units,
+      note: row.note,
+      archived_at: archivedAt,
+    }));
+    const { error: archiveError } = await supabase
+      .from("shopping_list_archive")
+      .insert(archiveRows);
+    if (archiveError) throw new Error(archiveError.message);
+  }
+
+  const { error: deleteError } = await supabase
+    .from("shopping_list_items")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("status", "purchased");
+  if (deleteError) throw new Error(deleteError.message);
+};
+
 export const useDeleteAllPurchasedItems = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("common");
   return useMutation({
-    mutationFn: async () => {
-      requireOnline();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      const { error } = await supabase
-        .from("shopping_list_items")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("status", "purchased");
-      if (error) throw new Error(error.message);
-    },
+    mutationFn: archivePurchasedItems,
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: [QUERY_KEY] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: [QUERY_KEY] }),
+        qc.invalidateQueries({ queryKey: PURCHASE_HISTORY_KEY }),
+      ]);
     },
     onError: (error) => {
       if (error instanceof OfflineError) {

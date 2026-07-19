@@ -28,6 +28,7 @@
   "purchaseDialog": "購入完了 — 在庫に追加",
   "purchaseSuccess": "在庫に追加しました",
   "restock": "再購入",
+  "restockSuccess": "買い物リストに追加しました",
   "scanAdd": "スキャン追加",
   "scanAddConfirm": "リストに追加",
   "scanDialogTitle": "スキャンしてリストに追加",

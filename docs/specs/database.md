@@ -27,6 +27,7 @@ Supabase (Postgres 15+)
 | `consumption_logs`         | 消費イベント履歴                        | ✅   | item 削除で CASCADE                           |
 | `user_settings`            | ユーザー設定（言語/閾値/通知時刻 など） | ✅   | user 削除で CASCADE                           |
 | `shopping_list_items`      | 買い物リスト                            | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに） |
+| `shopping_list_archive`    | 買い物リストの購入履歴アーカイブ        | v1.2 | user 削除で CASCADE（行自体は不変・更新なし） |
 | `notification_preferences` | 通知 ON/OFF                             | v1.2 | user 削除で CASCADE                           |
 | `push_subscriptions`       | Web Push 購読                           | v1.2 | user 削除で CASCADE                           |
 
@@ -201,6 +202,32 @@ create table shopping_list_items (
 
 create index shopping_user_status_idx on shopping_list_items(user_id, status, created_at desc);
 ```
+
+## shopping_list_archive（v1.2）
+
+「購入済みをクリア」実行時に、削除前の `shopping_list_items`（`status='purchased'`）行をコピーして保存する購入履歴。
+`items` の実体は複製しない（`name` / `desired_units` / `note` のみのスナップショット）ため、
+その後 item 自体が削除・改名されても履歴表示には影響しない。
+
+```sql
+create table shopping_list_archive (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  desired_units int not null default 1 check (desired_units >= 1),
+  note text,
+  archived_at timestamptz not null default now()
+);
+
+create index shopping_list_archive_user_archived_idx
+  on shopping_list_archive(user_id, archived_at desc);
+```
+
+- 同一の「購入済みをクリア」操作でアーカイブされた行は、クライアントが生成した単一の `archived_at` を共有する
+  （設定 > 購入履歴 で「日付別グループ」表示するための下地）
+- 行は insert のみ・更新なし（`updated_at` カラムを持たない。`consumption_logs` と同じ方針）
+- 「再購入」操作は、この行の `name` / `desired_units` / `note` を使って `shopping_list_items` に
+  `status='planned'` の新規行（または既存 planned 行との重複統合）を作るだけで、アーカイブ行自体は変更しない
 
 ## notification_preferences（v1.2）
 

@@ -28,6 +28,7 @@
   "purchaseDialog": "Mark Purchased — Add to Inventory",
   "purchaseSuccess": "Added to inventory",
   "restock": "Restock",
+  "restockSuccess": "Added to shopping list",
   "scanAdd": "Scan to add",
   "scanAddConfirm": "Add to list",
   "scanDialogTitle": "Scan to add to list",

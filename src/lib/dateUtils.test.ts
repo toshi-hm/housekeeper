@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseLocalDate } from "./dateUtils";
+import { parseLocalDate, toLocalDateKey } from "./dateUtils";
 
 describe("parseLocalDate", () => {
   test("parses a YYYY-MM-DD string into a local Date at midnight", () => {
@@ -31,5 +31,20 @@ describe("parseLocalDate", () => {
     expect(result.getFullYear()).toBe(2026);
     expect(result.getMonth()).toBe(11);
     expect(result.getDate()).toBe(31);
+  });
+});
+
+describe("toLocalDateKey", () => {
+  test("formats a local Date as YYYY-MM-DD", () => {
+    expect(toLocalDateKey(new Date(2026, 6, 6))).toBe("2026-07-06");
+  });
+
+  test("pads single-digit month and day", () => {
+    expect(toLocalDateKey(new Date(2026, 0, 5))).toBe("2026-01-05");
+  });
+
+  test("round-trips with parseLocalDate", () => {
+    const dateStr = "2026-11-03";
+    expect(toLocalDateKey(parseLocalDate(dateStr))).toBe(dateStr);
   });
 });

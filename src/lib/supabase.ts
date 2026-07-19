@@ -444,6 +444,33 @@ export interface Database {
           },
         ];
       };
+      shopping_list_archive: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          desired_units: number;
+          note: string | null;
+          archived_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          desired_units?: number;
+          note?: string | null;
+          archived_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          desired_units?: number;
+          note?: string | null;
+          archived_at?: string;
+        };
+        Relationships: [];
+      };
       item_tags: {
         Row: {
           id: string;

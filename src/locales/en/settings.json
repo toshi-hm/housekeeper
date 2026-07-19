@@ -39,6 +39,8 @@
   "noLocations": "No locations",
   "noTags": "No tags",
   "notifications": "Notification Settings",
+  "purchaseHistory": "Purchase History",
+  "purchaseHistoryEmpty": "No purchase history yet",
   "restore": "Restore",
   "restoreSuccess": "Item restored",
   "saveSuccess": "Settings saved",
