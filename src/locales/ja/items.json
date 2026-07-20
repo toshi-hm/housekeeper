@@ -4,6 +4,8 @@
   "addItem": "在庫を追加",
   "addStorageLocation": "保管場所を追加",
   "addTag": "タグを追加",
+  "autoArchiveSuccess_other": "{{count}}件のアイテムをアーカイブしました",
+  "autoArchiveUndo": "元に戻す",
   "back": "戻る",
   "backToItems": "在庫一覧に戻る",
   "barcode": "バーコード",

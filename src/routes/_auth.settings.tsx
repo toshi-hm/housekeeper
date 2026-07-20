@@ -1,5 +1,17 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, Bell, ChevronRight, Globe, MapPin, Moon, Ruler, Tag, Tags } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowLeft,
+  Bell,
+  ChevronRight,
+  Globe,
+  MapPin,
+  Moon,
+  Ruler,
+  Tag,
+  Tags,
+} from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -14,7 +26,7 @@ import { Select } from "@/components/ui/select";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
-import { CONTENT_UNITS } from "@/types/item";
+import { CONTENT_UNITS, DEFAULT_AUTO_ARCHIVE_AFTER_DAYS } from "@/types/item";
 
 export const SettingsPage = () => {
   const { t } = useTranslation("settings");
@@ -24,7 +36,8 @@ export const SettingsPage = () => {
     (m) =>
       m.routeId === "/_auth/settings/categories" ||
       m.routeId === "/_auth/settings/locations" ||
-      m.routeId === "/_auth/settings/tags",
+      m.routeId === "/_auth/settings/tags" ||
+      m.routeId === "/_auth/settings/archived-items",
   );
   const { data: settings, isLoading } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
@@ -33,6 +46,13 @@ export const SettingsPage = () => {
   const warningDaysValue =
     warningDays ??
     (settings?.expiry_warning_days !== undefined ? String(settings.expiry_warning_days) : "");
+  const [autoArchiveDays, setAutoArchiveDays] = useState<string | null>(null);
+  const autoArchiveEnabled = (settings?.auto_archive_after_days ?? null) !== null;
+  const autoArchiveDaysValue =
+    autoArchiveDays ??
+    (settings?.auto_archive_after_days !== null && settings?.auto_archive_after_days !== undefined
+      ? String(settings.auto_archive_after_days)
+      : String(DEFAULT_AUTO_ARCHIVE_AFTER_DAYS));
 
   const handleLanguageChange = async (lang: "ja" | "en") => {
     try {
@@ -64,6 +84,38 @@ export const SettingsPage = () => {
     try {
       await updateSettings.mutateAsync({ expiry_warning_days: days });
       setWarningDays(null);
+      toast(t("saveSuccess"), "success");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+    }
+  };
+
+  const handleAutoArchiveToggle = async (enabled: boolean) => {
+    try {
+      await updateSettings.mutateAsync({
+        auto_archive_after_days: enabled
+          ? (settings?.auto_archive_after_days ?? DEFAULT_AUTO_ARCHIVE_AFTER_DAYS)
+          : null,
+      });
+      setAutoArchiveDays(null);
+      toast(t("saveSuccess"), "success");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+    }
+  };
+
+  const handleAutoArchiveDaysChange = async (days: number) => {
+    if (isNaN(days) || days < 1 || days > 365) {
+      toast(t("invalidAutoArchiveDays"), "error");
+      return;
+    }
+    try {
+      await updateSettings.mutateAsync({ auto_archive_after_days: days });
+      setAutoArchiveDays(null);
       toast(t("saveSuccess"), "success");
     } catch (error) {
       if (!(error instanceof OfflineError)) {
@@ -174,6 +226,52 @@ export const SettingsPage = () => {
               {t("notifications")}
             </h2>
             <NotificationSettings />
+          </section>
+
+          {/* Auto-archive expired items (#419) */}
+          <section>
+            <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Archive className="h-4 w-4" />
+              {t("autoArchive")}
+            </h2>
+            <p className="mb-2 text-xs text-muted-foreground">{t("autoArchiveHelp")}</p>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="rounded"
+                checked={autoArchiveEnabled}
+                onChange={(e) => {
+                  void handleAutoArchiveToggle(e.target.checked);
+                }}
+              />
+              {t("autoArchiveEnable")}
+            </label>
+            {autoArchiveEnabled && (
+              <div className="mt-2 flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={autoArchiveDaysValue}
+                  className="w-24"
+                  onChange={(e) => setAutoArchiveDays(e.target.value)}
+                  onBlur={(e) => {
+                    void handleAutoArchiveDaysChange(parseInt(e.target.value, 10));
+                  }}
+                />
+                <Label>{t("daysAfterExpiry")}</Label>
+              </div>
+            )}
+            <Link
+              to="/settings/archived-items"
+              className="mt-3 flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-3">
+                <ArchiveRestore className="h-5 w-5 text-muted-foreground" />
+                <span>{t("archivedItems")}</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
           </section>
 
           {/* Master data links */}

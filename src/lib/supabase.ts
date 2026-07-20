@@ -191,6 +191,7 @@ export interface Database {
           expiry_warning_days: number;
           default_unit: string;
           notify_at: string;
+          auto_archive_after_days: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -200,6 +201,7 @@ export interface Database {
           expiry_warning_days?: number;
           default_unit?: string;
           notify_at?: string;
+          auto_archive_after_days?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -209,6 +211,7 @@ export interface Database {
           expiry_warning_days?: number;
           default_unit?: string;
           notify_at?: string;
+          auto_archive_after_days?: number | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -498,6 +501,10 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      auto_archive_expired_items: {
+        Args: Record<PropertyKey, never>;
+        Returns: Array<{ id: string; archived_at: string }>;
+      };
       // #491: atomic "delete only if unused" RPCs — see
       // supabase/migrations/20260716000001_atomic_delete_master_data.sql
       delete_category_if_unused: {
@@ -507,6 +514,10 @@ export interface Database {
       delete_storage_location_if_unused: {
         Args: { p_id: string };
         Returns: void;
+      };
+      undo_auto_archive: {
+        Args: { p_item_ids: string[]; p_archived_at: string };
+        Returns: number;
       };
     };
     Enums: Record<string, never>;

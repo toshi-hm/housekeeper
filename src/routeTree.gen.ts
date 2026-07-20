@@ -20,6 +20,7 @@ import { Route as AuthCalendarRouteImport } from './routes/_auth.calendar'
 import { Route as AuthSettingsTagsRouteImport } from './routes/_auth.settings.tags'
 import { Route as AuthSettingsLocationsRouteImport } from './routes/_auth.settings.locations'
 import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
+import { Route as AuthSettingsArchivedItemsRouteImport } from './routes/_auth.settings.archived-items'
 import { Route as AuthItemsNewRouteImport } from './routes/_auth.items.new'
 import { Route as AuthItemsItemIdRouteImport } from './routes/_auth.items.$itemId'
 import { Route as AuthItemsItemIdEditRouteImport } from './routes/_auth.items.$itemId.edit'
@@ -79,6 +80,12 @@ const AuthSettingsCategoriesRoute = AuthSettingsCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AuthSettingsRoute,
 } as any)
+const AuthSettingsArchivedItemsRoute =
+  AuthSettingsArchivedItemsRouteImport.update({
+    id: '/archived-items',
+    path: '/archived-items',
+    getParentRoute: () => AuthSettingsRoute,
+  } as any)
 const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
   id: '/items/new',
   path: '/items/new',
@@ -110,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/stats': typeof AuthStatsRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
+  '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
   '/settings/tags': typeof AuthSettingsTagsRoute
@@ -126,6 +134,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthIndexRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
+  '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
   '/settings/tags': typeof AuthSettingsTagsRoute
@@ -144,6 +153,7 @@ export interface FileRoutesById {
   '/_auth/': typeof AuthIndexRoute
   '/_auth/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/_auth/items/new': typeof AuthItemsNewRoute
+  '/_auth/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/_auth/settings/categories': typeof AuthSettingsCategoriesRoute
   '/_auth/settings/locations': typeof AuthSettingsLocationsRoute
   '/_auth/settings/tags': typeof AuthSettingsTagsRoute
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/stats'
     | '/items/$itemId'
     | '/items/new'
+    | '/settings/archived-items'
     | '/settings/categories'
     | '/settings/locations'
     | '/settings/tags'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/'
     | '/items/$itemId'
     | '/items/new'
+    | '/settings/archived-items'
     | '/settings/categories'
     | '/settings/locations'
     | '/settings/tags'
@@ -195,6 +207,7 @@ export interface FileRouteTypes {
     | '/_auth/'
     | '/_auth/items/$itemId'
     | '/_auth/items/new'
+    | '/_auth/settings/archived-items'
     | '/_auth/settings/categories'
     | '/_auth/settings/locations'
     | '/_auth/settings/tags'
@@ -287,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSettingsCategoriesRouteImport
       parentRoute: typeof AuthSettingsRoute
     }
+    '/_auth/settings/archived-items': {
+      id: '/_auth/settings/archived-items'
+      path: '/archived-items'
+      fullPath: '/settings/archived-items'
+      preLoaderRoute: typeof AuthSettingsArchivedItemsRouteImport
+      parentRoute: typeof AuthSettingsRoute
+    }
     '/_auth/items/new': {
       id: '/_auth/items/new'
       path: '/items/new'
@@ -319,12 +339,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthSettingsRouteChildren {
+  AuthSettingsArchivedItemsRoute: typeof AuthSettingsArchivedItemsRoute
   AuthSettingsCategoriesRoute: typeof AuthSettingsCategoriesRoute
   AuthSettingsLocationsRoute: typeof AuthSettingsLocationsRoute
   AuthSettingsTagsRoute: typeof AuthSettingsTagsRoute
 }
 
 const AuthSettingsRouteChildren: AuthSettingsRouteChildren = {
+  AuthSettingsArchivedItemsRoute: AuthSettingsArchivedItemsRoute,
   AuthSettingsCategoriesRoute: AuthSettingsCategoriesRoute,
   AuthSettingsLocationsRoute: AuthSettingsLocationsRoute,
   AuthSettingsTagsRoute: AuthSettingsTagsRoute,

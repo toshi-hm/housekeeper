@@ -174,6 +174,7 @@ src/routes/
   _auth.settings.tsx                     # 設定（マスタ/通知/言語/閾値）       ※新規
   _auth.settings.categories.tsx          # カテゴリ管理                        ※新規
   _auth.settings.locations.tsx           # 保管場所管理                        ※新規
+  _auth.settings.archived-items.tsx      # アーカイブ済みアイテム一覧/復元      ※新規 (#419)
 ```
 
 ### 3.2. 主要画面とコンポーネント

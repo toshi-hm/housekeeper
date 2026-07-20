@@ -325,7 +325,8 @@ export const findActiveItemByBarcode = async (barcode: string): Promise<Item | n
   return data ? (data as Item) : null;
 };
 
-/** カレンダー用: expiry_date を持つアクティブアイテムのみ返す */
+/** カレンダー用: expiry_date を持つアクティブアイテムのみ返す。
+ *  自動アーカイブ (#419) の対象走査にも流用する（deleted_at is null なアイテムだけを見れば十分）。 */
 const fetchItemsWithExpiry = async (): Promise<Item[]> => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
@@ -362,6 +363,16 @@ export const applyItemToListCaches = (qc: QueryClient, item: Item) => {
         !item.deleted_at && item.expiry_date
           ? upsertItemInListCache(cachedItems, item, "expiry_date")
           : cachedItems.filter((cached) => cached.id !== item.id);
+      qc.setQueryData(queryKey, next);
+      continue;
+    }
+
+    // アーカイブ済み一覧 (#419) は deleted_at 昇順ではなく降順ソートかつ「削除済みのみ」が
+    // 対象なので、通常フィルタ判定を通さず専用ロジックで扱う。
+    if (rawFilters === "deleted") {
+      const next = item.deleted_at
+        ? upsertItemInListCache(cachedItems, item, "created_at")
+        : cachedItems.filter((cached) => cached.id !== item.id);
       qc.setQueryData(queryKey, next);
       continue;
     }
@@ -465,6 +476,61 @@ export const useItemsWithExpiry = () =>
     queryFn: fetchItemsWithExpiry,
     staleTime: 30_000,
   });
+
+// --- Archived (soft-deleted) items view & restore (#419) ---
+
+const DELETED_ITEMS_KEY = ["items", "deleted"] as const;
+
+/** ソフトデリート済みアイテムを一覧取得する（アーカイブ済み一覧・復元UI用）。 */
+const fetchDeletedItems = async (): Promise<Item[]> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("user_id", userData.user.id)
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Item[];
+};
+
+export const useDeletedItems = () =>
+  useQuery({
+    queryKey: DELETED_ITEMS_KEY,
+    queryFn: fetchDeletedItems,
+    staleTime: 30_000,
+  });
+
+const restoreItem = async (id: string): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase
+    .from("items")
+    .update({ deleted_at: null, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+};
+
+export const useRestoreItem = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation(["common", "settings"]);
+  return useMutation({
+    mutationFn: restoreItem,
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: DELETED_ITEMS_KEY, refetchType: "all" }),
+      ]);
+      toast(t("settings:restoreSuccess"), "success");
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
+      else toast(t("common:unknownError"), "error");
+    },
+  });
+};
 
 // --- Bulk operations (#359) ---
 
