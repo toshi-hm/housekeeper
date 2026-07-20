@@ -94,6 +94,27 @@ if units < 0:
 - 在庫データを CSV / JSON でエクスポートできる（詳細は `consumption-purchase.md` の「エクスポート」参照）
 - 「定期購入」フラグとしきい値を設定でき、消費して在庫がしきい値以下になると
   ショッピングリストへ自動的に追加される（#353。詳細は `docs/specs/features/shopping-list.md` 参照）
+- パッケージに印字された賞味期限/消費期限をカメラで撮影し、認識した日付候補を確認・修正してから `expiry_date` に反映できる
+
+## 賞味期限のカメラOCR読み取り（#493）
+
+`ItemForm` の賞味期限フィールド横のカメラボタンから `ExpiryDateScanner` organism を起動する。
+
+- カメラ取得は `BarcodeScanner` と同じ `@zxing/browser`（`BrowserMultiFormatReader`）のパターンを流用する
+  （バーコードのデコード結果は使わず、映像取得・背面カメラ優先・複数デバイス切替のロジックのみ再利用）
+- 日付認識には `tesseract.js`（クライアントサイドOCR）を使用する。Edge Function は経由しない
+  （バーコードの外部API連携と異なり、外部サービスへの問い合わせが不要なため CORS の制約もない）
+- `tesseract.js` はバンドルサイズが大きい（OCRコア・言語データで数MB）ため、**撮影ボタンを押したタイミングで
+  動的 `import("tesseract.js")` により遅延ロードする**。`ItemForm` / `ExpiryDateScanner` 自体の初期バンドルには含まれない
+- OCR実行後は認識した日付候補を **必ず編集可能な日付入力欄に表示** し、ユーザーが「この日付を使う」ボタンを押すまで
+  `expiry_date` へは反映しない（自動確定はしない）
+- 日付を認識できなかった場合や誤認識の場合は、同じ画面で直接日付を手入力できる（撮り直し導線もあり）
+- カメラ権限拒否時・カメラなし時は、キーボードアイコンから完全に手入力のみのフォールバックに切り替えられる
+- 日付文字列の解析（`YY.MM.DD` / `YYYY/MM/DD` / `YYYY-MM-DD` / `YYYY年MM月DD日` など）は
+  `src/lib/expiryDateOcr.ts` の純関数 `parseExpiryDateFromOcrText` で行い、`bun test` でカバーする
+- 既知の制約: OCR言語モデルは `eng`（数字・区切り文字のみをホワイトリスト指定）を使用しており、
+  `tesseract.js` はデフォルトでOCRコア/言語データをCDNから取得するため、初回スキャン時はネットワーク接続が必要
+  （完全オフライン対応は将来課題）
 
 ## 画面・動線
 
@@ -107,7 +128,7 @@ if units < 0:
 
 ## コンポーネント
 
-- organisms: `ItemList`, `ItemForm`, `ItemDetailView`, `ConsumeForm`
+- organisms: `ItemList`, `ItemForm`, `ItemDetailView`, `ConsumeForm`, `ExpiryDateScanner`
 - molecules: `ItemCard`, `ItemListRow`, `QuantityInput`, `ImageUploader`, `ImageLightbox`, `FilterChips`, `ConfirmDialog`
 - atoms: `ExpiryBadge`, `QuantityDisplay`, `UnitToggle`, `ItemImage`, `EmptyState`, `ViewModeToggle`
 

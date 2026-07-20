@@ -1,4 +1,4 @@
-import { Barcode, Loader2, Search } from "lucide-react";
+import { Barcode, Camera, Loader2, Search } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,6 +7,7 @@ import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { ProductLookupResult } from "@/components/molecules/ProductLookupResult";
 import { QuickAddSelect } from "@/components/molecules/QuickAddSelect";
 import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
+import { ExpiryDateScanner } from "@/components/organisms/ExpiryDateScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,6 +90,7 @@ export const ItemForm = ({
     String(defaultValues?.content_amount ?? 1),
   );
   const [showScanner, setShowScanner] = useState(false);
+  const [showExpiryScanner, setShowExpiryScanner] = useState(false);
   const [nameError, setNameError] = useState("");
   const [unitsError, setUnitsError] = useState("");
   const [contentAmountError, setContentAmountError] = useState("");
@@ -298,6 +300,16 @@ export const ItemForm = ({
         />
       )}
 
+      {showExpiryScanner && (
+        <ExpiryDateScanner
+          onConfirm={(isoDate) => {
+            set("expiry_date", isoDate);
+            setShowExpiryScanner(false);
+          }}
+          onClose={() => setShowExpiryScanner(false)}
+        />
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4 pb-6">
         {/* Barcode */}
         <div className="space-y-2">
@@ -504,12 +516,23 @@ export const ItemForm = ({
           </div>
           <div className="space-y-2">
             <Label htmlFor="expiry_date">{t("expiryDate")}</Label>
-            <Input
-              id="expiry_date"
-              type="date"
-              value={values.expiry_date ?? ""}
-              onChange={(e) => set("expiry_date", e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="expiry_date"
+                type="date"
+                value={values.expiry_date ?? ""}
+                onChange={(e) => set("expiry_date", e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowExpiryScanner(true)}
+                title={t("expiryScanButtonTitle")}
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
