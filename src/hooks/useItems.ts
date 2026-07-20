@@ -599,15 +599,6 @@ export const useDeletedItems = () =>
     staleTime: 30_000,
   });
 
-const restoreItem = async (id: string): Promise<void> => {
-  requireOnline();
-  const { error } = await supabase
-    .from("items")
-    .update({ deleted_at: null, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
-};
-
 export const useRestoreItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
