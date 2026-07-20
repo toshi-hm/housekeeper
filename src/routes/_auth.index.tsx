@@ -19,6 +19,7 @@ import { BulkMoveDialog } from "@/components/molecules/BulkMoveDialog";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { ItemListRow } from "@/components/molecules/ItemListRow";
+import { QuickMemoSheet } from "@/components/molecules/QuickMemoSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -30,6 +31,7 @@ import {
   type ItemSortKey,
   useBulkItemAction,
   useItems,
+  useUpdateItem,
 } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
@@ -160,6 +162,23 @@ export const DashboardPage = () => {
     return saved !== null ? saved === "true" : true;
   });
   const [quickConsumingId, setQuickConsumingId] = useState<string | null>(null);
+
+  // クイックメモ（#380）
+  const [memoItem, setMemoItem] = useState<Item | null>(null);
+  const updateMemoItem = useUpdateItem(memoItem?.id ?? "");
+
+  const handleSaveMemo = (notes: string) => {
+    if (!memoItem) return;
+    updateMemoItem.mutate(
+      { notes },
+      {
+        onSuccess: () => {
+          toast(t("quickMemoSuccess"), "success");
+          setMemoItem(null);
+        },
+      },
+    );
+  };
 
   // 一括操作（#359）
   const [selectionMode, setSelectionMode] = useState(false);
@@ -662,6 +681,7 @@ export const DashboardPage = () => {
                   onQuickConsume={(i) => {
                     void handleQuickConsume(i);
                   }}
+                  onQuickMemo={(i) => setMemoItem(i)}
                   imageUrl={item.image_path ? imageUrlsByPath?.[item.image_path] : undefined}
                   selectionMode={selectionMode}
                   isSelected={selectedIds.has(item.id)}
@@ -751,6 +771,15 @@ export const DashboardPage = () => {
           void runBulkAction("delete");
         }}
         onCancel={() => setBulkConfirm(null)}
+      />
+
+      <QuickMemoSheet
+        open={memoItem !== null}
+        itemName={memoItem?.name ?? ""}
+        initialNotes={memoItem?.notes ?? ""}
+        isSubmitting={updateMemoItem.isPending}
+        onSave={handleSaveMemo}
+        onClose={() => setMemoItem(null)}
       />
     </div>
   );

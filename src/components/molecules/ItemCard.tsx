@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Calendar, Check, MapPin, Minus, Tag } from "lucide-react";
+import { Calendar, Check, MapPin, Minus, NotebookPen, Tag } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,6 +19,8 @@ interface ItemCardProps {
   warningDays?: number;
   onQuickConsume?: (item: Item) => void;
   isQuickConsuming?: boolean;
+  /** クイックメモ（#380）を開くトリガー。詳細ページへ遷移せず notes だけを編集する。 */
+  onQuickMemo?: (item: Item) => void;
   /** Pre-resolved signed image URL (e.g. from useSignedItemImages) to avoid a per-card fetch. */
   imageUrl?: string;
   /** 一括操作の選択モード（#359） */
@@ -34,6 +36,7 @@ export const ItemCard = ({
   warningDays,
   onQuickConsume,
   isQuickConsuming = false,
+  onQuickMemo,
   imageUrl,
   selectionMode = false,
   isSelected = false,
@@ -114,6 +117,17 @@ export const ItemCard = ({
           )}
         </span>
         <div className="flex items-center gap-1">
+          {!selectionMode && onQuickMemo && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="relative h-7 w-7 shrink-0 after:absolute after:-inset-2 after:content-['']"
+              aria-label={t("quickMemo")}
+              onClick={() => onQuickMemo(item)}
+            >
+              <NotebookPen className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {!isEmpty && !selectionMode && onQuickConsume && (
             <Button
               variant="outline"

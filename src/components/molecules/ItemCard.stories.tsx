@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "storybook/test";
 
 import { withRouter } from "../../../.storybook/routerDecorator";
 import { ItemCard } from "./ItemCard";
@@ -249,5 +250,45 @@ export const SelectionModeSelected: Story = {
     selectionMode: true,
     isSelected: true,
     onToggleSelect: () => {},
+  },
+};
+
+export const WithQuickMemo: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      name: "牛乳",
+      category_id: null,
+      barcode: null,
+      storage_location_id: null,
+      expiry_date: "2099-06-01",
+      purchase_date: null,
+      notes: null,
+      image_path: null,
+    },
+    categoryName: "食品",
+    locationName: "冷蔵庫",
+    onQuickMemo: fn(),
+  },
+};
+
+export const WithQuickMemoAndQuickConsume: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      name: "牛乳",
+      units: 3,
+      category_id: null,
+      barcode: null,
+      storage_location_id: null,
+      expiry_date: "2099-06-01",
+      purchase_date: null,
+      notes: "開封済み。冷蔵庫の奥に保管",
+      image_path: null,
+    },
+    categoryName: "食品",
+    locationName: "冷蔵庫",
+    onQuickMemo: fn(),
+    onQuickConsume: fn(),
   },
 };
