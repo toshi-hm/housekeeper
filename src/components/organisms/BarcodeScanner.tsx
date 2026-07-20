@@ -16,6 +16,7 @@ const SCAN_TIMEOUT_MS = 30_000;
 
 export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   const { t } = useTranslation("items");
+  const { t: tCommon } = useTranslation("common");
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const hasScannedRef = useRef(false);
@@ -191,6 +192,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
               size="icon"
               onClick={onClose}
               className="text-white hover:bg-white/20"
+              aria-label={tCommon("close")}
             >
               <X className="h-5 w-5" />
             </Button>

@@ -69,6 +69,7 @@
   "imageDrop": "ここにドロップまたはタップして選択",
   "imageErrorSize": "ファイルサイズは5MB以下にしてください",
   "imageErrorType": "jpg・png・webpのみ対応しています",
+  "imageReplace": "写真を変更",
   "imageUploadFailed": "在庫は保存されましたが、画像のアップロードに失敗しました",
   "imageUploading": "アップロード中...",
   "itemCountLabel_other": "{{count}}件",
