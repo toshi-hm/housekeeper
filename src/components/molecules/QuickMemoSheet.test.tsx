@@ -10,6 +10,7 @@ import { QuickMemoSheet } from "./QuickMemoSheet";
 // テスト実行時に言語検出が非同期で確定するため、日英どちらの表示でもマッチするようにする
 const SAVE_NAME = /保存|Save/i;
 const CANCEL_NAME = /キャンセル|Cancel/i;
+const CLOSE_NAME = /閉じる|Close/i;
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
@@ -44,6 +45,8 @@ describe("QuickMemoSheet", () => {
     expect(container.textContent).toContain("牛乳");
     const textarea = getByRole("textbox") as HTMLTextAreaElement;
     expect(textarea.value).toBe("開封済み");
+    expect(getByRole("dialog").getAttribute("aria-modal")).toBe("true");
+    expect(document.activeElement).toBe(textarea);
   });
 
   it("calls onSave with the edited notes when the save button is clicked", async () => {
@@ -117,5 +120,54 @@ describe("QuickMemoSheet", () => {
       expect((btn as HTMLButtonElement).disabled).toBe(true);
     });
     expect(container.querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it("traps focus, restores the trigger focus, and makes the background inert", () => {
+    const trigger = document.createElement("button");
+    trigger.textContent = "open";
+    document.body.append(trigger);
+    trigger.focus();
+
+    const { getByRole, getByTestId, rerender } = render(
+      <>
+        <main data-testid="background">inventory</main>
+        <QuickMemoSheet
+          open={true}
+          itemName="牛乳"
+          initialNotes=""
+          onSave={() => {}}
+          onClose={() => {}}
+        />
+      </>,
+      { wrapper },
+    );
+    const background = getByTestId("background");
+    const textarea = getByRole("textbox");
+    const closeButton = getByRole("button", { name: CLOSE_NAME });
+    const cancelButton = getByRole("button", { name: CANCEL_NAME });
+    expect(background.inert).toBe(true);
+    expect(background.getAttribute("aria-hidden")).toBe("true");
+    expect(document.activeElement).toBe(textarea);
+
+    cancelButton.focus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(document.activeElement).toBe(closeButton);
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(cancelButton);
+
+    rerender(
+      <>
+        <main data-testid="background">inventory</main>
+        <QuickMemoSheet
+          open={false}
+          itemName="牛乳"
+          initialNotes=""
+          onSave={() => {}}
+          onClose={() => {}}
+        />
+      </>,
+    );
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
   });
 });
