@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Keep this aligned with MAX_MESSAGE_LENGTH in the inventory-chat Edge Function.
+export const CHAT_MAX_MESSAGE_LENGTH = 500;
+
 // A single matched inventory item returned by the chat function.
 const chatMatchedItemSchema = z.object({
   id: z.string(),
