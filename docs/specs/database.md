@@ -31,6 +31,8 @@ Supabase (Postgres 15+)
 | `shopping_list_archive`    | 買い物リストの購入履歴アーカイブ        | v1.2 | user 削除で CASCADE（行自体は不変・更新なし） |
 | `notification_preferences` | 通知 ON/OFF                             | v1.2 | user 削除で CASCADE                           |
 | `push_subscriptions`       | Web Push 購読                           | v1.2 | user 削除で CASCADE                           |
+| `recipes`                  | レシピ/セット消費のテンプレート         | v1.3 | user 削除で CASCADE                           |
+| `recipe_items`             | レシピの構成アイテムと消費量            | v1.3 | recipe 削除で CASCADE / item 削除で CASCADE   |
 
 ---
 
@@ -301,6 +303,46 @@ create table push_subscriptions (
 create index push_subscriptions_user_idx on push_subscriptions(user_id);
 ```
 
+## recipes / recipe_items（v1.3）
+
+レシピ/セット消費機能（#393）。「朝のコーヒー」のようなテンプレートを登録し、
+実行するだけで構成アイテムを一括消費できるようにする。
+
+```sql
+create table recipes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, name)
+);
+
+create index recipes_user_idx on recipes(user_id, created_at desc);
+
+create table recipe_items (
+  id uuid primary key default gen_random_uuid(),
+  recipe_id uuid not null references recipes(id) on delete cascade,
+  item_id uuid not null references items(id) on delete cascade,
+  amount numeric(12,2) not null check (amount > 0),
+  created_at timestamptz not null default now()
+);
+
+create index recipe_items_recipe_idx on recipe_items(recipe_id);
+create index recipe_items_item_idx on recipe_items(item_id);
+```
+
+- `recipe_items` は `recipes` への従属エンティティのため、他テーブルと異なり
+  **直接の `user_id` カラムを持たない**。所有権は `recipe_id` を介して
+  `recipes.user_id` に対する join で判定する（RLS 節参照）。
+- `amount` の単位は明示的なカラムを持たず、対象 `items.content_unit` に従う
+  （例: コーヒー豆 `amount=15` は `content_unit='g'` の場合 15g を意味する）。
+- 実行（一括消費）は専用テーブルを持たず、既存の消費ロジック
+  (`consumeItem` / `docs/specs/features/consumption-purchase.md`) を
+  構成アイテムごとに呼び出す。そのため実行履歴は各アイテムの
+  `consumption_logs` に記録される（レシピ実行そのものをまとめて記録する
+  専用ログは持たない — Backlog）。
+
 ---
 
 ## RLS ポリシーひな形
@@ -311,6 +353,28 @@ create policy "items_owner_all" on items for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- 他テーブルも同様
+```
+
+### user_id を持たない従属テーブルの例（recipe_items）
+
+`recipe_items` のように直接 `user_id` を持たないテーブルは、親テーブルへの
+`exists` join で所有権を判定する:
+
+```sql
+alter table recipe_items enable row level security;
+create policy "recipe_items_owner_all" on recipe_items for all
+  using (
+    exists (
+      select 1 from recipes r
+      where r.id = recipe_items.recipe_id and r.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from recipes r
+      where r.id = recipe_items.recipe_id and r.user_id = auth.uid()
+    )
+  );
 ```
 
 ## updated_at トリガひな形

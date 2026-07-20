@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
   CheckSquare,
+  ChefHat,
   Plus,
   Search,
   ShoppingCart,
@@ -391,6 +392,12 @@ export const DashboardPage = () => {
                   {t("bulkSelect")}
                 </Button>
               )}
+              <Link to="/recipes">
+                <Button size="sm" variant="outline">
+                  <ChefHat className="mr-1 h-4 w-4" />
+                  {t("recipes:recipesShortcut")}
+                </Button>
+              </Link>
               <Link to="/items/new">
                 <Button size="sm">
                   <Plus className="mr-1 h-4 w-4" />
