@@ -16,20 +16,16 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        run: bun run build
-        env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
-
       - name: Report compressed sizes
         uses: preactjs/compressed-size-action@v3
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          install-script: bun install --frozen-lockfile
+          build-script: bun run build
           pattern: "./dist/**/*.{js,css}"
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
 
       - name: Analyze bundle
         run: bunx vite-bundle-visualizer --outFile dist/stats.html
