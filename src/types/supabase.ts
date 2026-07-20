@@ -334,6 +334,7 @@ export interface Database {
           desired_units: number;
           id: string;
           linked_item_id: string | null;
+          auto_added: boolean;
           name: string;
           note: string | null;
           purchased_at: string | null;
@@ -347,6 +348,7 @@ export interface Database {
           desired_units?: number;
           id?: string;
           linked_item_id?: string | null;
+          auto_added?: boolean;
           name: string;
           note?: string | null;
           purchased_at?: string | null;
@@ -360,6 +362,7 @@ export interface Database {
           desired_units?: number;
           id?: string;
           linked_item_id?: string | null;
+          auto_added?: boolean;
           name?: string;
           note?: string | null;
           purchased_at?: string | null;

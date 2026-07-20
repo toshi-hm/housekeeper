@@ -9,6 +9,7 @@ export interface ShoppingItem {
   desired_units: number;
   note: string | null;
   linked_item_id: string | null;
+  auto_added: boolean;
   status: ShoppingStatus;
   purchased_at: string | null;
   created_item_id: string | null;

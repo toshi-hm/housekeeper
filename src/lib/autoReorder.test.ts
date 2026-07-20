@@ -84,7 +84,6 @@ describe("maybeAutoReorder", () => {
       { data: { ...baseItem, units: 0, reorder_threshold: null }, error: null },
     ];
     responseQueues.shopping_list_items = [
-      { data: null, error: null }, // dedup check: no existing row
       { data: null, error: null }, // insert
     ];
 
@@ -99,30 +98,30 @@ describe("maybeAutoReorder", () => {
       name: "牛乳",
       desired_units: 1,
       linked_item_id: "item-1",
+      auto_added: true,
     });
   });
 
   test("units が threshold ちょうどのときも追加する", async () => {
     responseQueues.items = [{ data: { ...baseItem, units: 2, reorder_threshold: 2 }, error: null }];
-    responseQueues.shopping_list_items = [
-      { data: null, error: null },
-      { data: null, error: null },
-    ];
+    responseQueues.shopping_list_items = [{ data: null, error: null }];
 
     const result = await maybeAutoReorder("item-1");
 
     expect(result).toBe(true);
   });
 
-  test("既に同じ linked_item_id の planned 行があれば重複追加しない", async () => {
+  test("同じ linked_item_id の planned 行との一意制約競合は追加済みとして扱う", async () => {
     responseQueues.items = [{ data: { ...baseItem, units: 0 }, error: null }];
-    responseQueues.shopping_list_items = [{ data: { id: "row-existing" }, error: null }];
+    responseQueues.shopping_list_items = [
+      { data: null, error: { code: "23505", message: "duplicate" } },
+    ];
 
     const result = await maybeAutoReorder("item-1");
 
     expect(result).toBe(false);
     expect(callLog.some((c) => c.table === "shopping_list_items" && c.method === "insert")).toBe(
-      false,
+      true,
     );
   });
 
@@ -146,7 +145,6 @@ describe("maybeAutoReorder", () => {
   test("insert 失敗時も例外を投げず false を返す", async () => {
     responseQueues.items = [{ data: { ...baseItem, units: 0 }, error: null }];
     responseQueues.shopping_list_items = [
-      { data: null, error: null }, // dedup check
       { data: null, error: { message: "insert failed" } }, // insert fails
     ];
 

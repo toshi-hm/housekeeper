@@ -226,6 +226,7 @@ create table shopping_list_items (
   desired_units int not null default 1 check (desired_units >= 1),
   note text,
   linked_item_id uuid references items(id) on delete set null,
+  auto_added boolean not null default false,
   status text not null check (status in ('planned','purchased')) default 'planned',
   purchased_at timestamptz,
   created_item_id uuid references items(id) on delete set null,
@@ -234,7 +235,13 @@ create table shopping_list_items (
 );
 
 create index shopping_user_status_idx on shopping_list_items(user_id, status, created_at desc);
+create unique index shopping_planned_linked_item_unique
+  on shopping_list_items(user_id, linked_item_id)
+  where status = 'planned' and linked_item_id is not null;
 ```
+
+`auto_added` は定期購入処理が作成した行の出所を保持する。`linked_item_id` は手動補充でも使うため、
+この列を推測には使用しない。
 
 ## shopping_list_archive（v1.2）
 

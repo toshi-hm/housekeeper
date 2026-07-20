@@ -6,9 +6,8 @@ import { supabase } from "@/lib/supabase";
  * （未設定の場合は 0）以下になっていれば、`shopping_list_items` に
  * planned 行を自動追加する（#353）。
  *
- * 重複防止のため、追加前に同一 `linked_item_id` を持つ planned 行が
- * 既に存在しないかを確認する（shopping_list_items に一意制約はないため、
- * アプリ側でチェックしてから insert する。#522/#447 の重複防止ロジックと同様の方針）。
+ * planned + linked_item_id の部分一意indexが、手動追加や別端末との競合を含めて
+ * 重複を防ぐ。一意制約競合は「既に追加済み」として正常終了する。
  *
  * 在庫更新自体は既に成功しているため、この処理の失敗を消費操作全体の
  * 失敗として扱わない（コンソール警告のみ・非致命）。
@@ -26,22 +25,14 @@ export const maybeAutoReorder = async (itemId: string): Promise<boolean> => {
     const threshold = item.reorder_threshold ?? 0;
     if (item.units > threshold) return false;
 
-    const { data: existing, error: existingError } = await supabase
-      .from("shopping_list_items")
-      .select("id")
-      .eq("linked_item_id", item.id)
-      .eq("status", "planned")
-      .limit(1)
-      .maybeSingle();
-    if (existingError) throw existingError;
-    if (existing) return false;
-
     const { error: insertError } = await supabase.from("shopping_list_items").insert({
       user_id: item.user_id,
       name: item.name,
       desired_units: 1,
       linked_item_id: item.id,
+      auto_added: true,
     });
+    if (insertError?.code === "23505") return false;
     if (insertError) throw insertError;
 
     return true;
