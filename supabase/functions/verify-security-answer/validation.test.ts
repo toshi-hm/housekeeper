@@ -32,6 +32,10 @@ Deno.test("isValidAnswerInput - rejects an empty string", () => {
   assert.strictEqual(isValidAnswerInput(""), false);
 });
 
+Deno.test("isValidAnswerInput - rejects whitespace-only input", () => {
+  assert.strictEqual(isValidAnswerInput("   "), false);
+});
+
 Deno.test("isValidAnswerInput - rejects a non-string value", () => {
   assert.strictEqual(isValidAnswerInput(42), false);
 });
@@ -46,6 +50,11 @@ Deno.test("isValidNewPasswordInput - rejects an empty string", () => {
 
 Deno.test("isValidNewPasswordInput - rejects null", () => {
   assert.strictEqual(isValidNewPasswordInput(null), false);
+});
+
+Deno.test("isValidNewPasswordInput - rejects short or whitespace-containing passwords", () => {
+  assert.strictEqual(isValidNewPasswordInput("short"), false);
+  assert.strictEqual(isValidNewPasswordInput("password with spaces"), false);
 });
 
 // normalizeEmail

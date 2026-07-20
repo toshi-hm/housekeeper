@@ -12,6 +12,11 @@ Deno.test("isValidEmailInput - rejects an empty string", () => {
   assert.strictEqual(isValidEmailInput(""), false);
 });
 
+Deno.test("isValidEmailInput - rejects whitespace and malformed email", () => {
+  assert.strictEqual(isValidEmailInput("   "), false);
+  assert.strictEqual(isValidEmailInput("not-an-email"), false);
+});
+
 Deno.test("isValidEmailInput - rejects undefined", () => {
   assert.strictEqual(isValidEmailInput(undefined), false);
 });

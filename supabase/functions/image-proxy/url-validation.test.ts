@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
   canInferContentTypeFromPath,
+  fetchAllowedUrl,
   getMatchedTypeFromHeader,
   inferContentTypeFromPath,
   isAllowedHost,
@@ -111,4 +112,42 @@ Deno.test("canInferContentTypeFromPath - true for application/octet-stream", () 
 
 Deno.test("canInferContentTypeFromPath - false for a specific disallowed type", () => {
   assert.strictEqual(canInferContentTypeFromPath("text/html"), false);
+});
+
+Deno.test("fetchAllowedUrl - disallowed redirect is rejected before its host is fetched", async () => {
+  const fetched: string[] = [];
+  const fetcher = ((input: string | URL | Request) => {
+    fetched.push(String(input));
+    return Promise.resolve(
+      new Response(null, {
+        status: 302,
+        headers: { Location: "http://169.254.169.254/latest/meta-data" },
+      }),
+    );
+  }) as typeof fetch;
+
+  await assert.rejects(() =>
+    fetchAllowedUrl(new URL("https://item-shopping.c.yimg.jp/image.jpg"), fetcher),
+  );
+  assert.deepStrictEqual(fetched, ["https://item-shopping.c.yimg.jp/image.jpg"]);
+});
+
+Deno.test("fetchAllowedUrl - follows a validated relative redirect manually", async () => {
+  const fetched: string[] = [];
+  const fetcher = ((input: string | URL | Request) => {
+    fetched.push(String(input));
+    return Promise.resolve(
+      fetched.length === 1
+        ? new Response(null, { status: 302, headers: { Location: "/final.webp" } })
+        : new Response("image", { status: 200 }),
+    );
+  }) as typeof fetch;
+
+  const result = await fetchAllowedUrl(new URL("https://item-shopping.c.yimg.jp/start"), fetcher);
+  assert.strictEqual(result.response.status, 200);
+  assert.strictEqual(result.finalUrl.href, "https://item-shopping.c.yimg.jp/final.webp");
+  assert.deepStrictEqual(fetched, [
+    "https://item-shopping.c.yimg.jp/start",
+    "https://item-shopping.c.yimg.jp/final.webp",
+  ]);
 });

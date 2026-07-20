@@ -13,7 +13,7 @@ export interface SubscribeBody {
 /** Guards the 401 branch: a request must carry a non-empty Authorization header. */
 export const isAuthorized = (req: Request): boolean => {
   const authHeader = req.headers.get("Authorization");
-  return typeof authHeader === "string" && authHeader.length > 0;
+  return typeof authHeader === "string" && authHeader.trim().length > 0;
 };
 
 /**
@@ -25,12 +25,23 @@ export const isValidSubscribeBody = (body: unknown): body is SubscribeBody => {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
 
-  if (typeof b.endpoint !== "string" || b.endpoint.length === 0) return false;
+  if (typeof b.endpoint !== "string" || b.endpoint.trim().length === 0) return false;
+  try {
+    const endpoint = new URL(b.endpoint);
+    if (endpoint.protocol !== "https:") return false;
+  } catch {
+    return false;
+  }
   if (b.action !== undefined && b.action !== "unsubscribe") return false;
 
   if (b.action === "unsubscribe") return true;
 
   if (typeof b.keys !== "object" || b.keys === null) return false;
   const keys = b.keys as Record<string, unknown>;
-  return typeof keys.p256dh === "string" && typeof keys.auth === "string";
+  return (
+    typeof keys.p256dh === "string" &&
+    keys.p256dh.trim().length > 0 &&
+    typeof keys.auth === "string" &&
+    keys.auth.trim().length > 0
+  );
 };

@@ -1,12 +1,12 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 import {
   canInferContentTypeFromPath,
+  fetchAllowedUrl,
   getMatchedTypeFromHeader,
   inferContentTypeFromPath,
   isAllowedUrl,
   isAuthorized,
   MAX_SIZE_BYTES,
+  UnsafeRedirectError,
 } from "./url-validation.ts";
 
 const corsHeaders = {
@@ -15,9 +15,16 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-Deno.serve(async (req: Request) => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   if (!isAuthorized(req)) {
@@ -28,6 +35,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const authHeader = req.headers.get("Authorization")!;
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -68,16 +76,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const res = await fetch(url);
-
-    // Validate final URL after redirects to prevent redirect-based allowlist bypass
-    const finalUrl = new URL(res.url);
-    if (!isAllowedUrl(finalUrl)) {
-      return new Response(JSON.stringify({ error: "Redirect to disallowed host" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { response: res, finalUrl } = await fetchAllowedUrl(parsed);
 
     if (!res.ok) {
       return new Response(JSON.stringify({ error: "Failed to fetch image" }), {
@@ -153,10 +152,18 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    if (err instanceof UnsafeRedirectError) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     console.error(err);
     return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+};
+
+if (import.meta.main) Deno.serve(handler);

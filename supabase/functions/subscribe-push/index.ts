@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 import { isAuthorized, isValidSubscribeBody } from "./validation.ts";
 
 const corsHeaders = {
@@ -8,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-Deno.serve(async (req: Request) => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -28,6 +26,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const authHeader = req.headers.get("Authorization")!;
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -97,4 +96,6 @@ Deno.serve(async (req: Request) => {
   return new Response(JSON.stringify({ ok: true, vapid_public_key: vapidPublicKey }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-});
+};
+
+if (import.meta.main) Deno.serve(handler);

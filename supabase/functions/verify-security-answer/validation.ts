@@ -2,15 +2,15 @@
 
 /** Validates the `email` field of the request body. */
 export const isValidEmailInput = (email: unknown): email is string =>
-  typeof email === "string" && email.length > 0;
+  typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
 /** Validates the `answer` field of the request body. */
 export const isValidAnswerInput = (answer: unknown): answer is string =>
-  typeof answer === "string" && answer.length > 0;
+  typeof answer === "string" && answer.trim().length > 0;
 
 /** Validates the `new_password` field of the request body. */
 export const isValidNewPasswordInput = (newPassword: unknown): newPassword is string =>
-  typeof newPassword === "string" && newPassword.length > 0;
+  typeof newPassword === "string" && newPassword.length >= 8 && !/\s/.test(newPassword);
 
 /** Normalizes an email for case-insensitive lookup, matching how it is stored. */
 export const normalizeEmail = (email: string): string => email.toLowerCase().trim();

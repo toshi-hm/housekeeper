@@ -22,6 +22,10 @@ Deno.test("isAuthorized - unauthorized when the Authorization header is empty", 
   assert.strictEqual(isAuthorized(req), false);
 });
 
+Deno.test("isAuthorized - unauthorized when the Authorization header is whitespace", () => {
+  assert.strictEqual(isAuthorized(makeRequest({ Authorization: "   " })), false);
+});
+
 // isValidSubscribeBody — guards the 400 "Invalid subscription body" branch.
 
 Deno.test("isValidSubscribeBody - accepts a valid subscribe body", () => {
@@ -51,6 +55,26 @@ Deno.test("isValidSubscribeBody - rejects a missing endpoint", () => {
 Deno.test("isValidSubscribeBody - rejects an empty endpoint", () => {
   assert.strictEqual(
     isValidSubscribeBody({ endpoint: "", keys: { p256dh: "p", auth: "a" } }),
+    false,
+  );
+});
+
+Deno.test("isValidSubscribeBody - rejects a non-HTTPS endpoint", () => {
+  assert.strictEqual(
+    isValidSubscribeBody({
+      endpoint: "http://push.example.com/abc",
+      keys: { p256dh: "p", auth: "a" },
+    }),
+    false,
+  );
+});
+
+Deno.test("isValidSubscribeBody - rejects whitespace-only keys", () => {
+  assert.strictEqual(
+    isValidSubscribeBody({
+      endpoint: "https://push.example.com/abc",
+      keys: { p256dh: " ", auth: "a" },
+    }),
     false,
   );
 });
