@@ -30,6 +30,7 @@ a personal home inventory web app.
 - docs/specs/overview.md
 - docs/specs/database.md
 - docs/specs/architecture.md
+- docs/specs/accessibility.md
 - docs/specs/features/
 
 ## Testing a Task

@@ -21,6 +21,7 @@ export const ImageUploader = ({
   onDelete,
 }: ImageUploaderProps) => {
   const { t } = useTranslation("items");
+  const { t: tCommon } = useTranslation("common");
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
@@ -79,6 +80,7 @@ export const ImageUploader = ({
               className="h-8 w-8"
               onClick={() => inputRef.current?.click()}
               disabled={isUploading}
+              aria-label={t("imageReplace")}
             >
               <Upload className="h-4 w-4" />
             </Button>
@@ -90,6 +92,7 @@ export const ImageUploader = ({
                 className="h-8 w-8"
                 onClick={onDelete}
                 disabled={isUploading}
+                aria-label={tCommon("delete")}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

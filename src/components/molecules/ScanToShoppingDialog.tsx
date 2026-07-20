@@ -30,6 +30,7 @@ export const ScanToShoppingDialog = ({
   onClose,
 }: ScanToShoppingDialogProps) => {
   const { t } = useTranslation("shopping");
+  const { t: tCommon } = useTranslation("common");
   const [name, setName] = useState(defaultName);
   const [prevDefaultName, setPrevDefaultName] = useState(defaultName);
 
@@ -51,7 +52,13 @@ export const ScanToShoppingDialog = ({
       <div className="w-full rounded-t-2xl bg-background p-4 shadow-xl sm:max-w-md sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">{t("scanDialogTitle")}</h2>
-          <Button variant="ghost" size="icon" onClick={onClose} disabled={isSubmitting}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            disabled={isSubmitting}
+            aria-label={tCommon("close")}
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>

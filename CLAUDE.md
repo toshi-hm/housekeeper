@@ -46,6 +46,7 @@ Read the relevant spec file before implementing any feature.
 - PWA / Offline: docs/specs/features/pwa.md
 - i18n: docs/specs/features/i18n.md
 - Stats: docs/specs/features/stats.md
+- Accessibility: docs/specs/accessibility.md
 
 ## TODO / Progress
 

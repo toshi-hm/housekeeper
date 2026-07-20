@@ -44,7 +44,13 @@ export const BulkMoveDialog = ({
       <div className="w-full rounded-t-2xl bg-background p-4 shadow-xl sm:max-w-sm sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">{title}</h2>
-          <Button variant="ghost" size="icon" onClick={onClose} disabled={isSubmitting}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            disabled={isSubmitting}
+            aria-label={cancelLabel}
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>

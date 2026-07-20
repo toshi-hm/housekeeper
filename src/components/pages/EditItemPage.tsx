@@ -143,7 +143,12 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   if (!item) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => void navigate({ to: "/" })}
+          aria-label={t("back")}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="space-y-3 rounded-lg border border-destructive p-4 text-destructive">
@@ -164,6 +169,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           variant="ghost"
           size="icon"
           onClick={() => void navigate({ to: "/items/$itemId", params: { itemId } })}
+          aria-label={t("back")}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>

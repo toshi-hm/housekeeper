@@ -149,7 +149,12 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => void navigate({ to: "/" })}
+          aria-label={t("back")}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl font-bold">{cloneFrom ? t("cloneItem") : t("addItem")}</h1>
