@@ -57,6 +57,12 @@ export const SettingsPage = () => {
     (settings?.auto_archive_after_days !== null && settings?.auto_archive_after_days !== undefined
       ? String(settings.auto_archive_after_days)
       : String(DEFAULT_AUTO_ARCHIVE_AFTER_DAYS));
+  const [forecastDays, setForecastDays] = useState<string | null>(null);
+  const forecastDaysValue =
+    forecastDays ??
+    (settings?.low_stock_forecast_days !== undefined
+      ? String(settings.low_stock_forecast_days)
+      : "");
 
   const handleLanguageChange = async (lang: "ja" | "en") => {
     try {
@@ -120,6 +126,22 @@ export const SettingsPage = () => {
     try {
       await updateSettings.mutateAsync({ auto_archive_after_days: days });
       setAutoArchiveDays(null);
+      toast(t("saveSuccess"), "success");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+    }
+  };
+
+  const handleForecastDaysChange = async (days: number) => {
+    if (isNaN(days) || days < 0 || days > 90) {
+      toast(t("invalidLowStockForecastDays"), "error");
+      return;
+    }
+    try {
+      await updateSettings.mutateAsync({ low_stock_forecast_days: days });
+      setForecastDays(null);
       toast(t("saveSuccess"), "success");
     } catch (error) {
       if (!(error instanceof OfflineError)) {
@@ -196,6 +218,28 @@ export const SettingsPage = () => {
                 onChange={(e) => setWarningDays(e.target.value)}
                 onBlur={(e) => {
                   void handleWarningDaysChange(parseInt(e.target.value, 10));
+                }}
+              />
+              <Label>{t("daysBefore")}</Label>
+            </div>
+          </section>
+
+          {/* Low-stock forecast days (#68, #392) */}
+          <section>
+            <h2 className="mb-1 text-sm font-semibold text-muted-foreground">
+              {t("lowStockForecastDays")}
+            </h2>
+            <p className="mb-2 text-xs text-muted-foreground">{t("lowStockForecastDaysHelp")}</p>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={90}
+                value={forecastDaysValue}
+                className="w-24"
+                onChange={(e) => setForecastDays(e.target.value)}
+                onBlur={(e) => {
+                  void handleForecastDaysChange(parseInt(e.target.value, 10));
                 }}
               />
               <Label>{t("daysBefore")}</Label>

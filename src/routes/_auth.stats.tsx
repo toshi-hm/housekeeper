@@ -5,11 +5,13 @@ import { Skeleton } from "@/components/atoms/Skeleton";
 import { CategoryChart } from "@/components/organisms/CategoryChart";
 import { CategoryValueChart } from "@/components/organisms/CategoryValueChart";
 import { ConsumptionChart } from "@/components/organisms/ConsumptionChart";
+import { ConsumptionSpeedRanking } from "@/components/organisms/ConsumptionSpeedRanking";
 import { ExpiryChart } from "@/components/organisms/ExpiryChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   useCategoryStats,
   useCategoryValueStats,
+  useConsumptionSpeedRanking,
   useExpiryDistribution,
   useMonthlyConsumption,
 } from "@/hooks/useStats";
@@ -76,6 +78,11 @@ const StatsPage = () => {
     isLoading: monthlyLoading,
     isError: monthlyError,
   } = useMonthlyConsumption(6);
+  const {
+    ranking: speedRanking,
+    isLoading: speedLoading,
+    isError: speedError,
+  } = useConsumptionSpeedRanking();
 
   return (
     <div className="space-y-4">
@@ -111,6 +118,15 @@ const StatsPage = () => {
         isError={monthlyError}
       >
         <ConsumptionChart data={monthlyData} />
+      </ChartCard>
+
+      <ChartCard
+        title={t("consumptionSpeedRanking")}
+        subtitle={t("consumptionSpeedRankingSubtitle")}
+        isLoading={speedLoading}
+        isError={speedError}
+      >
+        <ConsumptionSpeedRanking ranking={speedRanking} />
       </ChartCard>
     </div>
   );

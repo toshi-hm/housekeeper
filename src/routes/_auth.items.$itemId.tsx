@@ -14,6 +14,7 @@ import {
   RefreshCw,
   StickyNote,
   Trash2,
+  TrendingDown,
   Zap,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -41,7 +42,8 @@ import { useUserSettings } from "@/hooks/useUserSettings";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { computeInventoryValue } from "@/lib/inventoryValue";
 import { useToast } from "@/lib/toast-context";
-import { getExpiryStatus } from "@/types/item";
+import { getExpiryStatus, getLotRemainingAmount } from "@/types/item";
+import { computeConsumptionPaceForecast } from "@/types/stats";
 
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
   <div className="flex items-start gap-3">
@@ -161,6 +163,12 @@ const ItemDetailPage = () => {
 
   const isEmpty = item.units === 0;
   const hasMultipleLots = lots.length > 1;
+  const currentStock = getLotRemainingAmount(
+    item.units,
+    item.content_amount,
+    item.opened_remaining ?? null,
+  );
+  const consumptionForecast = computeConsumptionPaceForecast(logs, currentStock, item.content_unit);
   const totalDisplay =
     item.opened_remaining !== null && item.opened_remaining !== undefined
       ? t("totalDisplayOpened", {
@@ -377,6 +385,21 @@ const ItemDetailPage = () => {
                     value={t("inventoryValue", {
                       total: inventoryValue.totalValue.toLocaleString(),
                     })}
+                  />
+                )}
+                {!isEmpty && (
+                  <DetailRow
+                    icon={<TrendingDown className="h-4 w-4" />}
+                    label={t("remainingDaysForecast")}
+                    value={
+                      consumptionForecast.predictedRemainingDays !== null
+                        ? t("remainingDaysForecastValue", {
+                            days: consumptionForecast.predictedRemainingDays,
+                          })
+                        : t("remainingDaysForecastInsufficientData", {
+                            count: consumptionForecast.logCount,
+                          })
+                    }
                   />
                 )}
                 {item.barcode && (

@@ -172,6 +172,7 @@ create table user_settings (
   default_unit text not null default 'mL',
   notify_at time not null default '08:00',
   auto_archive_after_days int check (auto_archive_after_days is null or auto_archive_after_days between 1 and 365),
+  low_stock_forecast_days int not null default 7 check (low_stock_forecast_days >= 0), -- #68, #392: 消費ペースからの予測残日数の警告閾値
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -182,6 +183,7 @@ create table user_settings (
   1以上の整数 = 期限切れからその日数が経過した `items` を自動的にソフトデリート（`deleted_at` セット）する猶予日数。
   実行はサーバーcronではなく**クライアントサイド**（ダッシュボード初期表示時）が担う。詳細は
   `docs/specs/features/expiry-alert.md` を参照。
+- `low_stock_forecast_days` は `20260719000001_add_low_stock_forecast_days.sql` で追加（既存 `expiry_warning_days` とは独立の閾値）
 
 ## shopping_list_items（v1.1）
 

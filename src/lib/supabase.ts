@@ -192,6 +192,7 @@ export interface Database {
           default_unit: string;
           notify_at: string;
           auto_archive_after_days: number | null;
+          low_stock_forecast_days: number;
           created_at: string;
           updated_at: string;
         };
@@ -202,6 +203,7 @@ export interface Database {
           default_unit?: string;
           notify_at?: string;
           auto_archive_after_days?: number | null;
+          low_stock_forecast_days?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -212,6 +214,7 @@ export interface Database {
           default_unit?: string;
           notify_at?: string;
           auto_archive_after_days?: number | null;
+          low_stock_forecast_days?: number;
           updated_at?: string;
         };
         Relationships: [];
