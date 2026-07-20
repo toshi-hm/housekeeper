@@ -6,4 +6,5 @@ ALTER TABLE items
 
 ALTER TABLE user_settings
   ADD COLUMN IF NOT EXISTS stocktake_alert_enabled BOOLEAN NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS stocktake_alert_days INTEGER NOT NULL DEFAULT 90 CHECK (stocktake_alert_days >= 1);
+  ADD COLUMN IF NOT EXISTS stocktake_alert_days INTEGER NOT NULL DEFAULT 90
+    CHECK (stocktake_alert_days BETWEEN 1 AND 365);

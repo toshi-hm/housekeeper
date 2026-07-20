@@ -72,8 +72,10 @@ if units < 0:
   - または `last_verified_at` から `user_settings.stocktake_alert_days` 日以上経過
     （デフォルト 90 日 = `DEFAULT_STOCKTAKE_ALERT_DAYS`。設定でカスタマイズ可能）
 - ダッシュボード（`/_auth/`）: `user_settings.stocktake_alert_enabled` が true のとき、
-  期限バナー・低在庫バナーの下に「⚠️ N 件のアイテムが N 日以上未確認です」バナーを表示し、
-  対象アイテムの一覧を開閉可能な詳細（`<details>`）で表示する。
+  期限バナー・低在庫バナーの下に「⚠️ N 件のアイテムは在庫確認が必要です」バナーを表示し、
+  対象アイテムの一覧を開閉可能な詳細（`<details>`）で表示する。新規アイテムの固定30日猶予と
+  確認済みアイテムの設定日数が混在するため、バナーには単一の日数を表示しない。検索・カテゴリ・
+  場所・期限・在庫0非表示などの一覧フィルターにかかわらず、在庫が残る全アイテムから算出する。
 - 設定ページ（`/_auth/settings`）「棚卸し」セクション:
   - 棚卸しアラートを有効にする（`stocktake_alert_enabled`、デフォルト OFF）
   - 未確認とみなすまでの日数（`stocktake_alert_days`、1〜365、デフォルト 90）

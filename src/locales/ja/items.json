@@ -170,7 +170,7 @@
   "stackDialogTitle": "同一バーコードの商品が見つかりました",
   "stackSubmitLabel": "追加購入として登録",
   "stackSuccess": "既存の在庫にロットを追加しました",
-  "stocktakeBanner_other": "{{count}}件のアイテムが{{days}}日以上未確認です",
+  "stocktakeBanner_other": "{{count}}件のアイテムは在庫確認が必要です",
   "stocktakeBannerDetails": "対象の商品を表示",
   "storageLocation": "保管場所",
   "storageLocationPlaceholder": "保管場所を選択",

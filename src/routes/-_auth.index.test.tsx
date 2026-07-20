@@ -234,6 +234,42 @@ describe("DashboardPage", () => {
     expect(queryByText(URGENT_BANNER_RE)).toBeNull();
   });
 
+  it("検索で一覧を絞り込んでも棚卸しアラートは全在庫を対象にし続ける (#375)", async () => {
+    const staleItem = makeItem({
+      id: "stale",
+      name: "棚卸し対象",
+      created_at: "2020-01-01T00:00:00Z",
+      last_verified_at: null,
+    });
+    itemsspy.mockImplementation(
+      (filters = {}) =>
+        ({
+          data: filters.search ? [] : [staleItem],
+          isLoading: false,
+          error: null,
+        }) as ReturnType<typeof useItemsModule.useItems>,
+    );
+    settingsspy.mockReturnValue({
+      data: { stocktake_alert_enabled: true, stocktake_alert_days: 90 },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    const user = userEvent.setup();
+    const { getByPlaceholderText, queryByText } = await renderPage();
+    const banner = /needs stock verification|在庫確認が必要/;
+    expect(queryByText(banner)).not.toBeNull();
+
+    await user.type(getByPlaceholderText(/search by name|商品名・バーコードで検索/i), "missing");
+    await waitFor(() => {
+      const filteredCall = itemsspy.mock.calls.findLast(
+        ([filters]) => filters?.search === "missing",
+      );
+      expect(filteredCall).toBeDefined();
+    });
+
+    expect(queryByText(banner)).not.toBeNull();
+  });
+
   it("検索欄への入力はデバウンスされ、キー入力ごとにuseItemsを再クエリしない (#452)", async () => {
     const user = userEvent.setup();
     const { getByPlaceholderText } = await renderPage();

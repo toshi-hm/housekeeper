@@ -233,6 +233,9 @@ export const DashboardPage = () => {
     storageLocationId: locationId || undefined,
   };
 
+  // Alerts must not disappear when the visible list is narrowed by search,
+  // category, location, expiry, sorting, or the hide-empty preference.
+  const { data: allItems = [] } = useItems({}, "created_at");
   const { data: items = [], isLoading, error } = useItems(filters, sort);
 
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
@@ -334,7 +337,7 @@ export const DashboardPage = () => {
   const stocktakeAlertEnabled = userSettings?.stocktake_alert_enabled ?? false;
   const stocktakeAlertDays = userSettings?.stocktake_alert_days ?? DEFAULT_STOCKTAKE_ALERT_DAYS;
   const unverifiedItems = stocktakeAlertEnabled
-    ? baseFiltered.filter((item) => isItemUnverified(item, stocktakeAlertDays))
+    ? allItems.filter((item) => item.units > 0 && isItemUnverified(item, stocktakeAlertDays))
     : [];
 
   const handleBulkAddToShopping = async () => {
@@ -562,7 +565,7 @@ export const DashboardPage = () => {
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 shrink-0" />
             <p className="text-sm font-medium">
-              {t("stocktakeBanner", { count: unverifiedItems.length, days: stocktakeAlertDays })}
+              {t("stocktakeBanner", { count: unverifiedItems.length })}
             </p>
           </div>
           <details className="rounded-md border border-blue-200 bg-blue-100/50 p-2">
