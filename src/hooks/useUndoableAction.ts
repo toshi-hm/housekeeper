@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { type ToastVariant, useToast } from "@/lib/toast-context";
 
-export interface UndoableEntry<TPayload> {
+interface UndoableEntry<TPayload> {
   id: string;
   payload: TPayload;
 }
@@ -73,6 +73,7 @@ export const useUndoableAction = <TPayload>(
   const pendingRef = useRef<Record<string, TPayload>>({});
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const toastIds = useRef<Record<string, string>>({});
+  const undoPromises = useRef<Record<string, Promise<void>>>({});
   const optionsRef = useRef(options);
   // Refs must not be written during render — sync it in an effect (runs
   // after every render, no dependency array) instead.
@@ -106,21 +107,31 @@ export const useUndoableAction = <TPayload>(
   );
 
   const undo = useCallback(
-    async (id: string) => {
+    (id: string): Promise<void> => {
+      const existing = undoPromises.current[id];
+      if (existing) return existing;
+
       const payload = pendingRef.current[id];
-      if (payload === undefined) return;
-      try {
-        await optionsRef.current.onUndo(id, payload);
-        // Only clear the pending entry once the undo actually succeeds, so a
-        // failed undo (e.g. offline) leaves the action undo-able for retry
-        // instead of silently becoming permanent.
-        removeEntry(id);
-      } catch (err) {
-        if (optionsRef.current.undoErrorMessage) {
-          toast(optionsRef.current.undoErrorMessage, "error");
+      if (payload === undefined) return Promise.resolve();
+
+      const promise = (async () => {
+        try {
+          await optionsRef.current.onUndo(id, payload);
+          // Only clear the pending entry once the undo actually succeeds, so a
+          // failed undo (e.g. offline) leaves the action undo-able for retry
+          // instead of silently becoming permanent.
+          removeEntry(id);
+        } catch (err) {
+          if (optionsRef.current.undoErrorMessage) {
+            toast(optionsRef.current.undoErrorMessage, "error");
+          }
+          throw err;
+        } finally {
+          delete undoPromises.current[id];
         }
-        throw err;
-      }
+      })();
+      undoPromises.current[id] = promise;
+      return promise;
     },
     [removeEntry, toast],
   );
@@ -137,7 +148,10 @@ export const useUndoableAction = <TPayload>(
           action: {
             label: opts.undoLabel ?? "",
             onClick: () => {
-              void undo(id);
+              // The toast already reports the configured error. Swallow the
+              // rejection here so a click cannot create an unhandled promise;
+              // callers invoking undo(id) directly still receive the error.
+              void undo(id).catch(() => undefined);
             },
           },
           durationMs: opts.durationMs,

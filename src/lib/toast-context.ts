@@ -3,7 +3,7 @@ import { createContext, useContext } from "react";
 export type ToastVariant = "default" | "success" | "error" | "warning";
 
 /** A single action button rendered on a toast (e.g. "元に戻す" / "Undo"). */
-export interface ToastAction {
+interface ToastAction {
   label: string;
   onClick: () => void;
 }

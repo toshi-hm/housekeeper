@@ -120,6 +120,43 @@ describe("useUndoableAction", () => {
     expect(result.current.pendingList).toEqual([]);
   });
 
+  test("deduplicates repeated undo calls while the restore is still running", async () => {
+    const { value } = makeToastContext();
+    let finishUndo: (() => void) | undefined;
+    const onUndo = mock(
+      () =>
+        new Promise<void>((resolve) => {
+          finishUndo = resolve;
+        }),
+    );
+
+    const { result } = renderHook(
+      () => useUndoableAction<Payload>({ onUndo, message: () => "msg", undoLabel: "Undo" }),
+      { wrapper: makeWrapper(value) },
+    );
+
+    act(() => {
+      result.current.start("a1", { name: "Milk" });
+    });
+
+    let firstUndo: Promise<void> | undefined;
+    let secondUndo: Promise<void> | undefined;
+    act(() => {
+      firstUndo = result.current.undo("a1");
+      secondUndo = result.current.undo("a1");
+    });
+
+    expect(onUndo).toHaveBeenCalledTimes(1);
+    expect(secondUndo).toBe(firstUndo);
+
+    await act(async () => {
+      finishUndo?.();
+      await firstUndo;
+    });
+
+    expect(result.current.pending).toEqual({});
+  });
+
   test("auto-expires and calls onExpire once durationMs elapses without an undo (fake timers)", () => {
     vi.useFakeTimers();
     try {
