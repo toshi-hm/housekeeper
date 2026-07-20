@@ -6,6 +6,7 @@ import {
   Edit,
   Hash,
   History,
+  JapaneseYen,
   Layers,
   MapPin,
   Package,
@@ -38,6 +39,7 @@ import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useItemTagIds, useTags } from "@/hooks/useTags";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { parseLocalDate } from "@/lib/dateUtils";
+import { computeInventoryValue } from "@/lib/inventoryValue";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus } from "@/types/item";
 
@@ -171,6 +173,7 @@ const ItemDetailPage = () => {
           amount: item.content_amount,
           unit: item.content_unit,
         });
+  const inventoryValue = computeInventoryValue(lots, item.content_amount);
 
   return (
     <div className="space-y-4">
@@ -367,6 +370,15 @@ const ItemDetailPage = () => {
                   label={t("units")}
                   value={totalDisplay}
                 />
+                {inventoryValue && (
+                  <DetailRow
+                    icon={<JapaneseYen className="h-4 w-4" />}
+                    label={t("inventoryValueLabel")}
+                    value={t("inventoryValue", {
+                      total: inventoryValue.totalValue.toLocaleString(),
+                    })}
+                  />
+                )}
                 {item.barcode && (
                   <DetailRow
                     icon={<Hash className="h-4 w-4" />}

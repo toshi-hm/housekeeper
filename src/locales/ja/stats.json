@@ -1,5 +1,7 @@
 {
   "categoryBreakdown": "カテゴリ別在庫",
+  "categoryValueBreakdown": "カテゴリ別在庫金額",
+  "categoryValueHint": "単価未設定の在庫は含まれません",
   "consumptionTrend": "月別消費量",
   "expiryBreakdown": "期限ステータス分布",
   "historyHint": "履歴が貯まると表示されます",

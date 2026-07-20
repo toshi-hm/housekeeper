@@ -189,6 +189,7 @@ export const tryStackToActiveItem = async (
   await createLot(userId, item.id, {
     units: values.units ?? 1,
     opened_remaining: values.opened_remaining ?? null,
+    unit_price: values.unit_price ?? null,
     purchase_date: values.purchase_date || null,
     expiry_date: values.expiry_date || null,
   });
@@ -238,6 +239,7 @@ const tryReviveItem = async (
   await createLot(userId, item.id, {
     units: values.units ?? 1,
     opened_remaining: values.opened_remaining ?? null,
+    unit_price: values.unit_price ?? null,
     purchase_date: values.purchase_date || null,
     expiry_date: values.expiry_date || null,
   });
@@ -281,6 +283,7 @@ export const createItem = async ({
   await createLot(userData.user.id, item.id, {
     units: values.units ?? 1,
     opened_remaining: values.opened_remaining ?? null,
+    unit_price: values.unit_price ?? null,
     purchase_date: values.purchase_date || null,
     expiry_date: values.expiry_date || null,
   });

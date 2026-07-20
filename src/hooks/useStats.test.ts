@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 
 import {
   computeCategoryStats,
+  computeCategoryValueStats,
   computeExpiryDistribution,
   computeMonthlyConsumption,
+  type LotValueRow,
   type RawLog,
 } from "../../src/types/stats";
 
@@ -75,6 +77,100 @@ describe("computeCategoryStats", () => {
     const result = computeCategoryStats(items, categoryMap);
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({ categoryId: "cat-1", name: "Food", count: 1 });
+  });
+});
+
+// --- computeCategoryValueStats ---
+
+describe("computeCategoryValueStats", () => {
+  test("empty lots → empty stats", () => {
+    expect(computeCategoryValueStats([], {}, {}, {})).toEqual([]);
+  });
+
+  test("sums units × unit_price grouped by item's category", () => {
+    const lots: LotValueRow[] = [
+      { item_id: "item-1", units: 2, unit_price: 100 },
+      { item_id: "item-2", units: 1, unit_price: 300 },
+    ];
+    const itemCategoryMap = { "item-1": "cat-1", "item-2": "cat-1" };
+    const itemContentAmountMap = { "item-1": 100, "item-2": 100 };
+    const categoryMap = { "cat-1": "Food" };
+    const result = computeCategoryValueStats(
+      lots,
+      itemCategoryMap,
+      itemContentAmountMap,
+      categoryMap,
+    );
+    expect(result).toEqual([{ categoryId: "cat-1", name: "Food", value: 500 }]);
+  });
+
+  test("excludes lots with unit_price = null (未設定)", () => {
+    const lots: LotValueRow[] = [
+      { item_id: "item-1", units: 2, unit_price: null },
+      { item_id: "item-2", units: 1, unit_price: 50 },
+    ];
+    const itemCategoryMap = { "item-1": "cat-1", "item-2": "cat-1" };
+    const result = computeCategoryValueStats(
+      lots,
+      itemCategoryMap,
+      { "item-1": 100, "item-2": 100 },
+      { "cat-1": "Food" },
+    );
+    expect(result).toEqual([{ categoryId: "cat-1", name: "Food", value: 50 }]);
+  });
+
+  test("excludes lots with units <= 0", () => {
+    const lots: LotValueRow[] = [{ item_id: "item-1", units: 0, unit_price: 100 }];
+    const result = computeCategoryValueStats(
+      lots,
+      { "item-1": "cat-1" },
+      { "item-1": 100 },
+      { "cat-1": "Food" },
+    );
+    expect(result).toEqual([]);
+  });
+
+  test("null category_id (item has no category) → __uncategorized__", () => {
+    const lots: LotValueRow[] = [{ item_id: "item-1", units: 1, unit_price: 200 }];
+    const result = computeCategoryValueStats(lots, { "item-1": null }, { "item-1": 100 }, {});
+    expect(result).toEqual([{ categoryId: null, name: "__uncategorized__", value: 200 }]);
+  });
+
+  test("item missing from itemCategoryMap → excluded as deleted or archived", () => {
+    const lots: LotValueRow[] = [{ item_id: "item-unknown", units: 1, unit_price: 200 }];
+    const result = computeCategoryValueStats(lots, {}, {}, {});
+    expect(result).toEqual([]);
+  });
+
+  test("sorted descending by value", () => {
+    const lots: LotValueRow[] = [
+      { item_id: "item-1", units: 1, unit_price: 100 },
+      { item_id: "item-2", units: 1, unit_price: 500 },
+    ];
+    const itemCategoryMap = { "item-1": "cat-a", "item-2": "cat-b" };
+    const itemContentAmountMap = { "item-1": 100, "item-2": 100 };
+    const categoryMap = { "cat-a": "A", "cat-b": "B" };
+    const result = computeCategoryValueStats(
+      lots,
+      itemCategoryMap,
+      itemContentAmountMap,
+      categoryMap,
+    );
+    expect(result[0]?.categoryId).toBe("cat-b");
+    expect(result[1]?.categoryId).toBe("cat-a");
+  });
+
+  test("prorates opened lots using the item's content amount", () => {
+    const lots: LotValueRow[] = [
+      { item_id: "item-1", units: 2, opened_remaining: 25, unit_price: 200 },
+    ];
+    const result = computeCategoryValueStats(
+      lots,
+      { "item-1": "cat-a" },
+      { "item-1": 100 },
+      { "cat-a": "A" },
+    );
+    expect(result).toEqual([{ categoryId: "cat-a", name: "A", value: 250 }]);
   });
 });
 

@@ -389,11 +389,11 @@ export const usePurchaseShoppingItem = () => {
   const { t } = useTranslation("common");
   return useMutation({
     mutationFn: purchaseShoppingItem,
-    onSuccess: async (data) => {
+    onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: [QUERY_KEY] }),
         qc.invalidateQueries({ queryKey: ["items"] }),
-        qc.invalidateQueries({ queryKey: [...LOTS_KEY, data.id] }),
+        qc.invalidateQueries({ queryKey: LOTS_KEY }),
       ]);
     },
     onError: (error) => {

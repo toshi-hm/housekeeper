@@ -91,7 +91,7 @@ export const useConsumeItem = () => {
       qc.setQueryData(["items", data.id], data);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["items"] }),
-        qc.invalidateQueries({ queryKey: [...LOTS_KEY, data.id] }),
+        qc.invalidateQueries({ queryKey: LOTS_KEY }),
         qc.invalidateQueries({ queryKey: ["consumption-logs", data.id] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
       ]);

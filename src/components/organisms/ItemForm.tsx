@@ -76,6 +76,7 @@ export const ItemForm = ({
     notes: defaultValues?.notes ?? "",
     image_path: defaultValues?.image_path ?? "",
     minimum_stock: defaultValues?.minimum_stock ?? null,
+    unit_price: defaultValues?.unit_price ?? null,
   });
   const [unitsRaw, setUnitsRaw] = useState(String(defaultValues?.units ?? 1));
   const [contentAmountRaw, setContentAmountRaw] = useState(
@@ -86,6 +87,7 @@ export const ItemForm = ({
   const [unitsError, setUnitsError] = useState("");
   const [contentAmountError, setContentAmountError] = useState("");
   const [minimumStockError, setMinimumStockError] = useState("");
+  const [unitPriceError, setUnitPriceError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
@@ -213,6 +215,14 @@ export const ItemForm = ({
       (isNaN(values.minimum_stock) || values.minimum_stock < 0)
     ) {
       setMinimumStockError(t("minimumStockInvalid"));
+      hasError = true;
+    }
+
+    if (
+      typeof values.unit_price === "number" &&
+      (isNaN(values.unit_price) || values.unit_price < 0)
+    ) {
+      setUnitPriceError(t("unitPriceInvalid"));
       hasError = true;
     }
 
@@ -489,6 +499,36 @@ export const ItemForm = ({
             }}
           />
           {minimumStockError && <p className="text-sm text-destructive">{minimumStockError}</p>}
+        </div>
+
+        {/* Unit price */}
+        <div className="space-y-2">
+          <Label htmlFor="unit_price">{t("unitPrice")}</Label>
+          <p className="text-xs text-muted-foreground">{t("unitPriceHelp")}</p>
+          <div className="flex items-center gap-2">
+            <Input
+              id="unit_price"
+              type="number"
+              min={0}
+              step={1}
+              className="w-28"
+              value={values.unit_price ?? ""}
+              placeholder="—"
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") {
+                  set("unit_price", null);
+                  setUnitPriceError("");
+                  return;
+                }
+                const parsed = parseInt(v, 10);
+                set("unit_price", isNaN(parsed) ? null : parsed);
+                setUnitPriceError(!isNaN(parsed) && parsed < 0 ? t("unitPriceInvalid") : "");
+              }}
+            />
+            <span className="text-sm text-muted-foreground">{t("unitPriceSuffix")}</span>
+          </div>
+          {unitPriceError && <p className="text-sm text-destructive">{unitPriceError}</p>}
         </div>
 
         {/* Image */}

@@ -21,6 +21,7 @@ Supabase (Postgres 15+)
 | テーブル                   | 役割                                    | MVP  | 削除動作（参照元 → 自身）                     |
 | -------------------------- | --------------------------------------- | ---- | --------------------------------------------- |
 | `items`                    | 在庫アイテム                            | ✅   | カテゴリ/場所マスタ削除で SET NULL            |
+| `item_lots`                | 購入ロット（数量・単価・期限）          | ✅   | item 削除で CASCADE                           |
 | `categories`               | カテゴリマスタ                          | ✅   | items.category_id = NULL                      |
 | `storage_locations`        | 保管場所マスタ                          | ✅   | items.storage_location_id = NULL              |
 | `consumption_logs`         | 消費イベント履歴                        | ✅   | item 削除で CASCADE                           |
@@ -66,6 +67,37 @@ create index items_location_idx on items(storage_location_id);
 - `image_path` は Storage バケット `item-images` の **オブジェクトキー**（公開 URL ではなく）
 - `opened_remaining = null` は「未開封」、`numeric` 値は「開封中で残量あり」、`0` は「開封済み・空（次の点に移行直前）」
 - 既存 `quantity` カラムは v1 移行時に `units` へ変換し DROP
+
+## item_lots
+
+`items` 1 件は複数の購入ロット（`item_lots`）から構成される。ロットごとに数量・単価・購入日・賞味期限を
+個別に持ち、`items` 側の集計値（`units` / `opened_remaining` / `expiry_date`）はロットから再計算される
+（`syncItemAggregate`、`src/hooks/useItemLots.ts`）。
+
+```sql
+create table item_lots (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  item_id uuid not null references items(id) on delete cascade,
+  units int not null default 1 check (units >= 0),
+  opened_remaining numeric(12,2) check (opened_remaining is null or opened_remaining >= 0),
+  unit_price integer check (unit_price is null or unit_price >= 0),
+  purchase_date date,
+  expiry_date date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index item_lots_item_idx on item_lots(item_id, created_at asc);
+create index item_lots_user_idx on item_lots(user_id);
+create index item_lots_expiry_idx on item_lots(expiry_date);
+```
+
+- `unit_price`（円単位の整数）: 1 点あたりの購入単価。**任意入力**、`NULL` = 未設定（#342）。
+  - 既存ロットは全て `NULL`（後方互換）。集計時は `unit_price IS NULL` のロットを除外する。
+  - 購入時（ロット追加フォーム / `PurchaseDialog`）に入力できる。編集はロット単位（`useUpdateLot`）。
+- RLS は `item_lots.item_id` が呼び出しユーザー所有の `items` 行を指すことも `using` / `with check` 双方で検証する
+  （テナント越えの参照を防止）。
 
 ## categories
 
