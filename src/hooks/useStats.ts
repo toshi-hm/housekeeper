@@ -4,13 +4,13 @@ import { useAllConsumptionLogs } from "@/hooks/useConsumptionLogs";
 import { LOTS_KEY } from "@/hooks/useItemLots";
 import { useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
+import { supabase } from "@/lib/supabase";
 import {
   computeCategoryStats,
   computeCategoryValueStats,
   computeExpiryDistribution,
   computeMonthlyConsumption,
   type LotValueRow,
-  type RawLog,
 } from "@/types/stats";
 
 export const useCategoryStats = () => {
