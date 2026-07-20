@@ -137,8 +137,13 @@ export const useSpeechInput = (onResult: (transcript: string) => void): UseSpeec
     };
 
     recognitionRef.current = recognition;
-    setIsListening(true);
-    recognition.start();
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      recognitionRef.current = null;
+      setIsListening(false);
+    }
   }, [i18n.language]);
 
   return { isSupported, isListening, start, stop };

@@ -1,78 +1,38 @@
-import { render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { type ReactNode } from "react";
-import { I18nextProvider } from "react-i18next";
-
-import i18n from "@/lib/i18n";
+import { fireEvent, render } from "@testing-library/react";
+import { describe, expect, it, mock } from "bun:test";
 
 import { VoiceInputButton } from "./VoiceInputButton";
 
-const wrapper = ({ children }: { children: ReactNode }) => (
-  <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
-);
-
-interface MockRecognitionCtor {
-  new (): {
-    lang: string;
-    continuous: boolean;
-    interimResults: boolean;
-    onresult: (() => void) | null;
-    onerror: (() => void) | null;
-    onend: (() => void) | null;
-    start: () => void;
-    stop: () => void;
-    abort: () => void;
-  };
-}
-
-interface SpeechRecognitionTestWindow {
-  SpeechRecognition?: MockRecognitionCtor;
-}
-
-const getTestWindow = () => window as unknown as SpeechRecognitionTestWindow;
-
-const MockSpeechRecognition: MockRecognitionCtor = class {
-  lang = "";
-  continuous = false;
-  interimResults = false;
-  onresult = null;
-  onerror = null;
-  onend = null;
-  start = () => {};
-  stop = () => {};
-  abort = () => {};
+const labels = {
+  label: "音声入力",
+  listeningLabel: "音声を認識中...",
 };
-
-beforeEach(async () => {
-  await i18n.changeLanguage("ja");
-});
-
-afterEach(() => {
-  delete getTestWindow().SpeechRecognition;
-});
 
 describe("VoiceInputButton", () => {
   it("Web Speech API 非対応環境では何もレンダリングしない", () => {
-    const { container } = render(<VoiceInputButton onResult={() => {}} />, { wrapper });
+    const { container } = render(
+      <VoiceInputButton {...labels} isSupported={false} isListening={false} onStart={() => {}} />,
+    );
     expect(container.firstChild).toBeNull();
   });
 
-  it("対応環境ではマイクボタンをレンダリングする", () => {
-    getTestWindow().SpeechRecognition = MockSpeechRecognition;
-
-    const { getByRole } = render(<VoiceInputButton onResult={() => {}} />, { wrapper });
+  it("対応環境ではマイクボタンをレンダリングし、クリックを通知する", () => {
+    const onStart = mock(() => {});
+    const { getByRole } = render(
+      <VoiceInputButton {...labels} isSupported isListening={false} onStart={onStart} />,
+    );
     const button = getByRole("button");
-    expect(button).not.toBeNull();
     expect(button.getAttribute("aria-label")).toBe("音声入力");
+    fireEvent.click(button);
+    expect(onStart).toHaveBeenCalledTimes(1);
   });
 
-  it("label props を渡すと aria-label に反映される", () => {
-    getTestWindow().SpeechRecognition = MockSpeechRecognition;
-
+  it("認識中は専用ラベルで無効化する", () => {
     const { getByRole } = render(
-      <VoiceInputButton onResult={() => {}} label="商品名を音声入力" />,
-      { wrapper },
+      <VoiceInputButton {...labels} isSupported isListening onStart={() => {}} />,
     );
-    expect(getByRole("button").getAttribute("aria-label")).toBe("商品名を音声入力");
+    const button = getByRole("button");
+    expect(button.getAttribute("aria-label")).toBe("音声を認識中...");
+    expect(button.hasAttribute("disabled")).toBe(true);
   });
 });

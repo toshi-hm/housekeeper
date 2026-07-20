@@ -24,6 +24,7 @@ import {
   useDeleteStorageLocation,
   useStorageLocations,
 } from "@/hooks/useMasterData";
+import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { useToast } from "@/lib/toast-context";
 import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
 
@@ -51,6 +52,7 @@ export const ItemForm = ({
   extraFields,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
+  const { t: tc } = useTranslation("common");
   const { t: ts } = useTranslation("settings");
   const { toast } = useToast();
   const { data: categories = [] } = useCategories();
@@ -60,7 +62,6 @@ export const ItemForm = ({
   const { mutateAsync: addLocation } = useCreateStorageLocation();
   const { mutateAsync: deleteCategoryMutate } = useDeleteCategory();
   const { mutateAsync: deleteLocationMutate } = useDeleteStorageLocation();
-
   const [values, setValues] = useState<ItemFormValues>({
     name: defaultValues?.name ?? "",
     barcode: defaultValues?.barcode ?? "",
@@ -89,6 +90,10 @@ export const ItemForm = ({
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
   const [lookupSource, setLookupSource] = useState<"db" | "api" | null>(null);
+  const speechInput = useSpeechInput((transcript) => {
+    setValues((previous) => ({ ...previous, name: transcript }));
+    setNameError("");
+  });
 
   useEffect(() => {
     return () => {
@@ -312,7 +317,13 @@ export const ItemForm = ({
                 onChange={(e) => set("name", e.target.value)}
                 placeholder={t("namePlaceholder")}
               />
-              <VoiceInputButton onResult={(transcript) => set("name", transcript)} />
+              <VoiceInputButton
+                isSupported={speechInput.isSupported}
+                isListening={speechInput.isListening}
+                onStart={speechInput.start}
+                label={tc("voiceInput")}
+                listeningLabel={tc("voiceInputListening")}
+              />
             </div>
           </div>
           {nameError && <p className="text-sm text-destructive">{nameError}</p>}

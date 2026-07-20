@@ -34,6 +34,7 @@ import {
   useSaveShoppingTemplate,
   useShoppingTemplates,
 } from "@/hooks/useShoppingTemplates";
+import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { OfflineError } from "@/lib/requireOnline";
 import {
   type CategoryResolver,
@@ -74,6 +75,7 @@ const tabLabelKey = {
 
 const ShoppingPage = () => {
   const { t } = useTranslation("shopping");
+  const { t: tc } = useTranslation("common");
   const { toast } = useToast();
   const qc = useQueryClient();
   // 購入ダイアログ内の ItemForm で選択された画像。購入成功後にアップロードする (#453)
@@ -97,6 +99,7 @@ const ShoppingPage = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [scanDraft, setScanDraft] = useState<ScanDraft | null>(null);
   const [isLooking, setIsLooking] = useState(false);
+  const speechInput = useSpeechInput((transcript) => setAddName(transcript));
 
   const { data: items = [], isLoading } = useShoppingList(tab);
   const { data: plannedItems = [] } = useShoppingList("planned");
@@ -479,7 +482,13 @@ const ShoppingPage = () => {
                 }}
                 autoFocus
               />
-              <VoiceInputButton onResult={(transcript) => setAddName(transcript)} />
+              <VoiceInputButton
+                isSupported={speechInput.isSupported}
+                isListening={speechInput.isListening}
+                onStart={speechInput.start}
+                label={tc("voiceInput")}
+                listeningLabel={tc("voiceInputListening")}
+              />
             </div>
           </div>
           <div className="space-y-1">

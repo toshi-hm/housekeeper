@@ -21,13 +21,20 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    onResult: () => {},
+    isSupported: true,
+    isListening: false,
+    onStart: () => {},
+    label: "音声入力",
+    listeningLabel: "音声を認識中...",
   },
 };
 
-export const WithCustomLabel: Story = {
+export const Listening: Story = {
   args: {
-    onResult: () => {},
-    label: "商品名を音声入力",
+    isSupported: true,
+    isListening: true,
+    onStart: () => {},
+    label: "音声入力",
+    listeningLabel: "音声を認識中...",
   },
 };

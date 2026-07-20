@@ -191,4 +191,27 @@ describe("useSpeechInput", () => {
     expect(result.current.isListening).toBe(true);
     expect(instances.length).toBe(2);
   });
+
+  it("start() が同期的に失敗しても待機状態へ戻り、再試行できる", () => {
+    let shouldThrow = true;
+    const { Ctor, instances } = createMockRecognitionCtor((instance) => {
+      instance.start = () => {
+        if (shouldThrow) throw new DOMException("permission denied", "NotAllowedError");
+      };
+    });
+    getTestWindow().SpeechRecognition = Ctor;
+
+    const { result } = renderHook(() => useSpeechInput(() => {}), { wrapper });
+
+    expect(() => {
+      act(() => result.current.start());
+    }).not.toThrow();
+    expect(result.current.isListening).toBe(false);
+
+    shouldThrow = false;
+    act(() => result.current.start());
+
+    expect(result.current.isListening).toBe(true);
+    expect(instances.length).toBe(2);
+  });
 });
