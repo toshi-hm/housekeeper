@@ -24,11 +24,13 @@ import { ItemImage } from "@/components/atoms/ItemImage";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { TagBadge } from "@/components/atoms/TagBadge";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { ImageLightbox } from "@/components/molecules/ImageLightbox";
 import { QRCodeDialog } from "@/components/molecules/QRCodeDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useConsumptionLogs } from "@/hooks/useConsumptionLogs";
+import { useSignedItemImage } from "@/hooks/useItemImage";
 import { useItemLots } from "@/hooks/useItemLots";
 import { useItem, useSoftDeleteItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
@@ -72,9 +74,11 @@ const ItemDetailPage = () => {
   const deleteItem = useSoftDeleteItem();
   const upsertShopping = useUpsertShoppingItem();
   const { data: logs = [] } = useConsumptionLogs(itemId);
+  const { data: signedImageUrl } = useSignedItemImage(item?.image_path);
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   const setDetailTab = (tab: "info" | "lots" | "history") => {
     void navigate({ to: "/items/$itemId", params: { itemId }, search: { tab } });
@@ -190,6 +194,13 @@ const ItemDetailPage = () => {
         />
       )}
 
+      <ImageLightbox
+        open={showLightbox}
+        imageUrl={signedImageUrl}
+        alt={item.name}
+        onClose={() => setShowLightbox(false)}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button
@@ -264,11 +275,15 @@ const ItemDetailPage = () => {
       {/* Desktop: image + details side-by-side */}
       <div className="lg:flex lg:gap-6">
         {/* Item image */}
-        <ItemImage
-          imagePath={item.image_path}
-          alt={item.name}
-          className="h-40 w-full rounded-lg lg:h-64 lg:w-64 lg:shrink-0"
-        />
+        <button
+          type="button"
+          className="block h-40 w-full overflow-hidden rounded-lg text-left disabled:cursor-default lg:h-64 lg:w-64 lg:shrink-0"
+          aria-label={t("imageZoom")}
+          disabled={!item.image_path}
+          onClick={() => setShowLightbox(true)}
+        >
+          <ItemImage imagePath={item.image_path} alt={item.name} className="h-full w-full" />
+        </button>
 
         <div className="mt-4 flex flex-1 flex-col space-y-4 lg:mt-0">
           {/* Name + badges */}
