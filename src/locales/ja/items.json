@@ -96,9 +96,9 @@
   "itemDetail": "在庫詳細",
   "itemNotFound": "アイテムが見つかりません",
   "itemNotFoundDescription": "削除されたか、URLが無効な可能性があります。",
-  "listRemainingDisplay": "{{amount}}{{unit}}",
   "lastVerifiedAt": "最終確認日",
   "lastVerifiedAtValue": "{{date}}に確認済み",
+  "listRemainingDisplay": "{{amount}}{{unit}}",
   "loadError": "読み込みに失敗しました。再読み込みしてください。",
   "lookupFromHistory": "過去に登録した商品データから候補を見つけました",
   "lotCount_other": "{{count}}ロット",
@@ -194,9 +194,9 @@
   "urgentBannerDetails": "対象の商品を表示",
   "urgentBannerNoExpiredItems": "期限切れの商品はありません",
   "urgentBannerNoExpiringSoonItems": "期限間近の商品はありません",
+  "verifyStock": "在庫確認済み",
+  "verifySuccess": "在庫確認を記録しました",
   "viewModeGrid": "グリッド表示",
   "viewModeList": "リスト表示",
-  "viewModeToggleLabel": "表示切り替え",
-  "verifyStock": "在庫確認済み",
-  "verifySuccess": "在庫確認を記録しました"
+  "viewModeToggleLabel": "表示切り替え"
 }

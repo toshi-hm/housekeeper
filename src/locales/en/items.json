@@ -104,9 +104,9 @@
   "itemDetail": "Item Detail",
   "itemNotFound": "Item not found",
   "itemNotFoundDescription": "It may have been deleted or the URL may be invalid.",
-  "listRemainingDisplay": "{{amount}}{{unit}}",
   "lastVerifiedAt": "Last verified",
   "lastVerifiedAtValue": "Verified on {{date}}",
+  "listRemainingDisplay": "{{amount}}{{unit}}",
   "loadError": "Failed to load. Please refresh.",
   "lookupFromHistory": "Found a match from your previously registered items",
   "lotCount_one": "1 lot",
@@ -208,9 +208,9 @@
   "urgentBannerDetails": "Show affected items",
   "urgentBannerNoExpiredItems": "No expired items",
   "urgentBannerNoExpiringSoonItems": "No expiring-soon items",
+  "verifyStock": "Verify stock",
+  "verifySuccess": "Stock verified",
   "viewModeGrid": "Grid view",
   "viewModeList": "List view",
-  "viewModeToggleLabel": "Switch view",
-  "verifyStock": "Verify stock",
-  "verifySuccess": "Stock verified"
+  "viewModeToggleLabel": "Switch view"
 }
