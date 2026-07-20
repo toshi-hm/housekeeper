@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
-import { OfflineError, requireOnline } from "@/lib/requireOnline";
+import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 import { computeCalendarDelta, type PendingLotRemoval } from "@/types/calendar";
@@ -58,11 +58,18 @@ export const useCalendarConsume = () => {
         return;
       }
 
-      const { error: updateError } = await supabase
+      let updateQuery = supabase
         .from("item_lots")
         .update({ units: 0, opened_remaining: null, updated_at: new Date().toISOString() })
-        .eq("id", targetLot.id);
+        .eq("id", targetLot.id)
+        .eq("units", targetLot.units);
+      updateQuery =
+        targetLot.opened_remaining === null
+          ? updateQuery.is("opened_remaining", null)
+          : updateQuery.eq("opened_remaining", targetLot.opened_remaining);
+      const { data: updatedLot, error: updateError } = await updateQuery.select("id").maybeSingle();
       if (updateError) throw updateError;
+      if (!updatedLot) throw new ConcurrentUpdateError();
 
       const deltaAmount = computeCalendarDelta(
         targetLot.units,
@@ -110,7 +117,13 @@ export const useCalendarConsume = () => {
         },
       }));
     } catch (err) {
-      toast(err instanceof OfflineError ? t("offlineError") : t("unknownError"), "error");
+      const message =
+        err instanceof OfflineError
+          ? t("offlineError")
+          : err instanceof ConcurrentUpdateError
+            ? t("lotConflictError")
+            : t("unknownError");
+      toast(message, "error");
       throw err;
     }
   };

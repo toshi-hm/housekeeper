@@ -2,7 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { createElement, type ReactNode } from "react";
+import { I18nextProvider } from "react-i18next";
 
+import i18n from "@/lib/i18n";
 import type { Item } from "@/types/item";
 
 interface SupabaseResponse {
@@ -59,6 +61,7 @@ mock.module("@/lib/supabase", () => ({
 }));
 
 const { useCalendarConsume } = await import("@/hooks/useCalendarConsume");
+const { ConcurrentUpdateError } = await import("@/lib/requireOnline");
 const { ToastContext } = await import("@/lib/toast-context");
 
 const makeWrapper = () => {
@@ -68,7 +71,11 @@ const makeWrapper = () => {
     createElement(
       QueryClientProvider,
       { client: queryClient },
-      createElement(ToastContext, { value: stubToast }, children),
+      createElement(
+        I18nextProvider,
+        { i18n },
+        createElement(ToastContext, { value: stubToast }, children),
+      ),
     );
 };
 
@@ -103,6 +110,14 @@ const todayStr = (() => {
   return `${y}-${m}-${d}`;
 })();
 
+const nextMonthStr = (() => {
+  const nextMonth = new Date();
+  nextMonth.setMonth(nextMonth.getMonth() + 1, 15);
+  const y = nextMonth.getFullYear();
+  const m = String(nextMonth.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}-15`;
+})();
+
 beforeEach(() => {
   callLog = [];
   for (const key of Object.keys(responseQueues)) delete responseQueues[key];
@@ -114,12 +129,15 @@ describe("useCalendarConsume.check", () => {
     const targetLot = {
       id: "lot-1",
       units: 2,
-      opened_remaining: null,
+      opened_remaining: 0.3,
       expiry_date: todayStr,
     };
     responseQueues.item_lots = [
-      { data: [targetLot], error: null }, // FEFO select
-      { data: null, error: null }, // zero-out update
+      {
+        data: [targetLot, { id: "lot-2", units: 1, opened_remaining: null, expiry_date: todayStr }],
+        error: null,
+      }, // FEFO select
+      { data: { id: "lot-1" }, error: null }, // conditional zero-out update
       { data: [{ units: 0, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate read
     ];
     responseQueues.items = [
@@ -137,14 +155,48 @@ describe("useCalendarConsume.check", () => {
     const lotUpdateCall = callLog.find((c) => c.table === "item_lots" && c.method === "update");
     expect(lotUpdateCall?.args[0]).toMatchObject({ units: 0, opened_remaining: null });
 
+    const lotEqCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "eq");
+    expect(lotEqCalls).toContainEqual({
+      table: "item_lots",
+      method: "eq",
+      args: ["item_id", "item-1"],
+    });
+    expect(lotEqCalls).toContainEqual({
+      table: "item_lots",
+      method: "eq",
+      args: ["id", "lot-1"],
+    });
+    expect(lotEqCalls).toContainEqual({
+      table: "item_lots",
+      method: "eq",
+      args: ["units", 2],
+    });
+    expect(lotEqCalls).toContainEqual({
+      table: "item_lots",
+      method: "eq",
+      args: ["opened_remaining", 0.3],
+    });
+    const orderCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "order");
+    expect(orderCalls).toEqual([
+      {
+        table: "item_lots",
+        method: "order",
+        args: ["expiry_date", { ascending: true, nullsFirst: false }],
+      },
+      { table: "item_lots", method: "order", args: ["created_at", { ascending: true }] },
+    ]);
+
     const logInsertCall = callLog.find(
       (c) => c.table === "consumption_logs" && c.method === "insert",
     );
     expect(logInsertCall?.args[0]).toMatchObject({
       item_id: "item-1",
+      user_id: "user-1",
+      delta_amount: 1.3,
+      delta_unit: "個",
       units_before: 2,
       units_after: 0,
-      opened_remaining_before: null,
+      opened_remaining_before: 0.3,
       opened_remaining_after: null,
     });
 
@@ -170,7 +222,7 @@ describe("useCalendarConsume.check", () => {
     };
     responseQueues.item_lots = [
       { data: [targetLot], error: null },
-      { data: null, error: null },
+      { data: { id: "lot-1" }, error: null },
       { data: [{ units: 0, expiry_date: null, opened_remaining: null }], error: null },
     ];
     responseQueues.items = [
@@ -198,7 +250,16 @@ describe("useCalendarConsume.check", () => {
   });
 
   test("今月中に期限が来る有効なロットが無い場合、在庫更新をせずに終了する", async () => {
-    responseQueues.item_lots = [{ data: [], error: null }];
+    responseQueues.item_lots = [
+      {
+        data: [
+          { id: "future", units: 1, opened_remaining: null, expiry_date: nextMonthStr },
+          { id: "unknown", units: 1, opened_remaining: null, expiry_date: null },
+          { id: "empty", units: 0, opened_remaining: null, expiry_date: todayStr },
+        ],
+        error: null,
+      },
+    ];
 
     const { result } = renderHook(() => useCalendarConsume(), { wrapper: makeWrapper() });
 
@@ -208,6 +269,26 @@ describe("useCalendarConsume.check", () => {
 
     const lotUpdateCall = callLog.find((c) => c.table === "item_lots" && c.method === "update");
     expect(lotUpdateCall).toBeUndefined();
+    expect(result.current.pendingRemovalList).toEqual([]);
+  });
+
+  test("同時更新で対象ロットが変化済みなら競合として扱い、ログを作らない", async () => {
+    responseQueues.item_lots = [
+      {
+        data: [{ id: "lot-1", units: 1, opened_remaining: null, expiry_date: todayStr }],
+        error: null,
+      },
+      { data: null, error: null },
+    ];
+    const { result } = renderHook(() => useCalendarConsume(), { wrapper: makeWrapper() });
+
+    await act(async () => {
+      await expect(result.current.check(makeItem())).rejects.toBeInstanceOf(ConcurrentUpdateError);
+    });
+
+    expect(callLog.some((c) => c.table === "consumption_logs" && c.method === "insert")).toBe(
+      false,
+    );
     expect(result.current.pendingRemovalList).toEqual([]);
   });
 });

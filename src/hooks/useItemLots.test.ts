@@ -381,11 +381,28 @@ describe("useUpdateLot", () => {
     const updateCall = callLog.find((c) => c.table === "item_lots" && c.method === "update");
     expect(updateCall?.args[0]).toMatchObject({ units: 5, expiry_date: "2026-03-01" });
 
+    const lotEqCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "eq");
+    expect(lotEqCalls).toContainEqual({
+      table: "item_lots",
+      method: "eq",
+      args: ["id", "lot-1"],
+    });
+    expect(lotEqCalls).toContainEqual({
+      table: "item_lots",
+      method: "eq",
+      args: ["item_id", "item-1"],
+    });
+
     // syncItemAggregate must run after the lot update so the item's
     // aggregate units/expiry stay in sync with the edited lot.
     const itemsUpdateCall = callLog.find((c) => c.table === "items" && c.method === "update");
     expect(itemsUpdateCall).toBeDefined();
     expect(itemsUpdateCall?.args[0]).toMatchObject({ units: 5, expiry_date: "2026-03-01" });
+    expect(callLog).toContainEqual({
+      table: "items",
+      method: "eq",
+      args: ["id", "item-1"],
+    });
   });
 
   test("item_lotsのupdateがエラーを返した場合、syncItemAggregateは呼ばれずエラーになる", async () => {
