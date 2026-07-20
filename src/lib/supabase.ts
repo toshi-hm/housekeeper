@@ -67,6 +67,26 @@ export interface Database {
         };
         Relationships: [];
       };
+      custom_units: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+        };
+        Relationships: [];
+      };
       items: {
         Row: {
           id: string;

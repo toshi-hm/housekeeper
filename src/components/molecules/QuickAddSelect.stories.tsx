@@ -100,3 +100,21 @@ export const StorageLocation: Story = {
     onDelete: async () => {},
   },
 };
+
+export const WithoutClearOption: Story = {
+  render: (args) => <ControlledWrapper {...args} />,
+  args: {
+    value: "個",
+    placeholder: "単位を選択",
+    addLabel: "新しい単位を追加",
+    allowClear: false,
+    options: [
+      { value: "個", label: "個" },
+      { value: "本", label: "本" },
+      { value: "缶", label: "缶" },
+    ],
+    onDelete: async (value) => {
+      if (value === "個") throw new Error("プリセット単位は削除できません");
+    },
+  },
+};

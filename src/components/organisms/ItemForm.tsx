@@ -10,9 +10,9 @@ import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type ProductInfo, useBarcodeLookup } from "@/hooks/useBarcodeLookup";
+import { useCreateCustomUnit, useCustomUnits, useDeleteCustomUnit } from "@/hooks/useCustomUnits";
 import { useSignedItemImage } from "@/hooks/useItemImage";
 import {
   checkCategoryUsage,
@@ -57,11 +57,16 @@ export const ItemForm = ({
   const { toast } = useToast();
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
+  const { data: customUnits = [] } = useCustomUnits();
   const { lookup, isLoading: isLookingUp, error: lookupError } = useBarcodeLookup();
   const { mutateAsync: addCategory } = useCreateCategory();
   const { mutateAsync: addLocation } = useCreateStorageLocation();
+  const { mutateAsync: addCustomUnit } = useCreateCustomUnit();
   const { mutateAsync: deleteCategoryMutate } = useDeleteCategory();
   const { mutateAsync: deleteLocationMutate } = useDeleteStorageLocation();
+  const { mutateAsync: deleteCustomUnitMutate } = useDeleteCustomUnit();
+
+
   const [values, setValues] = useState<ItemFormValues>({
     name: defaultValues?.name ?? "",
     barcode: defaultValues?.barcode ?? "",
@@ -166,6 +171,31 @@ export const ItemForm = ({
     const count = await checkLocationUsage(locationId);
     if (count > 0) throw new Error(ts("locationInUse"));
     await deleteLocationMutate(locationId);
+  };
+
+  // content_unit はプリセット(CONTENT_UNITS)とカスタム単位(custom_units)のマージ。
+  // 値はカテゴリ/保管場所と違いid参照ではなく単位名そのもの（items.content_unitがtext列）
+  // なので、既にプリセットと同名のカスタム単位があっても重複表示しないようフィルタする。
+  const customUnitOptions = customUnits.filter(
+    (u) => !(CONTENT_UNITS as readonly string[]).includes(u.name),
+  );
+  const contentUnitOptions = [
+    ...CONTENT_UNITS.map((u) => ({ value: u, label: u })),
+    ...customUnitOptions.map((u) => ({ value: u.name, label: u.name })),
+  ];
+
+  const handleAddCustomUnit = async (name: string) => {
+    const unit = await addCustomUnit(name);
+    set("content_unit", unit.name);
+  };
+
+  const handleDeleteCustomUnit = async (unitName: string) => {
+    if ((CONTENT_UNITS as readonly string[]).includes(unitName)) {
+      throw new Error(t("presetUnitCannotDelete"));
+    }
+    const unit = customUnits.find((u) => u.name === unitName);
+    if (!unit) return;
+    await deleteCustomUnitMutate(unit.id);
   };
 
   const handleImageFile = (file: File) => {
@@ -427,17 +457,19 @@ export const ItemForm = ({
           </div>
           <div className="space-y-2">
             <Label htmlFor="content_unit">{t("contentUnit")}</Label>
-            <Select
+            <QuickAddSelect
               id="content_unit"
               value={values.content_unit}
-              onChange={(e) => set("content_unit", e.target.value)}
-            >
-              {CONTENT_UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </Select>
+              onChange={(value) => set("content_unit", value)}
+              options={contentUnitOptions}
+              allowClear={false}
+              onAdd={handleAddCustomUnit}
+              onDelete={handleDeleteCustomUnit}
+              addLabel={t("addUnit")}
+              confirmLabel={t("common:confirm")}
+              cancelLabel={t("common:cancel")}
+              addErrorMessage={t("addError")}
+            />
           </div>
         </div>
 

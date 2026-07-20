@@ -25,6 +25,10 @@ interface QuickAddSelectProps {
   confirmLabel?: string;
   cancelLabel?: string;
   addErrorMessage?: string;
+  /** Whether to show the "no selection" option at the top of the dropdown.
+   *  Defaults to true. Set to false for fields that must always hold a value
+   *  (e.g. content_unit), so the user can't clear it to empty. */
+  allowClear?: boolean;
 }
 
 export const QuickAddSelect = ({
@@ -39,6 +43,7 @@ export const QuickAddSelect = ({
   confirmLabel,
   cancelLabel,
   addErrorMessage,
+  allowClear = true,
 }: QuickAddSelectProps) => {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("common:select");
@@ -58,8 +63,10 @@ export const QuickAddSelect = ({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // index 0 = clear option, index 1..n = options
-  const allOptions = [{ value: "", label: placeholder }, ...options];
+  // When allowClear, index 0 is the "no selection" option and index 1..n map
+  // to `options`; otherwise index 0..n-1 map directly to `options`.
+  const allOptions = allowClear ? [{ value: "", label: placeholder }, ...options] : options;
+  const optionIndexOffset = allowClear ? 1 : 0;
   const selectedOption = options.find((o) => o.value === value);
   const listboxId = id ? `${id}-listbox` : undefined;
 
@@ -228,19 +235,21 @@ export const QuickAddSelect = ({
             className="max-h-52 overflow-y-auto"
           >
             {/* Empty/clear option */}
-            <button
-              ref={(el) => {
-                optionRefs.current[0] = el;
-              }}
-              type="button"
-              role="option"
-              aria-selected={!value}
-              className={`w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${!value ? "bg-accent/50 font-medium" : ""}`}
-              onClick={() => handleSelect("")}
-              onKeyDown={(e) => handleOptionKeyDown(e, 0)}
-            >
-              {resolvedPlaceholder}
-            </button>
+            {allowClear && (
+              <button
+                ref={(el) => {
+                  optionRefs.current[0] = el;
+                }}
+                type="button"
+                role="option"
+                aria-selected={!value}
+                className={`w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${!value ? "bg-accent/50 font-medium" : ""}`}
+                onClick={() => handleSelect("")}
+                onKeyDown={(e) => handleOptionKeyDown(e, 0)}
+              >
+                {resolvedPlaceholder}
+              </button>
+            )}
 
             {options.map((option, idx) => (
               <div
@@ -249,14 +258,14 @@ export const QuickAddSelect = ({
               >
                 <button
                   ref={(el) => {
-                    optionRefs.current[idx + 1] = el;
+                    optionRefs.current[idx + optionIndexOffset] = el;
                   }}
                   type="button"
                   role="option"
                   aria-selected={option.value === value}
                   className="flex flex-1 items-center justify-between px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   onClick={() => handleSelect(option.value)}
-                  onKeyDown={(e) => handleOptionKeyDown(e, idx + 1)}
+                  onKeyDown={(e) => handleOptionKeyDown(e, idx + optionIndexOffset)}
                 >
                   <span className="flex items-center gap-1.5">
                     <MasterDataIcon icon={option.icon} className="h-3.5 w-3.5" />

@@ -27,6 +27,16 @@ export interface Tag {
   created_at: string;
 }
 
+/** ユーザーが追加した独自の単位（`content_unit` のプリセット `CONTENT_UNITS` を補う）。
+ *  `items.content_unit` はこのマスタへの外部キーではなく単なる text のコピーなので、
+ *  カスタム単位を削除しても既存アイテムの content_unit 値には影響しない。 */
+export interface CustomUnit {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Item {
   id: string;
   user_id: string;
@@ -140,6 +150,9 @@ export const DEFAULT_LOW_STOCK_FORECAST_DAYS = 7;
 /** 自動アーカイブを有効化するときにデフォルトで提案する猶予日数 (#419) */
 export const DEFAULT_AUTO_ARCHIVE_AFTER_DAYS = 7;
 
+/** プリセットの単位一覧。ユーザーは `custom_units`（`useCustomUnits`）で独自の単位を
+ *  追加できる — 参照箇所（ItemForm の単位選択、設定画面のデフォルト単位）はプリセットと
+ *  カスタム単位をマージして表示すること。 */
 export const CONTENT_UNITS = ["個", "枚", "本", "袋", "mL", "L", "g", "kg"] as const;
 
 export const getExpiryStatus = (

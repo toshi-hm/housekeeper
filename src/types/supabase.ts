@@ -88,6 +88,27 @@ export interface Database {
           },
         ];
       };
+      custom_units: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       item_lots: {
         Row: {
           created_at: string;

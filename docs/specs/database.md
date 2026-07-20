@@ -24,6 +24,7 @@ Supabase (Postgres 15+)
 | `item_lots`                | 購入ロット（数量・単価・期限）          | ✅   | item 削除で CASCADE                           |
 | `categories`               | カテゴリマスタ                          | ✅   | items.category_id = NULL                      |
 | `storage_locations`        | 保管場所マスタ                          | ✅   | items.storage_location_id = NULL              |
+| `custom_units`             | カスタム単位マスタ                      | v1.1 | 削除は items に影響しない（FK ではない）      |
 | `consumption_logs`         | 消費イベント履歴                        | ✅   | item 削除で CASCADE                           |
 | `user_settings`            | ユーザー設定（言語/閾値/通知時刻 など） | ✅   | user 削除で CASCADE                           |
 | `shopping_list_items`      | 買い物リスト                            | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに） |
@@ -132,6 +133,27 @@ create table storage_locations (
 
 create index storage_locations_user_id_idx on storage_locations(user_id);
 ```
+
+## custom_units（v1.1）
+
+```sql
+create table custom_units (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, name)
+);
+
+create index custom_units_user_id_idx on custom_units(user_id);
+```
+
+- `items.content_unit` のプリセット `CONTENT_UNITS`（`個`/`枚`/`本`/`袋`/`mL`/`L`/`g`/`kg`）を
+  ユーザーごとに拡張するマスタ（例: `缶`/`パック`/`食`/`錠`/`ロール`）
+- `items.content_unit` はこのテーブルへの外部キーではなく **単なる text のコピー**。
+  そのため categories/storage_locations と異なり `updated_at` トリガや「使用中チェック」は不要 —
+  カスタム単位を削除しても既存アイテムの `content_unit` 値はそのまま残る
+- 一覧表示は `CONTENT_UNITS`（プリセット）+ `custom_units`（ユーザー定義）のマージ
 
 ## consumption_logs
 
