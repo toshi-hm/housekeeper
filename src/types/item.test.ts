@@ -3,12 +3,15 @@ import { describe, expect, test } from "bun:test";
 import {
   computeConsumption,
   DEFAULT_EXPIRY_WARNING_DAYS,
+  DEFAULT_STOCKTAKE_ALERT_DAYS,
   formatRemaining,
   getExpiryStatus,
   getLotRemainingAmount,
+  isItemUnverified,
   itemFormSchema,
   itemLotSchema,
   roundFloat,
+  STOCKTAKE_NEW_ITEM_GRACE_DAYS,
 } from "./item";
 
 // --- itemFormSchema ---
@@ -287,5 +290,72 @@ describe("computeConsumption", () => {
     const r = computeConsumption({ ...baseItem, units: 1, opened_remaining: 200 }, 300);
     expect(r.error).toBeDefined();
     expect(r.opened_remaining_after).toBeNull();
+  });
+});
+
+// --- isItemUnverified (#375) ---
+
+describe("isItemUnverified", () => {
+  const now = new Date("2026-07-20T00:00:00Z");
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000).toISOString();
+
+  describe("never verified (last_verified_at = null)", () => {
+    test("created less than grace period ago => not unverified", () => {
+      const item = {
+        last_verified_at: null,
+        created_at: daysAgo(STOCKTAKE_NEW_ITEM_GRACE_DAYS - 1),
+      };
+      expect(isItemUnverified(item, DEFAULT_STOCKTAKE_ALERT_DAYS, now)).toBe(false);
+    });
+
+    test("created exactly at grace period => unverified", () => {
+      const item = { last_verified_at: null, created_at: daysAgo(STOCKTAKE_NEW_ITEM_GRACE_DAYS) };
+      expect(isItemUnverified(item, DEFAULT_STOCKTAKE_ALERT_DAYS, now)).toBe(true);
+    });
+
+    test("created well beyond grace period => unverified", () => {
+      const item = { last_verified_at: null, created_at: daysAgo(365) };
+      expect(isItemUnverified(item, DEFAULT_STOCKTAKE_ALERT_DAYS, now)).toBe(true);
+    });
+
+    test("created just now => not unverified", () => {
+      const item = { last_verified_at: null, created_at: now.toISOString() };
+      expect(isItemUnverified(item, DEFAULT_STOCKTAKE_ALERT_DAYS, now)).toBe(false);
+    });
+  });
+
+  describe("previously verified (last_verified_at set)", () => {
+    test("verified less than alert threshold ago => not unverified", () => {
+      const item = { last_verified_at: daysAgo(89), created_at: daysAgo(400) };
+      expect(isItemUnverified(item, 90, now)).toBe(false);
+    });
+
+    test("verified exactly at alert threshold => unverified", () => {
+      const item = { last_verified_at: daysAgo(90), created_at: daysAgo(400) };
+      expect(isItemUnverified(item, 90, now)).toBe(true);
+    });
+
+    test("verified well beyond alert threshold => unverified", () => {
+      const item = { last_verified_at: daysAgo(200), created_at: daysAgo(400) };
+      expect(isItemUnverified(item, 90, now)).toBe(true);
+    });
+
+    test("verified just now => not unverified, even if created long ago", () => {
+      const item = { last_verified_at: now.toISOString(), created_at: daysAgo(1000) };
+      expect(isItemUnverified(item, 90, now)).toBe(false);
+    });
+
+    test("custom stocktakeAlertDays is respected", () => {
+      const item = { last_verified_at: daysAgo(31), created_at: daysAgo(400) };
+      expect(isItemUnverified(item, 30, now)).toBe(true);
+      expect(isItemUnverified(item, 60, now)).toBe(false);
+    });
+  });
+
+  test("defaults stocktakeAlertDays to DEFAULT_STOCKTAKE_ALERT_DAYS (90) when omitted", () => {
+    const item = { last_verified_at: daysAgo(91), created_at: daysAgo(400) };
+    expect(isItemUnverified(item, undefined, now)).toBe(true);
+    const notYet = { last_verified_at: daysAgo(89), created_at: daysAgo(400) };
+    expect(isItemUnverified(notYet, undefined, now)).toBe(false);
   });
 });

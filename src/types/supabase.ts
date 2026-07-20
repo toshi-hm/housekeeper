@@ -171,6 +171,7 @@ export interface Database {
           expiry_date: string | null;
           id: string;
           image_path: string | null;
+          last_verified_at: string | null;
           name: string;
           notes: string | null;
           opened_remaining: number | null;
@@ -192,6 +193,7 @@ export interface Database {
           expiry_date?: string | null;
           id?: string;
           image_path?: string | null;
+          last_verified_at?: string | null;
           name: string;
           notes?: string | null;
           opened_remaining?: number | null;
@@ -213,6 +215,7 @@ export interface Database {
           expiry_date?: string | null;
           id?: string;
           image_path?: string | null;
+          last_verified_at?: string | null;
           name?: string;
           notes?: string | null;
           opened_remaining?: number | null;
@@ -450,6 +453,8 @@ export interface Database {
           language: string;
           low_stock_forecast_days: number;
           notify_at: string;
+          stocktake_alert_days: number;
+          stocktake_alert_enabled: boolean;
           updated_at: string;
           user_id: string;
         };
@@ -461,6 +466,8 @@ export interface Database {
           language?: string;
           low_stock_forecast_days?: number;
           notify_at?: string;
+          stocktake_alert_days?: number;
+          stocktake_alert_enabled?: boolean;
           updated_at?: string;
           user_id: string;
         };
@@ -472,6 +479,8 @@ export interface Database {
           language?: string;
           low_stock_forecast_days?: number;
           notify_at?: string;
+          stocktake_alert_days?: number;
+          stocktake_alert_enabled?: boolean;
           updated_at?: string;
           user_id?: string;
         };

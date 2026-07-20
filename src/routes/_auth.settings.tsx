@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Bell,
   ChevronRight,
+  ClipboardCheck,
   Download,
   Globe,
   History,
@@ -36,7 +37,11 @@ import { useCreateCustomUnit, useCustomUnits, useDeleteCustomUnit } from "@/hook
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
-import { CONTENT_UNITS, DEFAULT_AUTO_ARCHIVE_AFTER_DAYS } from "@/types/item";
+import {
+  CONTENT_UNITS,
+  DEFAULT_AUTO_ARCHIVE_AFTER_DAYS,
+  DEFAULT_STOCKTAKE_ALERT_DAYS,
+} from "@/types/item";
 
 export const SettingsPage = () => {
   const { t } = useTranslation("settings");
@@ -75,6 +80,12 @@ export const SettingsPage = () => {
     (settings?.low_stock_forecast_days !== undefined
       ? String(settings.low_stock_forecast_days)
       : "");
+  const [stocktakeAlertDays, setStocktakeAlertDays] = useState<string | null>(null);
+  const stocktakeAlertDaysValue =
+    stocktakeAlertDays ??
+    (settings?.stocktake_alert_days !== undefined
+      ? String(settings.stocktake_alert_days)
+      : String(DEFAULT_STOCKTAKE_ALERT_DAYS));
 
   const handleLanguageChange = async (lang: "ja" | "en") => {
     try {
@@ -182,6 +193,33 @@ export const SettingsPage = () => {
       // error toast is handled by the mutation's onError
     } finally {
       setDeletingUnitId(null);
+    }
+  };
+
+  const handleStocktakeAlertEnabledChange = async (enabled: boolean) => {
+    try {
+      await updateSettings.mutateAsync({ stocktake_alert_enabled: enabled });
+      toast(t("saveSuccess"), "success");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+    }
+  };
+
+  const handleStocktakeAlertDaysChange = async (days: number) => {
+    if (isNaN(days) || days < 1 || days > 365) {
+      toast(t("invalidStocktakeAlertDays"), "error");
+      return;
+    }
+    try {
+      await updateSettings.mutateAsync({ stocktake_alert_days: days });
+      setStocktakeAlertDays(null);
+      toast(t("saveSuccess"), "success");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
     }
   };
 
@@ -436,6 +474,44 @@ export const SettingsPage = () => {
               {t("security")}
             </h2>
             <SecuritySettings />
+          </section>
+
+          {/* Stocktake (棚卸し) settings (#375) */}
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <ClipboardCheck className="h-4 w-4" />
+              {t("stocktake")}
+            </h2>
+            <div className="space-y-3 rounded-lg border p-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings?.stocktake_alert_enabled ?? false}
+                  onChange={(e) => void handleStocktakeAlertEnabledChange(e.target.checked)}
+                  className="rounded"
+                />
+                {t("stocktakeAlertEnabled")}
+              </label>
+              <div>
+                <Label htmlFor="stocktake_alert_days">{t("stocktakeAlertDays")}</Label>
+                <p className="mb-2 text-xs text-muted-foreground">{t("stocktakeAlertDaysHelp")}</p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="stocktake_alert_days"
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={stocktakeAlertDaysValue}
+                    className="w-24"
+                    onChange={(e) => setStocktakeAlertDays(e.target.value)}
+                    onBlur={(e) => {
+                      void handleStocktakeAlertDaysChange(parseInt(e.target.value, 10));
+                    }}
+                  />
+                  <Label>{t("daysUnit")}</Label>
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* Master data links */}

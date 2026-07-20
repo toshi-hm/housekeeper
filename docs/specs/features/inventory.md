@@ -59,6 +59,25 @@ if units < 0:
 
 ロジックは `src/lib/consume.ts` に純関数で実装し、`bun test` でテストする。
 
+## 棚卸し（在庫確認） (#375)
+
+賞味期限が遠い/存在しない備品（非常食・防災用品・季節品・医薬品など）は期限アラートが出ないため、
+実在庫と DB 上の数量が乖離しやすい。定期的な物理確認（棚卸し）を促す仕組み。
+
+- `items.last_verified_at`（timestamptz）: アイテム詳細ページの「✅ 在庫確認済み」ボタンを押すと
+  現在時刻で更新される。押した後は「確認しました（日付）」の表示に切り替わる。
+- 「未確認」判定（純関数 `isItemUnverified` in `src/types/item.ts`）:
+  - `last_verified_at` が `null`（一度も確認されていない）かつ `created_at` から
+    30 日以上経過（`STOCKTAKE_NEW_ITEM_GRACE_DAYS`、固定値）
+  - または `last_verified_at` から `user_settings.stocktake_alert_days` 日以上経過
+    （デフォルト 90 日 = `DEFAULT_STOCKTAKE_ALERT_DAYS`。設定でカスタマイズ可能）
+- ダッシュボード（`/_auth/`）: `user_settings.stocktake_alert_enabled` が true のとき、
+  期限バナー・低在庫バナーの下に「⚠️ N 件のアイテムが N 日以上未確認です」バナーを表示し、
+  対象アイテムの一覧を開閉可能な詳細（`<details>`）で表示する。
+- 設定ページ（`/_auth/settings`）「棚卸し」セクション:
+  - 棚卸しアラートを有効にする（`stocktake_alert_enabled`、デフォルト OFF）
+  - 未確認とみなすまでの日数（`stocktake_alert_days`、1〜365、デフォルト 90）
+
 ## ユーザーストーリー
 
 - 商品を追加できる（手入力 / バーコード）
@@ -113,14 +132,15 @@ if units < 0:
 
 ## API（hook）
 
-| hook                 | 機能                     |
-| -------------------- | ------------------------ |
-| `useItems(filters?)` | 一覧（filter/sort 適用） |
-| `useItem(id)`        | 詳細                     |
-| `useCreateItem`      | 追加                     |
-| `useUpdateItem(id)`  | 編集                     |
-| `useDeleteItem`      | 削除                     |
-| `useConsumeItem(id)` | 消費（楽観更新）         |
+| hook                 | 機能                                        |
+| -------------------- | ------------------------------------------- |
+| `useItems(filters?)` | 一覧（filter/sort 適用）                    |
+| `useItem(id)`        | 詳細                                        |
+| `useCreateItem`      | 追加                                        |
+| `useUpdateItem(id)`  | 編集                                        |
+| `useDeleteItem`      | 削除                                        |
+| `useConsumeItem(id)` | 消費（楽観更新）                            |
+| `useVerifyItem`      | 棚卸し確認（`last_verified_at` 更新）(#375) |
 
 実装は `src/hooks/useItems.ts` を中心に、消費は `src/hooks/useConsumeItem.ts`、純粋ロジックは `src/lib/consume.ts`。
 

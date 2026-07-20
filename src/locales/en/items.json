@@ -105,6 +105,8 @@
   "itemNotFound": "Item not found",
   "itemNotFoundDescription": "It may have been deleted or the URL may be invalid.",
   "listRemainingDisplay": "{{amount}}{{unit}}",
+  "lastVerifiedAt": "Last verified",
+  "lastVerifiedAtValue": "Verified on {{date}}",
   "loadError": "Failed to load. Please refresh.",
   "lookupFromHistory": "Found a match from your previously registered items",
   "lotCount_one": "1 lot",
@@ -121,6 +123,7 @@
   "minimumStockInvalid": "Enter 0 or more",
   "name": "Product Name",
   "namePlaceholder": "Enter product name",
+  "neverVerified": "Never verified",
   "noHistory": "No consumption history",
   "noItems": "No items",
   "noLots": "No lot information",
@@ -179,6 +182,9 @@
   "stackDialogTitle": "Matching item found",
   "stackSubmitLabel": "Add as additional stock",
   "stackSuccess": "Added as new stock to existing item",
+  "stocktakeBanner_one": "1 item has not been verified in {{days}}+ days",
+  "stocktakeBanner_other": "{{count}} items have not been verified in {{days}}+ days",
+  "stocktakeBannerDetails": "Show unverified items",
   "storageLocation": "Storage Location",
   "storageLocationPlaceholder": "Select location",
   "tagPlaceholder": "New tag name",
@@ -204,5 +210,7 @@
   "urgentBannerNoExpiringSoonItems": "No expiring-soon items",
   "viewModeGrid": "Grid view",
   "viewModeList": "List view",
-  "viewModeToggleLabel": "Switch view"
+  "viewModeToggleLabel": "Switch view",
+  "verifyStock": "Verify stock",
+  "verifySuccess": "Stock verified"
 }
