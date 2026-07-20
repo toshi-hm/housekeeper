@@ -78,6 +78,7 @@
   "itemNotFound": "アイテムが見つかりません",
   "itemNotFoundDescription": "削除されたか、URLが無効な可能性があります。",
   "loadError": "読み込みに失敗しました。再読み込みしてください。",
+  "listRemainingDisplay": "{{amount}}{{unit}}",
   "lookupFromHistory": "過去に登録した商品データから候補を見つけました",
   "lotCount_other": "{{count}}ロット",
   "lotLabel": "ロット{{index}}",
@@ -153,5 +154,8 @@
   "urgentBanner_other": "{{count}}件の在庫が期限切れまたは期限間近です",
   "urgentBannerDetails": "対象の商品を表示",
   "urgentBannerNoExpiredItems": "期限切れの商品はありません",
-  "urgentBannerNoExpiringSoonItems": "期限間近の商品はありません"
+  "urgentBannerNoExpiringSoonItems": "期限間近の商品はありません",
+  "viewModeGrid": "グリッド表示",
+  "viewModeList": "リスト表示",
+  "viewModeToggleLabel": "表示切り替え"
 }

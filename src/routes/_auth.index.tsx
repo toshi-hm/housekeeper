@@ -13,10 +13,12 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { ViewModeToggle } from "@/components/atoms/ViewModeToggle";
 import { BulkActionBar } from "@/components/molecules/BulkActionBar";
 import { BulkMoveDialog } from "@/components/molecules/BulkMoveDialog";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ItemCard } from "@/components/molecules/ItemCard";
+import { ItemListRow } from "@/components/molecules/ItemListRow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -32,6 +34,7 @@ import {
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { useViewMode } from "@/hooks/useViewMode";
 import { updateAppBadge } from "@/lib/pwa";
 import { toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
@@ -151,6 +154,7 @@ export const DashboardPage = () => {
     () => (localStorage.getItem("dashboard.sort") as ItemSortKey) ?? "created_at",
   );
   const [showFilters, setShowFilters] = useState(false);
+  const { viewMode, setViewMode } = useViewMode();
   const [hideEmpty, setHideEmpty] = useState(() => {
     const saved = localStorage.getItem("dashboard.hideEmpty");
     return saved !== null ? saved === "true" : true;
@@ -483,6 +487,7 @@ export const DashboardPage = () => {
         >
           <SlidersHorizontal className="h-4 w-4" />
         </Button>
+        <ViewModeToggle value={viewMode} onChange={setViewMode} />
       </div>
 
       {/* Quick filter chips */}
@@ -602,15 +607,23 @@ export const DashboardPage = () => {
 
       {/* Loading / Error / Content */}
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="space-y-2 rounded-lg border p-3">
-              <Skeleton className="aspect-square w-full rounded-md" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-            </div>
-          ))}
-        </div>
+        viewMode === "grid" ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="space-y-2 rounded-lg border p-3">
+                <Skeleton className="aspect-square w-full rounded-md" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-11 w-full rounded-lg" />
+            ))}
+          </div>
+        )
       ) : error ? (
         <div className="rounded-lg border border-destructive p-4 text-sm text-destructive">
           {t("loadError")}
@@ -634,27 +647,42 @@ export const DashboardPage = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {visibleItems.map((item) => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
-                locationName={
-                  item.storage_location_id ? locationMap[item.storage_location_id] : undefined
-                }
-                warningDays={warningDays}
-                isQuickConsuming={quickConsumingId === item.id}
-                onQuickConsume={(i) => {
-                  void handleQuickConsume(i);
-                }}
-                imageUrl={item.image_path ? imageUrlsByPath?.[item.image_path] : undefined}
-                selectionMode={selectionMode}
-                isSelected={selectedIds.has(item.id)}
-                onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
-              />
-            ))}
-          </div>
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {visibleItems.map((item) => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
+                  locationName={
+                    item.storage_location_id ? locationMap[item.storage_location_id] : undefined
+                  }
+                  warningDays={warningDays}
+                  isQuickConsuming={quickConsumingId === item.id}
+                  onQuickConsume={(i) => {
+                    void handleQuickConsume(i);
+                  }}
+                  imageUrl={item.image_path ? imageUrlsByPath?.[item.image_path] : undefined}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(item.id)}
+                  onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {visibleItems.map((item) => (
+                <ItemListRow
+                  key={item.id}
+                  item={item}
+                  warningDays={warningDays}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(item.id)}
+                  onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
+                />
+              ))}
+            </div>
+          )}
           <div ref={sentinelRef} className="h-1" />
         </>
       )}

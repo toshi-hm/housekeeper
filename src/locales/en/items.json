@@ -84,6 +84,7 @@
   "itemNotFound": "Item not found",
   "itemNotFoundDescription": "It may have been deleted or the URL may be invalid.",
   "loadError": "Failed to load. Please refresh.",
+  "listRemainingDisplay": "{{amount}}{{unit}}",
   "lookupFromHistory": "Found a match from your previously registered items",
   "lotCount_one": "1 lot",
   "lotCount_other": "{{count}} lots",
@@ -163,5 +164,8 @@
   "urgentBanner_other": "{{count}} items are expired or expiring soon",
   "urgentBannerDetails": "Show affected items",
   "urgentBannerNoExpiredItems": "No expired items",
-  "urgentBannerNoExpiringSoonItems": "No expiring-soon items"
+  "urgentBannerNoExpiringSoonItems": "No expiring-soon items",
+  "viewModeGrid": "Grid view",
+  "viewModeList": "List view",
+  "viewModeToggleLabel": "Switch view"
 }
