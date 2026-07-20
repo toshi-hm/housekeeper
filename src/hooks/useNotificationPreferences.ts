@@ -74,6 +74,14 @@ export const unsubscribePush = async (): Promise<void> => {
   await subscription.unsubscribe();
 };
 
+const sendTestNotification = async (): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase.functions.invoke("send-test-notification", {
+    body: {},
+  });
+  if (error) throw error;
+};
+
 export const useNotificationPreferences = () =>
   useQuery({
     queryKey: PREFS_KEY,
@@ -93,6 +101,22 @@ export const useUpdateNotificationPreferences = () => {
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
       else toast(t("unknownError"), "error");
+    },
+  });
+};
+
+export const useTestNotification = () => {
+  const { toast } = useToast();
+  const { t } = useTranslation("notifications");
+  const { t: tCommon } = useTranslation("common");
+  return useMutation({
+    mutationFn: sendTestNotification,
+    onSuccess: () => {
+      toast(t("testNotificationSuccess"), "success");
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(tCommon("offlineError"), "error");
+      else toast(t("testNotificationError"), "error");
     },
   });
 };

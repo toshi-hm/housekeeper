@@ -112,6 +112,7 @@ describe("SettingsPage - expiryWarningDays validation", () => {
   let notifSpy: ReturnType<typeof spyOn>;
   let updateNotifSpy: ReturnType<typeof spyOn>;
   let mfaSpies: readonly ReturnType<typeof spyOn>[];
+  let testNotifSpy: ReturnType<typeof spyOn>;
 
   beforeAll(async () => {
     await i18n.changeLanguage("ja");
@@ -139,6 +140,10 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     } as unknown as ReturnType<typeof useNotifModule.useUpdateNotificationPreferences>);
 
     mfaSpies = mockMfaHooks();
+    testNotifSpy = spyOn(useNotifModule, "useTestNotification").mockReturnValue({
+      mutate: mock(() => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useNotifModule.useTestNotification>);
   });
 
   afterEach(() => {
@@ -147,6 +152,7 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     notifSpy.mockRestore();
     updateNotifSpy.mockRestore();
     mfaSpies.forEach((s) => s.mockRestore());
+    testNotifSpy.mockRestore();
     cleanup();
   });
 
@@ -220,6 +226,7 @@ describe("SettingsPage - default unit", () => {
   let notifSpy: ReturnType<typeof spyOn>;
   let updateNotifSpy: ReturnType<typeof spyOn>;
   let mfaSpies: readonly ReturnType<typeof spyOn>[];
+  let testNotifSpy: ReturnType<typeof spyOn>;
 
   beforeAll(async () => {
     await i18n.changeLanguage("ja");
@@ -247,6 +254,10 @@ describe("SettingsPage - default unit", () => {
     } as unknown as ReturnType<typeof useNotifModule.useUpdateNotificationPreferences>);
 
     mfaSpies = mockMfaHooks();
+    testNotifSpy = spyOn(useNotifModule, "useTestNotification").mockReturnValue({
+      mutate: mock(() => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useNotifModule.useTestNotification>);
   });
 
   afterEach(() => {
@@ -255,6 +266,7 @@ describe("SettingsPage - default unit", () => {
     notifSpy.mockRestore();
     updateNotifSpy.mockRestore();
     mfaSpies.forEach((s) => s.mockRestore());
+    testNotifSpy.mockRestore();
     cleanup();
   });
 

@@ -23,16 +23,12 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 describe("NotificationSettings", () => {
   let prefsSpy: ReturnType<typeof spyOn>;
   let updateSpy: ReturnType<typeof spyOn>;
+  let testNotificationSpy: ReturnType<typeof spyOn>;
   const mutateAsync = mock(() => Promise.resolve());
+  const testNotificationMutate = mock(() => {});
 
-  beforeEach(() => {
-    toastMock.mockClear();
-    mutateAsync.mockClear();
-
-    prefsSpy = spyOn(
-      useNotificationPreferencesModule,
-      "useNotificationPreferences",
-    ).mockReturnValue({
+  const setPrefs = (overrides: Partial<{ push_enabled: boolean }> = {}) => {
+    prefsSpy.mockReturnValue({
       data: {
         user_id: "user-1",
         push_enabled: false,
@@ -40,8 +36,18 @@ describe("NotificationSettings", () => {
         email_address: null,
         threshold_days: 3,
         notify_at: "08:00",
+        ...overrides,
       },
     } as unknown as ReturnType<typeof useNotificationPreferencesModule.useNotificationPreferences>);
+  };
+
+  beforeEach(() => {
+    toastMock.mockClear();
+    mutateAsync.mockClear();
+    testNotificationMutate.mockClear();
+
+    prefsSpy = spyOn(useNotificationPreferencesModule, "useNotificationPreferences");
+    setPrefs();
 
     updateSpy = spyOn(
       useNotificationPreferencesModule,
@@ -51,11 +57,45 @@ describe("NotificationSettings", () => {
     } as unknown as ReturnType<
       typeof useNotificationPreferencesModule.useUpdateNotificationPreferences
     >);
+
+    testNotificationSpy = spyOn(
+      useNotificationPreferencesModule,
+      "useTestNotification",
+    ).mockReturnValue({
+      mutate: testNotificationMutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useNotificationPreferencesModule.useTestNotification>);
   });
 
   afterEach(() => {
     prefsSpy.mockRestore();
     updateSpy.mockRestore();
+    testNotificationSpy.mockRestore();
+  });
+
+  it("プッシュ通知が無効な場合はテスト送信ボタンが表示されない", () => {
+    setPrefs({ push_enabled: false });
+    const { queryByText } = render(<NotificationSettings />, { wrapper });
+    expect(queryByText(/テスト通知を送信|Send test notification/i)).toBeNull();
+  });
+
+  it("プッシュ通知が有効な場合はテスト送信ボタンが表示され、押下すると送信される", () => {
+    setPrefs({ push_enabled: true });
+    const { getByText } = render(<NotificationSettings />, { wrapper });
+    const testButton = getByText(/テスト通知を送信|Send test notification/i);
+    fireEvent.click(testButton);
+    expect(testNotificationMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it("テスト送信中はボタンが無効化される", () => {
+    setPrefs({ push_enabled: true });
+    testNotificationSpy.mockReturnValue({
+      mutate: testNotificationMutate,
+      isPending: true,
+    } as unknown as ReturnType<typeof useNotificationPreferencesModule.useTestNotification>);
+    const { getByText } = render(<NotificationSettings />, { wrapper });
+    const testButton = getByText(/テスト通知を送信|Send test notification/i).closest("button");
+    expect((testButton as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("通知日数に31以上を入力してフォーカスアウトするとエラートーストを表示し保存しない (#455)", () => {

@@ -1,4 +1,4 @@
-import { Bell, Mail } from "lucide-react";
+import { Bell, Loader2, Mail, Send } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -9,6 +9,7 @@ import {
   subscribePush,
   unsubscribePush,
   useNotificationPreferences,
+  useTestNotification,
   useUpdateNotificationPreferences,
 } from "@/hooks/useNotificationPreferences";
 import { OfflineError } from "@/lib/requireOnline";
@@ -18,6 +19,7 @@ export const NotificationSettings = () => {
   const { t } = useTranslation("notifications");
   const { data: prefs } = useNotificationPreferences();
   const updatePrefs = useUpdateNotificationPreferences();
+  const testNotification = useTestNotification();
   const { toast } = useToast();
   const [isPushLoading, setIsPushLoading] = useState(false);
 
@@ -143,6 +145,22 @@ export const NotificationSettings = () => {
         </div>
         {!isPushSupported && (
           <p className="text-xs text-muted-foreground">{t("pushNotSupported")}</p>
+        )}
+        {prefs?.push_enabled && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => testNotification.mutate()}
+            disabled={testNotification.isPending}
+          >
+            {testNotification.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            {t("sendTestNotification")}
+          </Button>
         )}
       </div>
 
