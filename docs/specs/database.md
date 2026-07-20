@@ -132,7 +132,7 @@ create table user_settings (
   expiry_warning_days int not null default 3 check (expiry_warning_days >= 0),
   default_unit text not null default 'mL',
   notify_at time not null default '08:00',
-  auto_archive_after_days int check (auto_archive_after_days is null or auto_archive_after_days >= 1),
+  auto_archive_after_days int check (auto_archive_after_days is null or auto_archive_after_days between 1 and 365),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

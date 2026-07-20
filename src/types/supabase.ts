@@ -413,7 +413,14 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      auto_archive_expired_items: {
+        Args: Record<PropertyKey, never>;
+        Returns: Array<{ id: string; archived_at: string }>;
+      };
+      undo_auto_archive: {
+        Args: { p_item_ids: string[]; p_archived_at: string };
+        Returns: number;
+      };
     };
     Enums: {
       [_ in never]: never;

@@ -6,6 +6,7 @@
   "autoArchive": "Auto-archive expired items",
   "autoArchiveEnable": "Enable auto-archive",
   "autoArchiveHelp": "When enabled, items that have been expired for the configured number of days are automatically archived (soft-deleted) when you open the dashboard",
+  "backToSettings": "Back to settings",
   "categories": "Category Management",
   "categoryInUse": "Cannot delete: this category is used by existing items",
   "categoryName": "Category name",

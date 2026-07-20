@@ -6,6 +6,7 @@
   "autoArchive": "期限切れアイテムの自動アーカイブ",
   "autoArchiveEnable": "自動アーカイブを有効にする",
   "autoArchiveHelp": "有効にすると、期限切れから設定した日数が経過したアイテムをダッシュボードを開いたときに自動的にアーカイブ（ソフトデリート）します",
+  "backToSettings": "設定に戻る",
   "categories": "カテゴリ管理",
   "categoryInUse": "このカテゴリは使用中のため削除できません",
   "categoryName": "カテゴリ名",

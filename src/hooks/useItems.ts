@@ -324,7 +324,7 @@ export const findActiveItemByBarcode = async (barcode: string): Promise<Item | n
 
 /** カレンダー用: expiry_date を持つアクティブアイテムのみ返す。
  *  自動アーカイブ (#419) の対象走査にも流用する（deleted_at is null なアイテムだけを見れば十分）。 */
-export const fetchItemsWithExpiry = async (): Promise<Item[]> => {
+const fetchItemsWithExpiry = async (): Promise<Item[]> => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
@@ -509,17 +509,6 @@ const restoreItem = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-/** 複数アイテムを一括で復元する（自動アーカイブの「元に戻す」用, #419）。 */
-export const bulkRestoreItems = async (ids: string[]): Promise<void> => {
-  requireOnline();
-  if (ids.length === 0) return;
-  const { error } = await supabase
-    .from("items")
-    .update({ deleted_at: null, updated_at: new Date().toISOString() })
-    .in("id", ids);
-  if (error) throw error;
-};
-
 export const useRestoreItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -557,7 +546,7 @@ const bulkUpdateItems = async (
 };
 
 /** 複数アイテムをソフトデリートする。 */
-export const bulkSoftDeleteItems = async (ids: string[]): Promise<void> => {
+const bulkSoftDeleteItems = async (ids: string[]): Promise<void> => {
   requireOnline();
   if (ids.length === 0) return;
   const { error } = await supabase

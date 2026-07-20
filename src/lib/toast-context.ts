@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 
 export type ToastVariant = "default" | "success" | "error" | "warning";
 
-export interface ToastAction {
+interface ToastAction {
   label: string;
   onClick: () => void;
 }
