@@ -55,6 +55,7 @@
 interface ChatRequest {
   message: string;
   history?: { role: "user" | "model"; text: string }[]; // 直近の会話（最大 N 件）
+  language?: "ja" | "en"; // UIの現在言語。回答(reply)の言語を決める（#555）
 }
 
 // Response body
@@ -107,6 +108,8 @@ interface ChatResponse {
 - データ取得は RLS によりリクエストユーザーのデータのみ（service-role を使わない）。
 - 入力 `message` は長さ上限でバリデーション（プロンプトインジェクション対策として
   「在庫アシスタント」ロールを system 固定、ユーザー入力は user ロールに限定）。
+- 入力 `language` はクライアントの申告を信用せず Zod（`z.enum(["ja", "en"])`）で検証し、
+  不正/未指定時は `"ja"`（`fallbackLng`）にフォールバックする（#555）。
 
 ## 5. 無料枠への配慮
 

@@ -2,12 +2,12 @@ import { queryGeminiChat } from "./gemini.ts";
 import { fetchAllItems, fetchRecentlyConsumedItems, getUserScopedClient } from "./inventory.ts";
 import type {
   ChatHistoryTurn,
-  ChatLanguage,
   ChatMatchedItem,
   ChatRequest,
   ChatResponse,
   InventoryItem,
 } from "./types.ts";
+import { parseChatLanguage } from "./validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,11 +17,6 @@ const corsHeaders = {
 
 const MAX_MESSAGE_LENGTH = 500;
 const HISTORY_ROLES = new Set(["user", "model"]);
-const CHAT_LANGUAGES = new Set(["ja", "en"]);
-
-const sanitizeLanguage = (language: unknown): ChatLanguage =>
-  CHAT_LANGUAGES.has(language as string) ? (language as ChatLanguage) : "ja";
-
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), {
     status,
@@ -94,7 +89,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "message is too long" }, 400);
   }
   const history = sanitizeHistory(parsed.history);
-  const language = sanitizeLanguage(parsed.language);
+  const language = parseChatLanguage(parsed.language);
 
   const [items, recentlyConsumed] = await Promise.all([
     fetchAllItems(supabase),

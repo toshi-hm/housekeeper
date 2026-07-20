@@ -7,6 +7,7 @@ import {
   isValidGeminiChatResult,
 } from "./gemini.ts";
 import type { InventoryItem } from "./types.ts";
+import { parseChatLanguage } from "./validation.ts";
 
 const makeItem = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
   id: "item-1",
@@ -22,6 +23,17 @@ const makeItem = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
   categories: { name: "飲料" },
   storage_locations: { name: "冷蔵庫" },
   ...overrides,
+});
+
+Deno.test("parseChatLanguage - accepts supported languages", () => {
+  assert.strictEqual(parseChatLanguage("ja"), "ja");
+  assert.strictEqual(parseChatLanguage("en"), "en");
+});
+
+Deno.test("parseChatLanguage - falls back to Japanese for untrusted values", () => {
+  assert.strictEqual(parseChatLanguage("en-US"), "ja");
+  assert.strictEqual(parseChatLanguage("fr"), "ja");
+  assert.strictEqual(parseChatLanguage(undefined), "ja");
 });
 
 // isValidGeminiChatResult
