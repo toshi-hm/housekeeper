@@ -4,6 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } f
 import React from "react";
 import { I18nextProvider } from "react-i18next";
 
+import * as useMfaModule from "@/hooks/useMfa";
 import * as useNotifModule from "@/hooks/useNotificationPreferences";
 import * as useUserSettingsModule from "@/hooks/useUserSettings";
 import i18n from "@/lib/i18n";
@@ -66,6 +67,29 @@ const makeToastStub = () => {
   return { stub, toastFn };
 };
 
+// SecuritySettings (rendered unconditionally inside SettingsPage) calls these
+// react-query hooks; even with a QueryClientProvider present, they must be
+// mocked so no real Supabase call happens during these tests.
+const mockMfaHooks = () => {
+  const factorsSpy = spyOn(useMfaModule, "useMfaFactors").mockReturnValue({
+    data: [],
+    isLoading: false,
+  } as unknown as ReturnType<typeof useMfaModule.useMfaFactors>);
+  const enrollSpy = spyOn(useMfaModule, "useEnrollTotp").mockReturnValue({
+    mutateAsync: mock(async () => ({ factorId: "", qrCodeUri: "", secret: "" })),
+    isPending: false,
+  } as unknown as ReturnType<typeof useMfaModule.useEnrollTotp>);
+  const verifySpy = spyOn(useMfaModule, "useVerifyTotpEnrollment").mockReturnValue({
+    mutateAsync: mock(async () => {}),
+    isPending: false,
+  } as unknown as ReturnType<typeof useMfaModule.useVerifyTotpEnrollment>);
+  const unenrollSpy = spyOn(useMfaModule, "useUnenrollTotp").mockReturnValue({
+    mutateAsync: mock(async () => {}),
+    isPending: false,
+  } as unknown as ReturnType<typeof useMfaModule.useUnenrollTotp>);
+  return [factorsSpy, enrollSpy, verifySpy, unenrollSpy] as const;
+};
+
 const Wrapper = (toastStub: ToastContextValue) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { enabled: false, retry: false } },
@@ -87,6 +111,7 @@ describe("SettingsPage - expiryWarningDays validation", () => {
   let updateSpy: ReturnType<typeof spyOn>;
   let notifSpy: ReturnType<typeof spyOn>;
   let updateNotifSpy: ReturnType<typeof spyOn>;
+  let mfaSpies: readonly ReturnType<typeof spyOn>[];
 
   beforeAll(async () => {
     await i18n.changeLanguage("ja");
@@ -112,6 +137,8 @@ describe("SettingsPage - expiryWarningDays validation", () => {
       mutateAsync: mock(async () => {}),
       isPending: false,
     } as unknown as ReturnType<typeof useNotifModule.useUpdateNotificationPreferences>);
+
+    mfaSpies = mockMfaHooks();
   });
 
   afterEach(() => {
@@ -119,6 +146,7 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     updateSpy.mockRestore();
     notifSpy.mockRestore();
     updateNotifSpy.mockRestore();
+    mfaSpies.forEach((s) => s.mockRestore());
     cleanup();
   });
 
@@ -191,6 +219,7 @@ describe("SettingsPage - default unit", () => {
   let updateSpy: ReturnType<typeof spyOn>;
   let notifSpy: ReturnType<typeof spyOn>;
   let updateNotifSpy: ReturnType<typeof spyOn>;
+  let mfaSpies: readonly ReturnType<typeof spyOn>[];
 
   beforeAll(async () => {
     await i18n.changeLanguage("ja");
@@ -216,6 +245,8 @@ describe("SettingsPage - default unit", () => {
       mutateAsync: mock(async () => {}),
       isPending: false,
     } as unknown as ReturnType<typeof useNotifModule.useUpdateNotificationPreferences>);
+
+    mfaSpies = mockMfaHooks();
   });
 
   afterEach(() => {
@@ -223,6 +254,7 @@ describe("SettingsPage - default unit", () => {
     updateSpy.mockRestore();
     notifSpy.mockRestore();
     updateNotifSpy.mockRestore();
+    mfaSpies.forEach((s) => s.mockRestore());
     cleanup();
   });
 

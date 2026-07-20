@@ -17,6 +17,7 @@ import { InventoryChatPanel } from "@/components/organisms/InventoryChatPanel";
 import { Button } from "@/components/ui/button";
 import { useAppBadge } from "@/hooks/useAppBadge";
 import { useRealtimeItems } from "@/hooks/useRealtimeItems";
+import { isMfaChallengeRequired } from "@/lib/mfa";
 import { supabase } from "@/lib/supabase";
 
 const NAV_ROUTES = [
@@ -199,6 +200,12 @@ export const Route = createFileRoute("/_auth")({
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
+      throw redirect({ to: "/login" });
+    }
+
+    // MFAコード入力（aal2への昇格）が未完了のセッションは保護ルートに入れない（#366）。
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (isMfaChallengeRequired(aal)) {
       throw redirect({ to: "/login" });
     }
   },
