@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, mock, test } from "bun:test";
 import { createElement, type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
@@ -42,15 +42,18 @@ describe("useInventoryChat", () => {
   test("sends the current i18n language with the chat request", async () => {
     invokeMock.mockClear();
     await i18n.changeLanguage("en");
-    const { result } = renderHook(() => useInventoryChat(), { wrapper: makeWrapper() });
+    const { result, unmount } = renderHook(() => useInventoryChat(), { wrapper: makeWrapper() });
 
-    await result.current.ask({ message: "Do I have milk?", history: [] });
+    await act(async () => {
+      await result.current.ask({ message: "Do I have milk?", history: [] });
+    });
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledTimes(1));
     expect(invokeMock.mock.calls[0]?.[1]).toMatchObject({
       body: { message: "Do I have milk?", language: "en" },
     });
 
+    unmount();
     await i18n.changeLanguage("ja");
   });
 });
