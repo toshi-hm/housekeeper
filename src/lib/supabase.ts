@@ -532,6 +532,10 @@ export interface Database {
         Args: Record<PropertyKey, never>;
         Returns: Array<{ id: string; archived_at: string }>;
       };
+      archive_purchased_shopping_items: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
       // #491: atomic "delete only if unused" RPCs — see
       // supabase/migrations/20260716000001_atomic_delete_master_data.sql
       delete_category_if_unused: {

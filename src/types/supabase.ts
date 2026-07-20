@@ -454,6 +454,10 @@ export interface Database {
         Args: { p_item_ids: string[]; p_archived_at: string };
         Returns: number;
       };
+      archive_purchased_shopping_items: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
     };
     Enums: {
       [_ in never]: never;

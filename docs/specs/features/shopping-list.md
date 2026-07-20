@@ -48,13 +48,11 @@
 
 ### 購入済みクリア → アーカイブ（#365）
 
-`useDeleteAllPurchasedItems()` は以下の順で実行する（DB トランザクションではないため、
-失敗時に履歴を失わない方向に倒す順序にしている）:
-
-1. `status='purchased'` の行を取得
-2. 取得した行を `shopping_list_archive` へ insert（`name` / `desired_units` / `note` のみ。
-   `archived_at` はクライアントで一度だけ生成し、同一クリア操作の全行に同じ値を使う）
-3. insert 成功後にのみ、元の `shopping_list_items` 行を delete
+`useDeleteAllPurchasedItems()` は `archive_purchased_shopping_items` RPC を呼び出す。RPC内の
+単一トランザクションで `status='purchased'` の行を `DELETE ... RETURNING` し、その結果を
+`shopping_list_archive` へinsertする。insert失敗時はdeleteもrollbackされる。並行実行時も
+各元行を一度しかdeleteできないため二重アーカイブにならず、成功後の再実行は0件処理となる。
+`archived_at` は同一RPC内の全行で同じ時刻を使う。
 
 購入履歴ページ（`/_auth/settings/purchase-history`）は `usePurchaseHistory()` で
 `shopping_list_archive` を `archived_at desc` で取得し、`archived_at` のローカル日付（日単位）で

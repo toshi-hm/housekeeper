@@ -177,51 +177,11 @@ export const lotValuesFromForm = (itemValues: ItemFormValues) => ({
   expiry_date: itemValues.expiry_date || null,
 });
 
-/**
- * 「購入済みをクリア」時の処理 (#365)。購入済み行を完全削除する前に
- * shopping_list_archive へコピーし、「いつ何をいくつ買ったか」を履歴として残す。
- * 1) 購入済み行を取得 → 2) アーカイブへ insert → 3) 元の行を delete、の順で実行する。
- * insert に失敗した場合は delete まで到達しないため、履歴を残さず削除してしまう
- * ことはない（DBトランザクションではないが、失敗時の安全側に倒す順序）。
- */
+/** Atomically move every purchased row into immutable purchase history. */
 export const archivePurchasedItems = async (): Promise<void> => {
   requireOnline();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const { data: purchasedRows, error: fetchError } = await supabase
-    .from("shopping_list_items")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("status", "purchased");
-  if (fetchError) throw new Error(fetchError.message);
-
-  const rows = (purchasedRows ?? []) as ShoppingItem[];
-  if (rows.length > 0) {
-    // 同一クリア操作でアーカイブされた行を「同じ日の購入」として扱えるよう、
-    // archived_at はクライアントで一度だけ生成して全行に揃える。
-    const archivedAt = new Date().toISOString();
-    const archiveRows = rows.map((row) => ({
-      user_id: user.id,
-      name: row.name,
-      desired_units: row.desired_units,
-      note: row.note,
-      archived_at: archivedAt,
-    }));
-    const { error: archiveError } = await supabase
-      .from("shopping_list_archive")
-      .insert(archiveRows);
-    if (archiveError) throw new Error(archiveError.message);
-  }
-
-  const { error: deleteError } = await supabase
-    .from("shopping_list_items")
-    .delete()
-    .eq("user_id", user.id)
-    .eq("status", "purchased");
-  if (deleteError) throw new Error(deleteError.message);
+  const { error } = await supabase.rpc("archive_purchased_shopping_items", {});
+  if (error) throw new Error(error.message);
 };
 
 export const useDeleteAllPurchasedItems = () => {
