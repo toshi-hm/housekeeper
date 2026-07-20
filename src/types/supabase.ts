@@ -273,6 +273,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      shopping_list_archive: {
+        Row: {
+          archived_at: string;
+          desired_units: number;
+          id: string;
+          name: string;
+          note: string | null;
+          user_id: string;
+        };
+        Insert: {
+          archived_at?: string;
+          desired_units?: number;
+          id?: string;
+          name: string;
+          note?: string | null;
+          user_id: string;
+        };
+        Update: {
+          archived_at?: string;
+          desired_units?: number;
+          id?: string;
+          name?: string;
+          note?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       shopping_list_items: {
         Row: {
           created_at: string;
@@ -428,6 +455,10 @@ export interface Database {
       };
       undo_auto_archive: {
         Args: { p_item_ids: string[]; p_archived_at: string };
+        Returns: number;
+      };
+      archive_purchased_shopping_items: {
+        Args: Record<PropertyKey, never>;
         Returns: number;
       };
     };

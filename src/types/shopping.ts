@@ -29,6 +29,16 @@ export interface PurchaseInput {
   itemValues: ItemFormValues;
 }
 
+/** 「購入済みをクリア」時に shopping_list_archive へ保存される購入履歴行 (#365) */
+export interface ArchivedShoppingItem {
+  id: string;
+  user_id: string;
+  name: string;
+  desired_units: number;
+  note: string | null;
+  archived_at: string;
+}
+
 interface ShoppingTemplate {
   id: string;
   user_id: string;

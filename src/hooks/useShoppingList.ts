@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { PURCHASE_HISTORY_KEY } from "@/hooks/usePurchaseHistory";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -176,26 +177,24 @@ export const lotValuesFromForm = (itemValues: ItemFormValues) => ({
   expiry_date: itemValues.expiry_date || null,
 });
 
+/** Atomically move every purchased row into immutable purchase history. */
+export const archivePurchasedItems = async (): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase.rpc("archive_purchased_shopping_items", {});
+  if (error) throw new Error(error.message);
+};
+
 export const useDeleteAllPurchasedItems = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("common");
   return useMutation({
-    mutationFn: async () => {
-      requireOnline();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      const { error } = await supabase
-        .from("shopping_list_items")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("status", "purchased");
-      if (error) throw new Error(error.message);
-    },
+    mutationFn: archivePurchasedItems,
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: [QUERY_KEY] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: [QUERY_KEY] }),
+        qc.invalidateQueries({ queryKey: PURCHASE_HISTORY_KEY }),
+      ]);
     },
     onError: (error) => {
       if (error instanceof OfflineError) {

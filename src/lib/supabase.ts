@@ -447,6 +447,33 @@ export interface Database {
           },
         ];
       };
+      shopping_list_archive: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          desired_units: number;
+          note: string | null;
+          archived_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          desired_units?: number;
+          note?: string | null;
+          archived_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          desired_units?: number;
+          note?: string | null;
+          archived_at?: string;
+        };
+        Relationships: [];
+      };
       item_tags: {
         Row: {
           id: string;
@@ -507,6 +534,10 @@ export interface Database {
       auto_archive_expired_items: {
         Args: Record<PropertyKey, never>;
         Returns: Array<{ id: string; archived_at: string }>;
+      };
+      archive_purchased_shopping_items: {
+        Args: Record<string, never>;
+        Returns: number;
       };
       // #491: atomic "delete only if unused" RPCs — see
       // supabase/migrations/20260716000001_atomic_delete_master_data.sql

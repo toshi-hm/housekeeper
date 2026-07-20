@@ -55,6 +55,8 @@
   "noLocations": "保管場所がありません",
   "noTags": "タグがありません",
   "notifications": "通知設定",
+  "purchaseHistory": "購入履歴",
+  "purchaseHistoryEmpty": "購入履歴はまだありません",
   "restore": "復元",
   "restoreSuccess": "アイテムを復元しました",
   "saveSuccess": "設定を保存しました",
