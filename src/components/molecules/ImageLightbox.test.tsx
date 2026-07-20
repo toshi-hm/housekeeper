@@ -125,4 +125,53 @@ describe("ImageLightbox", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("moves focus into the dialog, traps Tab, and restores focus when closed", () => {
+    const trigger = document.createElement("button");
+    document.body.append(trigger);
+    trigger.focus();
+    const { getByRole, rerender } = render(
+      <ImageLightbox
+        open={true}
+        imageUrl="https://example.com/photo.jpg"
+        alt="牛乳"
+        onClose={() => {}}
+      />,
+      { wrapper },
+    );
+    const closeButton = getByRole("button", { name: i18n.t("common:close") });
+    expect(document.activeElement).toBe(closeButton);
+
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(document.activeElement).toBe(closeButton);
+
+    rerender(
+      <ImageLightbox
+        open={false}
+        imageUrl="https://example.com/photo.jpg"
+        alt="牛乳"
+        onClose={() => {}}
+      />,
+    );
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+  });
+
+  it("makes background siblings inert while open", () => {
+    const { getByTestId } = render(
+      <>
+        <main data-testid="background">inventory</main>
+        <ImageLightbox
+          open={true}
+          imageUrl="https://example.com/photo.jpg"
+          alt="牛乳"
+          onClose={() => {}}
+        />
+      </>,
+      { wrapper },
+    );
+    const background = getByTestId("background");
+    expect(background.inert).toBe(true);
+    expect(background.getAttribute("aria-hidden")).toBe("true");
+  });
 });
