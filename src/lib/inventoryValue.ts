@@ -1,6 +1,7 @@
 /** ロット1件分の在庫総額計算に必要な最小限のフィールド。 */
 export interface LotForValue {
   units: number;
+  opened_remaining?: number | null;
   unit_price?: number | null;
 }
 
@@ -21,19 +22,37 @@ export interface InventoryValueResult {
  * - 単価が設定されたロットが1つもない場合は `null` を返す（呼び出し側で金額を非表示にする）。
  * - `units <= 0`（使い切り）のロットは在庫が無いため対象外。
  */
-export const computeInventoryValue = (lots: LotForValue[]): InventoryValueResult | null => {
+export const getPricedEquivalentUnits = (lot: LotForValue, contentAmount: number): number => {
+  if (lot.units <= 0) return 0;
+  if (lot.opened_remaining === null || lot.opened_remaining === undefined) return lot.units;
+  if (contentAmount <= 0) return 0;
+  return Math.max(0, lot.units - 1 + lot.opened_remaining / contentAmount);
+};
+
+export const computeInventoryValue = (
+  lots: LotForValue[],
+  contentAmount: number,
+): InventoryValueResult | null => {
   const priced = lots.filter(
     (lot): lot is LotForValue & { unit_price: number } =>
-      lot.unit_price !== null && lot.unit_price !== undefined && lot.units > 0,
+      lot.unit_price !== null &&
+      lot.unit_price !== undefined &&
+      getPricedEquivalentUnits(lot, contentAmount) > 0,
   );
   if (priced.length === 0) return null;
 
-  const totalValue = priced.reduce((sum, lot) => sum + lot.units * lot.unit_price, 0);
-  const pricedUnits = priced.reduce((sum, lot) => sum + lot.units, 0);
+  const totalValue = priced.reduce(
+    (sum, lot) => sum + getPricedEquivalentUnits(lot, contentAmount) * lot.unit_price,
+    0,
+  );
+  const pricedUnits = priced.reduce(
+    (sum, lot) => sum + getPricedEquivalentUnits(lot, contentAmount),
+    0,
+  );
   if (pricedUnits === 0) return null;
 
   return {
-    totalValue,
+    totalValue: Math.round(totalValue),
     pricedUnits,
     averageUnitPrice: Math.round(totalValue / pricedUnits),
   };

@@ -1,3 +1,4 @@
+import { getPricedEquivalentUnits } from "@/lib/inventoryValue";
 import { type ExpiryStatus, getExpiryStatus, type Item } from "@/types/item";
 
 export interface CategoryStat {
@@ -16,6 +17,7 @@ export interface CategoryValueStat {
 export interface LotValueRow {
   item_id: string;
   units: number;
+  opened_remaining?: number | null;
   unit_price: number | null;
 }
 
@@ -71,14 +73,19 @@ export const computeCategoryStats = (
 export const computeCategoryValueStats = (
   lots: LotValueRow[],
   itemCategoryMap: Record<string, string | null>,
+  itemContentAmountMap: Record<string, number>,
   categoryMap: Record<string, string>,
 ): CategoryValueStat[] => {
   const valueMap = new Map<string | null, number>();
   for (const lot of lots) {
     if (lot.unit_price === null || lot.unit_price === undefined) continue;
-    if (lot.units <= 0) continue;
+    if (!Object.hasOwn(itemCategoryMap, lot.item_id)) continue;
+    const contentAmount = itemContentAmountMap[lot.item_id];
+    if (contentAmount === undefined) continue;
+    const equivalentUnits = getPricedEquivalentUnits(lot, contentAmount);
+    if (equivalentUnits <= 0) continue;
     const categoryId = itemCategoryMap[lot.item_id] ?? null;
-    valueMap.set(categoryId, (valueMap.get(categoryId) ?? 0) + lot.units * lot.unit_price);
+    valueMap.set(categoryId, (valueMap.get(categoryId) ?? 0) + equivalentUnits * lot.unit_price);
   }
 
   const stats: CategoryValueStat[] = [];
@@ -86,7 +93,7 @@ export const computeCategoryValueStats = (
     stats.push({
       categoryId,
       name: categoryId ? (categoryMap[categoryId] ?? "?") : "__uncategorized__",
-      value,
+      value: Math.round(value),
     });
   }
   stats.sort((a, b) => b.value - a.value);

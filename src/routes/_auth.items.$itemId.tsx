@@ -173,7 +173,7 @@ const ItemDetailPage = () => {
           amount: item.content_amount,
           unit: item.content_unit,
         });
-  const inventoryValue = computeInventoryValue(lots);
+  const inventoryValue = computeInventoryValue(lots, item.content_amount);
 
   return (
     <div className="space-y-4">
@@ -376,8 +376,6 @@ const ItemDetailPage = () => {
                     label={t("inventoryValueLabel")}
                     value={t("inventoryValue", {
                       total: inventoryValue.totalValue.toLocaleString(),
-                      units: inventoryValue.pricedUnits,
-                      avgPrice: inventoryValue.averageUnitPrice.toLocaleString(),
                     })}
                   />
                 )}

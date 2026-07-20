@@ -12,7 +12,7 @@ import type { Item } from "@/types/item";
 const invalidateCalendarQueries = async (qc: ReturnType<typeof useQueryClient>, itemId: string) => {
   await Promise.all([
     qc.invalidateQueries({ queryKey: ["items"] }),
-    qc.invalidateQueries({ queryKey: [...LOTS_KEY, itemId] }),
+    qc.invalidateQueries({ queryKey: LOTS_KEY }),
     qc.invalidateQueries({ queryKey: ["consumption-logs", itemId] }),
     qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
   ]);

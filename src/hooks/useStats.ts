@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { LOTS_KEY } from "@/hooks/useItemLots";
 import { useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
 import { supabase } from "@/lib/supabase";
@@ -41,7 +42,7 @@ const fetchAllLotsForValue = async (): Promise<LotValueRow[]> => {
 
   const { data, error } = await supabase
     .from("item_lots")
-    .select("item_id, units, unit_price")
+    .select("item_id, units, opened_remaining, unit_price")
     .eq("user_id", user.id);
   if (error) throw new Error(error.message);
   return (data ?? []) as LotValueRow[];
@@ -49,7 +50,7 @@ const fetchAllLotsForValue = async (): Promise<LotValueRow[]> => {
 
 const useAllLotsForValue = () =>
   useQuery<LotValueRow[]>({
-    queryKey: ["item-lots-value-all"],
+    queryKey: [...LOTS_KEY, "value-all"],
     queryFn: fetchAllLotsForValue,
     staleTime: 30_000,
   });
@@ -69,8 +70,9 @@ export const useCategoryValueStats = () => {
   const { data: lots = [], isLoading: lotsLoading, isError: lotsError } = useAllLotsForValue();
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   const itemCategoryMap = Object.fromEntries(items.map((i) => [i.id, i.category_id ?? null]));
+  const itemContentAmountMap = Object.fromEntries(items.map((i) => [i.id, i.content_amount]));
   return {
-    stats: computeCategoryValueStats(lots, itemCategoryMap, categoryMap),
+    stats: computeCategoryValueStats(lots, itemCategoryMap, itemContentAmountMap, categoryMap),
     isLoading: itemsLoading || categoriesLoading || lotsLoading,
     isError: itemsError || categoriesError || lotsError,
   };

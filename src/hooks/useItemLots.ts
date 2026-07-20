@@ -242,7 +242,7 @@ export const useConsumeLot = () => {
     mutationFn: consumeLot,
     onSuccess: async (data, variables) => {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: [...LOTS_KEY, variables.lot.item_id] }),
+        qc.invalidateQueries({ queryKey: LOTS_KEY }),
         qc.invalidateQueries({ queryKey: ["items"] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs", variables.lot.item_id] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
@@ -281,9 +281,9 @@ export const useUpdateLot = () => {
       await syncItemAggregate(itemId);
       return updated;
     },
-    onSuccess: async (_data, variables) => {
+    onSuccess: async () => {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: [...LOTS_KEY, variables.itemId] }),
+        qc.invalidateQueries({ queryKey: LOTS_KEY }),
         qc.invalidateQueries({ queryKey: ["items"] }),
       ]);
     },
