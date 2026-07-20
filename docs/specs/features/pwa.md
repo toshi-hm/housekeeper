@@ -56,3 +56,54 @@
 - mutation のオフラインキューイング（`@tanstack/query` の persist + retry on reconnect）
 - Background Sync
 - Web Share Target（バーコード画像受け取り）
+
+## Widgets（ホーム画面ウィジェット, 実験的機能 / 将来対応見込み, #367）
+
+### 背景・ブラウザ対応状況
+
+Web App Widgets（`manifest.json` の `widgets` フィールドでホーム画面ウィジェットを宣言する仕様）は、
+2026-07 時点で **Chrome / Edge 138+ の Origin Trial 段階**の仕様であり、W3C Web Incubator
+Community Group（WICG）でも draft のまま標準化が完了していない。
+現状ほとんどのブラウザ・OS はホーム画面ウィジェットとしてのレンダリングに対応しておらず、
+本実装は「対応が広がった際にすぐ使えるようにする」ための **先行実装** という位置付け。
+
+- 対応見込み: Chrome/Edge（Origin Trial → 標準化されれば安定版へ）、Windows 11 Widgets Board
+- 現状非対応: Safari / Firefox / モバイル Chrome（Android のホーム画面ウィジェットとは別仕組み）
+- 参考: [MicrosoftEdge/MSEdgeExplainers – PWAWidgets](https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/PWAWidgets/README.md)
+
+### 実装した範囲
+
+1. **manifest 設定**: `vite.config.ts` で `manifest.widgets` に `tag: "inventory-alert"` の
+   ウィジェット定義を 1 件追加。`VITE_SUPABASE_URL` が未設定（CI のビルド等）の場合は
+   `widgets` フィールド自体を省略し、ビルドが失敗しないようにしている（フィーチャーゲート）。
+2. **データ API**: Supabase Edge Function `supabase/functions/widget-data`
+   （`GET`、Bearer JWT 認証、`subscribe-push` と同じ認証パターン）。
+   期限切れ／期限間近の件数・低在庫の件数・代表アイテム（各最大 5 件）を JSON で返す。
+   - 期限切れ／期限間近の判定基準はダッシュボード（`_auth.index.tsx` の `urgentItems`）と同じ
+     （`units > 0` かつ `opened_remaining !== 0`）。
+   - 低在庫の判定は `minimum_stock`（#230）を利用（`units <= minimum_stock`）。
+     消費ペースからの補充タイミング予測（#68 / #392）はこの時点でまだ `main` に
+     マージされていなかったため未利用。将来 `minimum_stock` に加えて予測ベースの
+     低在庫判定が使えるようになった場合はこのエンドポイントの拡張を検討する。
+   - ロジック本体（`summary.ts`）は Supabase クライアントに依存しない純粋関数として切り出し、
+     Deno test（`summary.test.ts`）でレスポンス形状を検証している。
+3. **Adaptive Card テンプレート**: `public/widgets/templates/inventory-alert.json`
+   （最小構成: 期限切れ／期限間近／低在庫の件数 + 代表アイテムのリスト）。
+
+### 実装しなかった範囲（意図的にスコープ外）
+
+- **Periodic Background Sync**: ウィジェットホスト自身が manifest の `update`
+  （秒単位のポーリング間隔、現状 3600 秒 = 1 時間）に従って `data` エンドポイントを
+  直接ポーリングする仕様のため、Service Worker 側で追加の定期同期処理を実装する必要はない。
+  Periodic Background Sync は権限モデル・ブラウザ対応がさらに限定的でリスクが大きい割に
+  得られる価値が小さいため、今回は意図的に実装しない。
+- **ウィジェット向けの認証トークン発行フロー**: 現行の Widget ホスト実装は、
+  ページ外（OS ウィジェットサーフェス）から `data` エンドポイントを取得する際に
+  独自の `Authorization` ヘッダーやクッキーをクロスオリジンで付与する手段を
+  標準化していない。そのため `widget-data` は `subscribe-push` と同じ Bearer JWT
+  認証を実装してはいるが、**実機のウィジェットから認証付きで取得できることは
+  現時点では保証されない**（手動検証・将来のブラウザ対応拡大に備えた実装）。
+- **非対応環境でのフィーチャーディテクション用 JS**: Widgets は manifest 宣言のみで
+  完結する仕組みで、ページ側の JavaScript から機能有無を検出して分岐する API
+  （`navigator.setAppBadge` のような）は存在しない。非対応ブラウザは単に
+  `widgets` フィールドを無視するだけなので、追加のフォールバック実装は不要。

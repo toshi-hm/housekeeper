@@ -1,0 +1,122 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "在庫アラート",
+      "weight": "bolder",
+      "size": "medium",
+      "wrap": true
+    },
+    {
+      "type": "ColumnSet",
+      "columns": [
+        {
+          "type": "Column",
+          "width": "stretch",
+          "items": [
+            { "type": "TextBlock", "text": "期限切れ", "size": "small", "isSubtle": true },
+            {
+              "type": "TextBlock",
+              "text": "${expired_count}件",
+              "size": "large",
+              "weight": "bolder",
+              "color": "attention"
+            }
+          ]
+        },
+        {
+          "type": "Column",
+          "width": "stretch",
+          "items": [
+            { "type": "TextBlock", "text": "期限間近", "size": "small", "isSubtle": true },
+            {
+              "type": "TextBlock",
+              "text": "${expiring_soon_count}件",
+              "size": "large",
+              "weight": "bolder",
+              "color": "warning"
+            }
+          ]
+        },
+        {
+          "type": "Column",
+          "width": "stretch",
+          "items": [
+            { "type": "TextBlock", "text": "低在庫", "size": "small", "isSubtle": true },
+            {
+              "type": "TextBlock",
+              "text": "${low_stock_count}件",
+              "size": "large",
+              "weight": "bolder",
+              "color": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "separator": true,
+      "spacing": "medium",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "期限が近いアイテム",
+          "weight": "bolder",
+          "size": "small",
+          "wrap": true
+        },
+        {
+          "type": "Container",
+          "$data": "${top_expiring}",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "${name}（${expiry_date}）",
+              "wrap": true,
+              "size": "small",
+              "spacing": "small"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "separator": true,
+      "spacing": "medium",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "低在庫のアイテム",
+          "weight": "bolder",
+          "size": "small",
+          "wrap": true
+        },
+        {
+          "type": "Container",
+          "$data": "${top_low_stock}",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "${name}（${units} / ${minimum_stock}）",
+              "wrap": true,
+              "size": "small",
+              "spacing": "small"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "アプリを開く",
+      "url": "/"
+    }
+  ]
+}
