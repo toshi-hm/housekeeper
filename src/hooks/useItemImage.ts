@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { compressImageForUpload } from "@/lib/imageCompress";
 import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 
@@ -89,13 +90,19 @@ export const uploadItemImage = async ({
   } = await supabase.auth.getUser();
   if (authError || !user) throw new Error("Not authenticated");
 
-  const rawExt = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : undefined;
+  // Resize to fit within MAX_EDGE_PX and re-encode as WebP before upload
+  // (falls back to the original file untouched if that isn't possible).
+  const uploadFile = await compressImageForUpload(file);
+
+  const rawExt = uploadFile.name.includes(".")
+    ? uploadFile.name.split(".").pop()?.toLowerCase()
+    : undefined;
   const ext = rawExt && rawExt.length <= 5 ? rawExt : "jpg";
   const path = `${user.id}/${itemId}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .upload(path, uploadFile, { upsert: true, contentType: uploadFile.type });
   if (uploadError) throw new Error(uploadError.message);
 
   if (oldImagePath && oldImagePath !== path) {
