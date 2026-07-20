@@ -214,6 +214,9 @@ if units < 0:
 
 ## Backlog
 
-- 単位換算（mL ↔ L、g ↔ kg を自動）
+- ~~単位換算（mL ↔ L、g ↔ kg を自動）~~ → 実装済み（[#462](https://github.com/toshi-hm/housekeeper/issues/462)）。
+  `src/lib/units.ts` に体積（mL/L）・重量（g/kg）の換算グループと純関数を実装し、消費フォーム
+  （`/_auth/items/$itemId/consume`）で入力単位を切り替え可能に。内部の数量モデル・DBスキーマは
+  変更せず、UI層でのみ `item.content_unit` へ換算してから消費アルゴリズムに渡す。
 - 複数バーコード読取での一括追加
 - バーコードと未紐付け item のサジェスト
