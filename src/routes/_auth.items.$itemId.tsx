@@ -501,15 +501,24 @@ const ItemDetailPage = () => {
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium">
+                          <p className="flex items-center gap-1.5 text-sm font-medium">
                             −{log.delta_amount}
                             {log.delta_unit}
+                            {log.note && (
+                              <StickyNote
+                                className="h-3.5 w-3.5 text-muted-foreground"
+                                aria-label={t("historyNoteIndicator")}
+                              />
+                            )}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {log.units_before} → {log.units_after} {t("units")}
                           </p>
+                          {log.note && (
+                            <p className="mt-1 text-xs text-muted-foreground">{log.note}</p>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs whitespace-nowrap text-muted-foreground">
                           {new Date(log.occurred_at).toLocaleDateString(i18n.language)}
                         </p>
                       </div>

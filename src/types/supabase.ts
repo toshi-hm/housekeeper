@@ -44,6 +44,7 @@ export interface Database {
           delta_unit: string;
           id: string;
           item_id: string;
+          note: string | null;
           occurred_at: string;
           opened_remaining_after: number | null;
           opened_remaining_before: number | null;
@@ -56,6 +57,7 @@ export interface Database {
           delta_unit: string;
           id?: string;
           item_id: string;
+          note?: string | null;
           occurred_at?: string;
           opened_remaining_after?: number | null;
           opened_remaining_before?: number | null;
@@ -68,6 +70,7 @@ export interface Database {
           delta_unit?: string;
           id?: string;
           item_id?: string;
+          note?: string | null;
           occurred_at?: string;
           opened_remaining_after?: number | null;
           opened_remaining_before?: number | null;

@@ -145,7 +145,8 @@ create table consumption_logs (
   units_after int not null,
   opened_remaining_before numeric(12,2),
   opened_remaining_after numeric(12,2),
-  occurred_at timestamptz not null default now()
+  occurred_at timestamptz not null default now(),
+  note text
 );
 
 create index consumption_logs_item_idx on consumption_logs(item_id, occurred_at desc);
@@ -154,6 +155,11 @@ create index consumption_logs_user_idx on consumption_logs(user_id, occurred_at 
 
 - `delta_unit` は item の `content_unit` と一致するのが基本だが、将来単位換算を入れる余地のため別カラムにしている
 - ログから状態は復元できる（`units_after` / `opened_remaining_after`）
+- `note`（#418）: 消費画面で入力する任意メモ。「消費理由プリセット」チップ（料理で使用 / 廃棄・期限切れ /
+  贈り物 / その他）はこのカラムに専用の値を持たず、選択されたプリセットのラベルと自由記述を
+  クライアント側で1本の文字列に結合してから保存する（プリセット単独 / 自由記述単独 / 組み合わせの
+  いずれも可）。専用のenumカラムを追加していないのは、v1時点でプリセットの追加・文言変更を
+  マイグレーションなしで行えるようにするため。
 
 ## user_settings
 

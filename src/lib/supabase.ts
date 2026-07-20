@@ -154,6 +154,7 @@ export interface Database {
           opened_remaining_before: number | null;
           opened_remaining_after: number | null;
           occurred_at: string;
+          note: string | null;
         };
         Insert: {
           id?: string;
@@ -166,6 +167,7 @@ export interface Database {
           opened_remaining_before?: number | null;
           opened_remaining_after?: number | null;
           occurred_at?: string;
+          note?: string | null;
         };
         Update: {
           id?: string;
@@ -178,6 +180,7 @@ export interface Database {
           opened_remaining_before?: number | null;
           opened_remaining_after?: number | null;
           occurred_at?: string;
+          note?: string | null;
         };
         Relationships: [];
       };

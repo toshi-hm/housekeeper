@@ -167,6 +167,7 @@ export const consumeLot = async ({
   lot,
   item,
   deltaAmount,
+  note,
 }: ConsumeLotParams): Promise<ConsumeLotResult> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -213,6 +214,7 @@ export const consumeLot = async ({
     units_after: result.units_after,
     opened_remaining_before: lot.opened_remaining ?? null,
     opened_remaining_after: result.opened_remaining_after,
+    note: note ?? null,
   });
   if (logError) {
     // Non-fatal: stock is already updated. Surfaced via _logInsertFailed so

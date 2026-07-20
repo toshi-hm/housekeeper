@@ -145,4 +145,15 @@ describe("consumeItem", () => {
     const result = await consumeItem({ item: makeItem(), deltaAmount: 1 });
     expect(result._logInsertFailed).toBe(true);
   });
+
+  test("ロットが存在しない場合、noteがconsumption_logs.noteに記録される (#418)", async () => {
+    responseQueues.item_lots = [{ data: [], error: null }];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+    responseQueues.items = [{ data: makeItem({ units: 2 }), error: null }];
+
+    await consumeItem({ item: makeItem(), deltaAmount: 1, note: "贈り物" });
+
+    const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
+    expect(logInsert?.args[0]).toMatchObject({ note: "贈り物" });
+  });
 });

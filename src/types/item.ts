@@ -112,13 +112,23 @@ export type ItemSortKey = "expiry_date" | "purchase_date" | "created_at";
 export interface ConsumeParams {
   item: Item;
   deltaAmount: number;
+  /** Optional free-text memo describing why/how the stock was consumed (#418). */
+  note?: string | null;
 }
 
 export interface ConsumeLotParams {
   lot: ItemLot;
   item: Pick<Item, "content_amount" | "content_unit">;
   deltaAmount: number;
+  /** Optional free-text memo describing why/how the stock was consumed (#418). */
+  note?: string | null;
 }
+
+/** Preset consumption reasons offered as quick-select chips on the consume
+ *  screen. Combined with the free-text note field (#418). */
+export type ConsumeReason = "cooking" | "expired" | "gift" | "other";
+
+export const CONSUME_REASONS: readonly ConsumeReason[] = ["cooking", "expired", "gift", "other"];
 
 export const DEFAULT_EXPIRY_WARNING_DAYS = 3;
 
