@@ -72,6 +72,7 @@
   "imageReplace": "写真を変更",
   "imageUploadFailed": "在庫は保存されましたが、画像のアップロードに失敗しました",
   "imageUploading": "アップロード中...",
+  "imageZoom": "画像を拡大表示",
   "itemCountLabel_other": "{{count}}件",
   "itemCountLabelFiltered": "{{filtered}} / {{total}}件",
   "itemDetail": "在庫詳細",

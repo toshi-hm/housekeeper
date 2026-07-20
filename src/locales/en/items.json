@@ -77,6 +77,7 @@
   "imageReplace": "Replace photo",
   "imageUploadFailed": "Item saved, but the image upload failed",
   "imageUploading": "Uploading...",
+  "imageZoom": "View full-size image",
   "itemCountLabel_one": "{{count}} item",
   "itemCountLabel_other": "{{count}} items",
   "itemCountLabelFiltered": "{{filtered}} / {{total}} items",

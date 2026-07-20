@@ -84,7 +84,7 @@ if units < 0:
 ## コンポーネント
 
 - organisms: `ItemList`, `ItemForm`, `ItemDetailView`, `ConsumeForm`
-- molecules: `ItemCard`, `ItemListRow`, `QuantityInput`, `ImageUploader`, `FilterChips`, `ConfirmDialog`
+- molecules: `ItemCard`, `ItemListRow`, `QuantityInput`, `ImageUploader`, `ImageLightbox`, `FilterChips`, `ConfirmDialog`
 - atoms: `ExpiryBadge`, `QuantityDisplay`, `UnitToggle`, `ItemImage`, `EmptyState`, `ViewModeToggle`
 
 ## データ
@@ -119,6 +119,10 @@ if units < 0:
 - 在庫不足での消費: フォーム側でブロック + 「最大量まで一括消費」ボタンで救済
 - 削除確認のキャンセル: 何もしない
 - ネットワーク失敗: トースト + リトライ
+
+画像ライトボックスは `role="dialog"` / `aria-modal="true"` を持ち、表示時に閉じるボタンへ
+フォーカスを移動する。Tabフォーカスをダイアログ内に閉じ込め、背景を `inert` にし、閉じた後は
+起点要素へフォーカスを戻す。Escape・閉じるボタン・背景クリックで閉じられる。
 
 ## v1 範囲
 
