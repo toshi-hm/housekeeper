@@ -248,7 +248,7 @@ export const DashboardPage = () => {
 
   const visibleItems = filtered.slice(0, displayCount);
   const { data: imageUrlsByPath } = useSignedItemImages(
-    visibleItems.map((item) => item.image_path),
+    viewMode === "grid" ? visibleItems.map((item) => item.image_path) : [],
   );
 
   // 期限バナー（見出し件数・アコーディオン内訳・一括追加ボタン）は在庫が残っている

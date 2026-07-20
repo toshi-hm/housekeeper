@@ -69,6 +69,7 @@ if units < 0:
 - 名前・バーコード・カテゴリ・場所・期限ステータスで絞り込める
 - 期限近い順 / 購入日順 / 作成日順でソートできる
 - 「使い切り」状態の item を一覧から隠せる
+- 一覧をグリッド表示 / コンパクトなリスト表示に切り替え、選択を端末に保存できる
 
 ## 画面・動線
 
@@ -83,8 +84,8 @@ if units < 0:
 ## コンポーネント
 
 - organisms: `ItemList`, `ItemForm`, `ItemDetailView`, `ConsumeForm`
-- molecules: `ItemCard`, `QuantityInput`, `ImageUploader`, `FilterChips`, `ConfirmDialog`
-- atoms: `ExpiryBadge`, `QuantityDisplay`, `UnitToggle`, `ItemImage`, `EmptyState`
+- molecules: `ItemCard`, `ItemListRow`, `QuantityInput`, `ImageUploader`, `FilterChips`, `ConfirmDialog`
+- atoms: `ExpiryBadge`, `QuantityDisplay`, `UnitToggle`, `ItemImage`, `EmptyState`, `ViewModeToggle`
 
 ## データ
 
