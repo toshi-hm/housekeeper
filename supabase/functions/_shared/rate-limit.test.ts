@@ -11,10 +11,10 @@ type RpcResult = { data: { allowed: boolean; retry_after_seconds: number } | nul
 // exercised without a live database.
 const makeFakeClient = (
   result: RpcResult,
-  onRpc?: (fn: string, params: Record<string, unknown>) => void,
+  onRpc?: (fn: string, params: Record<string, unknown> | undefined) => void,
 ): SupabaseClient =>
   ({
-    rpc: (fn: string, params: Record<string, unknown>) => {
+    rpc: (fn: string, params?: Record<string, unknown>) => {
       onRpc?.(fn, params);
       return { single: () => Promise.resolve(result) };
     },
@@ -37,19 +37,19 @@ Deno.test("checkChatRateLimit - returns blocked with retry-after when over the l
 
 Deno.test("checkChatRateLimit - fails closed when the RPC returns an error", async () => {
   const supabase = makeFakeClient({ data: null, error: new Error("boom") });
-  const result = await checkChatRateLimit(supabase, 20, 60);
+  const result = await checkChatRateLimit(supabase);
   assert.strictEqual(result.allowed, false);
   assert.strictEqual(result.retryAfterSeconds, 60);
 });
 
 Deno.test("checkChatRateLimit - fails closed when the RPC returns no data", async () => {
   const supabase = makeFakeClient({ data: null, error: null });
-  const result = await checkChatRateLimit(supabase, 20, 90);
+  const result = await checkChatRateLimit(supabase);
   assert.strictEqual(result.allowed, false);
-  assert.strictEqual(result.retryAfterSeconds, 90);
+  assert.strictEqual(result.retryAfterSeconds, 60);
 });
 
-Deno.test("checkChatRateLimit - forwards max requests / window params to the RPC", async () => {
+Deno.test("checkChatRateLimit - calls the server-configured RPC without caller-controlled limits", async () => {
   let capturedFn: string | undefined;
   let capturedParams: Record<string, unknown> | undefined;
   const supabase = makeFakeClient(
@@ -59,19 +59,7 @@ Deno.test("checkChatRateLimit - forwards max requests / window params to the RPC
       capturedParams = params;
     },
   );
-  await checkChatRateLimit(supabase, 5, 30);
-  assert.strictEqual(capturedFn, "check_chat_rate_limit");
-  assert.deepStrictEqual(capturedParams, { p_max_requests: 5, p_window_seconds: 30 });
-});
-
-Deno.test("checkChatRateLimit - uses default max requests / window when omitted", async () => {
-  let capturedParams: Record<string, unknown> | undefined;
-  const supabase = makeFakeClient(
-    { data: { allowed: true, retry_after_seconds: 0 }, error: null },
-    (_fn, params) => {
-      capturedParams = params;
-    },
-  );
   await checkChatRateLimit(supabase);
-  assert.deepStrictEqual(capturedParams, { p_max_requests: 20, p_window_seconds: 60 });
+  assert.strictEqual(capturedFn, "check_chat_rate_limit");
+  assert.strictEqual(capturedParams, undefined);
 });

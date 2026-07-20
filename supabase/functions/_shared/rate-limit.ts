@@ -51,23 +51,20 @@ export interface ChatRateLimitResult {
   retryAfterSeconds: number;
 }
 
+const CHAT_RATE_LIMIT_RETRY_SECONDS = 60;
+
 export const checkChatRateLimit = async (
   supabase: SupabaseClient,
-  maxRequests = 20,
-  windowSeconds = 60,
 ): Promise<ChatRateLimitResult> => {
   const { data, error } = await supabase
-    .rpc("check_chat_rate_limit", {
-      p_max_requests: maxRequests,
-      p_window_seconds: windowSeconds,
-    })
+    .rpc("check_chat_rate_limit")
     .single<{ allowed: boolean; retry_after_seconds: number }>();
 
   if (error || !data) {
     // Fail closed: if the rate-limit check itself is broken, don't let the
     // request bypass throttling entirely.
     console.error("[inventory-chat] rate limit check failed", error);
-    return { allowed: false, retryAfterSeconds: windowSeconds };
+    return { allowed: false, retryAfterSeconds: CHAT_RATE_LIMIT_RETRY_SECONDS };
   }
 
   return { allowed: data.allowed, retryAfterSeconds: data.retry_after_seconds };
