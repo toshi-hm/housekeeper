@@ -78,7 +78,7 @@ export const ChatComposer = ({ onSend, isLoading = false }: ChatComposerProps) =
           (isNearLimit || isOverLimit) && "text-destructive",
         )}
       >
-        {t("charCount", { count: value.length, max: CHAT_MAX_MESSAGE_LENGTH })}
+        {t("charCount", { current: value.length, max: CHAT_MAX_MESSAGE_LENGTH })}
       </span>
     </form>
   );

@@ -1,7 +1,5 @@
 {
-  "charCount": "{{count}} / {{max}} characters",
-  "charCount_one": "",
-  "charCount_other": "",
+  "charCount": "{{current}} / {{max}} characters",
   "clear": "Clear conversation",
   "close": "Close",
   "emptyHint": "Ask anything about your inventory. Try one of the prompts below.",

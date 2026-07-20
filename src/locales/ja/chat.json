@@ -1,6 +1,5 @@
 {
-  "charCount": "{{count}} / {{max}} 文字",
-  "charCount_other": "",
+  "charCount": "{{current}} / {{max}} 文字",
   "clear": "会話をクリア",
   "close": "閉じる",
   "emptyHint": "在庫について質問できます。例えば下のボタンから試せます。",
