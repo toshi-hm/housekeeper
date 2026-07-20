@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { reportError } from "@/lib/sentry";
 
 interface Props {
   children: ReactNode;
@@ -38,6 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     // oxlint-disable-next-line no-console
     console.error("ErrorBoundary caught:", error, info);
+    reportError(error);
   }
 
   override render() {

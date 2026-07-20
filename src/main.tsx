@@ -8,9 +8,12 @@ import { createRoot } from "react-dom/client";
 
 import { registerPwaServiceWorker } from "@/lib/pwa";
 import { persister, queryClient } from "@/lib/queryClient";
+import { initSentry } from "@/lib/sentry";
 import { ToastProvider } from "@/lib/toast";
 
 import { routeTree } from "./routeTree.gen";
+
+initSentry();
 
 const router = createRouter({
   routeTree,
