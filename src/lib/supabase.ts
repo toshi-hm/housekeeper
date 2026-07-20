@@ -188,6 +188,7 @@ export interface Database {
           expiry_warning_days: number;
           default_unit: string;
           notify_at: string;
+          auto_archive_after_days: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -197,6 +198,7 @@ export interface Database {
           expiry_warning_days?: number;
           default_unit?: string;
           notify_at?: string;
+          auto_archive_after_days?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -206,6 +208,7 @@ export interface Database {
           expiry_warning_days?: number;
           default_unit?: string;
           notify_at?: string;
+          auto_archive_after_days?: number | null;
           updated_at?: string;
         };
         Relationships: [];

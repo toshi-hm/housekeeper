@@ -23,6 +23,7 @@ import { QuickMemoSheet } from "@/components/molecules/QuickMemoSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { useAutoArchiveExpiredItems } from "@/hooks/useAutoArchive";
 import { useConsumeItem } from "@/hooks/useConsumeItem";
 import { useSignedItemImages } from "@/hooks/useItemImage";
 import {
@@ -135,6 +136,7 @@ export const DashboardPage = () => {
   const { data: locations = [] } = useStorageLocations();
   const { data: userSettings } = useUserSettings();
   const warningDays = userSettings?.expiry_warning_days;
+  useAutoArchiveExpiredItems(userSettings?.auto_archive_after_days);
   const consumeItem = useConsumeItem();
   const upsertShoppingItem = useUpsertShoppingItem();
   const { toast } = useToast();

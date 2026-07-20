@@ -132,12 +132,17 @@ create table user_settings (
   expiry_warning_days int not null default 3 check (expiry_warning_days >= 0),
   default_unit text not null default 'mL',
   notify_at time not null default '08:00',
+  auto_archive_after_days int check (auto_archive_after_days is null or auto_archive_after_days >= 1),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 ```
 
 - 1 user 1 行。サインアップ時にトリガで自動挿入する想定（または初回アクセスで upsert）
+- `auto_archive_after_days`: 期限切れアイテムの自動アーカイブ機能（#419）の設定値。`null`（デフォルト）= 無効、
+  1以上の整数 = 期限切れからその日数が経過した `items` を自動的にソフトデリート（`deleted_at` セット）する猶予日数。
+  実行はサーバーcronではなく**クライアントサイド**（ダッシュボード初期表示時）が担う。詳細は
+  `docs/specs/features/expiry-alert.md` を参照。
 
 ## shopping_list_items（v1.1）
 

@@ -82,6 +82,8 @@ export interface UserSettings {
   expiry_warning_days: number;
   default_unit: string;
   notify_at: string;
+  /** 期限切れ後の自動アーカイブ猶予日数。null = 無効（デフォルト） (#419) */
+  auto_archive_after_days: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -118,6 +120,9 @@ export interface ConsumeLotParams {
 
 export const DEFAULT_EXPIRY_WARNING_DAYS = 3;
 
+/** 自動アーカイブを有効化するときにデフォルトで提案する猶予日数 (#419) */
+export const DEFAULT_AUTO_ARCHIVE_AFTER_DAYS = 7;
+
 export const CONTENT_UNITS = ["個", "枚", "本", "袋", "mL", "L", "g", "kg"] as const;
 
 export const getExpiryStatus = (
@@ -134,6 +139,35 @@ export const getExpiryStatus = (
   if (diffDays < 0) return "expired";
   if (diffDays <= warningDays) return "expiring-soon";
   return "ok";
+};
+
+/**
+ * 期限切れ後 N 日以上経過したアイテムを自動アーカイブ（ソフトデリート）の対象とするか判定する
+ * 純粋関数 (#419)。実際のDB更新は呼び出し側（useAutoArchiveExpiredItems）が行う。
+ *
+ * - `autoArchiveAfterDays` が null/undefined/1未満（無効設定）の場合は常に false
+ * - 既にソフトデリート済み（`deleted_at` あり）のアイテムは対象外
+ * - `expiry_date` が未設定のアイテムは対象外（期限切れ判定ができないため）
+ * - 判定はクライアントのローカル日付基準（`getExpiryStatus` と同様、タイムゾーンをUTCに揃えない）
+ */
+export const shouldAutoArchive = (
+  item: Pick<Item, "expiry_date" | "deleted_at">,
+  autoArchiveAfterDays: number | null | undefined,
+  today: Date = new Date(),
+): boolean => {
+  if (!autoArchiveAfterDays || autoArchiveAfterDays < 1) return false;
+  if (item.deleted_at) return false;
+  if (!item.expiry_date) return false;
+
+  const normalizedToday = new Date(today);
+  normalizedToday.setHours(0, 0, 0, 0);
+
+  const [year, month, day] = item.expiry_date.split("-").map(Number) as [number, number, number];
+  const expiry = new Date(year, month - 1, day);
+
+  const diffMs = normalizedToday.getTime() - expiry.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  return diffDays >= autoArchiveAfterDays;
 };
 
 /** ロット（またはアイテム）1件の実残量を計算する。opened_remaining がある場合は

@@ -377,6 +377,7 @@ export interface Database {
       };
       user_settings: {
         Row: {
+          auto_archive_after_days: number | null;
           created_at: string;
           default_unit: string;
           expiry_warning_days: number;
@@ -386,6 +387,7 @@ export interface Database {
           user_id: string;
         };
         Insert: {
+          auto_archive_after_days?: number | null;
           created_at?: string;
           default_unit?: string;
           expiry_warning_days?: number;
@@ -395,6 +397,7 @@ export interface Database {
           user_id: string;
         };
         Update: {
+          auto_archive_after_days?: number | null;
           created_at?: string;
           default_unit?: string;
           expiry_warning_days?: number;

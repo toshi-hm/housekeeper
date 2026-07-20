@@ -1,7 +1,12 @@
 import { type ReactNode, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Toast, ToastContext, type ToastVariant } from "@/lib/toast-context";
+import {
+  type Toast,
+  ToastContext,
+  type ToastOptions,
+  type ToastVariant,
+} from "@/lib/toast-context";
 
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -11,10 +16,11 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const toast = useCallback(
-    (message: string, variant: ToastVariant = "default") => {
+    (message: string, variant: ToastVariant = "default", options?: ToastOptions) => {
       const id = crypto.randomUUID();
-      setToasts((prev) => [...prev, { id, message, variant }]);
-      setTimeout(() => dismiss(id), 4000);
+      setToasts((prev) => [...prev, { id, message, variant, action: options?.action }]);
+      const duration = options?.durationMs ?? (options?.action ? 5000 : 4000);
+      setTimeout(() => dismiss(id), duration);
     },
     [dismiss],
   );
@@ -59,6 +65,17 @@ const ToastContainer = ({
           className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm shadow-lg ${variantClasses[t.variant]}`}
         >
           <span>{t.message}</span>
+          {t.action && (
+            <button
+              onClick={() => {
+                t.action?.onClick();
+                onDismiss(t.id);
+              }}
+              className="ml-1 shrink-0 whitespace-nowrap font-semibold underline underline-offset-2 opacity-90 hover:opacity-100"
+            >
+              {t.action.label}
+            </button>
+          )}
           <button
             onClick={() => onDismiss(t.id)}
             className="ml-2 opacity-70 hover:opacity-100"

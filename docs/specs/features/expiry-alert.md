@@ -48,6 +48,27 @@ export const getExpiryStatus = (
 - `getExpiryStatus` の境界テストを `bun test` で追加
 - `FilterChips` で期限ステータスフィルタ
 
+## 自動アーカイブ（#419）
+
+期限切れアイテムが溜まり続けると `urgentCount` バナーが常時表示になり、アラート疲れを招く。
+これを軽減するため、期限切れから一定日数経過したアイテムを自動的にソフトデリート
+（`items.deleted_at` セット）するオプション機能を持つ。
+
+- 設定: `user_settings.auto_archive_after_days`（`int | null`）。`null` = 無効（デフォルト）。
+  設定ページの「期限切れアイテムの自動アーカイブ」セクションで ON/OFF と日数（1〜365）を変更する。
+- **実行トリガー: クライアントサイド**。本アプリはサーバーを持たないため（`CLAUDE.md` の制約）、
+  サーバーcronではなく `useAutoArchiveExpiredItems`（`src/hooks/useAutoArchive.ts`）が
+  ダッシュボード（`/_auth/index`）の初期表示時に一度だけ実行する。
+  - オフライン時（`navigator.onLine === false`）はスキップする（次回オンライン時に再度チャンスがある）
+  - 判定は純粋関数 `shouldAutoArchive(item, autoArchiveAfterDays, today)`（`src/types/item.ts`）が担う。
+    「`expiry_date` が今日から `autoArchiveAfterDays` 日以上前」かつ未削除のアイテムが対象
+  - 対象アイテムを一括ソフトデリートした後、「N件のアイテムをアーカイブしました」トースト
+    ＋「元に戻す」アクションを表示する（トーストは5秒で自動的に消える＝実質的な取り消し猶予）
+- アーカイブ済み（ソフトデリート済み）アイテムは設定ページの「アーカイブ済みアイテム」
+  （`/settings/archived-items`）から一覧・復元できる。既存の `items.deleted_at` ソフトデリート
+  基盤（`useSoftDeleteItem` / バーコード再スキャンによる `tryReviveItem` 等）をそのまま流用し、
+  復元専用の `useRestoreItem` / `useDeletedItems`（`src/hooks/useItems.ts`）を追加した。
+
 ## Backlog
 
 - 「賞味期限」と「消費期限」の区別（UX 上の重要度を分ける）

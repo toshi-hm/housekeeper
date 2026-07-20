@@ -9,6 +9,7 @@ import {
   itemFormSchema,
   itemLotSchema,
   roundFloat,
+  shouldAutoArchive,
 } from "./item";
 
 // --- itemFormSchema ---
@@ -203,6 +204,82 @@ describe("getExpiryStatus", () => {
   test("custom warningDays", () => {
     expect(getExpiryStatus(fmt(addDays(5)), 7)).toBe("expiring-soon");
     expect(getExpiryStatus(fmt(addDays(8)), 7)).toBe("ok");
+  });
+});
+
+// --- shouldAutoArchive ---
+
+describe("shouldAutoArchive", () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const fmt = (d: Date) => d.toISOString().split("T")[0] as string;
+  const addDays = (n: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + n);
+    return d;
+  };
+
+  test("disabled setting (null) => never archives", () => {
+    expect(shouldAutoArchive({ expiry_date: "2000-01-01", deleted_at: null }, null, today)).toBe(
+      false,
+    );
+  });
+
+  test("disabled setting (undefined) => never archives", () => {
+    expect(
+      shouldAutoArchive({ expiry_date: "2000-01-01", deleted_at: null }, undefined, today),
+    ).toBe(false);
+  });
+
+  test("setting of 0 or negative => never archives", () => {
+    expect(shouldAutoArchive({ expiry_date: "2000-01-01", deleted_at: null }, 0, today)).toBe(
+      false,
+    );
+    expect(shouldAutoArchive({ expiry_date: "2000-01-01", deleted_at: null }, -1, today)).toBe(
+      false,
+    );
+  });
+
+  test("already soft-deleted item => never archives again", () => {
+    expect(
+      shouldAutoArchive(
+        { expiry_date: "2000-01-01", deleted_at: "2026-01-01T00:00:00Z" },
+        3,
+        today,
+      ),
+    ).toBe(false);
+  });
+
+  test("no expiry_date => never archives", () => {
+    expect(shouldAutoArchive({ expiry_date: null, deleted_at: null }, 3, today)).toBe(false);
+  });
+
+  test("expired exactly N days ago => archives (boundary, inclusive)", () => {
+    expect(shouldAutoArchive({ expiry_date: fmt(addDays(-3)), deleted_at: null }, 3, today)).toBe(
+      true,
+    );
+  });
+
+  test("expired N-1 days ago => does not archive yet", () => {
+    expect(shouldAutoArchive({ expiry_date: fmt(addDays(-2)), deleted_at: null }, 3, today)).toBe(
+      false,
+    );
+  });
+
+  test("expired well beyond N days ago => archives", () => {
+    expect(shouldAutoArchive({ expiry_date: fmt(addDays(-30)), deleted_at: null }, 3, today)).toBe(
+      true,
+    );
+  });
+
+  test("not yet expired => does not archive", () => {
+    expect(shouldAutoArchive({ expiry_date: fmt(addDays(5)), deleted_at: null }, 3, today)).toBe(
+      false,
+    );
+  });
+
+  test("expires today => does not archive", () => {
+    expect(shouldAutoArchive({ expiry_date: fmt(today), deleted_at: null }, 3, today)).toBe(false);
   });
 });
 
