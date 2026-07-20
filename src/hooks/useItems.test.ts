@@ -134,6 +134,17 @@ describe("applyItemToListCaches", () => {
 
     expect(qc.getQueryData<Item[]>(withExpiryQuery)).toEqual([created]);
   });
+
+  test("フィルタ条件のないリストには常に挿入する (#435)", () => {
+    const qc = new QueryClient();
+    const listQuery = [...ITEMS_KEY, {}, "created_at"];
+    qc.setQueryData(listQuery, []);
+
+    const created = makeItem({ id: "any-item" });
+    applyItemToListCaches(qc, created);
+
+    expect(qc.getQueryData<Item[]>(listQuery)).toEqual([created]);
+  });
 });
 
 describe("normalizeUpdateValues", () => {

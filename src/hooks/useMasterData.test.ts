@@ -40,8 +40,23 @@ const fromMock = mock((table: string) => {
 
 const getUserMock = mock(() => Promise.resolve({ data: { user: { id: "user-1" } }, error: null }));
 
+interface RpcResponse {
+  data: unknown;
+  error: { code?: string; message?: string } | null;
+}
+
+const rpcResponseQueues: Record<string, RpcResponse[]> = {};
+let rpcCallLog: Array<{ fn: string; args: unknown }> = [];
+
+const rpcMock = mock((fn: string, args: unknown) => {
+  rpcCallLog.push({ fn, args });
+  const queue = rpcResponseQueues[fn];
+  const response = queue && queue.length > 0 ? queue.shift()! : { data: null, error: null };
+  return Promise.resolve(response);
+});
+
 mock.module("@/lib/supabase", () => ({
-  supabase: { from: fromMock, auth: { getUser: getUserMock } },
+  supabase: { from: fromMock, auth: { getUser: getUserMock }, rpc: rpcMock },
 }));
 
 const {
@@ -49,14 +64,21 @@ const {
   updateCategory,
   createStorageLocation,
   updateStorageLocation,
+  deleteCategory,
+  deleteStorageLocation,
   DuplicateNameError,
   InvalidNameLengthError,
+  CategoryInUseError,
+  LocationInUseError,
 } = await import("@/hooks/useMasterData");
 
 beforeEach(() => {
   callLog = [];
+  rpcCallLog = [];
   for (const key of Object.keys(responseQueues)) delete responseQueues[key];
+  for (const key of Object.keys(rpcResponseQueues)) delete rpcResponseQueues[key];
   getUserMock.mockClear();
+  rpcMock.mockClear();
 });
 
 describe("createCategory", () => {
@@ -126,5 +148,48 @@ describe("updateStorageLocation", () => {
     await expect(updateStorageLocation("loc-1", "a".repeat(41))).rejects.toBeInstanceOf(
       InvalidNameLengthError,
     );
+  });
+});
+
+describe("deleteCategory (#491)", () => {
+  test("delete_category_if_unused RPCを呼び出す（使用中チェックと削除を単一のアトミック操作にする）", async () => {
+    await deleteCategory("cat-1");
+    expect(rpcCallLog).toEqual([{ fn: "delete_category_if_unused", args: { p_id: "cat-1" } }]);
+
+    const fromCall = callLog.find((c) => c.table === "categories" && c.method === "delete");
+    expect(fromCall).toBeUndefined();
+  });
+
+  test("RPCがHK001を返した場合（削除確認待ち中に他デバイスから割り当てられた等）、CategoryInUseErrorをthrowする", async () => {
+    rpcResponseQueues.delete_category_if_unused = [
+      { data: null, error: { code: "HK001", message: "category is in use" } },
+    ];
+    await expect(deleteCategory("cat-1")).rejects.toBeInstanceOf(CategoryInUseError);
+  });
+
+  test("その他のDBエラーはそのままthrowする", async () => {
+    rpcResponseQueues.delete_category_if_unused = [
+      { data: null, error: { code: "23503", message: "fk violation" } },
+    ];
+    await expect(deleteCategory("cat-1")).rejects.toMatchObject({ code: "23503" });
+  });
+});
+
+describe("deleteStorageLocation (#491)", () => {
+  test("delete_storage_location_if_unused RPCを呼び出す（使用中チェックと削除を単一のアトミック操作にする）", async () => {
+    await deleteStorageLocation("loc-1");
+    expect(rpcCallLog).toEqual([
+      { fn: "delete_storage_location_if_unused", args: { p_id: "loc-1" } },
+    ]);
+
+    const fromCall = callLog.find((c) => c.table === "storage_locations" && c.method === "delete");
+    expect(fromCall).toBeUndefined();
+  });
+
+  test("RPCがHK002を返した場合、LocationInUseErrorをthrowする", async () => {
+    rpcResponseQueues.delete_storage_location_if_unused = [
+      { data: null, error: { code: "HK002", message: "storage location is in use" } },
+    ];
+    await expect(deleteStorageLocation("loc-1")).rejects.toBeInstanceOf(LocationInUseError);
   });
 });

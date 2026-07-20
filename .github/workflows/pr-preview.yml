@@ -1,0 +1,106 @@
+name: PR Preview Deploy
+
+# Cloudflare preview deployment per PR (#292).
+#
+# NOTE: #292 was written assuming Cloudflare *Pages*, but this repo's actual
+# production deploy target (wrangler.jsonc) is a Cloudflare *Workers* static
+# assets project (`assets.directory: dist` + SPA routing), not Pages. Rather
+# than bolt on an unrelated Pages project, this deploys each PR to its own
+# uniquely-named Worker (`housekeeper-pr-<number>`) using the same wrangler
+# config, which is the Workers-native equivalent of a Pages preview URL.
+#
+# Requires repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to be
+# configured by the repo owner — see PR description. Until then this job
+# succeeds without deploying and emits a clear warning.
+#
+# Disabled by default to avoid exhausting Cloudflare's free deployment quota.
+# Set the repository variable ENABLE_PR_PREVIEW to "true" to opt in.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    name: Deploy preview Worker
+    if: ${{ vars.ENABLE_PR_PREVIEW == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secrets are configured
+        id: config
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID repo secrets are not set. Skipping PR preview deployment."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.config.outputs.configured == 'true'
+
+      - uses: oven-sh/setup-bun@v2
+        if: steps.config.outputs.configured == 'true'
+
+      - name: Install dependencies
+        if: steps.config.outputs.configured == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        if: steps.config.outputs.configured == 'true'
+        run: bun run build
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
+
+      - name: Deploy to Cloudflare Workers (preview)
+        if: steps.config.outputs.configured == 'true'
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --name housekeeper-pr-${{ github.event.pull_request.number }}
+
+      - name: Comment preview URL on PR
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `${{ steps.deploy.outputs.command-output }}`;
+            const match = output.match(/https:\/\/[^\s]+\.workers\.dev/);
+            const url = match ? match[0] : null;
+            const body = url
+              ? `🚀 Preview deployed: ${url}`
+              : `⚠️ Preview deploy ran but the URL could not be parsed from wrangler output. Check the workflow log.`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const marker = "<!-- pr-preview-comment -->";
+            const existing = comments.find((c) => c.body.includes(marker));
+            const commentBody = `${marker}\n${body}`;
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody,
+              });
+            }

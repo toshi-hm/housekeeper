@@ -1,15 +1,19 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+import { checkRateLimit, timingSafeEqual } from "../_shared/rate-limit.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const json = (body: unknown, status = 200) =>
+const RATE_LIMIT_SCOPE = "verify-security-answer";
+
+const json = (body: unknown, status = 200, extraHeaders: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, ...extraHeaders, "Content-Type": "application/json" },
   });
 
 const sha256hex = async (text: string): Promise<string> => {
@@ -39,15 +43,26 @@ Deno.serve(async (req: Request) => {
       return json({ error: "new_password is required" }, 400);
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // #433: throttle repeated answer guesses against the same email to
+    // prevent brute-forcing the (low-entropy) secret question answer.
+    const rateLimit = await checkRateLimit(supabase, RATE_LIMIT_SCOPE, normalizedEmail);
+    if (!rateLimit.allowed) {
+      return json({ error: "しばらく時間をおいて再度お試しください" }, 429, {
+        "Retry-After": String(rateLimit.retryAfterSeconds),
+      });
+    }
+
     const { data: row, error: fetchError } = await supabase
       .from("user_security_questions")
       .select("user_id, answer_hash")
-      .eq("email", email.toLowerCase().trim())
+      .eq("email", normalizedEmail)
       .single();
 
     if (fetchError || !row) {
@@ -56,7 +71,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const hash = await sha256hex(row.user_id + ":" + answer.toLowerCase().trim());
-    if (hash !== row.answer_hash) {
+    // Constant-time comparison to avoid leaking hash-match info via timing.
+    if (!(await timingSafeEqual(hash, row.answer_hash))) {
       return json({ error: "秘密の質問の答えが正しくありません" }, 401);
     }
 

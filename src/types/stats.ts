@@ -11,10 +11,14 @@ export interface ExpiryDistributionEntry {
   count: number;
 }
 
+interface UnitTotal {
+  unit: string;
+  total: number;
+}
+
 export interface MonthlyConsumptionEntry {
   month: string;
-  total: number;
-  unit: string;
+  totals: UnitTotal[];
 }
 
 export interface RawLog {
@@ -88,12 +92,14 @@ export const computeMonthlyConsumption = (
       unitTotals.set(log.delta_unit, (unitTotals.get(log.delta_unit) ?? 0) + log.delta_amount);
     }
 
-    if (unitTotals.size === 0) {
-      result.push({ month: label, total: 0, unit: "" });
-    } else {
-      const [dominantUnit, total] = [...unitTotals.entries()].sort((a, b) => b[1] - a[1])[0]!;
-      result.push({ month: label, total: Math.round(total * 100) / 100, unit: dominantUnit });
-    }
+    // Keep a separate total per unit instead of collapsing to the single
+    // most-common unit — mixing units in one sum would be meaningless, and
+    // silently dropping the non-dominant units loses real consumption data.
+    const totals: UnitTotal[] = [...unitTotals.entries()]
+      .map(([unit, total]) => ({ unit, total: Math.round(total * 100) / 100 }))
+      .sort((a, b) => b.total - a.total);
+
+    result.push({ month: label, totals });
   }
 
   return result;

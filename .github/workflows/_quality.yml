@@ -40,3 +40,11 @@ jobs:
         run: |
           bunx i18next-parser --config i18next-parser.config.ts
           git diff --exit-code src/locales/
+
+      - name: Spec drift check (non-blocking)
+        # Heuristic docs/specs vs implementation diff (#464). Findings are
+        # real today (see PR description) so this starts non-blocking;
+        # flip scripts/check-spec-drift.mjs's `--strict` on once the docs
+        # catch up, so new drift gets caught going forward.
+        run: node scripts/check-spec-drift.mjs
+        continue-on-error: true
