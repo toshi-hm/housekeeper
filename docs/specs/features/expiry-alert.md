@@ -75,3 +75,51 @@ export const getExpiryStatus = (
 
 - 「賞味期限」と「消費期限」の区別（UX 上の重要度を分ける）
 - カテゴリ別に閾値を変える
+
+## 外部レシピ提案（#461）
+
+期限切れ / 期限間近アイテムを使い切るための外部レシピ検索をダッシュボードでサジェストする。
+
+**注意**: これは #393（`recipes`/`recipe_items` テーブルを持つ、ユーザー定義の「レシピ/セット消費」機能。
+`/recipes` ルート）とは別物。#393 はユーザーが自分で登録したレシピをワンタップ消費するための DB 機能、
+本機能はアイテム名をもとに**外部API**からレシピ候補を検索して見せるだけの機能で、DBテーブルを持たない。
+
+### 処理フロー
+
+1. `DashboardPage` が `urgentItems`（`expired` / `expiring-soon` かつ `units > 0`）の商品名を先頭5件まで抽出
+2. `useRecipeSuggestions(itemNames)`（`src/hooks/useRecipeSuggestions.ts`, TanStack Query）が
+   Edge Function `recipe-suggest` を呼ぶ。結果は `staleTime` 長め（6時間）でキャッシュする
+3. Edge Function は `barcode-lookup` と同じ CORS 回避パターン（authチェック → 外部API呼び出し →
+   レスポンス整形）を踏襲し、外部レシピ検索API（例: 楽天レシピAPI等）にアイテム名を渡す
+4. 結果は `ExpiryRecipeSuggestions` molecule（`src/components/molecules/ExpiryRecipeSuggestions.tsx`）
+   として `ExpiryBanner` 付近に表示する
+
+### API
+
+```
+POST /functions/v1/recipe-suggest
+body: { itemNames: string[] }   // 1〜5件、空文字・重複・101文字以上は除外
+res:  { recipes: { id, title, url, imageUrl }[], reason?: "missing_api_key" }
+```
+
+Edge Function 実装: `supabase/functions/recipe-suggest/index.ts`
+（外部API呼び出し本体・整形ロジックは `recipe.ts` にDI可能な形で分離し、Deno単体テストを容易にしている）
+
+### 必要なSecret
+
+- `RECIPE_API_KEY`: 外部レシピ検索APIのアプリケーションキー。**未設定時は例外を投げず、
+  `{ recipes: [], reason: "missing_api_key" }` を返してソフトデグレードする**（`barcode-lookup` の
+  `YAHOO_SHOPPING_APP_ID` 未設定時と同様の考え方）。Supabase の Secrets に設定が必要
+  （`supabase secrets set RECIPE_API_KEY=...`）。未設定でもアプリは壊れず、レシピ提案が非表示になるだけ
+
+### エラー / 空データ
+
+- `itemNames` が空（期限切れ/期限間近アイテムなし） → hook 自体を `enabled: false` にして呼ばない
+- `RECIPE_API_KEY` 未設定・外部API呼び出し失敗・タイムアウト（8秒） → いずれも `{ recipes: [] }` を返す
+  （HTTPステータスは 200 のまま。これは `barcode-lookup` が 5xx を返すのと異なり、任意のサジェスト機能で
+  あるため、クライアント側でエラーハンドリングを分岐させないための意図的な設計）
+- `ExpiryRecipeSuggestions` は `suggestions` が空配列のときは何も描画しない（バナーが出ない = 静かに機能degrade）
+
+## v1.3 範囲
+
+- 上記の外部レシピ提案（本セクション）

@@ -69,3 +69,10 @@ Edge Function 実装: `supabase/functions/barcode-lookup/index.ts`
 ## Backlog
 
 - 複数バーコード一括読取
+
+## 関連: CORS回避パターンの再利用
+
+外部APIをCORS制約なく叩くための「Edge Function経由・authチェック・キー未設定時はソフトフェイル」という
+本spec の構成は `supabase/functions/recipe-suggest`（期限が近いアイテムの外部レシピ提案、#461。
+`docs/specs/features/expiry-alert.md` 参照）でも同じ形で踏襲している。新しく外部APIを呼ぶ機能を追加する際は
+このパターンに倣うこと。
