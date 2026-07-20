@@ -107,16 +107,15 @@ export const useUpdateNotificationPreferences = () => {
 
 export const useTestNotification = () => {
   const { toast } = useToast();
-  const { t } = useTranslation("notifications");
-  const { t: tCommon } = useTranslation("common");
+  const { t } = useTranslation(["common", "notifications"]);
   return useMutation({
     mutationFn: sendTestNotification,
     onSuccess: () => {
-      toast(t("testNotificationSuccess"), "success");
+      toast(t("notifications:testNotificationSuccess"), "success");
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(tCommon("offlineError"), "error");
-      else toast(t("testNotificationError"), "error");
+      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
+      else toast(t("notifications:testNotificationError"), "error");
     },
   });
 };
