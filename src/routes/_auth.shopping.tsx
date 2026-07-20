@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { ShareButton } from "@/components/atoms/ShareButton";
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ScanToShoppingDialog } from "@/components/molecules/ScanToShoppingDialog";
 import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
@@ -33,6 +34,7 @@ import {
   useSaveShoppingTemplate,
   useShoppingTemplates,
 } from "@/hooks/useShoppingTemplates";
+import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { OfflineError } from "@/lib/requireOnline";
 import {
   type CategoryResolver,
@@ -73,6 +75,7 @@ const tabLabelKey = {
 
 const ShoppingPage = () => {
   const { t } = useTranslation("shopping");
+  const { t: tc } = useTranslation("common");
   const { toast } = useToast();
   const qc = useQueryClient();
   // 購入ダイアログ内の ItemForm で選択された画像。購入成功後にアップロードする (#453)
@@ -96,6 +99,7 @@ const ShoppingPage = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [scanDraft, setScanDraft] = useState<ScanDraft | null>(null);
   const [isLooking, setIsLooking] = useState(false);
+  const speechInput = useSpeechInput((transcript) => setAddName(transcript));
 
   const { data: items = [], isLoading } = useShoppingList(tab);
   const { data: plannedItems = [] } = useShoppingList("planned");
@@ -467,16 +471,25 @@ const ShoppingPage = () => {
         <div className="space-y-3 rounded-lg border p-4">
           <div className="space-y-1">
             <Label htmlFor="add-name">{t("itemName")}</Label>
-            <Input
-              id="add-name"
-              value={addName}
-              onChange={(e) => setAddName(e.target.value)}
-              placeholder={t("itemNamePlaceholder")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void handleAdd();
-              }}
-              autoFocus
-            />
+            <div className="flex gap-2">
+              <Input
+                id="add-name"
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
+                placeholder={t("itemNamePlaceholder")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleAdd();
+                }}
+                autoFocus
+              />
+              <VoiceInputButton
+                isSupported={speechInput.isSupported}
+                isListening={speechInput.isListening}
+                onStart={speechInput.start}
+                label={tc("voiceInput")}
+                listeningLabel={tc("voiceInputListening")}
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <Label htmlFor="add-note">{t("note")}</Label>

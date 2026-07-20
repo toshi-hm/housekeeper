@@ -2,6 +2,7 @@ import { Barcode, Loader2, Search } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { ProductLookupResult } from "@/components/molecules/ProductLookupResult";
 import { QuickAddSelect } from "@/components/molecules/QuickAddSelect";
@@ -23,6 +24,7 @@ import {
   useDeleteStorageLocation,
   useStorageLocations,
 } from "@/hooks/useMasterData";
+import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { useToast } from "@/lib/toast-context";
 import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
 
@@ -50,6 +52,7 @@ export const ItemForm = ({
   extraFields,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
+  const { t: tc } = useTranslation("common");
   const { t: ts } = useTranslation("settings");
   const { toast } = useToast();
   const { data: categories = [] } = useCategories();
@@ -59,7 +62,6 @@ export const ItemForm = ({
   const { mutateAsync: addLocation } = useCreateStorageLocation();
   const { mutateAsync: deleteCategoryMutate } = useDeleteCategory();
   const { mutateAsync: deleteLocationMutate } = useDeleteStorageLocation();
-
   const [values, setValues] = useState<ItemFormValues>({
     name: defaultValues?.name ?? "",
     barcode: defaultValues?.barcode ?? "",
@@ -88,6 +90,10 @@ export const ItemForm = ({
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
   const [lookupSource, setLookupSource] = useState<"db" | "api" | null>(null);
+  const speechInput = useSpeechInput((transcript) => {
+    setValues((previous) => ({ ...previous, name: transcript }));
+    setNameError("");
+  });
 
   useEffect(() => {
     return () => {
@@ -304,12 +310,19 @@ export const ItemForm = ({
                 />
               </div>
             )}
-            <div className="flex-1 min-w-0">
+            <div className="flex flex-1 min-w-0 gap-2">
               <Input
                 id="name"
                 value={values.name}
                 onChange={(e) => set("name", e.target.value)}
                 placeholder={t("namePlaceholder")}
+              />
+              <VoiceInputButton
+                isSupported={speechInput.isSupported}
+                isListening={speechInput.isListening}
+                onStart={speechInput.start}
+                label={tc("voiceInput")}
+                listeningLabel={tc("voiceInputListening")}
               />
             </div>
           </div>
