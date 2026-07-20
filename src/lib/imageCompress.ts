@@ -23,7 +23,7 @@ export interface OutputFormat {
 export const MAX_EDGE_PX = 1280;
 
 /** JPEG/WebP re-encode quality (0-1). */
-export const OUTPUT_QUALITY = 0.8;
+const OUTPUT_QUALITY = 0.8;
 
 const EXTENSION_BY_TYPE: Record<string, string> = {
   "image/webp": "webp",
@@ -78,7 +78,7 @@ let webpSupportCache: boolean | null = null;
  * enough — some environments can display WebP but not produce it via
  * canvas). Result is cached for the lifetime of the page.
  */
-export const detectWebpEncodeSupport = (): boolean => {
+const detectWebpEncodeSupport = (): boolean => {
   if (webpSupportCache !== null) return webpSupportCache;
   try {
     const canvas = document.createElement("canvas");
@@ -89,11 +89,6 @@ export const detectWebpEncodeSupport = (): boolean => {
     webpSupportCache = false;
   }
   return webpSupportCache;
-};
-
-/** Test-only hook to reset the memoized WebP support check. */
-export const _resetWebpSupportCacheForTests = (): void => {
-  webpSupportCache = null;
 };
 
 const stripExtension = (name: string): string => name.replace(/\.[^./]+$/, "");
@@ -143,7 +138,7 @@ export const compressImageForUpload = async (
     ctx.drawImage(bitmap, 0, 0, target.width, target.height);
 
     const blob = await canvasToBlob(canvas, format.type, OUTPUT_QUALITY);
-    if (!blob) return file;
+    if (!blob || blob.size >= file.size) return file;
 
     const baseName = stripExtension(file.name) || "image";
     return new File([blob], `${baseName}.${format.extension}`, { type: format.type });

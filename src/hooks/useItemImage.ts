@@ -105,15 +105,24 @@ export const uploadItemImage = async ({
     .upload(path, uploadFile, { upsert: true, contentType: uploadFile.type });
   if (uploadError) throw new Error(uploadError.message);
 
-  if (oldImagePath && oldImagePath !== path) {
-    await supabase.storage.from(BUCKET).remove([oldImagePath]);
-  }
-
   const { error: updateError } = await supabase
     .from("items")
     .update({ image_path: path })
     .eq("id", itemId);
-  if (updateError) throw new Error(updateError.message);
+  if (updateError) {
+    // A new extension creates a new object. Roll it back if the DB cannot be
+    // updated so the item keeps pointing at its still-existing old image.
+    if (path !== oldImagePath) {
+      await supabase.storage.from(BUCKET).remove([path]);
+    }
+    throw new Error(updateError.message);
+  }
+
+  // Only retire the previous object after the new path is durable in the DB.
+  // Cleanup failure leaves an orphan, but never a broken item image reference.
+  if (oldImagePath && oldImagePath !== path) {
+    await supabase.storage.from(BUCKET).remove([oldImagePath]);
+  }
 
   return path;
 };
