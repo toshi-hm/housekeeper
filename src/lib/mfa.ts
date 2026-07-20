@@ -46,7 +46,7 @@ export const selectVerifiedTotpFactor = (factors: MfaFactorSummary[]): MfaFactor
 export const isMfaChallengeRequired = (
   aal: AuthenticatorAssuranceLevel | null | undefined,
 ): boolean => {
-  if (!aal) return false;
+  if (!aal) return true;
   return aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel;
 };
 

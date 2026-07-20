@@ -11,8 +11,8 @@ export const Route = createFileRoute("/login")({
 
     // セッションはあるがMFAコード入力（aal2への昇格）が未完了の場合は、
     // /login にとどまりLoginPage側でコード入力ステップを表示する（#366）。
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (isMfaChallengeRequired(aal)) return;
+    const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalError || isMfaChallengeRequired(aal)) return;
 
     throw redirect({ to: "/" });
   },

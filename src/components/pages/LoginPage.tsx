@@ -32,16 +32,18 @@ import { useToast } from "@/lib/toast-context";
  * チャレンジ対象のverified TOTP factorIdを返す。未完了でなければnull。
  */
 const resolvePendingTotpFactorId = async (): Promise<string | null> => {
-  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aalError) throw aalError;
   if (!isMfaChallengeRequired(aal)) return null;
 
   const { data: factorsData, error } = await supabase.auth.mfa.listFactors();
-  if (error) return null;
+  if (error) throw error;
 
   const factor = selectVerifiedTotpFactor(
     factorsData.totp.map((f) => ({ id: f.id, factorType: f.factor_type, status: f.status })),
   );
-  return factor?.id ?? null;
+  if (!factor) throw new Error("Verified MFA factor not found");
+  return factor.id;
 };
 
 export const LoginPage = () => {
@@ -83,17 +85,20 @@ export const LoginPage = () => {
   // （リロード等）、パスワード入力を飛ばしてコード入力ステップを表示する（#366）。
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      const factorId = await resolvePendingTotpFactorId();
-      if (!cancelled && factorId) {
-        setMfaFactorId(factorId);
-        setMode("mfa");
-      }
-    })();
+    void resolvePendingTotpFactorId()
+      .then((factorId) => {
+        if (!cancelled && factorId) {
+          setMfaFactorId(factorId);
+          setMode("mfa");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setGlobalError(t("authFailed"));
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const switchMode = (next: "login" | "signup") => {
     if (next === "signup" && !isAvailableRegisterNewUser) {

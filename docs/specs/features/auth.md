@@ -74,6 +74,8 @@ UIロジックは `SecuritySettings`（`src/components/organisms/SecuritySetting
 - 未完了の場合、`LoginPage` はパスワードフォームの代わりにコード入力ステップ（TOTPコード6桁）を表示し、`supabase.auth.mfa.challengeAndVerify({ factorId, code })` で検証してからホームへ遷移する
 - ページ再読み込み等でコード入力前のセッションが残っている場合も、`LoginPage` マウント時に同じ判定を行いコード入力ステップへ復帰する
 - `/_auth/*` の `beforeLoad` は、セッションはあるがaal2未達の場合も `/login` へリダイレクトする（保護ルートを直接開けない）
+- AAL取得またはfactor取得に失敗した場合は認証済みとして扱わず、安全側に倒して保護ルートを拒否する
+- DBのrestrictive RLS policyでも、verified factorを持つユーザーはJWTの`aal`が`aal2`のときだけ個人データへアクセスできる
 - コード入力ステップから「サインアウトしてやり直す」を選ぶと `supabase.auth.signOut()` を呼びログインフォームに戻る
 
 ### 対応方式

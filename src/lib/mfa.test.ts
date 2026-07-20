@@ -107,12 +107,12 @@ describe("isMfaChallengeRequired", () => {
     expect(isMfaChallengeRequired({ currentLevel: "aal1", nextLevel: "aal1" })).toBe(false);
   });
 
-  test("nullが渡された場合はfalse", () => {
-    expect(isMfaChallengeRequired(null)).toBe(false);
+  test("nullが渡された場合は安全側に倒してtrue", () => {
+    expect(isMfaChallengeRequired(null)).toBe(true);
   });
 
-  test("undefinedが渡された場合はfalse", () => {
-    expect(isMfaChallengeRequired(undefined)).toBe(false);
+  test("undefinedが渡された場合は安全側に倒してtrue", () => {
+    expect(isMfaChallengeRequired(undefined)).toBe(true);
   });
 });
 

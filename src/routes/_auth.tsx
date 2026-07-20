@@ -204,8 +204,8 @@ export const Route = createFileRoute("/_auth")({
     }
 
     // MFAコード入力（aal2への昇格）が未完了のセッションは保護ルートに入れない（#366）。
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (isMfaChallengeRequired(aal)) {
+    const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalError || isMfaChallengeRequired(aal)) {
       throw redirect({ to: "/login" });
     }
   },
