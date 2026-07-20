@@ -1,20 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { isAuthorized, isValidSubscribeBody } from "./validation.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-interface SubscribeBody {
-  action?: "unsubscribe";
-  endpoint: string;
-  keys?: {
-    p256dh: string;
-    auth: string;
-  };
-  user_agent?: string;
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -28,14 +20,14 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
+  if (!isAuthorized(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
+  const authHeader = req.headers.get("Authorization")!;
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -53,7 +45,15 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const body = (await req.json()) as SubscribeBody;
+  const rawBody: unknown = await req.json();
+
+  if (!isValidSubscribeBody(rawBody)) {
+    return new Response(JSON.stringify({ error: "Invalid subscription body" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const body = rawBody;
 
   if (body.action === "unsubscribe") {
     const { error } = await supabase
@@ -73,20 +73,14 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Subscribe: upsert push subscription
-  if (!body.keys) {
-    return new Response(JSON.stringify({ error: "Missing keys" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
+  // Subscribe: upsert push subscription (isValidSubscribeBody already
+  // guarantees `keys` is present here, since action !== "unsubscribe").
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
       user_id: user.id,
       endpoint: body.endpoint,
-      p256dh: body.keys.p256dh,
-      auth: body.keys.auth,
+      p256dh: body.keys!.p256dh,
+      auth: body.keys!.auth,
       user_agent: body.user_agent ?? req.headers.get("User-Agent") ?? null,
     },
     { onConflict: "endpoint" },

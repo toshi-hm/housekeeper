@@ -1,6 +1,13 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 import { checkRateLimit, timingSafeEqual } from "../_shared/rate-limit.ts";
+import {
+  isValidAnswerInput,
+  isValidEmailInput,
+  isValidNewPasswordInput,
+  normalizeEmail,
+  sha256hex,
+} from "./validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,13 +23,6 @@ const json = (body: unknown, status = 200, extraHeaders: Record<string, string> 
     headers: { ...corsHeaders, ...extraHeaders, "Content-Type": "application/json" },
   });
 
-const sha256hex = async (text: string): Promise<string> => {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-};
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -33,17 +33,17 @@ Deno.serve(async (req: Request) => {
       new_password?: unknown;
     };
 
-    if (typeof email !== "string" || !email) {
+    if (!isValidEmailInput(email)) {
       return json({ error: "email is required" }, 400);
     }
-    if (typeof answer !== "string" || !answer) {
+    if (!isValidAnswerInput(answer)) {
       return json({ error: "answer is required" }, 400);
     }
-    if (typeof new_password !== "string" || !new_password) {
+    if (!isValidNewPasswordInput(new_password)) {
       return json({ error: "new_password is required" }, 400);
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = normalizeEmail(email);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,

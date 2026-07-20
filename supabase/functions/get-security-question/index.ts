@@ -1,6 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { isValidEmailInput, normalizeEmail } from "./validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,9 +23,9 @@ Deno.serve(async (req: Request) => {
   try {
     const { email } = (await req.json()) as { email?: unknown };
 
-    if (typeof email !== "string" || !email) return json({ error: "email is required" }, 400);
+    if (!isValidEmailInput(email)) return json({ error: "email is required" }, 400);
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = normalizeEmail(email);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
