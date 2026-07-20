@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import React from "react";
@@ -65,15 +66,20 @@ const makeToastStub = () => {
   return { stub, toastFn };
 };
 
-const Wrapper =
-  (toastStub: ToastContextValue) =>
-  ({ children }: { children: React.ReactNode }) => (
-    <routerContext.Provider value={stubRouter}>
-      <I18nextProvider i18n={i18n}>
-        <ToastContext.Provider value={toastStub}>{children}</ToastContext.Provider>
-      </I18nextProvider>
-    </routerContext.Provider>
+const Wrapper = (toastStub: ToastContextValue) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { enabled: false, retry: false } },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <routerContext.Provider value={stubRouter}>
+        <I18nextProvider i18n={i18n}>
+          <ToastContext.Provider value={toastStub}>{children}</ToastContext.Provider>
+        </I18nextProvider>
+      </routerContext.Provider>
+    </QueryClientProvider>
   );
+};
 
 describe("SettingsPage - expiryWarningDays validation", () => {
   let settingsSpy: ReturnType<typeof spyOn>;

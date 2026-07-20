@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { useAllConsumptionLogs } from "@/hooks/useConsumptionLogs";
 import { LOTS_KEY } from "@/hooks/useItemLots";
 import { useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
@@ -10,10 +11,7 @@ import {
   computeExpiryDistribution,
   computeMonthlyConsumption,
   type LotValueRow,
-  type RawLog,
 } from "@/types/stats";
-
-export type { RawLog } from "@/types/stats";
 
 export const useCategoryStats = () => {
   const {
@@ -82,26 +80,6 @@ export const useExpiryDistribution = (warningDays?: number) => {
   const { data: items = [], isLoading, isError } = useItems({}, "created_at");
   return { distribution: computeExpiryDistribution(items, warningDays), isLoading, isError };
 };
-
-const useAllConsumptionLogs = () =>
-  useQuery<RawLog[]>({
-    queryKey: ["consumption-logs-all"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from("consumption_logs")
-        .select("delta_amount, delta_unit, occurred_at")
-        .eq("user_id", user.id)
-        .order("occurred_at", { ascending: true });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as RawLog[];
-    },
-    staleTime: 0,
-  });
 
 export const useMonthlyConsumption = (months = 6) => {
   const { data: logs = [], isLoading, isError } = useAllConsumptionLogs();

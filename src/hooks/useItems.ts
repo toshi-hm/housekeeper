@@ -470,6 +470,36 @@ export const useSoftDeleteItem = () => {
   });
 };
 
+/** データエクスポート（#381）の履歴 CSV でアイテム名/カテゴリ/メモを解決するための
+ *  軽量な一覧。`useItems` と異なり `deleted_at` でフィルタしない
+ *  （過去に削除済みのアイテムの履歴行も名前を表示できるようにするため）。 */
+interface ItemLookupForExport {
+  id: string;
+  name: string;
+  category_id: string | null;
+  notes: string | null;
+  content_unit: string;
+}
+
+const fetchItemsForExport = async (): Promise<ItemLookupForExport[]> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("items")
+    .select("id, name, category_id, notes, content_unit")
+    .eq("user_id", userData.user.id);
+  if (error) throw error;
+  return (data ?? []) as ItemLookupForExport[];
+};
+
+export const useItemsForExport = () =>
+  useQuery({
+    queryKey: [...ITEMS_KEY, "export-lookup"],
+    queryFn: fetchItemsForExport,
+    staleTime: 60_000,
+  });
+
 export const useItemsWithExpiry = () =>
   useQuery({
     queryKey: [...ITEMS_KEY, "with-expiry"],
