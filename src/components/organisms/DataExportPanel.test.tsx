@@ -75,7 +75,7 @@ describe("DataExportPanel", () => {
       ],
     } as unknown as ReturnType<typeof useConsumptionLogsModule.useAllConsumptionLogs>);
     spyOn(useItemLotsModule, "useAllItemLots").mockReturnValue({
-      data: [{ item_id: "item-1", units: 1, purchase_date: "2026-07-01" }],
+      data: [{ item_id: "item-1", purchased_units: 1, purchase_date: "2026-07-01" }],
     } as unknown as ReturnType<typeof useItemLotsModule.useAllItemLots>);
 
     downloadSpy = spyOn(exportLib, "downloadTextFile").mockImplementation(() => {});
@@ -134,5 +134,20 @@ describe("DataExportPanel", () => {
     const [content] = downloadSpy.mock.calls[0] as [string];
     expect(content).toContain("消費");
     expect(content).not.toContain("購入");
+  });
+
+  it("does not report success when inventory data failed to load", () => {
+    spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: undefined,
+      isError: true,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getAllByRole } = render(<DataExportPanel />, { wrapper });
+    fireEvent.click(getAllByRole("button", { name: /CSV/i })[0] as HTMLElement);
+
+    expect(downloadSpy).not.toHaveBeenCalled();
+    expect(toastMock).toHaveBeenCalledWith(expect.any(String), "error");
+    expect(toastMock).not.toHaveBeenCalledWith(expect.any(String), "success");
   });
 });

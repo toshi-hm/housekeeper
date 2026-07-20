@@ -149,9 +149,9 @@ describe("buildConsumptionHistoryRows", () => {
 });
 
 describe("buildPurchaseHistoryRows", () => {
-  test("maps lots to history rows using item content_unit", () => {
+  test("maps lots using the immutable purchased quantity", () => {
     const rows = buildPurchaseHistoryRows(
-      [{ item_id: "item-1", units: 3, purchase_date: "2026-07-05" }],
+      [{ item_id: "item-1", purchased_units: 3, purchase_date: "2026-07-05" }],
       new Map([["item-1", { name: "卵", category_id: "cat-2", content_unit: "個" }]]),
       new Map([["cat-2", "食品"]]),
     );
@@ -170,7 +170,7 @@ describe("buildPurchaseHistoryRows", () => {
 
   test("excludes lots without a purchase_date", () => {
     const rows = buildPurchaseHistoryRows(
-      [{ item_id: "item-1", units: 1, purchase_date: null }],
+      [{ item_id: "item-1", purchased_units: 1, purchase_date: null }],
       new Map(),
       new Map(),
     );

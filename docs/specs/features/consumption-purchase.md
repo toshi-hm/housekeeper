@@ -142,7 +142,8 @@ end $$;
 - 対象: 消費履歴のみ / 購入履歴のみ / 両方
 - 消費履歴は `consumption_logs`（`occurred_at` を日付とする）、購入履歴は `item_lots`
   （`purchase_date` を日付とする — 本 spec 冒頭の通り購入履歴専用テーブルは持たないため、
-  各ロットの `purchase_date` を購入イベントとして扱う。`purchase_date` が無いロットは除外）
+  各ロットの `purchase_date` を購入イベントとして扱う。購入数量は消費で減る `units` ではなく
+  作成時に固定する `purchased_units` を使用し、`purchase_date` が無いロットは除外）
 - 行の「アイテム名」「カテゴリ」「メモ」は、削除済み（ソフトデリート）アイテムの履歴でも
   名前が引けるよう、`deleted_at` を無視した軽量ルックアップ（`useItemsForExport`）で解決する
 
@@ -157,7 +158,8 @@ end $$;
 - データ取得 hook:
   - `useItemsForExport`（`src/hooks/useItems.ts`）: 削除済みも含む軽量ルックアップ
   - `useAllConsumptionLogs`（`src/hooks/useConsumptionLogs.ts`）: 統計画面（`useStats.ts`）と共有
-  - `useAllItemLots`（`src/hooks/useItemLots.ts`）: 全ロットの `item_id, units, purchase_date`
+  - `useAllItemLots`（`src/hooks/useItemLots.ts`）: 全ロットの
+    `item_id, purchased_units, purchase_date`
 - UI organism: `src/components/organisms/DataExportPanel.tsx`（設定ページに埋め込み）
 
 ## Backlog

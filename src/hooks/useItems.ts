@@ -473,7 +473,7 @@ export const useSoftDeleteItem = () => {
 /** データエクスポート（#381）の履歴 CSV でアイテム名/カテゴリ/メモを解決するための
  *  軽量な一覧。`useItems` と異なり `deleted_at` でフィルタしない
  *  （過去に削除済みのアイテムの履歴行も名前を表示できるようにするため）。 */
-export interface ItemLookupForExport {
+interface ItemLookupForExport {
   id: string;
   name: string;
   category_id: string | null;

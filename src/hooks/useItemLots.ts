@@ -231,9 +231,9 @@ export const consumeLot = async ({
 /** データエクスポート（#381）用: ユーザーの全ロットを軽量な列だけで取得する。
  *  購入履歴は専用テーブルを持たず（`docs/specs/features/consumption-purchase.md`）、
  *  各ロットの `purchase_date` を購入イベントとして扱う。 */
-export interface PurchaseLotForExport {
+interface PurchaseLotForExport {
   item_id: string;
-  units: number;
+  purchased_units: number;
   purchase_date: string | null;
 }
 
@@ -243,7 +243,7 @@ const fetchAllLots = async (): Promise<PurchaseLotForExport[]> => {
 
   const { data, error } = await supabase
     .from("item_lots")
-    .select("item_id, units, purchase_date")
+    .select("item_id, purchased_units, purchase_date")
     .eq("user_id", userData.user.id)
     .order("purchase_date", { ascending: false });
   if (error) throw error;

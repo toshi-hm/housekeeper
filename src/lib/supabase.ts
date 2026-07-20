@@ -307,6 +307,7 @@ export interface Database {
           user_id: string;
           item_id: string;
           units: number;
+          purchased_units: number;
           opened_remaining: number | null;
           unit_price: number | null;
           purchase_date: string | null;
@@ -319,6 +320,7 @@ export interface Database {
           user_id: string;
           item_id: string;
           units?: number;
+          purchased_units?: number;
           opened_remaining?: number | null;
           unit_price?: number | null;
           purchase_date?: string | null;
@@ -331,6 +333,7 @@ export interface Database {
           user_id?: string;
           item_id?: string;
           units?: number;
+          purchased_units?: number;
           opened_remaining?: number | null;
           unit_price?: number | null;
           purchase_date?: string | null;

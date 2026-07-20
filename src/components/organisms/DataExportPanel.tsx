@@ -30,13 +30,19 @@ export const DataExportPanel = () => {
   const { t } = useTranslation("settings");
   const { toast } = useToast();
 
-  const { data: items = [] } = useItems({}, "created_at");
-  const { data: categories = [] } = useCategories();
-  const { data: locations = [] } = useStorageLocations();
+  const itemsQuery = useItems({}, "created_at");
+  const categoriesQuery = useCategories();
+  const locationsQuery = useStorageLocations();
+  const { data: items = [] } = itemsQuery;
+  const { data: categories = [] } = categoriesQuery;
+  const { data: locations = [] } = locationsQuery;
 
-  const { data: itemLookups = [] } = useItemsForExport();
-  const { data: consumptionLogs = [] } = useAllConsumptionLogs();
-  const { data: purchaseLots = [] } = useAllItemLots();
+  const itemLookupsQuery = useItemsForExport();
+  const consumptionLogsQuery = useAllConsumptionLogs();
+  const purchaseLotsQuery = useAllItemLots();
+  const { data: itemLookups = [] } = itemLookupsQuery;
+  const { data: consumptionLogs = [] } = consumptionLogsQuery;
+  const { data: purchaseLots = [] } = purchaseLotsQuery;
 
   const [period, setPeriod] = useState<ExportPeriod>("30d");
   const [target, setTarget] = useState<HistoryTarget>("both");
@@ -46,20 +52,47 @@ export const DataExportPanel = () => {
     () => new Map(categories.map((c) => [c.id, c.name])),
     [categories],
   );
+  const itemsPending =
+    itemsQuery.isPending || categoriesQuery.isPending || locationsQuery.isPending;
+  const itemsFailed = itemsQuery.isError || categoriesQuery.isError || locationsQuery.isError;
+  const historyPending =
+    itemLookupsQuery.isPending ||
+    categoriesQuery.isPending ||
+    consumptionLogsQuery.isPending ||
+    purchaseLotsQuery.isPending;
+  const historyFailed =
+    itemLookupsQuery.isError ||
+    categoriesQuery.isError ||
+    consumptionLogsQuery.isError ||
+    purchaseLotsQuery.isError;
+
+  const showExportError = () => toast(t("common:unknownError"), "error");
 
   const handleExportItemsCsv = () => {
+    if (itemsFailed) {
+      showExportError();
+      return;
+    }
     const csv = itemsToCSV(items, categories, locations);
     downloadTextFile(csv, buildExportFilename("items", "csv"), "text/csv;charset=utf-8");
     toast(t("exportSuccess"), "success");
   };
 
   const handleExportItemsJson = () => {
+    if (itemsFailed) {
+      showExportError();
+      return;
+    }
     const json = itemsToJSON(items);
     downloadTextFile(json, buildExportFilename("items", "json"), "application/json");
     toast(t("exportSuccess"), "success");
   };
 
   const handleExportHistoryCsv = () => {
+    if (historyFailed) {
+      showExportError();
+      return;
+    }
     const rows = [
       ...(target !== "purchase"
         ? buildConsumptionHistoryRows(consumptionLogs, itemLookupMap, categoryNameMap)
@@ -83,11 +116,23 @@ export const DataExportPanel = () => {
           <p className="text-xs text-muted-foreground">{t("exportItemsDescription")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={handleExportItemsCsv}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={itemsPending}
+            onClick={handleExportItemsCsv}
+          >
             <Download className="mr-1.5 h-4 w-4" />
             {t("exportDownloadCsv")}
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={handleExportItemsJson}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={itemsPending}
+            onClick={handleExportItemsJson}
+          >
             <Download className="mr-1.5 h-4 w-4" />
             {t("exportDownloadJson")}
           </Button>
@@ -126,7 +171,13 @@ export const DataExportPanel = () => {
             </Select>
           </div>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={handleExportHistoryCsv}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={historyPending}
+          onClick={handleExportHistoryCsv}
+        >
           <Download className="mr-1.5 h-4 w-4" />
           {t("exportDownloadCsv")}
         </Button>

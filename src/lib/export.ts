@@ -112,7 +112,7 @@ export interface ExportConsumptionLogInput {
 
 export interface ExportPurchaseLotInput {
   item_id: string;
-  units: number;
+  purchased_units: number;
   purchase_date: string | null;
 }
 
@@ -162,7 +162,7 @@ export const buildPurchaseHistoryRows = (
         date: lot.purchase_date.slice(0, 10),
         itemName: item?.name ?? "",
         categoryName: resolveCategoryName(item, categoryMap),
-        amount: lot.units,
+        amount: lot.purchased_units,
         unit: item?.content_unit ?? "",
         notes: item?.notes ?? "",
       };

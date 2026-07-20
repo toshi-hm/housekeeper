@@ -13,8 +13,6 @@ import {
   type RawLog,
 } from "@/types/stats";
 
-export type { RawLog } from "@/types/stats";
-
 export const useCategoryStats = () => {
   const {
     data: items = [],
