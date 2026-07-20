@@ -66,7 +66,6 @@ export const ItemForm = ({
   const { mutateAsync: deleteLocationMutate } = useDeleteStorageLocation();
   const { mutateAsync: deleteCustomUnitMutate } = useDeleteCustomUnit();
 
-
   const [values, setValues] = useState<ItemFormValues>({
     name: defaultValues?.name ?? "",
     barcode: defaultValues?.barcode ?? "",
