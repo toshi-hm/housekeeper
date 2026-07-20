@@ -15,6 +15,7 @@ interface ConsumeItemResult extends Item {
 export const consumeItem = async ({
   item,
   deltaAmount,
+  note,
 }: ConsumeParams): Promise<ConsumeItemResult> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -35,7 +36,7 @@ export const consumeItem = async ({
   let logInsertFailed = false;
 
   if (lots && lots.length > 0 && lots[0]) {
-    const lotResult = await consumeLotFn({ lot: lots[0], item, deltaAmount });
+    const lotResult = await consumeLotFn({ lot: lots[0], item, deltaAmount, note });
     logInsertFailed = !!lotResult._logInsertFailed;
   } else {
     // Fallback: no lots exist yet → update items table directly and create log
@@ -61,6 +62,7 @@ export const consumeItem = async ({
       units_after: result.units_after,
       opened_remaining_before: item.opened_remaining ?? null,
       opened_remaining_after: result.opened_remaining_after,
+      note: note ?? null,
     });
     if (logError) {
       // Non-fatal: stock is already updated. Surfaced via logInsertFailed

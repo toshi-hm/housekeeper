@@ -127,6 +127,40 @@ describe("consumeLot", () => {
     const result = await consumeLot({ lot: baseLot, item, deltaAmount: 1 });
     expect(result._logInsertFailed).toBe(true);
   });
+
+  test("noteを渡すとconsumption_logs.noteに記録される (#418)", async () => {
+    responseQueues.item_lots = [
+      { data: { ...baseLot, units: 2 }, error: null },
+      { data: [{ units: 2, expiry_date: null, opened_remaining: null }], error: null },
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: null, error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    await consumeLot({ lot: baseLot, item, deltaAmount: 1, note: "料理で使用: カレーに使った" });
+
+    const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
+    expect(logInsert?.args[0]).toMatchObject({ note: "料理で使用: カレーに使った" });
+  });
+
+  test("noteを渡さない場合はnullとして記録される (#418)", async () => {
+    responseQueues.item_lots = [
+      { data: { ...baseLot, units: 2 }, error: null },
+      { data: [{ units: 2, expiry_date: null, opened_remaining: null }], error: null },
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: null, error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    await consumeLot({ lot: baseLot, item, deltaAmount: 1 });
+
+    const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
+    expect(logInsert?.args[0]).toMatchObject({ note: null });
+  });
 });
 
 describe("syncItemAggregate", () => {

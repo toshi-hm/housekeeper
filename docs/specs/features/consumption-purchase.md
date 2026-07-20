@@ -99,6 +99,27 @@ end $$;
 - item 詳細に「履歴」タブ
 - 全体の最近の消費イベント一覧（任意）
 
+## v1.2 範囲（#418）
+
+消費操作時に「なぜ消費したか」をメモとして残せるようにする。
+
+- `consumption_logs.note`（text, nullable）を追加
+- 消費画面（`/items/:itemId/consume`）
+  - 「メモ（任意）」テキストエリア
+  - 消費理由プリセットチップ（料理で使用 / 廃棄（期限切れ） / 贈り物 / その他）。
+    チップは単一選択トグルで、選択中のラベルは自由記述メモとは別 state で保持する
+    （テキスト欄に直接書き込むと、チップの選択切り替え時にユーザーが打った自由記述を
+    上書きしてしまうため）。保存直前にラベルと自由記述を結合して1本の `note` にする
+    （両方あれば `"<ラベル>: <自由記述>"`、片方だけならそのまま、両方空なら `null`）。
+  - `useConsumeLot` / `useConsumeItem` の `mutateAsync` に `note?: string | null` を渡す
+- item 詳細の「履歴」タブ
+  - `log.note` があれば本文を表示し、行に📝アイコン（`lucide-react` の `StickyNote`）を出す
+
+理由プリセットの表示ラベルは CLAUDE.md の Key Map 規約に従い、
+`ConsumeReason`（`"cooking" | "expired" | "gift" | "other"`）→ i18n キーの
+`as const satisfies Record<...>` マップ経由で参照する（i18next-parser は動的キーを
+抽出できないため、対応する `items.json` のキーは手動管理）。
+
 ## Backlog
 
 - 単位換算（mL ⇔ L）

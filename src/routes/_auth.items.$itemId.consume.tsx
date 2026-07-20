@@ -8,12 +8,15 @@ import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import { useItem } from "@/hooks/useItems";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
 import {
   computeConsumption,
+  CONSUME_REASONS,
+  type ConsumeReason,
   type ConsumptionError,
   getLotRemainingAmount,
   type ItemLot,
@@ -23,6 +26,17 @@ import {
 const consumptionErrorKey = {
   insufficientStock: "insufficientStock",
 } as const satisfies Record<ConsumptionError, string>;
+
+// Dynamic i18n key lookup for consumption reason chips — see CLAUDE.md's
+// "i18n キーの動的参照ルール" (Key Map instead of template-literal concatenation
+// so i18next-parser's static-literal extraction still covers every key, and
+// TS enforces exhaustiveness against ConsumeReason).
+const consumeReasonLabelKey = {
+  cooking: "consumeReasonCooking",
+  expired: "consumeReasonExpired",
+  gift: "consumeReasonGift",
+  other: "consumeReasonOther",
+} as const satisfies Record<ConsumeReason, string>;
 
 export const ItemConsumePage = () => {
   const { t, i18n } = useTranslation("items");
@@ -37,6 +51,20 @@ export const ItemConsumePage = () => {
   const [delta, setDelta] = useState("");
   const [validationError, setValidationError] = useState("");
   const [showConsumeAll, setShowConsumeAll] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [selectedReason, setSelectedReason] = useState<ConsumeReason | null>(null);
+
+  // Combine the preset reason chip (if any) with the free-text memo into a
+  // single note stored on consumption_logs.note. Kept as separate state
+  // instead of writing the chip label directly into the textarea so that
+  // switching/deselecting a reason never clobbers text the user already
+  // typed (#418).
+  const buildNote = (): string | null => {
+    const reasonLabel = selectedReason ? t(consumeReasonLabelKey[selectedReason]) : null;
+    const trimmed = noteText.trim();
+    if (reasonLabel && trimmed) return `${reasonLabel}: ${trimmed}`;
+    return reasonLabel ?? (trimmed || null);
+  };
 
   const isLoading = itemLoading || lotsLoading;
 
@@ -85,7 +113,12 @@ export const ItemConsumePage = () => {
       return;
     }
     try {
-      await consumeLot.mutateAsync({ lot: selectedLot, item, deltaAmount: amount });
+      await consumeLot.mutateAsync({
+        lot: selectedLot,
+        item,
+        deltaAmount: amount,
+        note: buildNote(),
+      });
       toast(t("consumeSuccess"), "success");
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
@@ -96,7 +129,12 @@ export const ItemConsumePage = () => {
   const handleConsumeAll = async (totalAmount: number) => {
     if (!item || !selectedLot) return;
     try {
-      await consumeLot.mutateAsync({ lot: selectedLot, item, deltaAmount: totalAmount });
+      await consumeLot.mutateAsync({
+        lot: selectedLot,
+        item,
+        deltaAmount: totalAmount,
+        note: buildNote(),
+      });
       setShowConsumeAll(false);
       toast(t("consumeSuccess"), "success");
       void navigate({ to: "/items/$itemId", params: { itemId } });
@@ -308,6 +346,44 @@ export const ItemConsumePage = () => {
           {preview?.error && (
             <p className="text-sm text-destructive">{t(consumptionErrorKey[preview.error])}</p>
           )}
+
+          {/* Preset consumption-reason chips (optional) — combined with the
+              free-text note below when the log is saved (#418). */}
+          <div className="space-y-2">
+            <Label id="consume-reason-label">{t("consumeReason")}</Label>
+            <div
+              role="group"
+              aria-labelledby="consume-reason-label"
+              className="flex flex-wrap gap-2"
+            >
+              {CONSUME_REASONS.map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  aria-pressed={selectedReason === reason}
+                  onClick={() => setSelectedReason((prev) => (prev === reason ? null : reason))}
+                  className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                    selectedReason === reason
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {t(consumeReasonLabelKey[reason])}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="consume-note">{t("consumeNote")}</Label>
+            <Textarea
+              id="consume-note"
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder={t("consumeNotePlaceholder")}
+              rows={2}
+            />
+          </div>
 
           <div className="flex gap-2">
             <Button
