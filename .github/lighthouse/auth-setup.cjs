@@ -56,11 +56,15 @@ const TABLE_SEEDS = {
   ],
 };
 
-/** @param {import('puppeteer').Page} page */
-module.exports = async (page, context) => {
+/**
+ * @param {import('puppeteer').Browser} browser
+ * @param {{ url: string }} context
+ */
+module.exports = async (browser, context) => {
   const targetUrl = new URL(context.url);
   if (targetUrl.pathname === "/login") return;
 
+  const page = await browser.newPage();
   await page.setRequestInterception(true);
   page.on("request", (req) => {
     const url = req.url();
@@ -120,5 +124,5 @@ module.exports = async (page, context) => {
   await page
     .waitForFunction(() => window.location.pathname !== "/login", { timeout: 15000 })
     .catch(() => {});
-  await page.goto(context.url, { waitUntil: "networkidle0" });
+  await page.close();
 };

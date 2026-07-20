@@ -14,11 +14,22 @@ jobs:
   cleanup-preview:
     name: Delete preview Worker
     runs-on: ubuntu-latest
-    if: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' || secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
     steps:
+      - name: Check required secrets are configured
+        id: config
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "::warning::Cloudflare credentials are not set. Skipping PR preview cleanup."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v7
+        if: steps.config.outputs.configured == 'true'
 
       - name: Delete preview Worker
+        if: steps.config.outputs.configured == 'true'
         uses: cloudflare/wrangler-action@v3
         continue-on-error: true
         with:

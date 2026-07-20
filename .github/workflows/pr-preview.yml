@@ -11,7 +11,10 @@ name: PR Preview Deploy
 #
 # Requires repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to be
 # configured by the repo owner — see PR description. Until then this job
-# fails fast with a clear message instead of silently no-op'ing.
+# succeeds without deploying and emits a clear warning.
+#
+# Disabled by default to avoid exhausting Cloudflare's free deployment quota.
+# Set the repository variable ENABLE_PR_PREVIEW to "true" to opt in.
 
 on:
   pull_request:
@@ -28,29 +31,38 @@ concurrency:
 jobs:
   deploy-preview:
     name: Deploy preview Worker
+    if: ${{ vars.ENABLE_PR_PREVIEW == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check required secrets are configured
+        id: config
         run: |
           if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
-            echo "::error::CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID repo secrets are not set. PR preview deploys cannot run until the repo owner configures them (Settings > Secrets and variables > Actions)."
-            exit 1
+            echo "::warning::CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID repo secrets are not set. Skipping PR preview deployment."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@v7
+        if: steps.config.outputs.configured == 'true'
 
       - uses: oven-sh/setup-bun@v2
+        if: steps.config.outputs.configured == 'true'
 
       - name: Install dependencies
+        if: steps.config.outputs.configured == 'true'
         run: bun install --frozen-lockfile
 
       - name: Build
+        if: steps.config.outputs.configured == 'true'
         run: bun run build
         env:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
 
       - name: Deploy to Cloudflare Workers (preview)
+        if: steps.config.outputs.configured == 'true'
         id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
@@ -59,6 +71,7 @@ jobs:
           command: deploy --name housekeeper-pr-${{ github.event.pull_request.number }}
 
       - name: Comment preview URL on PR
+        if: steps.config.outputs.configured == 'true'
         uses: actions/github-script@v7
         with:
           script: |
