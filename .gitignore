@@ -53,3 +53,6 @@ reports/
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code agent worktrees (local only, not part of the project)
+.claude/worktrees/
