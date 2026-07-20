@@ -28,7 +28,10 @@ jobs:
   mutation:
     name: Mutation Testing (Stryker)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # A cold full run currently takes about 57 minutes on ubuntu-latest.
+    # Keep enough headroom for runner variance; successful runs then seed the
+    # incremental cache and make subsequent PR checks substantially faster.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
 
