@@ -191,15 +191,16 @@ export interface ConsumptionPaceForecast {
  *   predictedRemainingDays = floor(現在庫 / dailyRate)
  */
 export const computeConsumptionPaceForecast = (
-  logs: Pick<RawLog, "delta_amount" | "occurred_at">[],
+  logs: Pick<RawLog, "delta_amount" | "delta_unit" | "occurred_at">[],
   currentStock: number,
+  stockUnit: string,
   lookbackDays = DEFAULT_FORECAST_LOOKBACK_DAYS,
   now = new Date(),
 ): ConsumptionPaceForecast => {
   const cutoff = new Date(now.getTime() - lookbackDays * MS_PER_DAY);
   const relevant = logs.filter((log) => {
     const occurredAt = new Date(log.occurred_at);
-    return occurredAt >= cutoff && occurredAt <= now;
+    return log.delta_unit === stockUnit && occurredAt >= cutoff && occurredAt <= now;
   });
   const logCount = relevant.length;
 
@@ -220,15 +221,17 @@ export const computeConsumptionPaceForecast = (
 export interface ItemConsumptionLogEntry {
   item_id: string;
   delta_amount: number;
+  delta_unit: string;
   occurred_at: string;
 }
 
-export type ConsumptionTrend = "accelerating" | "decelerating" | "steady" | "insufficient-data";
+type ConsumptionTrend = "accelerating" | "decelerating" | "steady" | "insufficient-data";
 
 export interface ConsumptionSpeedEntry {
   itemId: string;
   /** 直近 windowDays 日間の1日あたり平均消費量 */
   dailyRate: number;
+  unit: string;
   /** 直近 windowDays 日間のログ件数 */
   logCount: number;
   trend: ConsumptionTrend;
@@ -248,6 +251,7 @@ const TREND_DECELERATION_RATIO = 0.8;
  */
 export const computeConsumptionSpeedRanking = (
   logs: ItemConsumptionLogEntry[],
+  itemUnits: ReadonlyMap<string, string>,
   windowDays = DEFAULT_FORECAST_LOOKBACK_DAYS,
   now = new Date(),
 ): ConsumptionSpeedEntry[] => {
@@ -256,6 +260,8 @@ export const computeConsumptionSpeedRanking = (
 
   const byItem = new Map<string, { recent: number[]; prior: number[] }>();
   for (const log of logs) {
+    const unit = itemUnits.get(log.item_id);
+    if (!unit || log.delta_unit !== unit) continue;
     const occurredAt = new Date(log.occurred_at);
     if (occurredAt > now) continue;
     const entry = byItem.get(log.item_id) ?? { recent: [], prior: [] };
@@ -286,7 +292,9 @@ export const computeConsumptionSpeedRanking = (
       }
     }
 
-    result.push({ itemId, dailyRate, logCount: recent.length, trend });
+    const unit = itemUnits.get(itemId);
+    if (!unit) continue;
+    result.push({ itemId, dailyRate, unit, logCount: recent.length, trend });
   }
 
   result.sort((a, b) => b.dailyRate - a.dailyRate);
@@ -304,7 +312,7 @@ export interface ForecastAlertEntry {
  * 予測残日数が短い順（=急ぐ順）にソートして返す。
  */
 export const computeForecastAlerts = (
-  items: Array<Pick<Item, "id" | "units" | "content_amount" | "opened_remaining">>,
+  items: Array<Pick<Item, "id" | "units" | "content_amount" | "content_unit" | "opened_remaining">>,
   logs: ItemConsumptionLogEntry[],
   thresholdDays: number,
   lookbackDays = DEFAULT_FORECAST_LOOKBACK_DAYS,
@@ -328,6 +336,7 @@ export const computeForecastAlerts = (
     const forecast = computeConsumptionPaceForecast(
       logsByItem.get(item.id) ?? [],
       stock,
+      item.content_unit,
       lookbackDays,
       now,
     );

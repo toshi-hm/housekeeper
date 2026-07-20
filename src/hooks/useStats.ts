@@ -17,8 +17,6 @@ import {
   type LotValueRow,
 } from "@/types/stats";
 
-export type { ConsumptionSpeedEntry, ForecastAlertEntry, RawLog } from "@/types/stats";
-
 export const useCategoryStats = () => {
   const {
     data: items = [],
@@ -96,6 +94,7 @@ export interface ConsumptionSpeedRankingEntry {
   itemId: string;
   name: string;
   dailyRate: number;
+  unit: string;
   logCount: number;
   trend: "accelerating" | "decelerating" | "steady" | "insufficient-data";
 }
@@ -109,8 +108,10 @@ export const useConsumptionSpeedRanking = (windowDays = DEFAULT_FORECAST_LOOKBAC
     isError: itemsError,
   } = useItems({}, "created_at");
   const nameMap = Object.fromEntries(items.map((item) => [item.id, item.name]));
+  const unitMap = new Map(items.map((item) => [item.id, item.content_unit]));
   const ranking: ConsumptionSpeedRankingEntry[] = computeConsumptionSpeedRanking(
     logs,
+    unitMap,
     windowDays,
   ).map((entry) => ({ ...entry, name: nameMap[entry.itemId] ?? "?" }));
   return { ranking, isLoading: logsLoading || itemsLoading, isError: logsError || itemsError };
@@ -121,7 +122,7 @@ export const useConsumptionSpeedRanking = (windowDays = DEFAULT_FORECAST_LOOKBAC
  * items は呼び出し側が既に取得済みのものを渡す（ダッシュボードの一覧取得と重複フェッチしないため）。
  */
 export const useForecastAlerts = (
-  items: Array<Pick<Item, "id" | "units" | "content_amount" | "opened_remaining">>,
+  items: Array<Pick<Item, "id" | "units" | "content_amount" | "content_unit" | "opened_remaining">>,
   thresholdDays: number,
 ) => {
   const { data: logs = [], isLoading, isError } = useAllConsumptionLogs();

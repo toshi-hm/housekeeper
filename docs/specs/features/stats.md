@@ -39,7 +39,8 @@
 
 - 計算ロジックは `src/types/stats.ts` の純粋関数として実装し、Unit Test 対象にする
   - `computeConsumptionPaceForecast(logs, currentStock, lookbackDays = 30, now)`:
-    直近 `lookbackDays` 日間の消費ログから1日あたり平均消費量と予測残日数を計算する。
+    直近 `lookbackDays` 日間のうち、現在の `content_unit` と一致する消費ログから
+    1日あたり平均消費量と予測残日数を計算する。単位変更前の履歴は混在させない。
     在庫が0以下なら即 `predictedRemainingDays = 0`。参照期間内のログが2件未満、または
     合計消費量が0以下の場合は「データ不足」として `dailyRate` / `predictedRemainingDays` は
     `null`（`logCount` のみ返す。UI では「データ不足（X回分の消費記録あり）」と表示する）

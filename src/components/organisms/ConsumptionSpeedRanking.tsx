@@ -53,7 +53,9 @@ export const ConsumptionSpeedRanking = ({ ranking, limit = 8 }: ConsumptionSpeed
           {visible.map((entry) => (
             <tr key={entry.itemId} className="border-b last:border-0">
               <td className="py-1.5 pr-2">{entry.name}</td>
-              <td className="py-1.5 pr-2 tabular-nums">{entry.dailyRate}</td>
+              <td className="py-1.5 pr-2 tabular-nums">
+                {entry.dailyRate} {entry.unit}
+              </td>
               <td className="py-1.5">
                 <Badge variant={trendVariant[entry.trend]}>{t(trendLabelKey[entry.trend])}</Badge>
               </td>

@@ -168,7 +168,7 @@ const ItemDetailPage = () => {
     item.content_amount,
     item.opened_remaining ?? null,
   );
-  const consumptionForecast = computeConsumptionPaceForecast(logs, currentStock);
+  const consumptionForecast = computeConsumptionPaceForecast(logs, currentStock, item.content_unit);
   const totalDisplay =
     item.opened_remaining !== null && item.opened_remaining !== undefined
       ? t("totalDisplayOpened", {

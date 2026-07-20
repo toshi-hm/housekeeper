@@ -14,6 +14,7 @@ import { I18nextProvider } from "react-i18next";
 import * as useConsumeItemModule from "@/hooks/useConsumeItem";
 import * as useItemsModule from "@/hooks/useItems";
 import * as useMasterDataModule from "@/hooks/useMasterData";
+import * as useStatsModule from "@/hooks/useStats";
 import * as useUserSettingsModule from "@/hooks/useUserSettings";
 import i18n from "@/lib/i18n";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
@@ -79,6 +80,7 @@ describe("DashboardPage", () => {
   let locationsspy: ReturnType<typeof spyOn>;
   let settingsspy: ReturnType<typeof spyOn>;
   let consumespy: ReturnType<typeof spyOn>;
+  let forecastspy: ReturnType<typeof spyOn>;
 
   beforeEach(() => {
     itemsspy = spyOn(useItemsModule, "useItems").mockReturnValue({
@@ -106,6 +108,12 @@ describe("DashboardPage", () => {
       mutateAsync: async () => makeItem(),
       isPending: false,
     } as unknown as ReturnType<typeof useConsumeItemModule.useConsumeItem>);
+
+    forecastspy = spyOn(useStatsModule, "useForecastAlerts").mockReturnValue({
+      alerts: [],
+      isLoading: false,
+      isError: false,
+    });
   });
 
   afterEach(() => {
@@ -114,6 +122,7 @@ describe("DashboardPage", () => {
     locationsspy.mockRestore();
     settingsspy.mockRestore();
     consumespy.mockRestore();
+    forecastspy.mockRestore();
     cleanup();
   });
 

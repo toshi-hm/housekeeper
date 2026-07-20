@@ -18,10 +18,24 @@ export const Empty: Story = {
 export const WithData: Story = {
   args: {
     ranking: [
-      { itemId: "1", name: "牛乳", dailyRate: 0.5, logCount: 8, trend: "accelerating" },
-      { itemId: "2", name: "食パン", dailyRate: 0.3, logCount: 6, trend: "decelerating" },
-      { itemId: "3", name: "卵", dailyRate: 0.2, logCount: 5, trend: "steady" },
-      { itemId: "4", name: "ヨーグルト", dailyRate: 0.1, logCount: 1, trend: "insufficient-data" },
+      { itemId: "1", name: "牛乳", dailyRate: 500, unit: "mL", logCount: 8, trend: "accelerating" },
+      {
+        itemId: "2",
+        name: "食パン",
+        dailyRate: 0.3,
+        unit: "枚",
+        logCount: 6,
+        trend: "decelerating",
+      },
+      { itemId: "3", name: "卵", dailyRate: 0.2, unit: "個", logCount: 5, trend: "steady" },
+      {
+        itemId: "4",
+        name: "ヨーグルト",
+        dailyRate: 10,
+        unit: "g",
+        logCount: 1,
+        trend: "insufficient-data",
+      },
     ],
   },
 };
