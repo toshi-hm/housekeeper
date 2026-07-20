@@ -1,6 +1,5 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { isValidEmailInput, normalizeEmail } from "./validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,16 +15,18 @@ const json = (body: unknown, status = 200, extraHeaders: Record<string, string> 
     headers: { ...corsHeaders, ...extraHeaders, "Content-Type": "application/json" },
   });
 
-Deno.serve(async (req: Request) => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
     const { email } = (await req.json()) as { email?: unknown };
 
-    if (typeof email !== "string" || !email) return json({ error: "email is required" }, 400);
+    if (!isValidEmailInput(email)) return json({ error: "email is required" }, 400);
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = normalizeEmail(email);
 
+    const { createClient } = await import("jsr:@supabase/supabase-js@2");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -56,4 +57,6 @@ Deno.serve(async (req: Request) => {
     console.error(err);
     return json({ error: "Internal server error" }, 500);
   }
-});
+};
+
+if (import.meta.main) Deno.serve(handler);
