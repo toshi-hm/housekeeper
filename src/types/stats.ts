@@ -414,3 +414,66 @@ export const computeItemConsumptionPace = (
 
   return { monthly, averagePerMonth, unit, estimatedWeeksRemaining };
 };
+
+// --- Food-waste dashboard (#494) ---
+
+export interface WasteCategoryCount {
+  categoryId: string | null;
+  name: string;
+  count: number;
+}
+
+export interface MonthlyWasteEntry {
+  month: string;
+  total: number;
+  byCategory: WasteCategoryCount[];
+}
+
+/** ソフトデリート済みアイテムのうち `deletion_reason = 'expired_waste'` のもの。
+ *  `deleted_at` は呼び出し側のクエリで NOT NULL に絞り込み済み。 */
+export interface RawWasteItem {
+  category_id: string | null;
+  deleted_at: string;
+}
+
+/** 月別・カテゴリ別の廃棄件数を集計する（食品ロスダッシュボード用）。
+ *  `computeMonthlyConsumption` と同じ「直近 N ヶ月を新しい順に並べる」方針に揃えている。
+ *  unit_price（#342, 未マージ）が入るまでは金額換算せず件数のみを対象にする。 */
+export const computeMonthlyWasteStats = (
+  items: RawWasteItem[],
+  categoryMap: Record<string, string>,
+  months = 6,
+  now = new Date(),
+): MonthlyWasteEntry[] => {
+  const result: MonthlyWasteEntry[] = [];
+
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const label = `${year}/${String(month + 1).padStart(2, "0")}`;
+
+    const monthItems = items.filter((item) => {
+      const deletedAt = new Date(item.deleted_at);
+      return deletedAt.getFullYear() === year && deletedAt.getMonth() === month;
+    });
+
+    const countMap = new Map<string | null, number>();
+    for (const item of monthItems) {
+      const key = item.category_id ?? null;
+      countMap.set(key, (countMap.get(key) ?? 0) + 1);
+    }
+
+    const byCategory: WasteCategoryCount[] = [...countMap.entries()]
+      .map(([categoryId, count]) => ({
+        categoryId,
+        name: categoryId ? (categoryMap[categoryId] ?? "?") : "__uncategorized__",
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    result.push({ month: label, total: monthItems.length, byCategory });
+  }
+
+  return result;
+};

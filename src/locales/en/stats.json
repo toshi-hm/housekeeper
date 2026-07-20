@@ -20,5 +20,6 @@
     "steady": "Steady"
   },
   "trendLabel": "Trend",
-  "uncategorized": "Uncategorized"
+  "uncategorized": "Uncategorized",
+  "wasteBreakdown": "Food Waste (Discard Count)"
 }

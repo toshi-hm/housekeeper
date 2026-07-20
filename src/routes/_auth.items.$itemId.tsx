@@ -26,7 +26,7 @@ import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { TagBadge } from "@/components/atoms/TagBadge";
-import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { DeletionReasonDialog } from "@/components/molecules/DeletionReasonDialog";
 import { ImageLightbox } from "@/components/molecules/ImageLightbox";
 import { ItemConsumptionMiniChart } from "@/components/molecules/ItemConsumptionMiniChart";
 import { QRCodeDialog } from "@/components/molecules/QRCodeDialog";
@@ -44,7 +44,7 @@ import { useUserSettings } from "@/hooks/useUserSettings";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { computeInventoryValue } from "@/lib/inventoryValue";
 import { useToast } from "@/lib/toast-context";
-import { getExpiryStatus, getLotRemainingAmount } from "@/types/item";
+import { getExpiryStatus, getLotRemainingAmount, type ItemDeletionReason } from "@/types/item";
 import { computeConsumptionPaceForecast, computeItemConsumptionPace } from "@/types/stats";
 
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
@@ -123,9 +123,9 @@ const ItemDetailPage = () => {
   const { data: itemTagIds = [] } = useItemTagIds(itemId);
   const itemTags = allTags.filter((tag) => itemTagIds.includes(tag.id));
 
-  const handleDelete = async () => {
+  const handleDelete = async (reason: ItemDeletionReason) => {
     try {
-      await deleteItem.mutateAsync(itemId);
+      await deleteItem.mutateAsync({ id: itemId, reason });
       setShowDeleteConfirm(false);
       void navigate({ to: "/" });
     } catch {
@@ -203,14 +203,14 @@ const ItemDetailPage = () => {
 
   return (
     <div className="space-y-4">
-      <ConfirmDialog
+      <DeletionReasonDialog
         open={showDeleteConfirm}
         title={t("deleteItemTitle")}
         message={t("deleteConfirm")}
         confirmLabel={tc("delete")}
         isConfirming={deleteItem.isPending}
-        onConfirm={() => {
-          void handleDelete();
+        onConfirm={(reason) => {
+          void handleDelete(reason);
         }}
         onCancel={() => setShowDeleteConfirm(false)}
       />

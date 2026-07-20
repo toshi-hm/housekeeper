@@ -57,9 +57,16 @@ export interface Item {
   reorder_threshold?: number | null;
   last_verified_at?: string | null;
   deleted_at?: string | null;
+  deletion_reason?: ItemDeletionReason | null;
   created_at: string;
   updated_at: string;
 }
+
+/** ソフトデリート時の削除理由（#494）。フードロスダッシュボードの集計対象は
+ *  'expired_waste' のみ。既存のソフトデリート済み行や、理由選択を経由しない
+ *  経路（現状なし）では null のまま残ることがある。 */
+export const ITEM_DELETION_REASONS = ["consumed", "expired_waste", "other"] as const;
+export type ItemDeletionReason = (typeof ITEM_DELETION_REASONS)[number];
 
 export const itemFormSchema = z.object({
   name: z.string().min(1),

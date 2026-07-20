@@ -17,6 +17,7 @@ import { ViewModeToggle } from "@/components/atoms/ViewModeToggle";
 import { BulkActionBar } from "@/components/molecules/BulkActionBar";
 import { BulkMoveDialog } from "@/components/molecules/BulkMoveDialog";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { DeletionReasonDialog } from "@/components/molecules/DeletionReasonDialog";
 import { ExpiryRecipeSuggestions } from "@/components/molecules/ExpiryRecipeSuggestions";
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { ItemListRow } from "@/components/molecules/ItemListRow";
@@ -50,6 +51,7 @@ import {
   getExpiryStatus,
   isItemUnverified,
   type Item,
+  type ItemDeletionReason,
 } from "@/types/item";
 
 const PAGE_SIZE = 40;
@@ -205,11 +207,15 @@ export const DashboardPage = () => {
     setBulkConfirm(null);
   };
 
-  const runBulkAction = async (action: BulkAction, targetId?: string | null) => {
+  const runBulkAction = async (
+    action: BulkAction,
+    targetId?: string | null,
+    reason?: ItemDeletionReason,
+  ) => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
     try {
-      await bulkAction.mutateAsync({ action, ids, targetId });
+      await bulkAction.mutateAsync({ action, ids, targetId, reason });
       exitSelectionMode();
     } catch {
       // Error toast is handled by useBulkItemAction.onError
@@ -874,16 +880,15 @@ export const DashboardPage = () => {
         }}
         onCancel={() => setBulkConfirm(null)}
       />
-      <ConfirmDialog
+      <DeletionReasonDialog
         open={bulkConfirm === "delete"}
         title={t("bulkDelete")}
         message={t("bulkDeleteConfirm", { count: selectedIds.size })}
         confirmLabel={tc("delete")}
-        variant="destructive"
         isConfirming={bulkAction.isPending}
-        onConfirm={() => {
+        onConfirm={(reason) => {
           setBulkConfirm(null);
-          void runBulkAction("delete");
+          void runBulkAction("delete", undefined, reason);
         }}
         onCancel={() => setBulkConfirm(null)}
       />

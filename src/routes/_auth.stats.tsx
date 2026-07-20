@@ -7,6 +7,7 @@ import { CategoryValueChart } from "@/components/organisms/CategoryValueChart";
 import { ConsumptionChart } from "@/components/organisms/ConsumptionChart";
 import { ConsumptionSpeedRanking } from "@/components/organisms/ConsumptionSpeedRanking";
 import { ExpiryChart } from "@/components/organisms/ExpiryChart";
+import { WasteStatsChart } from "@/components/organisms/WasteStatsChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   useCategoryStats,
@@ -14,6 +15,7 @@ import {
   useConsumptionSpeedRanking,
   useExpiryDistribution,
   useMonthlyConsumption,
+  useWasteStats,
 } from "@/hooks/useStats";
 import { useUserSettings } from "@/hooks/useUserSettings";
 
@@ -83,6 +85,7 @@ const StatsPage = () => {
     isLoading: speedLoading,
     isError: speedError,
   } = useConsumptionSpeedRanking();
+  const { data: wasteData, isLoading: wasteLoading, isError: wasteError } = useWasteStats(6);
 
   return (
     <div className="space-y-4">
@@ -127,6 +130,15 @@ const StatsPage = () => {
         isError={speedError}
       >
         <ConsumptionSpeedRanking ranking={speedRanking} />
+      </ChartCard>
+
+      <ChartCard
+        title={t("wasteBreakdown")}
+        subtitle={t("last6Months")}
+        isLoading={wasteLoading}
+        isError={wasteError}
+      >
+        <WasteStatsChart data={wasteData} />
       </ChartCard>
     </div>
   );

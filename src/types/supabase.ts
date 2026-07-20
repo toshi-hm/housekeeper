@@ -186,6 +186,7 @@ export interface Database {
           content_unit: string;
           created_at: string | null;
           deleted_at: string | null;
+          deletion_reason: string | null;
           expiry_date: string | null;
           id: string;
           image_path: string | null;
@@ -208,6 +209,7 @@ export interface Database {
           content_unit?: string;
           created_at?: string | null;
           deleted_at?: string | null;
+          deletion_reason?: string | null;
           expiry_date?: string | null;
           id?: string;
           image_path?: string | null;
@@ -230,6 +232,7 @@ export interface Database {
           content_unit?: string;
           created_at?: string | null;
           deleted_at?: string | null;
+          deletion_reason?: string | null;
           expiry_date?: string | null;
           id?: string;
           image_path?: string | null;

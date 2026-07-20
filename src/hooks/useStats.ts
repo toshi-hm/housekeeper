@@ -13,8 +13,11 @@ import {
   computeExpiryDistribution,
   computeForecastAlerts,
   computeMonthlyConsumption,
+  computeMonthlyWasteStats,
   DEFAULT_FORECAST_LOOKBACK_DAYS,
   type LotValueRow,
+  type RawLog,
+  type RawWasteItem,
 } from "@/types/stats";
 
 export const useCategoryStats = () => {
@@ -127,4 +130,45 @@ export const useForecastAlerts = (
 ) => {
   const { data: logs = [], isLoading, isError } = useAllConsumptionLogs();
   return { alerts: computeForecastAlerts(items, logs, thresholdDays), isLoading, isError };
+};
+
+// --- Food-waste dashboard (#494) ---
+
+/** 廃棄理由（deletion_reason = 'expired_waste'）でソフトデリートされたアイテムを全件取得する。
+ *  通常の `useItems` は `deleted_at IS NULL` でフィルタするため使えない。 */
+const useAllWasteItems = () =>
+  useQuery<RawWasteItem[]>({
+    queryKey: ["waste-items-all"],
+    queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("items")
+        .select("category_id, deleted_at")
+        .eq("user_id", user.id)
+        .eq("deletion_reason", "expired_waste")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: true });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as RawWasteItem[];
+    },
+    staleTime: 0,
+  });
+
+export const useWasteStats = (months = 6) => {
+  const { data: items = [], isLoading: itemsLoading, isError: itemsError } = useAllWasteItems();
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    isError: categoriesError,
+  } = useCategories();
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
+  return {
+    data: computeMonthlyWasteStats(items, categoryMap, months),
+    isLoading: itemsLoading || categoriesLoading,
+    isError: itemsError || categoriesError,
+  };
 };
