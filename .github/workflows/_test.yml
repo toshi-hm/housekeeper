@@ -34,3 +34,24 @@ jobs:
       - name: Test Edge Functions
         run: |
           deno test --no-check $(find supabase/functions -name '*.test.ts' | sort)
+
+  pgtap:
+    name: RLS Policy Tests (pgTAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Start local Supabase stack
+        run: bunx supabase start
+
+      - name: Run pgTAP RLS tests
+        run: bun run test:db
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: bunx supabase stop --no-backup
