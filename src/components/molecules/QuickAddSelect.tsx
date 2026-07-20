@@ -29,6 +29,9 @@ interface QuickAddSelectProps {
    *  Defaults to true. Set to false for fields that must always hold a value
    *  (e.g. content_unit), so the user can't clear it to empty. */
   allowClear?: boolean;
+  /** Keep the current value when its backing master-data row is deleted.
+   *  Useful for copied text values that intentionally outlive the master row. */
+  clearSelectionOnDelete?: boolean;
 }
 
 export const QuickAddSelect = ({
@@ -44,6 +47,7 @@ export const QuickAddSelect = ({
   cancelLabel,
   addErrorMessage,
   allowClear = true,
+  clearSelectionOnDelete = true,
 }: QuickAddSelectProps) => {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("common:select");
@@ -186,7 +190,7 @@ export const QuickAddSelect = ({
     setDeleteError(null);
     try {
       await onDelete(optionValue);
-      if (value === optionValue) {
+      if (clearSelectionOnDelete && value === optionValue) {
         onChange("");
       }
     } catch (err) {

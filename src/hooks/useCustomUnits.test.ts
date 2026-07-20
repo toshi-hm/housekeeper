@@ -69,6 +69,15 @@ describe("createCustomUnit", () => {
     await expect(createCustomUnit("")).rejects.toBeInstanceOf(InvalidNameLengthError);
   });
 
+  test("空白だけの名前はInvalidNameLengthErrorをthrowする", async () => {
+    await expect(createCustomUnit("   ")).rejects.toBeInstanceOf(InvalidNameLengthError);
+  });
+
+  test("プリセットと同名の単位はDuplicateNameErrorをthrowする", async () => {
+    await expect(createCustomUnit("個")).rejects.toBeInstanceOf(DuplicateNameError);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
   test("一意制約違反(23505)の場合、既存行を返さずDuplicateNameErrorをthrowする", async () => {
     responseQueues.custom_units = [{ data: null, error: { code: "23505" } }];
     await expect(createCustomUnit("缶")).rejects.toBeInstanceOf(DuplicateNameError);
@@ -81,6 +90,14 @@ describe("createCustomUnit", () => {
     responseQueues.custom_units = [{ data: { id: "unit-1", name: "缶" }, error: null }];
     const result = await createCustomUnit("缶");
     expect(result).toEqual({ id: "unit-1", name: "缶" });
+
+    const insertCall = callLog.find((c) => c.table === "custom_units" && c.method === "insert");
+    expect(insertCall?.args).toEqual([{ name: "缶", user_id: "user-1" }]);
+  });
+
+  test("名前の前後空白を除いて保存する", async () => {
+    responseQueues.custom_units = [{ data: { id: "unit-1", name: "缶" }, error: null }];
+    await createCustomUnit("  缶  ");
 
     const insertCall = callLog.find((c) => c.table === "custom_units" && c.method === "insert");
     expect(insertCall?.args).toEqual([{ name: "缶", user_id: "user-1" }]);

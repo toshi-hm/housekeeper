@@ -179,10 +179,17 @@ export const ItemForm = ({
   const customUnitOptions = customUnits.filter(
     (u) => !(CONTENT_UNITS as readonly string[]).includes(u.name),
   );
-  const contentUnitOptions = [
+  const configuredContentUnitOptions = [
     ...CONTENT_UNITS.map((u) => ({ value: u, label: u })),
     ...customUnitOptions.map((u) => ({ value: u.name, label: u.name })),
   ];
+  // A deleted custom-unit row must not make an existing copied text value look
+  // empty while editing an item. Keep the current value visible for this form.
+  const contentUnitOptions = configuredContentUnitOptions.some(
+    (option) => option.value === values.content_unit,
+  )
+    ? configuredContentUnitOptions
+    : [...configuredContentUnitOptions, { value: values.content_unit, label: values.content_unit }];
 
   const handleAddCustomUnit = async (name: string) => {
     const unit = await addCustomUnit(name);
@@ -463,6 +470,7 @@ export const ItemForm = ({
               onChange={(value) => set("content_unit", value)}
               options={contentUnitOptions}
               allowClear={false}
+              clearSelectionOnDelete={false}
               onAdd={handleAddCustomUnit}
               onDelete={handleDeleteCustomUnit}
               addLabel={t("addUnit")}

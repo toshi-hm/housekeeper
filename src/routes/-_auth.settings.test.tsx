@@ -70,6 +70,7 @@ const Wrapper = (toastStub: ToastContextValue) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { enabled: false, retry: false } },
   });
+  queryClient.setQueryData(["custom-units"], []);
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <routerContext.Provider value={stubRouter}>

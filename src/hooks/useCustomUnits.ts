@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import type { CustomUnit } from "@/types/item";
+import { CONTENT_UNITS, type CustomUnit } from "@/types/item";
 
 const CUSTOM_UNITS_KEY = ["custom-units"] as const;
 
@@ -24,8 +24,9 @@ export class InvalidNameLengthError extends Error {
   }
 }
 
-const validateNameLength = (name: string): void => {
+const validateName = (name: string): void => {
   if (name.length < 1 || name.length > MAX_NAME_LENGTH) throw new InvalidNameLengthError();
+  if ((CONTENT_UNITS as readonly string[]).includes(name)) throw new DuplicateNameError();
 };
 
 const fetchCustomUnits = async (): Promise<CustomUnit[]> => {
@@ -43,12 +44,13 @@ const fetchCustomUnits = async (): Promise<CustomUnit[]> => {
 
 export const createCustomUnit = async (name: string): Promise<CustomUnit> => {
   requireOnline();
-  validateNameLength(name);
+  const normalizedName = name.trim();
+  validateName(normalizedName);
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
     .from("custom_units")
-    .insert({ name, user_id: userData.user.id })
+    .insert({ name: normalizedName, user_id: userData.user.id })
     .select()
     .single();
   if (error) {
@@ -72,6 +74,9 @@ export const useCustomUnits = () =>
     queryKey: CUSTOM_UNITS_KEY,
     queryFn: fetchCustomUnits,
     staleTime: 5 * 60_000,
+    // Query keys in this app are not user-scoped. Do not persist this
+    // user-owned list after its last authenticated consumer unmounts.
+    gcTime: 0,
   });
 
 export const useCreateCustomUnit = () => {

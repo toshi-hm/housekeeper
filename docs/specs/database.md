@@ -140,7 +140,11 @@ create index storage_locations_user_id_idx on storage_locations(user_id);
 create table custom_units (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  name text not null,
+  name text not null check (
+    name = btrim(name)
+    and char_length(name) between 1 and 40
+    and name <> all (array['個', '枚', '本', '袋', 'mL', 'L', 'g', 'kg']::text[])
+  ),
   created_at timestamptz not null default now(),
   unique (user_id, name)
 );
@@ -154,6 +158,8 @@ create index custom_units_user_id_idx on custom_units(user_id);
   そのため categories/storage_locations と異なり `updated_at` トリガや「使用中チェック」は不要 —
   カスタム単位を削除しても既存アイテムの `content_unit` 値はそのまま残る
 - 一覧表示は `CONTENT_UNITS`（プリセット）+ `custom_units`（ユーザー定義）のマージ
+- Data API は `authenticated` に `select` / `insert` / `delete` のみ許可し、`anon` には許可しない。
+  RLS も `authenticated` に限定し、`auth.uid() = user_id` を `using` / `with check` の両方で検証する
 
 ## consumption_logs
 
