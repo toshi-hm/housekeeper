@@ -22,6 +22,8 @@ import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemIma
 import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
 import {
+  QUERY_KEY as SHOPPING_QUERY_KEY,
+  restoreShoppingItem,
   useDeleteAllPurchasedItems,
   useDeleteShoppingItem,
   usePurchaseShoppingItem,
@@ -35,6 +37,7 @@ import {
   useShoppingTemplates,
 } from "@/hooks/useShoppingTemplates";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
+import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { OfflineError } from "@/lib/requireOnline";
 import {
   type CategoryResolver,
@@ -115,6 +118,28 @@ const ShoppingPage = () => {
   const applyTemplate = useApplyShoppingTemplate();
   const { lookup } = useBarcodeLookup();
 
+  // 買い物リストのアイテム削除の取り消し（#478）。shopping_list_items は
+  // ソフトデリートを持たないため、Undo時は restoreShoppingItem で同じ内容を
+  // 再insertする。
+  const deleteUndo = useUndoableAction<ShoppingItem>({
+    durationMs: 6000,
+    message: () => t("deleteSuccess"),
+    undoLabel: t("common:undo"),
+    onUndo: async (_id, item) => {
+      try {
+        await restoreShoppingItem(item);
+        await qc.invalidateQueries({ queryKey: [SHOPPING_QUERY_KEY] });
+        toast(t("common:undoSuccess"), "success");
+      } catch (err) {
+        toast(
+          err instanceof OfflineError ? t("common:offlineError") : t("common:unknownError"),
+          "error",
+        );
+        throw err;
+      }
+    },
+  });
+
   const handleAdd = async () => {
     if (!addName.trim()) return;
     try {
@@ -130,10 +155,22 @@ const ShoppingPage = () => {
 
   const handleDelete = async () => {
     if (!deleteId) return;
+    // Snapshot the full row before it's deleted so a later Undo can
+    // re-insert it exactly (#478). Falls back to the "planned" list too,
+    // since the delete confirm dialog can be triggered from either tab.
+    const target =
+      items.find((i) => i.id === deleteId) ?? plannedItems.find((i) => i.id === deleteId);
     try {
       await deleteItem.mutateAsync(deleteId);
       setDeleteId(null);
-      toast(t("deleteSuccess"), "success");
+      // Success toast (with an Undo action) is shown by deleteUndo.start
+      // when we have a snapshot to restore from; otherwise fall back to a
+      // plain success toast.
+      if (target) {
+        deleteUndo.start(target.id, target);
+      } else {
+        toast(t("deleteSuccess"), "success");
+      }
     } catch {
       // Error toast is handled by useDeleteShoppingItem.onError
     }

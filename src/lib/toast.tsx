@@ -16,11 +16,12 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const toast = useCallback(
-    (message: string, variant: ToastVariant = "default", options?: ToastOptions) => {
+    (message: string, variant: ToastVariant = "default", options?: ToastOptions): string => {
       const id = crypto.randomUUID();
       setToasts((prev) => [...prev, { id, message, variant, action: options?.action }]);
-      const duration = options?.durationMs ?? (options?.action ? 5000 : 4000);
-      setTimeout(() => dismiss(id), duration);
+      const durationMs = options?.durationMs ?? (options?.action ? 6000 : 4000);
+      setTimeout(() => dismiss(id), durationMs);
+      return id;
     },
     [dismiss],
   );
@@ -69,16 +70,15 @@ const ToastContainer = ({
             <button
               onClick={() => {
                 t.action?.onClick();
-                onDismiss(t.id);
               }}
-              className="ml-1 shrink-0 whitespace-nowrap font-semibold underline underline-offset-2 opacity-90 hover:opacity-100"
+              className="shrink-0 rounded-md border border-current/40 px-2 py-1 text-xs font-semibold whitespace-nowrap hover:bg-white/10"
             >
               {t.action.label}
             </button>
           )}
           <button
             onClick={() => onDismiss(t.id)}
-            className="ml-2 opacity-70 hover:opacity-100"
+            className="ml-2 shrink-0 opacity-70 hover:opacity-100"
             aria-label={closeLabel}
           >
             ×

@@ -2,7 +2,8 @@ import { createContext, useContext } from "react";
 
 export type ToastVariant = "default" | "success" | "error" | "warning";
 
-interface ToastAction {
+/** A single action button rendered on a toast (e.g. "元に戻す" / "Undo"). */
+export interface ToastAction {
   label: string;
   onClick: () => void;
 }
@@ -15,15 +16,19 @@ export interface Toast {
 }
 
 export interface ToastOptions {
-  /** クリックすると `onClick` を実行するアクションボタン（例: 「元に戻す」）。 */
+  /** Optional action button (e.g. an Undo button) rendered on the toast. */
   action?: ToastAction;
-  /** 自動で消えるまでの時間 (ms)。省略時はデフォルト（4000ms、actionありは5000ms）。 */
+  /**
+   * Auto-dismiss delay in ms. Defaults to 4000, or 6000 when `action` is
+   * present so the user has time to notice and tap the action button.
+   */
   durationMs?: number;
 }
 
 export interface ToastContextValue {
   toasts: Toast[];
-  toast: (message: string, variant?: ToastVariant, options?: ToastOptions) => void;
+  /** Shows a toast and returns its id (e.g. to `dismiss()` it programmatically later). */
+  toast: (message: string, variant?: ToastVariant, options?: ToastOptions) => string;
   dismiss: (id: string) => void;
 }
 

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -36,13 +37,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useConsumptionLogs } from "@/hooks/useConsumptionLogs";
 import { useSignedItemImage } from "@/hooks/useItemImage";
 import { useItemLots } from "@/hooks/useItemLots";
-import { useItem, useSoftDeleteItem, useVerifyItem } from "@/hooks/useItems";
+import { restoreItem, useItem, useSoftDeleteItem, useVerifyItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useItemTagIds, useTags } from "@/hooks/useTags";
+import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { computeInventoryValue } from "@/lib/inventoryValue";
+import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus, getLotRemainingAmount, type ItemDeletionReason } from "@/types/item";
 import { computeConsumptionPaceForecast, computeItemConsumptionPace } from "@/types/stats";
@@ -89,9 +92,28 @@ const ItemDetailPage = () => {
       : 0;
     return computeItemConsumptionPace(logs, currentStock, item?.content_unit ?? "");
   }, [logs, item]);
+  const qc = useQueryClient();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
+
+  // アイテム削除の取り消し（#478）: ソフトデリートなので deleted_at を戻すだけで
+  // 復元できる。確認ダイアログ自体は維持しつつ、削除後数秒はUndoできる安全網を追加する。
+  const deleteUndo = useUndoableAction<{ itemId: string }>({
+    durationMs: 8000,
+    message: () => tc("deleteSuccess"),
+    undoLabel: tc("undo"),
+    onUndo: async (_id, payload) => {
+      try {
+        await restoreItem(payload.itemId);
+        await qc.invalidateQueries({ queryKey: ["items"], refetchType: "all" });
+        toast(tc("undoSuccess"), "success");
+      } catch (err) {
+        toast(err instanceof OfflineError ? tc("offlineError") : tc("unknownError"), "error");
+        throw err;
+      }
+    },
+  });
 
   const setDetailTab = (tab: "info" | "lots" | "history") => {
     void navigate({ to: "/items/$itemId", params: { itemId }, search: { tab } });
@@ -127,6 +149,10 @@ const ItemDetailPage = () => {
     try {
       await deleteItem.mutateAsync({ id: itemId, reason });
       setShowDeleteConfirm(false);
+      // Success toast (with an Undo action) is shown by deleteUndo.start —
+      // the toast survives the navigation below since ToastProvider is
+      // mounted above the router (#478).
+      deleteUndo.start(itemId, { itemId });
       void navigate({ to: "/" });
     } catch {
       setShowDeleteConfirm(false);

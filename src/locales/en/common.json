@@ -26,6 +26,9 @@
   "save": "Save",
   "saveSuccess": "Saved",
   "select": "Select",
+  "undo": "Undo",
+  "undoError": "Failed to undo",
+  "undoSuccess": "Restored",
   "unknownError": "An error occurred",
   "voiceInput": "Voice input",
   "voiceInputListening": "Listening..."

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -27,8 +28,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useAutoArchiveExpiredItems } from "@/hooks/useAutoArchive";
-import { useConsumeItem } from "@/hooks/useConsumeItem";
+import { type ConsumeItemUndo, undoConsumeItem, useConsumeItem } from "@/hooks/useConsumeItem";
 import { useSignedItemImages } from "@/hooks/useItemImage";
+import { LOTS_KEY } from "@/hooks/useItemLots";
 import {
   type BulkAction,
   type ItemFilters,
@@ -41,9 +43,11 @@ import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useForecastAlerts } from "@/hooks/useStats";
+import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useViewMode } from "@/hooks/useViewMode";
 import { updateAppBadge } from "@/lib/pwa";
+import { OfflineError } from "@/lib/requireOnline";
 import { toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
 import {
@@ -54,6 +58,12 @@ import {
   type Item,
   type ItemDeletionReason,
 } from "@/types/item";
+
+interface QuickConsumeUndoPayload {
+  itemId: string;
+  itemName: string;
+  undo: ConsumeItemUndo;
+}
 
 const PAGE_SIZE = 40;
 
@@ -153,7 +163,32 @@ export const DashboardPage = () => {
   const upsertShoppingItem = useUpsertShoppingItem();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [isBulkAdding, setIsBulkAdding] = useState(false);
+
+  // クイック消費の取り消し（#478）: useCalendarConsume と同じ
+  // useUndoableAction 上に実装し、数秒のUndoウィンドウ内であれば
+  // トーストのアクションボタンから元の在庫状態へ戻せる。
+  const quickConsumeUndo = useUndoableAction<QuickConsumeUndoPayload>({
+    durationMs: 6000,
+    message: (payload) => t("quickConsumeSuccess", { name: payload.itemName }),
+    undoLabel: tc("undo"),
+    onUndo: async (_id, payload) => {
+      try {
+        await undoConsumeItem(payload.undo);
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["items"] }),
+          qc.invalidateQueries({ queryKey: [...LOTS_KEY, payload.itemId] }),
+          qc.invalidateQueries({ queryKey: ["consumption-logs", payload.itemId] }),
+          qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+        ]);
+        toast(tc("undoSuccess"), "success");
+      } catch (err) {
+        toast(err instanceof OfflineError ? tc("offlineError") : tc("unknownError"), "error");
+        throw err;
+      }
+    },
+  });
 
   const { q: search, cat: categoryId, loc: locationId, expiry: expiryFilter } = Route.useSearch();
 
@@ -227,8 +262,15 @@ export const DashboardPage = () => {
     if (quickConsumingId) return;
     setQuickConsumingId(item.id);
     try {
-      await consumeItem.mutateAsync({ item, deltaAmount: item.content_amount });
-      toast(t("quickConsumeSuccess", { name: item.name }), "success");
+      const result = await consumeItem.mutateAsync({ item, deltaAmount: item.content_amount });
+      // Success toast (with an Undo action) is shown by quickConsumeUndo.start
+      // instead of a plain toast() call here, so a mistaken tap can be
+      // reversed within the undo window (#478).
+      quickConsumeUndo.start(crypto.randomUUID(), {
+        itemId: item.id,
+        itemName: item.name,
+        undo: result._undo,
+      });
     } catch {
       // Error toast is handled by useConsumeItem.onError
     } finally {

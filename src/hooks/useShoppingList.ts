@@ -14,7 +14,7 @@ import type {
   UpsertShoppingItemInput,
 } from "@/types/shopping";
 
-const QUERY_KEY = "shopping";
+export const QUERY_KEY = "shopping";
 
 export const useShoppingList = (status: ShoppingStatus = "planned") => {
   return useQuery<ShoppingItem[]>({
@@ -156,6 +156,27 @@ export const useDeleteShoppingItem = () => {
       else toast(t("unknownError"), "error");
     },
   });
+};
+
+/**
+ * 削除したショッピングリスト行を同じ内容（同じ id を含む）で復元する。
+ * shopping_list_items はソフトデリートを持たないため、Undo のたびに
+ * 実際に再 insert する（#478）。
+ */
+export const restoreShoppingItem = async (item: ShoppingItem): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase.from("shopping_list_items").insert({
+    id: item.id,
+    user_id: item.user_id,
+    name: item.name,
+    desired_units: item.desired_units,
+    note: item.note,
+    linked_item_id: item.linked_item_id,
+    status: item.status,
+    purchased_at: item.purchased_at,
+    created_item_id: item.created_item_id,
+  });
+  if (error) throw new Error(error.message);
 };
 
 const markShoppingItemPurchased = async (shoppingItemId: string, itemId: string) => {

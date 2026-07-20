@@ -162,6 +162,12 @@ export interface ConsumeLotResult extends ItemLot {
    *  insert failed (non-fatal — stock is already correct, but the history
    *  entry is missing). Callers should warn the user. See #441. */
   _logInsertFailed?: boolean;
+  /**
+   * The inserted consumption_logs row id, or null when the insert failed.
+   * Callers that offer an Undo action need this to delete the exact log
+   * entry on undo instead of guessing the most recent one (#478).
+   */
+  _logId?: string | null;
 }
 
 export const consumeLot = async ({
@@ -206,17 +212,21 @@ export const consumeLot = async ({
   if (error) throw error;
   if (!data) throw new ConcurrentUpdateError();
 
-  const { error: logError } = await supabase.from("consumption_logs").insert({
-    user_id: userData.user.id,
-    item_id: lot.item_id,
-    delta_amount: deltaAmount,
-    delta_unit: item.content_unit,
-    units_before: lot.units,
-    units_after: result.units_after,
-    opened_remaining_before: lot.opened_remaining ?? null,
-    opened_remaining_after: result.opened_remaining_after,
-    note: note ?? null,
-  });
+  const { data: logData, error: logError } = await supabase
+    .from("consumption_logs")
+    .insert({
+      user_id: userData.user.id,
+      item_id: lot.item_id,
+      delta_amount: deltaAmount,
+      delta_unit: item.content_unit,
+      units_before: lot.units,
+      units_after: result.units_after,
+      opened_remaining_before: lot.opened_remaining ?? null,
+      opened_remaining_after: result.opened_remaining_after,
+      note: note ?? null,
+    })
+    .select("id")
+    .single();
   if (logError) {
     // Non-fatal: stock is already updated. Surfaced via _logInsertFailed so
     // the caller can warn the user (#441).
@@ -227,7 +237,55 @@ export const consumeLot = async ({
   await syncItemAggregate(lot.item_id);
   await maybeAutoReorder(lot.item_id);
 
-  return { ...(data as ItemLot), _logInsertFailed: !!logError };
+  return {
+    ...(data as ItemLot),
+    _logInsertFailed: !!logError,
+    _logId: (logData as { id: string } | null)?.id ?? null,
+  };
+};
+
+export interface RestoreLotConsumptionParams {
+  lotId: string;
+  itemId: string;
+  unitsBefore: number;
+  openedRemainingBefore: number | null;
+  /** consumption_logs row id to delete, or null when none was recorded. */
+  logId: string | null;
+}
+
+/**
+ * Reverses a single lot consumption (as performed by `consumeLot` or the
+ * expiry calendar's zero-out check) back to its pre-consumption state:
+ * restores the lot's units/opened_remaining, deletes the corresponding
+ * consumption_logs entry (if any), and resyncs the item aggregate.
+ *
+ * Shared by every "undo consume" flow (calendar, item consume page,
+ * dashboard quick-consume) via `useUndoableAction` so the restore logic
+ * lives in exactly one place (#478).
+ */
+export const restoreLotConsumption = async ({
+  lotId,
+  itemId,
+  unitsBefore,
+  openedRemainingBefore,
+  logId,
+}: RestoreLotConsumptionParams): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase
+    .from("item_lots")
+    .update({
+      units: unitsBefore,
+      opened_remaining: openedRemainingBefore,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", lotId);
+  if (error) throw error;
+
+  if (logId) {
+    await supabase.from("consumption_logs").delete().eq("id", logId);
+  }
+
+  await syncItemAggregate(itemId);
 };
 
 /** データエクスポート（#381）用: ユーザーの全ロットを軽量な列だけで取得する。
