@@ -131,6 +131,73 @@ describe("consumeLot", () => {
     });
   });
 
+  test("auto_reorder が有効で消費後にしきい値以下になると shopping_list_items へ自動追加する (#353)", async () => {
+    responseQueues.item_lots = [
+      { data: { ...baseLot, units: 0 }, error: null }, // conditional update
+      { data: [{ units: 0, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate read
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate read
+      { data: null, error: null }, // syncItemAggregate update
+      // maybeAutoReorder read
+      {
+        data: {
+          id: "item-1",
+          user_id: "user-1",
+          name: "牛乳",
+          units: 0,
+          auto_reorder: true,
+          reorder_threshold: null,
+        },
+        error: null,
+      },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+    responseQueues.shopping_list_items = [
+      { data: null, error: null }, // dedup check: no existing planned row
+      { data: null, error: null }, // insert
+    ];
+
+    await consumeLot({ lot: { ...baseLot, units: 1 }, item, deltaAmount: 1 });
+
+    const insertCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "insert",
+    );
+    expect(insertCall?.args[0]).toMatchObject({
+      user_id: "user-1",
+      name: "牛乳",
+      desired_units: 1,
+      linked_item_id: "item-1",
+    });
+  });
+
+  test("auto_reorder が無効なアイテムは消費後も shopping_list_items へ追加しない", async () => {
+    responseQueues.item_lots = [
+      { data: { ...baseLot, units: 0 }, error: null },
+      { data: [{ units: 0, expiry_date: null, opened_remaining: null }], error: null },
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: null, error: null },
+      {
+        data: {
+          id: "item-1",
+          user_id: "user-1",
+          name: "牛乳",
+          units: 0,
+          auto_reorder: false,
+          reorder_threshold: null,
+        },
+        error: null,
+      },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    await consumeLot({ lot: { ...baseLot, units: 1 }, item, deltaAmount: 1 });
+
+    expect(callLog.some((c) => c.table === "shopping_list_items")).toBe(false);
+  });
+
   test("consumption_logsのinsertが失敗しても例外にはせず_logInsertFailedで返す (#441)", async () => {
     responseQueues.item_lots = [
       { data: { ...baseLot, units: 2 }, error: null },

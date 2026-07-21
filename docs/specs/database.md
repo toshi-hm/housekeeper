@@ -55,6 +55,9 @@ create table items (
   expiry_date date,
   notes text,
   image_path text,                       -- Storage 内のオブジェクトキー（"<user_id>/<item_id>.<ext>"）
+  minimum_stock int check (minimum_stock is null or minimum_stock >= 0), -- ダッシュボード警告用
+  auto_reorder boolean not null default false,   -- 定期購入フラグ（#353）
+  reorder_threshold int check (reorder_threshold is null or reorder_threshold >= 0), -- 自動追加のしきい値。NULL = 0以下
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -223,6 +226,7 @@ create table shopping_list_items (
   desired_units int not null default 1 check (desired_units >= 1),
   note text,
   linked_item_id uuid references items(id) on delete set null,
+  auto_added boolean not null default false,
   status text not null check (status in ('planned','purchased')) default 'planned',
   purchased_at timestamptz,
   created_item_id uuid references items(id) on delete set null,
@@ -231,7 +235,13 @@ create table shopping_list_items (
 );
 
 create index shopping_user_status_idx on shopping_list_items(user_id, status, created_at desc);
+create unique index shopping_planned_linked_item_unique
+  on shopping_list_items(user_id, linked_item_id)
+  where status = 'planned' and linked_item_id is not null;
 ```
+
+`auto_added` は定期購入処理が作成した行の出所を保持する。`linked_item_id` は手動補充でも使うため、
+この列を推測には使用しない。
 
 ## shopping_list_archive（v1.2）
 

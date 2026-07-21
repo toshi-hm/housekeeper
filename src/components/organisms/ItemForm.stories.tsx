@@ -72,3 +72,17 @@ export const WithBarcodeEntered: Story = {
     },
   },
 };
+
+/** 定期購入が有効で、しきい値入力欄が展開された状態 (#353) */
+export const AutoReorderEnabled: Story = {
+  args: {
+    defaultValues: {
+      name: "牛乳",
+      units: 2,
+      content_amount: 1000,
+      content_unit: "mL",
+      auto_reorder: true,
+      reorder_threshold: 1,
+    },
+  },
+};

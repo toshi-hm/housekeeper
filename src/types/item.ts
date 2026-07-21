@@ -53,6 +53,8 @@ export interface Item {
   notes?: string | null;
   image_path?: string | null;
   minimum_stock?: number | null;
+  auto_reorder?: boolean;
+  reorder_threshold?: number | null;
   deleted_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -74,6 +76,8 @@ export const itemFormSchema = z.object({
   minimum_stock: z.coerce.number().int().min(0).nullable().optional(),
   /** 1点あたりの購入単価（円）。任意入力、未設定 = null。 */
   unit_price: z.coerce.number().int().min(0).nullable().optional(),
+  auto_reorder: z.boolean().default(false),
+  reorder_threshold: z.coerce.number().int().min(0).nullable().optional(),
 });
 
 export const itemLotSchema = z.object({

@@ -179,6 +179,45 @@ describe("bulkConsumeItems", () => {
     const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
     expect(logInsert).toBeUndefined();
   });
+
+  test("全消費後、auto_reorder が有効なアイテムは shopping_list_items へ自動追加する (#353)", async () => {
+    responseQueues.item_lots = [
+      { data: [{ id: "lot-1", item_id: "item-1", units: 2, opened_remaining: null }], error: null },
+    ];
+    responseQueues.items = [
+      { data: [{ id: "item-1", content_amount: 1, content_unit: "個" }], error: null }, // bulk read
+      { data: null, error: null }, // items update (units=0)
+      // maybeAutoReorder read
+      {
+        data: {
+          id: "item-1",
+          user_id: "user-1",
+          name: "牛乳",
+          units: 0,
+          auto_reorder: true,
+          reorder_threshold: null,
+        },
+        error: null,
+      },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+    responseQueues.shopping_list_items = [
+      { data: null, error: null }, // dedup check
+      { data: null, error: null }, // insert
+    ];
+
+    await bulkConsumeItems(["item-1"]);
+
+    const insertCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "insert",
+    );
+    expect(insertCall?.args[0]).toMatchObject({
+      user_id: "user-1",
+      name: "牛乳",
+      desired_units: 1,
+      linked_item_id: "item-1",
+    });
+  });
 });
 
 describe("createItem", () => {

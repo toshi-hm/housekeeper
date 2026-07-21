@@ -317,6 +317,7 @@ const ShoppingPage = () => {
       desiredUnits={item.desired_units}
       note={item.note}
       isPurchased={item.status === "purchased"}
+      isAutoAdded={item.auto_added}
       isEditing={editId === item.id}
       isSaving={savingId === item.id}
       onPurchase={

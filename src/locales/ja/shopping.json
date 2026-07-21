@@ -1,6 +1,7 @@
 {
   "addItem": "追加",
   "addSuccess": "追加しました",
+  "autoAddedBadge": "🔁 自動追加",
   "clearPurchased": "購入済みをすべて削除",
   "clearPurchasedConfirm": "購入済みのアイテムをすべて削除しますか？この操作は取り消せません。",
   "clearPurchasedConfirmLabel": "すべて削除",

@@ -71,6 +71,8 @@ if units < 0:
 - 「使い切り」状態の item を一覧から隠せる
 - 一覧をグリッド表示 / コンパクトなリスト表示に切り替え、選択を端末に保存できる
 - 在庫データを CSV / JSON でエクスポートできる（詳細は `consumption-purchase.md` の「エクスポート」参照）
+- 「定期購入」フラグとしきい値を設定でき、消費して在庫がしきい値以下になると
+  ショッピングリストへ自動的に追加される（#353。詳細は `docs/specs/features/shopping-list.md` 参照）
 
 ## 画面・動線
 
@@ -130,6 +132,7 @@ if units < 0:
 - `content_unit`: `user_settings` の許可単位リストに含まれること
 - `opened_remaining`: `null` または `0 <= x <= content_amount`
 - `expiry_date`: 過去日でも許容（既存履歴入力のため）
+- `reorder_threshold`: `null` または 0 以上の整数（`auto_reorder = true` のときのみ入力可能）
 
 ## エラー
 

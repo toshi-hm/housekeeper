@@ -12,6 +12,8 @@ interface ShoppingRowProps {
   desiredUnits: number;
   note?: string | null;
   isPurchased?: boolean;
+  /** auto_reorder が有効なアイテムの消費によって自動追加された行かどうか (#353) */
+  isAutoAdded?: boolean;
   isEditing?: boolean;
   isSaving?: boolean;
   onPurchase?: (id: string) => void;
@@ -30,6 +32,7 @@ export const ShoppingRow = ({
   desiredUnits,
   note,
   isPurchased,
+  isAutoAdded,
   isEditing,
   isSaving,
   onPurchase,
@@ -153,7 +156,14 @@ export const ShoppingRow = ({
         <ShoppingCart className="h-5 w-5 shrink-0 text-muted-foreground" />
       )}
       <div className="min-w-0 flex-1">
-        <p className={`font-medium ${isPurchased ? "line-through" : ""}`}>{name}</p>
+        <p className={`flex items-center gap-1.5 font-medium ${isPurchased ? "line-through" : ""}`}>
+          {name}
+          {isAutoAdded && (
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
+              {t("autoAddedBadge")}
+            </span>
+          )}
+        </p>
         <p className="text-sm text-muted-foreground">
           {t("desiredUnits")}: {desiredUnits}
           {note && ` · ${note}`}

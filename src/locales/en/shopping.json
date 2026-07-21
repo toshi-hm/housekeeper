@@ -1,6 +1,7 @@
 {
   "addItem": "Add",
   "addSuccess": "Added",
+  "autoAddedBadge": "🔁 Auto-added",
   "clearPurchased": "Clear all purchased",
   "clearPurchasedConfirm": "Delete all purchased items? This cannot be undone.",
   "clearPurchasedConfirmLabel": "Delete all",

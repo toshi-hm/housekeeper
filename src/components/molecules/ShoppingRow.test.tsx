@@ -21,6 +21,22 @@ describe("ShoppingRow", () => {
     expect(container.textContent).toContain("2");
   });
 
+  it("shows auto-added badge when isAutoAdded=true (#353)", () => {
+    const { container } = render(
+      <ShoppingRow id="1" name="牛乳" desiredUnits={2} isAutoAdded onDelete={() => {}} />,
+      { wrapper },
+    );
+    expect(container.textContent).toMatch(/自動追加|Auto-added/);
+  });
+
+  it("does not show auto-added badge by default", () => {
+    const { container } = render(
+      <ShoppingRow id="1" name="牛乳" desiredUnits={2} onDelete={() => {}} />,
+      { wrapper },
+    );
+    expect(container.textContent).not.toMatch(/自動追加|Auto-added/);
+  });
+
   it("renders note when provided", () => {
     const { container } = render(
       <ShoppingRow id="1" name="牛乳" desiredUnits={1} note="低脂肪" onDelete={() => {}} />,

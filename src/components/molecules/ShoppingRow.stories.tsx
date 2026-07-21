@@ -22,6 +22,18 @@ export const Default: Story = {
   },
 };
 
+export const AutoAdded: Story = {
+  args: {
+    id: "1b",
+    name: "牛乳",
+    desiredUnits: 1,
+    isAutoAdded: true,
+    onPurchase: () => {},
+    onDelete: () => {},
+    onEdit: () => {},
+  },
+};
+
 export const WithNote: Story = {
   args: {
     id: "2",

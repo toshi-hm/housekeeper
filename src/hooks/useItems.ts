@@ -2,6 +2,7 @@ import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tansta
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { maybeAutoReorder } from "@/lib/autoReorder";
 import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
@@ -124,6 +125,11 @@ const normalizeCreateValues = (values: ItemFormValues) => ({
     values.minimum_stock !== undefined && values.minimum_stock !== null
       ? values.minimum_stock
       : null,
+  auto_reorder: values.auto_reorder ?? false,
+  reorder_threshold:
+    values.reorder_threshold !== undefined && values.reorder_threshold !== null
+      ? values.reorder_threshold
+      : null,
 });
 
 const hasOwn = <K extends PropertyKey>(obj: object, key: K): obj is Record<K, unknown> =>
@@ -159,6 +165,15 @@ export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
     normalized.minimum_stock =
       values.minimum_stock !== undefined && values.minimum_stock !== null
         ? values.minimum_stock
+        : null;
+  }
+  if (hasOwn(values, "auto_reorder") && values.auto_reorder !== undefined) {
+    normalized.auto_reorder = values.auto_reorder;
+  }
+  if (hasOwn(values, "reorder_threshold")) {
+    normalized.reorder_threshold =
+      values.reorder_threshold !== undefined && values.reorder_threshold !== null
+        ? values.reorder_threshold
         : null;
   }
 
@@ -654,6 +669,9 @@ export const bulkConsumeItems = async (ids: string[]): Promise<void> => {
     })
     .in("id", ids);
   if (error) throw error;
+
+  // 全消費（units=0）後、auto_reorder が有効なアイテムは買い物リストへ自動追加する (#353)。
+  await Promise.all(ids.map((id) => maybeAutoReorder(id)));
 };
 
 export type BulkAction = "updateLocation" | "updateCategory" | "consume" | "delete";
@@ -691,6 +709,9 @@ export const useBulkItemAction = () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" }),
         qc.invalidateQueries({ queryKey: LOTS_KEY, refetchType: "all" }),
+        // bulkConsumeItems の auto_reorder トリガーで shopping_list_items が
+        // 更新されることがあるため、買い物リストのキャッシュも更新する (#353)。
+        qc.invalidateQueries({ queryKey: ["shopping"] }),
       ]);
       toast(t("items:bulkActionSuccess"), "success");
     },
