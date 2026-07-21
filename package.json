@@ -61,7 +61,7 @@
     "@storybook/react-vite": "^10.3.5",
     "@stryker-mutator/core": "^9.6.1",
     "@tailwindcss/vite": "^4.2.4",
-    "@tanstack/react-query-devtools": "5.101.3",
+    "@tanstack/react-query-devtools": "5.101.4",
     "@tanstack/router-devtools": "^1.166.13",
     "@tanstack/router-plugin": "^1.167.28",
     "@testing-library/react": "^16.3.2",
@@ -89,7 +89,7 @@
     "stylelint-config-standard": "^40.0.0",
     "supabase": "^2.107.0",
     "tailwindcss": "^4.2.4",
-    "typescript": "~7.0.2",
+    "typescript": "~6.0.3",
     "typescript-eslint": "^8.59.1",
     "vite": "^8.0.10",
     "vite-plugin-pwa": "^1.2.0"
