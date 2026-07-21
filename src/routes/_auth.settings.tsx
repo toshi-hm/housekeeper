@@ -8,17 +8,21 @@ import {
   Download,
   Globe,
   History,
+  ListPlus,
   MapPin,
   Moon,
+  Plus,
   Ruler,
   Tag,
   Tags,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { LanguageToggle } from "@/components/atoms/LanguageToggle";
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { Spinner } from "@/components/atoms/Spinner";
 import { ThemeToggle } from "@/components/atoms/ThemeToggle";
 import { DataExportPanel } from "@/components/organisms/DataExportPanel";
 import { NotificationSettings } from "@/components/organisms/NotificationSettings";
@@ -26,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useCreateCustomUnit, useCustomUnits, useDeleteCustomUnit } from "@/hooks/useCustomUnits";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
@@ -45,8 +50,13 @@ export const SettingsPage = () => {
   );
   const { data: settings, isLoading } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
+  const { data: customUnits = [], isLoading: isLoadingCustomUnits } = useCustomUnits();
+  const createCustomUnit = useCreateCustomUnit();
+  const deleteCustomUnit = useDeleteCustomUnit();
   const { toast } = useToast();
   const [warningDays, setWarningDays] = useState<string | null>(null);
+  const [newUnitName, setNewUnitName] = useState("");
+  const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
   const warningDaysValue =
     warningDays ??
     (settings?.expiry_warning_days !== undefined ? String(settings.expiry_warning_days) : "");
@@ -147,6 +157,29 @@ export const SettingsPage = () => {
       if (!(error instanceof OfflineError)) {
         toast(t("common:unknownError"), "error");
       }
+    }
+  };
+
+  const handleCreateCustomUnit = async () => {
+    if (!newUnitName.trim()) return;
+    try {
+      await createCustomUnit.mutateAsync(newUnitName.trim());
+      setNewUnitName("");
+      toast(t("common:saveSuccess"), "success");
+    } catch {
+      // error toast is handled by the mutation's onError
+    }
+  };
+
+  const handleDeleteCustomUnit = async (id: string) => {
+    setDeletingUnitId(id);
+    try {
+      await deleteCustomUnit.mutateAsync(id);
+      toast(t("common:deleteSuccess"), "success");
+    } catch {
+      // error toast is handled by the mutation's onError
+    } finally {
+      setDeletingUnitId(null);
     }
   };
 
@@ -265,6 +298,69 @@ export const SettingsPage = () => {
                 </option>
               ))}
             </Select>
+          </section>
+
+          {/* Custom units */}
+          <section>
+            <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <ListPlus className="h-4 w-4" />
+              {t("customUnits")}
+            </h2>
+            <p className="mb-2 text-xs text-muted-foreground">{t("customUnitsHelp")}</p>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={newUnitName}
+                  onChange={(e) => setNewUnitName(e.target.value)}
+                  placeholder={t("customUnitName")}
+                  maxLength={40}
+                  disabled={createCustomUnit.isPending}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleCreateCustomUnit();
+                  }}
+                />
+                <Button
+                  onClick={() => {
+                    void handleCreateCustomUnit();
+                  }}
+                  disabled={createCustomUnit.isPending || !newUnitName.trim()}
+                  size="icon"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {isLoadingCustomUnits ? (
+                <Skeleton className="h-8 w-full rounded-md" />
+              ) : customUnits.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t("noCustomUnits")}</p>
+              ) : (
+                <ul className="flex flex-wrap gap-2">
+                  {customUnits.map((unit) => (
+                    <li
+                      key={unit.id}
+                      className="flex items-center gap-1 rounded-full border bg-muted/50 px-3 py-1 text-sm"
+                    >
+                      {unit.name}
+                      <button
+                        type="button"
+                        aria-label={t("common:delete")}
+                        className="text-muted-foreground hover:text-destructive disabled:opacity-40"
+                        disabled={deletingUnitId === unit.id}
+                        onClick={() => {
+                          void handleDeleteCustomUnit(unit.id);
+                        }}
+                      >
+                        {deletingUnitId === unit.id ? (
+                          <Spinner className="h-3 w-3" />
+                        ) : (
+                          <X className="h-3 w-3" />
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </section>
 
           {/* Notification Settings */}
