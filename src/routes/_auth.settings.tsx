@@ -13,6 +13,7 @@ import {
   Moon,
   Plus,
   Ruler,
+  Shield,
   Tag,
   Tags,
   X,
@@ -26,6 +27,7 @@ import { Spinner } from "@/components/atoms/Spinner";
 import { ThemeToggle } from "@/components/atoms/ThemeToggle";
 import { DataExportPanel } from "@/components/organisms/DataExportPanel";
 import { NotificationSettings } from "@/components/organisms/NotificationSettings";
+import { SecuritySettings } from "@/components/organisms/SecuritySettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -425,6 +427,15 @@ export const SettingsPage = () => {
               {t("exportDataSection")}
             </h2>
             <DataExportPanel />
+          </section>
+
+          {/* Security (MFA) */}
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Shield className="h-4 w-4" />
+              {t("security")}
+            </h2>
+            <SecuritySettings />
           </section>
 
           {/* Master data links */}
