@@ -106,6 +106,7 @@ export interface Database {
           minimum_stock: number | null;
           auto_reorder: boolean;
           reorder_threshold: number | null;
+          last_verified_at: string | null;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -128,6 +129,7 @@ export interface Database {
           minimum_stock?: number | null;
           auto_reorder?: boolean;
           reorder_threshold?: number | null;
+          last_verified_at?: string | null;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -150,6 +152,7 @@ export interface Database {
           minimum_stock?: number | null;
           auto_reorder?: boolean;
           reorder_threshold?: number | null;
+          last_verified_at?: string | null;
           deleted_at?: string | null;
           updated_at?: string;
         };
@@ -219,6 +222,8 @@ export interface Database {
           notify_at: string;
           auto_archive_after_days: number | null;
           low_stock_forecast_days: number;
+          stocktake_alert_enabled: boolean;
+          stocktake_alert_days: number;
           created_at: string;
           updated_at: string;
         };
@@ -230,6 +235,8 @@ export interface Database {
           notify_at?: string;
           auto_archive_after_days?: number | null;
           low_stock_forecast_days?: number;
+          stocktake_alert_enabled?: boolean;
+          stocktake_alert_days?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -241,6 +248,8 @@ export interface Database {
           notify_at?: string;
           auto_archive_after_days?: number | null;
           low_stock_forecast_days?: number;
+          stocktake_alert_enabled?: boolean;
+          stocktake_alert_days?: number;
           updated_at?: string;
         };
         Relationships: [];

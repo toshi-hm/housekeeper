@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import {
   ArrowLeft,
   Calendar,
+  ClipboardCheck,
   Copy,
   Edit,
   Hash,
@@ -34,7 +35,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useConsumptionLogs } from "@/hooks/useConsumptionLogs";
 import { useSignedItemImage } from "@/hooks/useItemImage";
 import { useItemLots } from "@/hooks/useItemLots";
-import { useItem, useSoftDeleteItem } from "@/hooks/useItems";
+import { useItem, useSoftDeleteItem, useVerifyItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useItemTagIds, useTags } from "@/hooks/useTags";
@@ -76,6 +77,7 @@ const ItemDetailPage = () => {
   const { data: locations = [] } = useStorageLocations();
   const { data: userSettings } = useUserSettings();
   const deleteItem = useSoftDeleteItem();
+  const verifyItem = useVerifyItem();
   const upsertShopping = useUpsertShoppingItem();
   const { data: logs = [] } = useConsumptionLogs(itemId);
   const { data: signedImageUrl } = useSignedItemImage(item?.image_path);
@@ -95,6 +97,15 @@ const ItemDetailPage = () => {
       toast(t("restockSuccess"), "success");
     } catch {
       // error is handled by useUpsertShoppingItem.onError
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!item) return;
+    try {
+      await verifyItem.mutateAsync(item.id);
+    } catch {
+      // error is handled by useVerifyItem.onError
     }
   };
 
@@ -282,6 +293,31 @@ const ItemDetailPage = () => {
           </Button>
         </div>
       </div>
+
+      {/* 棚卸し（在庫確認） (#375) */}
+      <Card>
+        <CardContent className="flex items-center justify-between gap-3 p-4">
+          <div>
+            <p className="text-xs text-muted-foreground">{t("lastVerifiedAt")}</p>
+            <p className="text-sm font-medium">
+              {item.last_verified_at
+                ? t("lastVerifiedAtValue", {
+                    date: new Date(item.last_verified_at).toLocaleDateString(i18n.language),
+                  })
+                : t("neverVerified")}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleVerify()}
+            disabled={verifyItem.isPending}
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            {t("verifyStock")}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Desktop: image + details side-by-side */}
       <div className="lg:flex lg:gap-6">

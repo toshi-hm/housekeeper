@@ -58,6 +58,7 @@ create table items (
   minimum_stock int check (minimum_stock is null or minimum_stock >= 0), -- ダッシュボード警告用
   auto_reorder boolean not null default false,   -- 定期購入フラグ（#353）
   reorder_threshold int check (reorder_threshold is null or reorder_threshold >= 0), -- 自動追加のしきい値。NULL = 0以下
+  last_verified_at timestamptz,          -- 棚卸し（在庫確認）: 「在庫確認済み」ボタンで現在時刻に更新 (#375)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -204,6 +205,8 @@ create table user_settings (
   notify_at time not null default '08:00',
   auto_archive_after_days int check (auto_archive_after_days is null or auto_archive_after_days between 1 and 365),
   low_stock_forecast_days int not null default 7 check (low_stock_forecast_days >= 0), -- #68, #392: 消費ペースからの予測残日数の警告閾値
+  stocktake_alert_enabled boolean not null default false,   -- 棚卸し未確認アラート ON/OFF (#375)
+  stocktake_alert_days int not null default 90 check (stocktake_alert_days between 1 and 365), -- 未確認とみなすまでの日数
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

@@ -55,6 +55,7 @@ export interface Item {
   minimum_stock?: number | null;
   auto_reorder?: boolean;
   reorder_threshold?: number | null;
+  last_verified_at?: string | null;
   deleted_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -104,6 +105,8 @@ export interface UserSettings {
   auto_archive_after_days: number | null;
   /** 消費ペースからの予測残日数がこの日数以内になったらダッシュボードで警告する（#68, #392）。 */
   low_stock_forecast_days: number;
+  stocktake_alert_enabled: boolean;
+  stocktake_alert_days: number;
   created_at: string;
   updated_at: string;
 }
@@ -154,6 +157,12 @@ export const DEFAULT_LOW_STOCK_FORECAST_DAYS = 7;
 /** 自動アーカイブを有効化するときにデフォルトで提案する猶予日数 (#419) */
 export const DEFAULT_AUTO_ARCHIVE_AFTER_DAYS = 7;
 
+/** 棚卸し（在庫確認）アラートのデフォルトしきい値日数。`user_settings.stocktake_alert_days` で上書き可能。 */
+export const DEFAULT_STOCKTAKE_ALERT_DAYS = 90;
+
+/** 一度も確認されていないアイテムを「未確認」とみなすまでの猶予日数（作成日起点、固定値）。 */
+export const STOCKTAKE_NEW_ITEM_GRACE_DAYS = 30;
+
 /** プリセットの単位一覧。ユーザーは `custom_units`（`useCustomUnits`）で独自の単位を
  *  追加できる — 参照箇所（ItemForm の単位選択、設定画面のデフォルト単位）はプリセットと
  *  カスタム単位をマージして表示すること。 */
@@ -173,6 +182,31 @@ export const getExpiryStatus = (
   if (diffDays < 0) return "expired";
   if (diffDays <= warningDays) return "expiring-soon";
   return "ok";
+};
+
+/**
+ * 棚卸し（在庫確認）が必要な「未確認」アイテムかどうかを判定する純関数 (#375)。
+ *
+ * - `last_verified_at` が未設定（一度も確認されていない）の場合、`created_at` から
+ *   {@link STOCKTAKE_NEW_ITEM_GRACE_DAYS} 日以上経過していれば未確認とみなす。
+ * - `last_verified_at` が設定されている場合、そこから `stocktakeAlertDays` 日以上
+ *   経過していれば未確認とみなす。
+ */
+export const isItemUnverified = (
+  item: Pick<Item, "last_verified_at" | "created_at">,
+  stocktakeAlertDays: number = DEFAULT_STOCKTAKE_ALERT_DAYS,
+  now: Date = new Date(),
+): boolean => {
+  const nowMs = now.getTime();
+  const msPerDay = 1000 * 60 * 60 * 24;
+
+  if (item.last_verified_at) {
+    const verifiedMs = new Date(item.last_verified_at).getTime();
+    return (nowMs - verifiedMs) / msPerDay >= stocktakeAlertDays;
+  }
+
+  const createdMs = new Date(item.created_at).getTime();
+  return (nowMs - createdMs) / msPerDay >= STOCKTAKE_NEW_ITEM_GRACE_DAYS;
 };
 
 /** ロット（またはアイテム）1件の実残量を計算する。opened_remaining がある場合は

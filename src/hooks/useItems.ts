@@ -327,6 +327,20 @@ const softDeleteItem = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
+/** 棚卸し（在庫確認）: `last_verified_at` を現在時刻で更新する (#375) */
+const verifyItem = async (id: string): Promise<Item> => {
+  requireOnline();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("items")
+    .update({ last_verified_at: now, updated_at: now })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Item;
+};
+
 /** バーコードでアクティブなアイテムを検索する (新規登録画面でのスタック検出用) */
 export const findActiveItemByBarcode = async (barcode: string): Promise<Item | null> => {
   const { data, error } = await supabase
@@ -514,6 +528,24 @@ export const useItemsForExport = () =>
     queryFn: fetchItemsForExport,
     staleTime: 60_000,
   });
+
+export const useVerifyItem = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation(["common", "items"]);
+  return useMutation({
+    mutationFn: verifyItem,
+    onSuccess: (updatedItem) => {
+      qc.setQueryData<Item>([...ITEMS_KEY, updatedItem.id], updatedItem);
+      applyItemToListCaches(qc, updatedItem);
+      toast(t("items:verifySuccess"), "success");
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
+      else toast(t("common:unknownError"), "error");
+    },
+  });
+};
 
 export const useItemsWithExpiry = () =>
   useQuery({

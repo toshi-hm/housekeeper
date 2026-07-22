@@ -42,7 +42,13 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { updateAppBadge } from "@/lib/pwa";
 import { toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
-import { DEFAULT_LOW_STOCK_FORECAST_DAYS, getExpiryStatus, type Item } from "@/types/item";
+import {
+  DEFAULT_LOW_STOCK_FORECAST_DAYS,
+  DEFAULT_STOCKTAKE_ALERT_DAYS,
+  getExpiryStatus,
+  isItemUnverified,
+  type Item,
+} from "@/types/item";
 
 const PAGE_SIZE = 40;
 
@@ -227,6 +233,9 @@ export const DashboardPage = () => {
     storageLocationId: locationId || undefined,
   };
 
+  // Alerts must not disappear when the visible list is narrowed by search,
+  // category, location, expiry, sorting, or the hide-empty preference.
+  const { data: allItems = [] } = useItems({}, "created_at");
   const { data: items = [], isLoading, error } = useItems(filters, sort);
 
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
@@ -323,6 +332,13 @@ export const DashboardPage = () => {
     .filter((entry): entry is { forecastAlert: (typeof forecastAlerts)[number]; item: Item } =>
       Boolean(entry.item),
     );
+
+  // 棚卸し（在庫確認）未確認アラート (#375)
+  const stocktakeAlertEnabled = userSettings?.stocktake_alert_enabled ?? false;
+  const stocktakeAlertDays = userSettings?.stocktake_alert_days ?? DEFAULT_STOCKTAKE_ALERT_DAYS;
+  const unverifiedItems = stocktakeAlertEnabled
+    ? allItems.filter((item) => item.units > 0 && isItemUnverified(item, stocktakeAlertDays))
+    : [];
 
   const handleBulkAddToShopping = async () => {
     if (isBulkAdding) return;
@@ -535,6 +551,36 @@ export const DashboardPage = () => {
                       name: item.name,
                       days: forecastAlert.predictedRemainingDays,
                     })}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
+
+      {/* 棚卸し（在庫確認）未確認アラート (#375) */}
+      {unverifiedItems.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p className="text-sm font-medium">
+              {t("stocktakeBanner", { count: unverifiedItems.length })}
+            </p>
+          </div>
+          <details className="rounded-md border border-blue-200 bg-blue-100/50 p-2">
+            <summary className="cursor-pointer text-sm font-medium">
+              {t("stocktakeBannerDetails")}
+            </summary>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+              {unverifiedItems.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    className="underline decoration-blue-800 underline-offset-2 hover:opacity-80"
+                    to="/items/$itemId"
+                    params={{ itemId: item.id }}
+                  >
+                    {item.name}
                   </Link>
                 </li>
               ))}
