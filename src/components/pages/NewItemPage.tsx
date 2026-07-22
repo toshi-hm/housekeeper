@@ -71,7 +71,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
           const file =
             pendingFile ??
             (pendingImageUrl ? await downloadExternalImageAsFile(pendingImageUrl) : null);
-          if (file) await uploadItemImage({ itemId: item.id, file });
+          if (file) await uploadItemImage({ itemId: item.id, file, queryClient: qc });
         } catch (err) {
           toast(
             err instanceof OfflineError ? t("common:offlineError") : t("imageUploadFailed"),

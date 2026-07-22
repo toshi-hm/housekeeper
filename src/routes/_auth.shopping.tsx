@@ -193,7 +193,7 @@ const ShoppingPage = () => {
             pendingFile ??
             (pendingImageUrl ? await downloadExternalImageAsFile(pendingImageUrl) : null);
           if (file) {
-            await uploadItemImage({ itemId: newItem.id, file });
+            await uploadItemImage({ itemId: newItem.id, file, queryClient: qc });
             await qc.invalidateQueries({ queryKey: ["items"] });
           }
         } catch (err) {
