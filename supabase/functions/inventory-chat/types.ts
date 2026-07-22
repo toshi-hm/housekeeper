@@ -27,10 +27,14 @@ export interface ChatHistoryTurn {
   text: string;
 }
 
+// UI language, mirrors the client's i18n supportedLngs.
+export type ChatLanguage = "ja" | "en";
+
 // Request body sent by the web client.
 export interface ChatRequest {
   message: string;
   history?: ChatHistoryTurn[];
+  language?: ChatLanguage;
 }
 
 // A matched inventory item returned to the client for chip/card display.

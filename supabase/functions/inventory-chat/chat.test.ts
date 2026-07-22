@@ -7,6 +7,7 @@ import {
   isValidGeminiChatResult,
 } from "./gemini.ts";
 import type { InventoryItem } from "./types.ts";
+import { parseChatLanguage } from "./validation.ts";
 
 const makeItem = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
   id: "item-1",
@@ -22,6 +23,17 @@ const makeItem = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
   categories: { name: "飲料" },
   storage_locations: { name: "冷蔵庫" },
   ...overrides,
+});
+
+Deno.test("parseChatLanguage - accepts supported languages", () => {
+  assert.strictEqual(parseChatLanguage("ja"), "ja");
+  assert.strictEqual(parseChatLanguage("en"), "en");
+});
+
+Deno.test("parseChatLanguage - falls back to Japanese for untrusted values", () => {
+  assert.strictEqual(parseChatLanguage("en-US"), "ja");
+  assert.strictEqual(parseChatLanguage("fr"), "ja");
+  assert.strictEqual(parseChatLanguage(undefined), "ja");
 });
 
 // isValidGeminiChatResult
@@ -98,4 +110,17 @@ Deno.test("buildContents - caps history to the most recent turns", () => {
 Deno.test("buildGeminiRequestBody - uses thinkingBudget, not thinkingLevel (gemini-2.5-flash only supports thinkingBudget)", () => {
   const body = buildGeminiRequestBody("卵はある？", [], [makeItem()], []);
   assert.deepStrictEqual(body.generationConfig?.thinkingConfig, { thinkingBudget: 1024 });
+});
+
+Deno.test("buildGeminiRequestBody - defaults to the Japanese system prompt", () => {
+  const body = buildGeminiRequestBody("卵はある？", [], [makeItem()], []);
+  const text = body.systemInstruction?.parts[0]?.text ?? "";
+  assert.match(text, /日本語の自然な会話文/);
+});
+
+Deno.test("buildGeminiRequestBody - uses the English system prompt when language is 'en'", () => {
+  const body = buildGeminiRequestBody("Do I have eggs?", [], [makeItem()], [], "en");
+  const text = body.systemInstruction?.parts[0]?.text ?? "";
+  assert.match(text, /natural, concise English/);
+  assert.doesNotMatch(text, /日本語の自然な会話文/);
 });

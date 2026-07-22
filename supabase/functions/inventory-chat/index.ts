@@ -7,6 +7,7 @@ import type {
   ChatResponse,
   InventoryItem,
 } from "./types.ts";
+import { parseChatLanguage } from "./validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +17,6 @@ const corsHeaders = {
 
 const MAX_MESSAGE_LENGTH = 500;
 const HISTORY_ROLES = new Set(["user", "model"]);
-
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), {
     status,
@@ -89,6 +89,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "message is too long" }, 400);
   }
   const history = sanitizeHistory(parsed.history);
+  const language = parseChatLanguage(parsed.language);
 
   const [items, recentlyConsumed] = await Promise.all([
     fetchAllItems(supabase),
@@ -98,7 +99,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "Failed to load inventory" }, 500);
   }
 
-  const result = await queryGeminiChat(message, history, items, recentlyConsumed);
+  const result = await queryGeminiChat(message, history, items, recentlyConsumed, language);
   if (result.kind === "timeout") {
     return json({ error: "timeout" }, 504);
   }

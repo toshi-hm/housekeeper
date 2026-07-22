@@ -1,5 +1,6 @@
 import type {
   ChatHistoryTurn,
+  ChatLanguage,
   ChatMatchedItem,
   GeminiChatResult,
   GeminiContent,
@@ -58,7 +59,7 @@ export const buildInventoryContext = (
   return JSON.stringify({ inventory: inventoryList, recently_consumed: consumedList });
 };
 
-const SYSTEM_PROMPT = `あなたは家庭の在庫管理アシスタントです。
+const SYSTEM_PROMPT_JA = `あなたは家庭の在庫管理アシスタントです。
 ユーザーとチャット形式で会話し、提供された在庫データに基づいて在庫・賞味期限・保管場所・残量などの質問に答えます。
 
 ルール:
@@ -70,6 +71,22 @@ const SYSTEM_PROMPT = `あなたは家庭の在庫管理アシスタントです
 - 在庫管理に無関係な質問には、在庫アシスタントである旨を伝えて丁寧にお断りする。
 - items には回答に関連した在庫アイテム(idは在庫データのidをそのまま使う)のみを入れる。該当なしなら空配列。
 - 必ず指定のJSONスキーマで返し、それ以外のテキストは含めないこと。`;
+
+const SYSTEM_PROMPT_EN = `You are a household inventory management assistant.
+You chat with the user and answer questions about stock, expiry dates, storage locations, and remaining amounts based on the provided inventory data.
+
+Rules:
+- Write the reply in natural, concise English conversational text. Do not use markdown headings or tables; a short bullet list is fine if needed.
+- If a matching item exists in the inventory data, answer using its remaining amount (total_remaining), expiry date (expiry_date), and storage location (storage_location).
+- If the item is not in the inventory but appears in recently_consumed, say it was recently used up.
+- If it appears in neither, say it is not in the house.
+- Match item names loosely, including partial matches and synonyms (e.g. "milk" also matches "low-fat milk").
+- Politely decline questions unrelated to inventory management, explaining that you are an inventory assistant.
+- Only include inventory items relevant to the answer in items (reuse the id from the inventory data as-is). Use an empty array if none apply.
+- Always respond using the specified JSON schema and include no other text.`;
+
+const getSystemPrompt = (language: ChatLanguage): string =>
+  language === "en" ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_JA;
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -111,13 +128,14 @@ export const buildGeminiRequestBody = (
   history: ChatHistoryTurn[],
   items: InventoryItem[],
   recentlyConsumed: RecentlyConsumedItem[],
+  language: ChatLanguage = "ja",
 ): GeminiRequest => {
   const inventoryContext = buildInventoryContext(items, recentlyConsumed);
   return {
     systemInstruction: {
       parts: [
         {
-          text: `${SYSTEM_PROMPT}\n\n在庫データ(inventory=現在の在庫, recently_consumed=過去2か月以内に使い切ったアイテム):\n${inventoryContext}`,
+          text: `${getSystemPrompt(language)}\n\n在庫データ(inventory=現在の在庫, recently_consumed=過去2か月以内に使い切ったアイテム):\n${inventoryContext}`,
         },
       ],
     },
@@ -137,6 +155,7 @@ export const queryGeminiChat = async (
   history: ChatHistoryTurn[],
   items: InventoryItem[],
   recentlyConsumed: RecentlyConsumedItem[],
+  language: ChatLanguage = "ja",
 ): Promise<GeminiResult> => {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) {
@@ -145,7 +164,7 @@ export const queryGeminiChat = async (
   }
 
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  const body = buildGeminiRequestBody(message, history, items, recentlyConsumed);
+  const body = buildGeminiRequestBody(message, history, items, recentlyConsumed, language);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
