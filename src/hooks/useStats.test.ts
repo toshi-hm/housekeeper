@@ -7,6 +7,7 @@ import {
   computeConsumptionSpeedRanking,
   computeExpiryDistribution,
   computeForecastAlerts,
+  computeItemConsumptionPace,
   computeMonthlyConsumption,
   type ItemConsumptionLogEntry,
   type LotValueRow,
@@ -538,5 +539,86 @@ describe("computeForecastAlerts", () => {
       { itemId: "two-days", predictedRemainingDays: 2 },
       { itemId: "five-days", predictedRemainingDays: 5 },
     ]);
+  });
+});
+
+// --- computeItemConsumptionPace ---
+
+describe("computeItemConsumptionPace", () => {
+  const fixedNow = new Date(2026, 3, 30); // April 2026
+
+  test("no logs in the window → unit null and weeks remaining null", () => {
+    const result = computeItemConsumptionPace([], 100, "mL", 3, fixedNow);
+    expect(result.monthly).toHaveLength(3);
+    expect(result.averagePerMonth).toBe(0);
+    expect(result.unit).toBeNull();
+    expect(result.estimatedWeeksRemaining).toBeNull();
+  });
+
+  test("computes averagePerMonth from the monthly totals across the window", () => {
+    const logs: RawLog[] = [
+      { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-02-10T00:00:00Z" },
+      { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-03-10T00:00:00Z" },
+      { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-04-10T00:00:00Z" },
+    ];
+    const result = computeItemConsumptionPace(logs, 100, "mL", 3, fixedNow);
+    expect(result.unit).toBe("mL");
+    expect(result.averagePerMonth).toBe(300);
+  });
+
+  test("estimates remaining weeks from current stock and weekly pace", () => {
+    const logs: RawLog[] = [
+      { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-02-10T00:00:00Z" },
+      { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-03-10T00:00:00Z" },
+      { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-04-10T00:00:00Z" },
+    ];
+    // averagePerMonth=300 → averagePerWeek=70 → 100/70 ≈ 1.4 weeks (rounded to 1 decimal)
+    const result = computeItemConsumptionPace(logs, 100, "mL", 3, fixedNow);
+    expect(result.estimatedWeeksRemaining).toBe(1.4);
+  });
+
+  test("currentStock=0 with a positive pace → estimatedWeeksRemaining=0 (not null)", () => {
+    const logs: RawLog[] = [
+      { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-04-10T00:00:00Z" },
+    ];
+    const result = computeItemConsumptionPace(logs, 0, "mL", 3, fixedNow);
+    expect(result.estimatedWeeksRemaining).toBe(0);
+  });
+
+  test("negative currentStock (over-consumed edge case) is treated like zero stock", () => {
+    const logs: RawLog[] = [
+      { delta_amount: 300, delta_unit: "mL", occurred_at: "2026-04-10T00:00:00Z" },
+    ];
+    const result = computeItemConsumptionPace(logs, -5, "mL", 3, fixedNow);
+    expect(result.estimatedWeeksRemaining).toBe(0);
+  });
+
+  test("averagePerMonth of 0 (only zero-amount logs) → weeks remaining null, unit still resolved", () => {
+    const logs: RawLog[] = [
+      { delta_amount: 0, delta_unit: "個", occurred_at: "2026-04-10T00:00:00Z" },
+    ];
+    const result = computeItemConsumptionPace(logs, 100, "個", 3, fixedNow);
+    expect(result.unit).toBe("個");
+    expect(result.averagePerMonth).toBe(0);
+    expect(result.estimatedWeeksRemaining).toBeNull();
+  });
+
+  test("mixed units in the window → uses only the item's current unit", () => {
+    const logs: RawLog[] = [
+      { delta_amount: 50, delta_unit: "g", occurred_at: "2026-04-01T00:00:00Z" },
+      { delta_amount: 900, delta_unit: "mL", occurred_at: "2026-04-15T00:00:00Z" },
+    ];
+    const result = computeItemConsumptionPace(logs, 100, "g", 3, fixedNow);
+    expect(result.unit).toBe("g");
+    expect(result.averagePerMonth).toBeCloseTo(50 / 3, 5);
+  });
+
+  test("respects a custom months window", () => {
+    const logs: RawLog[] = [
+      { delta_amount: 100, delta_unit: "個", occurred_at: "2026-04-10T00:00:00Z" },
+    ];
+    const result = computeItemConsumptionPace(logs, 10, "個", 1, fixedNow);
+    expect(result.monthly).toHaveLength(1);
+    expect(result.averagePerMonth).toBe(100);
   });
 });

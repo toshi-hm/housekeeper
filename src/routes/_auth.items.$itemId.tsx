@@ -18,7 +18,7 @@ import {
   TrendingDown,
   Zap,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/atoms/Skeleton";
 import { TagBadge } from "@/components/atoms/TagBadge";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ImageLightbox } from "@/components/molecules/ImageLightbox";
+import { ItemConsumptionMiniChart } from "@/components/molecules/ItemConsumptionMiniChart";
 import { QRCodeDialog } from "@/components/molecules/QRCodeDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import { computeInventoryValue } from "@/lib/inventoryValue";
 import { useToast } from "@/lib/toast-context";
 import { getExpiryStatus, getLotRemainingAmount } from "@/types/item";
-import { computeConsumptionPaceForecast } from "@/types/stats";
+import { computeConsumptionPaceForecast, computeItemConsumptionPace } from "@/types/stats";
 
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
   <div className="flex items-start gap-3">
@@ -82,6 +83,12 @@ const ItemDetailPage = () => {
   const { data: logs = [] } = useConsumptionLogs(itemId);
   const { data: signedImageUrl } = useSignedItemImage(item?.image_path);
   const { toast } = useToast();
+  const consumptionPace = useMemo(() => {
+    const currentStock = item
+      ? getLotRemainingAmount(item.units, item.content_amount, item.opened_remaining ?? null)
+      : 0;
+    return computeItemConsumptionPace(logs, currentStock, item?.content_unit ?? "");
+  }, [logs, item]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
@@ -555,35 +562,42 @@ const ItemDetailPage = () => {
               {logs.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">{t("noHistory")}</p>
               ) : (
-                logs.map((log) => (
-                  <Card key={log.id}>
+                <>
+                  <Card>
                     <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="flex items-center gap-1.5 text-sm font-medium">
-                            −{log.delta_amount}
-                            {log.delta_unit}
-                            {log.note && (
-                              <StickyNote
-                                className="h-3.5 w-3.5 text-muted-foreground"
-                                aria-label={t("historyNoteIndicator")}
-                              />
-                            )}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {log.units_before} → {log.units_after} {t("units")}
-                          </p>
-                          {log.note && (
-                            <p className="mt-1 text-xs text-muted-foreground">{log.note}</p>
-                          )}
-                        </div>
-                        <p className="text-xs whitespace-nowrap text-muted-foreground">
-                          {new Date(log.occurred_at).toLocaleDateString(i18n.language)}
-                        </p>
-                      </div>
+                      <ItemConsumptionMiniChart pace={consumptionPace} />
                     </CardContent>
                   </Card>
-                ))
+                  {logs.map((log) => (
+                    <Card key={log.id}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="flex items-center gap-1.5 text-sm font-medium">
+                              −{log.delta_amount}
+                              {log.delta_unit}
+                              {log.note && (
+                                <StickyNote
+                                  className="h-3.5 w-3.5 text-muted-foreground"
+                                  aria-label={t("historyNoteIndicator")}
+                                />
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {log.units_before} → {log.units_after} {t("units")}
+                            </p>
+                            {log.note && (
+                              <p className="mt-1 text-xs text-muted-foreground">{log.note}</p>
+                            )}
+                          </div>
+                          <p className="text-xs whitespace-nowrap text-muted-foreground">
+                            {new Date(log.occurred_at).toLocaleDateString(i18n.language)}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
               )}
             </div>
           )}

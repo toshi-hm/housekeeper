@@ -169,6 +169,17 @@ end $$;
 - 計算ロジック（`computeConsumptionPaceForecast` など）は `src/types/stats.ts` に純粋関数として実装
 - アイテム詳細ページに予測残日数を表示、ダッシュボードの警告バナーに統合
 
+### アイテム単位の消費量推移ミニグラフ（#327）
+
+「履歴」タブの先頭に、直近3ヶ月の月次消費量を示すミニグラフを表示する。
+
+- `ItemConsumptionMiniChart`（molecule）: `computeItemConsumptionPace()`（`src/types/stats.ts`、
+  `computeMonthlyConsumption()` を内部で再利用）が返す `monthly` / `averagePerMonth` / `unit` /
+  `estimatedWeeksRemaining` を受け取り、棒グラフ + 「平均: X/月」+「推定残り: 約X週」を表示する
+- 推定残り週数は「現在の在庫量（`content_unit` 換算の総量、`getLotRemainingAmount()`）÷
+  週あたり平均消費ペース」で算出する。直近3ヶ月に消費ログが無い場合はデータ不足メッセージを表示する
+- 表示のみ（書き込みなし）。データ取得・算出は呼び出し側（`_auth/items/$itemId` route）が行う
+
 ## Backlog
 
 - 単位換算（mL ⇔ L）
