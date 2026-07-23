@@ -60,9 +60,10 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         { id: createId(), role: "assistant", text: res.reply, items: res.items },
       ]);
     } catch (err) {
-      const errorText = err instanceof ChatRateLimitError
-        ? t("rateLimited")
-        : t(chatErrorMessageKey[await classifyChatError(err)]);
+      const errorText =
+        err instanceof ChatRateLimitError
+          ? t("rateLimited")
+          : t(chatErrorMessageKey[await classifyChatError(err)]);
       setMessages((prev) => [
         ...markMessageFailed(prev, userMessage.id),
         { id: createId(), role: "assistant", text: errorText, isError: true },
