@@ -38,6 +38,24 @@ export interface Database {
         };
         Relationships: [];
       };
+      chat_rate_limits: {
+        Row: {
+          request_count: number;
+          user_id: string;
+          window_start: string;
+        };
+        Insert: {
+          request_count?: number;
+          user_id: string;
+          window_start?: string;
+        };
+        Update: {
+          request_count?: number;
+          user_id?: string;
+          window_start?: string;
+        };
+        Relationships: [];
+      };
       consumption_logs: {
         Row: {
           delta_amount: number;

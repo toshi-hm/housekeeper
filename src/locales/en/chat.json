@@ -6,6 +6,7 @@
   "inputLabel": "Type a message",
   "openChat": "Ask AI about inventory",
   "placeholder": "Ask about your inventory…",
+  "rateLimited": "You've asked too many questions in a short time. Please wait about a minute and try again.",
   "send": "Send",
   "suggestion1": "Do I have milk?",
   "suggestion2": "What expires this week?",
