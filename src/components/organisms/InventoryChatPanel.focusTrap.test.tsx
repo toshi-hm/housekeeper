@@ -1,4 +1,4 @@
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { type ReactNode, useState } from "react";
@@ -96,5 +96,65 @@ describe("InventoryChatPanel - focus management (#556)", () => {
     await user.keyboard("{Escape}");
 
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it("wraps Tab/Shift+Tab around the full set of focusable elements, not just the first two", async () => {
+    const user = userEvent.setup();
+    const { getByText, getByLabelText } = render(<Harness />, { wrapper });
+
+    await user.click(getByText("open-trigger"));
+
+    const closeButton = getByLabelText(i18n.t("chat:close"));
+    const suggestion1 = getByText(i18n.t("chat:suggestion1"));
+    const suggestion2 = getByText(i18n.t("chat:suggestion2"));
+    const suggestion3 = getByText(i18n.t("chat:suggestion3"));
+    const textarea = getByLabelText(i18n.t("chat:inputLabel"));
+
+    // Focusable order in this empty-conversation state: close button, the
+    // three suggestion buttons, then the composer textarea (last, since the
+    // send button is disabled while the textarea is empty).
+    expect(document.activeElement).toBe(textarea);
+
+    // Shift+Tab walks backward through every middle element naturally (the
+    // trap only intervenes at the first/last element), then wraps from the
+    // true first element (close button) to the true last (textarea).
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(suggestion3);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(suggestion2);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(suggestion1);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(closeButton);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(textarea);
+
+    // Forward Tab from the true last element wraps to the true first.
+    await user.tab();
+    expect(document.activeElement).toBe(closeButton);
+    await user.tab();
+    expect(document.activeElement).toBe(suggestion1);
+  });
+
+  it("pulls focus back into the panel on the next Tab if it ends up outside via a non-Tab route", async () => {
+    const user = userEvent.setup();
+    const { getByText, getByLabelText } = render(<Harness />, { wrapper });
+
+    await user.click(getByText("open-trigger"));
+    const textarea = getByLabelText(i18n.t("chat:inputLabel"));
+    expect(document.activeElement).toBe(textarea);
+
+    // Simulate focus escaping the panel via a route other than Tab (e.g. a
+    // click on a non-focusable area lands focus on <body>) rather than being
+    // caught by the keydown handler.
+    act(() => {
+      textarea.blur();
+    });
+    expect(document.activeElement).not.toBe(textarea);
+    expect(document.activeElement && textarea.contains(document.activeElement)).toBeFalsy();
+
+    const closeButton = getByLabelText(i18n.t("chat:close"));
+    await user.tab();
+    expect(document.activeElement).toBe(closeButton);
   });
 });
