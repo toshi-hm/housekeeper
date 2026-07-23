@@ -7,8 +7,8 @@ import { Spinner } from "@/components/atoms/Spinner";
 import { ChatComposer } from "@/components/molecules/ChatComposer";
 import { Button } from "@/components/ui/button";
 import { ChatRateLimitError, useInventoryChat } from "@/hooks/useInventoryChat";
-import { markMessageFailed, toHistory } from "@/lib/chatHistory";
 import { type ChatErrorKind, classifyChatError } from "@/lib/chatErrors";
+import { markMessageFailed, toHistory } from "@/lib/chatHistory";
 import type { ChatMessage } from "@/types/chat";
 
 // Which i18n key to show for each classified error kind. Keyed off the
