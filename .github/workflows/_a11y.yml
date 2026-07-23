@@ -1,0 +1,43 @@
+name: Accessibility
+
+# axe-core によるアクセシビリティ回帰自動検出 (#497)。
+# 全 .stories.tsx をビルドし、@storybook/test-runner + axe-playwright で
+# 各Storyにaxe-coreのルールチェックをかける。既知の違反は
+# .storybook/a11y-baseline.ts でスキップし、新規Story追加分から厳格化する
+# 段階導入方針（docs/specs/storybook.md参照）。
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  a11y:
+    name: Storybook Accessibility (axe-core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browser (chromium)
+        run: bunx playwright install --with-deps chromium
+
+      - name: Build Storybook
+        run: bun run build-storybook
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
+
+      - name: Serve Storybook
+        run: npx serve storybook-static -l 6006 --no-clipboard &
+
+      - name: Wait for Storybook
+        run: npx wait-on http://127.0.0.1:6006
+
+      - name: Run accessibility checks (axe-core)
+        run: bun run test-storybook -- --ci --url http://127.0.0.1:6006

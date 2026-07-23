@@ -19,10 +19,19 @@ proposal — see that issue for the full multi-phase rollout plan.
   sometimes used one-handed, in a kitchen, with wet/full hands, or while
   walking during shopping (see `.claude/skills/dev/uiux-review/PROJECT.md`
   for the usage-context notes that also motivate this).
-- Conformance is **not automatically enforced yet**. Wiring
-  `@storybook/addon-a11y` (already installed) into a CI-runnable check is
-  tracked separately in [#497](https://github.com/toshi-hm/housekeeper/issues/497) —
-  this doc does not duplicate that work.
+- Conformance is **partially, automatically checked in CI** as of
+  [#497](https://github.com/toshi-hm/housekeeper/issues/497): every
+  `.stories.tsx` is run through `@storybook/test-runner` + `axe-playwright`
+  (`.github/workflows/_a11y.yml`, wired into `ci.yml`), which surfaces the
+  subset of WCAG issues axe-core can detect automatically (roughly the same
+  ~30-50% of issues any automated a11y scanner catches — contrast, missing
+  aria attributes, invalid roles, etc., not focus order or screen-reader
+  phrasing). Pre-existing violations that need real fixes are tracked in a
+  baseline allowlist (`.storybook/a11y-baseline.ts`) rather than blocking
+  the rollout; see `docs/specs/storybook.md` for how that staged rollout
+  works. This doc does not duplicate that mechanics — it's the conventions
+  reference for both the automated checks and the parts axe-core cannot
+  check (focus trapping, keyboard nav, live regions, etc., see below).
 
 ## Conventions used in this codebase
 
@@ -145,10 +154,18 @@ issues:
   open or restored to the trigger on close.
 - **`BulkMoveDialog` and `ScanToShoppingDialog` (bottom-sheet dialogs) have
   no `role="dialog"`/`aria-modal` at all**, in addition to no focus trap.
-- **No automated accessibility testing is wired into CI.** `@storybook/addon-a11y`
-  is installed and available in the Storybook UI during local development,
-  but nothing fails a build or PR check based on its findings yet. Tracked
-  in [#497](https://github.com/toshi-hm/housekeeper/issues/497).
+- **CI a11y checks only cover what axe-core can detect statically.**
+  [#497](https://github.com/toshi-hm/housekeeper/issues/497) wired
+  `@storybook/test-runner` + `axe-playwright` into CI (see above), but that
+  only catches the DOM-snapshot-detectable subset (contrast, aria
+  attributes, roles, labels). Focus order, keyboard-trap correctness, and
+  screen-reader announcement quality still require the manual walkthroughs
+  called out below.
+- **The a11y CI baseline may still hide real violations.** Stories listed in
+  `.storybook/a11y-baseline.ts` are skipped entirely rather than checked
+  with a relaxed rule set, so any violation on those specific stories
+  (beyond the one that got them baselined) won't be caught either, until
+  the entry is fixed and removed.
 - **No `vitest-axe`/`@axe-core/react` in the unit test suite.** Accessibility
   regressions on custom components (icon-button labels, dialog semantics,
   etc.) are only caught by manual review or Storybook's addon, not by
@@ -172,7 +189,8 @@ issues:
 
 - Full original proposal: [#394](https://github.com/toshi-hm/housekeeper/issues/394)
 - Focus trap reference implementation: [#556](https://github.com/toshi-hm/housekeeper/issues/556) / [#577](https://github.com/toshi-hm/housekeeper/pull/577)
-- CI automation for `@storybook/addon-a11y`: [#497](https://github.com/toshi-hm/housekeeper/issues/497)
+- CI automation (axe-core via `@storybook/test-runner`): [#497](https://github.com/toshi-hm/housekeeper/issues/497),
+  implemented in `.github/workflows/_a11y.yml` / `.storybook/test-runner.ts`
 - Inventory chat panel a11y requirements: `docs/specs/features/inventory-chat.md`
 - UI/UX review checklist (includes a11y-adjacent usage-context notes):
   `.claude/skills/dev/uiux-review/PROJECT.md`
