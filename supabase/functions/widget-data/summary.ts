@@ -3,9 +3,12 @@
  *
  * ホーム画面ウィジェットは「期限切れ／期限間近の件数」と「低在庫の件数」、
  * および代表アイテムを一目で確認できることを目的とする。
- * ダッシュボード（src/routes/_auth.index.tsx）の urgentItems / lowStockItems と
- * 同じ判定基準（期限切れ・期限間近は units>0 かつ opened_remaining!==0、
- * 低在庫は minimum_stock が設定されていて units <= minimum_stock）を踏襲する。
+ * 期限切れ・期限間近の判定基準（units>0 かつ opened_remaining!==0）は、
+ * send-expiry-notifications（supabase/functions/send-expiry-notifications/index.ts, #445）と
+ * 同じもの。ダッシュボードの urgentItems（src/routes/_auth.index.tsx, #450）は
+ * units>0 のみで opened_remaining は見ておらず、判定基準が異なる点に注意。
+ * 低在庫はダッシュボードの lowStockItems と同じ（minimum_stock が設定されていて
+ * units <= minimum_stock）。
  *
  * Deno Edge Function 側は import map / パスエイリアスを共有できないため、
  * フロントエンドの src/types/item.ts の判定ロジックをこのファイルに複製している。

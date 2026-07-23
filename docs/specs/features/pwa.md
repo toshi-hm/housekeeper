@@ -79,8 +79,10 @@ Community Group（WICG）でも draft のまま標準化が完了していない
 2. **データ API**: Supabase Edge Function `supabase/functions/widget-data`
    （`GET`、Bearer JWT 認証、`subscribe-push` と同じ認証パターン）。
    期限切れ／期限間近の件数・低在庫の件数・代表アイテム（各最大 5 件）を JSON で返す。
-   - 期限切れ／期限間近の判定基準はダッシュボード（`_auth.index.tsx` の `urgentItems`）と同じ
-     （`units > 0` かつ `opened_remaining !== 0`）。
+   - 期限切れ／期限間近の判定基準は send-expiry-notifications（#445）と同じ
+     （`units > 0` かつ `opened_remaining !== 0`）。ダッシュボードの `urgentItems`
+     （`_auth.index.tsx`, #450）は `units > 0` のみで `opened_remaining` は見ておらず、
+     判定基準が異なる点に注意（ウィジェットとダッシュボードで件数が一致しない場合がある）。
    - 低在庫の判定は `minimum_stock`（#230）を利用（`units <= minimum_stock`）。
      消費ペースからの補充タイミング予測（#68 / #392）はこの時点でまだ `main` に
      マージされていなかったため未利用。将来 `minimum_stock` に加えて予測ベースの

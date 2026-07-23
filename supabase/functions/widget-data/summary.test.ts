@@ -82,3 +82,12 @@ Deno.test("buildWidgetSummary - items without expiry_date are 'unknown' and excl
   assert.strictEqual(summary.expiring_soon_count, 0);
   assert.strictEqual(summary.top_expiring.length, 0);
 });
+
+Deno.test("buildWidgetSummary - caps top_low_stock at WIDGET_TOP_N while low_stock_count reflects the full total", () => {
+  const items = Array.from({ length: 8 }, (_, i) =>
+    item({ name: `low-${i}`, units: 1, minimum_stock: 2 }),
+  );
+  const summary = buildWidgetSummary(items, TODAY, 3, NOW_ISO);
+  assert.strictEqual(summary.low_stock_count, 8);
+  assert.strictEqual(summary.top_low_stock.length, 5);
+});
