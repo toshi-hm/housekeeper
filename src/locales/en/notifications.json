@@ -9,5 +9,8 @@
   "pushEnabled": "Push Notifications",
   "pushNotSupported": "Push notifications are not supported in this browser. Please use email notifications instead.",
   "pushPermissionDenied": "Push notification permission denied",
+  "sendTestNotification": "Send test notification",
+  "testNotificationError": "Failed to send test notification",
+  "testNotificationSuccess": "Test notification sent",
   "thresholdDays": "Days before to notify"
 }
