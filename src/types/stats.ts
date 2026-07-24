@@ -417,7 +417,7 @@ export const computeItemConsumptionPace = (
 
 // --- Food-waste dashboard (#494) ---
 
-export interface WasteCategoryCount {
+interface WasteCategoryCount {
   categoryId: string | null;
   name: string;
   count: number;
