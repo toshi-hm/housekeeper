@@ -1,10 +1,12 @@
 import { SendHorizonal } from "lucide-react";
-import { type FormEvent, type KeyboardEvent, useRef, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { CHAT_MAX_MESSAGE_LENGTH } from "@/types/chat";
 
 interface ChatComposerProps {
   onSend: (message: string) => void;
@@ -17,10 +19,14 @@ export const ChatComposer = ({ onSend, isLoading = false }: ChatComposerProps) =
   const { t } = useTranslation("chat");
   const [value, setValue] = useState("");
   const isComposing = useRef(false);
+  const charCountId = useId();
+
+  const isOverLimit = value.length > CHAT_MAX_MESSAGE_LENGTH;
+  const isNearLimit = !isOverLimit && value.length >= CHAT_MAX_MESSAGE_LENGTH - 20;
 
   const submit = () => {
     const trimmed = value.trim();
-    if (!trimmed || isLoading) return;
+    if (!trimmed || isLoading || trimmed.length > CHAT_MAX_MESSAGE_LENGTH) return;
     onSend(trimmed);
     setValue("");
   };
@@ -38,28 +44,42 @@ export const ChatComposer = ({ onSend, isLoading = false }: ChatComposerProps) =
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t bg-background p-3">
-      <Textarea
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onCompositionStart={() => (isComposing.current = true)}
-        onCompositionEnd={() => (isComposing.current = false)}
-        placeholder={t("placeholder")}
-        rows={1}
-        disabled={isLoading}
-        aria-label={t("inputLabel")}
-        className="max-h-32 min-h-[44px] flex-1 resize-none"
-      />
-      <Button
-        type="submit"
-        size="icon"
-        disabled={isLoading || !value.trim()}
-        aria-label={t("send")}
-        title={t("send")}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-1 border-t bg-background p-3">
+      <div className="flex items-end gap-2">
+        <Textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onCompositionStart={() => (isComposing.current = true)}
+          onCompositionEnd={() => (isComposing.current = false)}
+          placeholder={t("placeholder")}
+          rows={1}
+          maxLength={CHAT_MAX_MESSAGE_LENGTH}
+          disabled={isLoading}
+          aria-label={t("inputLabel")}
+          aria-describedby={charCountId}
+          className="max-h-32 min-h-[44px] flex-1 resize-none"
+        />
+        <Button
+          type="submit"
+          size="icon"
+          disabled={isLoading || !value.trim() || isOverLimit}
+          aria-label={t("send")}
+          title={t("send")}
+        >
+          {isLoading ? <Spinner className="h-4 w-4" /> : <SendHorizonal className="h-5 w-5" />}
+        </Button>
+      </div>
+      <span
+        id={charCountId}
+        aria-live="polite"
+        className={cn(
+          "self-end text-xs text-muted-foreground",
+          (isNearLimit || isOverLimit) && "text-destructive",
+        )}
       >
-        {isLoading ? <Spinner className="h-4 w-4" /> : <SendHorizonal className="h-5 w-5" />}
-      </Button>
+        {t("charCount", { current: value.length, max: CHAT_MAX_MESSAGE_LENGTH })}
+      </span>
     </form>
   );
 };

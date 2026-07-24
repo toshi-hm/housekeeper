@@ -7,8 +7,18 @@ import { Spinner } from "@/components/atoms/Spinner";
 import { ChatComposer } from "@/components/molecules/ChatComposer";
 import { Button } from "@/components/ui/button";
 import { ChatRateLimitError, useInventoryChat } from "@/hooks/useInventoryChat";
+import { type ChatErrorKind, classifyChatError } from "@/lib/chatErrors";
 import { markMessageFailed, toHistory } from "@/lib/chatHistory";
 import type { ChatMessage } from "@/types/chat";
+
+// Which i18n key to show for each classified error kind. Keyed off the
+// `ChatErrorKind` union (see src/lib/chatErrors.ts) rather than switching on
+// the raw error, per the i18n dynamic-key rule in CLAUDE.md.
+const chatErrorMessageKey = {
+  tooLong: "errorTooLong",
+  unauthorized: "errorUnauthorized",
+  temporary: "error",
+} as const satisfies Record<ChatErrorKind, string>;
 
 interface InventoryChatPanelProps {
   open: boolean;
@@ -50,7 +60,10 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         { id: createId(), role: "assistant", text: res.reply, items: res.items },
       ]);
     } catch (err) {
-      const errorText = err instanceof ChatRateLimitError ? t("rateLimited") : t("error");
+      const errorText =
+        err instanceof ChatRateLimitError
+          ? t("rateLimited")
+          : t(chatErrorMessageKey[await classifyChatError(err)]);
       setMessages((prev) => [
         ...markMessageFailed(prev, userMessage.id),
         { id: createId(), role: "assistant", text: errorText, isError: true },
