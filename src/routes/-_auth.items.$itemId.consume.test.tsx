@@ -1,4 +1,5 @@
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 
 import * as useItemLotsModule from "@/hooks/useItemLots";
@@ -251,5 +252,90 @@ describe("ItemConsumePage", () => {
     expect(
       getByText(/selectLotHint|Select a lot above|上からロットを選んでください/),
     ).toBeDefined();
+  });
+
+  // Unit conversion (issue #462): the amount-used input for a mL/L/g/kg item
+  // gets a unit dropdown so the user can enter the delta in a different but
+  // convertible unit; internally it's converted to item.content_unit before
+  // being handed to computeConsumption / the mutation.
+  describe("unit conversion", () => {
+    it("shows a unit selector with convertible units for a volume item (mL)", () => {
+      const { getByRole } = renderPage();
+      const select = getByRole("combobox", {
+        name: /consumeUnit|消費量の単位|Unit for amount used/,
+      });
+      const options = Array.from((select as HTMLSelectElement).options).map((o) => o.value);
+      expect(options.sort()).toEqual(["L", "mL"].sort());
+    });
+
+    it("does not show a unit selector for a count-based item (個) with no convertible units", () => {
+      itemspy.mockReturnValue({
+        data: { ...baseItem, content_unit: "個" },
+        isLoading: false,
+      } as ReturnType<typeof useItemsModule.useItem>);
+      const { queryByRole } = renderPage();
+      expect(
+        queryByRole("combobox", { name: /consumeUnit|消費量の単位|Unit for amount used/ }),
+      ).toBeNull();
+    });
+
+    it("shows a conversion hint once a different convertible unit is selected and an amount entered", async () => {
+      const user = userEvent.setup();
+      const { getByRole, getByText, queryByText } = renderPage();
+      const amountInput = getByRole("spinbutton");
+      const unitSelect = getByRole("combobox", {
+        name: /consumeUnit|消費量の単位|Unit for amount used/,
+      });
+
+      // No hint while the unit still matches item.content_unit.
+      await user.type(amountInput, "100");
+      expect(queryByText(/consumeConvertedHint|Recorded as|として記録されます/)).toBeNull();
+
+      await act(async () => {
+        fireEvent.change(unitSelect, { target: { value: "L" } });
+      });
+      // The i18n instance is a process-wide singleton (bun:test runs all files
+      // in one process): whether "consumeConvertedHint" renders as the raw key
+      // or its real translation depends on whether another already-run test
+      // file has initialized it, so match either form.
+      expect(getByText(/consumeConvertedHint|Recorded as|として記録されます/)).toBeDefined();
+    });
+
+    it("validates over-consumption using the converted amount, not the raw input value (#462)", async () => {
+      // baseItem: units=1, content_amount=500 mL, opened_remaining=null -> total stock 500mL.
+      // Entering "0.6" while the unit selector is set to L converts to 600mL, which exceeds
+      // the 500mL total and must be flagged as insufficient stock. If the raw "0.6" were used
+      // without conversion it would look like ample stock (0.6 < 500) and wrongly pass.
+      const user = userEvent.setup();
+      const { getByRole, getByText } = renderPage();
+      const amountInput = getByRole("spinbutton");
+      const unitSelect = getByRole("combobox", {
+        name: /consumeUnit|消費量の単位|Unit for amount used/,
+      });
+
+      await act(async () => {
+        fireEvent.change(unitSelect, { target: { value: "L" } });
+      });
+      await user.type(amountInput, "0.6");
+
+      expect(getByText("insufficientStock")).toBeDefined();
+    });
+
+    it("allows exactly consuming the full lot when entered in a converted unit", async () => {
+      // 0.5 L converts to exactly 500mL, the lot's full stock -> no insufficientStock error.
+      const user = userEvent.setup();
+      const { getByRole, queryByText } = renderPage();
+      const amountInput = getByRole("spinbutton");
+      const unitSelect = getByRole("combobox", {
+        name: /consumeUnit|消費量の単位|Unit for amount used/,
+      });
+
+      await act(async () => {
+        fireEvent.change(unitSelect, { target: { value: "L" } });
+      });
+      await user.type(amountInput, "0.5");
+
+      expect(queryByText("insufficientStock")).toBeNull();
+    });
   });
 });

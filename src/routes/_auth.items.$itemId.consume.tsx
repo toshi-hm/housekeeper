@@ -8,11 +8,13 @@ import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import { useItem } from "@/hooks/useItems";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
+import { convertUnit, getConvertibleUnits } from "@/lib/units";
 import {
   computeConsumption,
   CONSUME_REASONS,
@@ -49,6 +51,18 @@ export const ItemConsumePage = () => {
   const { toast } = useToast();
   const [selectedLotId, setSelectedLotId] = useState<string | null>(preselectedLotId ?? null);
   const [delta, setDelta] = useState("");
+  // 消費量の入力単位。デフォルトは item.content_unit だが、同一系統（mL↔L、g↔kg）
+  // の単位であれば切り替えて入力できる（issue #462）。内部の保持単位・消費アルゴリズム
+  // (computeConsumption / item.content_unit) は変えず、送信直前に content_unit へ換算する。
+  // 別アイテムに遷移した（itemId が変わった）タイミングでのみ追従させたいので、
+  // useEffect ではなく「レンダー中に前回値と比較して補正する」React 公式パターンを使う
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)。
+  // 同期のキーには item.content_unit ではなく itemId を使う: TanStack Router はパスパラメータ
+  // だけが変わってもこのコンポーネントを再マウントしないため、content_unit の値で比較すると
+  // 「新しい content_unit がたまたま前のアイテムと同じ文字列」のケースで deltaUnit が
+  // 前アイテムの選択のまま残ってしまう。
+  const [deltaUnit, setDeltaUnit] = useState("");
+  const [syncedItemId, setSyncedItemId] = useState<string | undefined>(undefined);
   const [validationError, setValidationError] = useState("");
   const [showConsumeAll, setShowConsumeAll] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -68,11 +82,18 @@ export const ItemConsumePage = () => {
 
   const isLoading = itemLoading || lotsLoading;
 
+  if (item?.content_unit && itemId !== syncedItemId) {
+    setSyncedItemId(itemId);
+    setDeltaUnit(item.content_unit);
+  }
+
   const contentAmount = item?.content_amount ?? 0;
   const getLotTotal = (l: ItemLot): number =>
     getLotRemainingAmount(l.units, contentAmount, l.opened_remaining ?? null);
   const activeLots = lots.filter((l) => getLotTotal(l) > 0);
   const hasMultipleLots = activeLots.length > 1;
+  const convertibleUnits = item ? getConvertibleUnits(item.content_unit) : [];
+  const canConvertUnit = convertibleUnits.length > 1;
 
   // A `lotId` carried over from a stale link (browser back/forward, another
   // tab/device consuming the last of that lot concurrently, etc.) may no
@@ -86,8 +107,16 @@ export const ItemConsumePage = () => {
     requestedLot ?? (activeLots.length === 1 ? activeLots[0]! : null);
 
   const deltaNum = parseFloat(delta);
+  // ユーザーが item.content_unit と異なる（が換算可能な）単位を選んでいる場合は
+  // item.content_unit 換算後の量で在庫計算する。換算できない組み合わせは起こり得ない
+  // 想定だが（deltaUnit は convertibleUnits から選ばれる）、保険として入力値へフォールバックする。
+  const convertedDeltaNum =
+    item && !isNaN(deltaNum) && deltaNum > 0
+      ? (convertUnit(deltaNum, deltaUnit, item.content_unit) ?? deltaNum)
+      : deltaNum;
+  const isConverting = item !== undefined && deltaUnit !== item.content_unit;
   const preview =
-    item && selectedLot && !isNaN(deltaNum) && deltaNum > 0
+    item && selectedLot && !isNaN(convertedDeltaNum) && convertedDeltaNum > 0
       ? computeConsumption(
           {
             units: selectedLot.units,
@@ -95,13 +124,13 @@ export const ItemConsumePage = () => {
             content_unit: item.content_unit,
             opened_remaining: selectedLot.opened_remaining ?? null,
           },
-          deltaNum,
+          convertedDeltaNum,
         )
       : null;
 
   const handleSubmit = async () => {
     if (!item || !selectedLot) return;
-    const amount = parseFloat(delta);
+    const amount = convertedDeltaNum;
     if (isNaN(amount) || amount <= 0) {
       setValidationError(t("consumeValidationError"));
       return;
@@ -309,21 +338,47 @@ export const ItemConsumePage = () => {
         <>
           <div className="space-y-2">
             <Label htmlFor="delta">
-              {t("consumeAmount")} ({item.content_unit})
+              {t("consumeAmount")}
+              {!canConvertUnit ? ` (${item.content_unit})` : ""}
             </Label>
-            <Input
-              id="delta"
-              type="number"
-              min={0.01}
-              step={0.01}
-              value={delta}
-              onChange={(e) => {
-                setDelta(e.target.value);
-                setValidationError("");
-              }}
-              placeholder={t("consumeAmountPlaceholder")}
-              autoFocus={!hasMultipleLots}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="delta"
+                type="number"
+                min={0.01}
+                step={0.01}
+                value={delta}
+                onChange={(e) => {
+                  setDelta(e.target.value);
+                  setValidationError("");
+                }}
+                placeholder={t("consumeAmountPlaceholder")}
+                autoFocus={!hasMultipleLots}
+                className="flex-1"
+              />
+              {canConvertUnit && (
+                <Select
+                  aria-label={t("consumeUnit")}
+                  value={deltaUnit}
+                  onChange={(e) => setDeltaUnit(e.target.value)}
+                  className="w-24 shrink-0"
+                >
+                  {convertibleUnits.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </div>
+            {isConverting && !isNaN(deltaNum) && deltaNum > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {t("consumeConvertedHint", {
+                  amount: convertedDeltaNum,
+                  unit: item.content_unit,
+                })}
+              </p>
+            )}
             {validationError && <p className="text-sm text-destructive">{validationError}</p>}
           </div>
 
