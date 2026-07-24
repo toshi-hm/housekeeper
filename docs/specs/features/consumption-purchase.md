@@ -186,3 +186,68 @@ end $$;
 - 消費の取り消し（log の rollback）
 - 購入履歴専用テーブル（同 SKU 再購入の集約）
 - CSV / JSON からのインポート（#66 系の将来拡張、今回は対象外）
+
+## レシピ/セット消費（v1.3, #393）
+
+複数アイテムをまとめて一括消費できる「レシピ」機能。
+「朝のコーヒー」のようなテンプレート（名前 + 構成アイテムと消費量のリスト）を
+登録しておき、実行するだけで構成アイテム全件を一括消費する。
+
+### データ
+
+`recipes` / `recipe_items`（`docs/specs/database.md` 参照）。
+実行そのものを記録する専用ログは持たず、各アイテムの消費は既存の
+`consumption_logs` に個別に記録される（レシピ単位の集計が必要になれば
+Backlog として `recipe_executions` 的なテーブルを検討する）。
+
+### API（hook: `src/hooks/useRecipes.ts`）
+
+| hook                 | 機能                                             |
+| -------------------- | ------------------------------------------------ |
+| `useRecipes()`       | レシピ一覧取得（構成アイテム込み）               |
+| `useSaveRecipe()`    | レシピの作成・更新（構成アイテムは入れ替え方式） |
+| `useDeleteRecipe()`  | レシピ削除（`recipe_items` は CASCADE で削除）   |
+| `useExecuteRecipe()` | レシピの一括消費実行                             |
+
+### 実行フロー（`executeRecipe`）
+
+1. `checkRecipeStock` で構成アイテム全件の在庫を確認する。`executeRecipe` は
+   実消費時に `consumeItem`（FEFO、賞味期限が最も近い単一ロットのみを消費）を
+   呼び出すため、事前チェックも同じ基準に揃える: 各アイテムの FEFO ロットを
+   `fetchFefoLotByItemId` で取得し、そのロットの残量（`getLotRemainingAmount`）
+   を在庫量として判定する。ロットが1件も無いアイテム（`consumeItem` の
+   no-lots フォールバック経路）のみ、`syncItemAggregate` で集約済みの item
+   集約値（`units` / `content_amount` / `opened_remaining`）にフォールバックする。
+   （集約値だけで判定すると、複数ロットに分かれた在庫の合計は足りていても
+   実際に消費される単一ロットには足りない、というケースを見逃すため。）
+2. 在庫不足があり `force` が指定されていなければ、**何も消費せず**
+   `status: "blocked"` と不足内訳（`shortages`）を返す。呼び出し側
+   （`_auth.recipes.tsx`）はこれを見て警告 UI を表示し、ユーザーが
+   確認したら `force: true` で再実行する。
+3. `force` 指定時、または在庫が全件足りている場合は構成アイテムを順に
+   消費する。消費自体は既存の `consumeItem`（`useConsumeItem.ts` —
+   FEFO ロット選択 + 楽観的排他制御を内包）をそのまま呼び出す。
+   在庫が足りないアイテムはスキップし（`skippedItemIds`）、消費処理が
+   例外を投げたアイテムは `failedItemIds` に集めて他アイテムの処理は
+   継続する（ベストエフォート方式のバッチ消費）。
+
+### エラー / 警告
+
+- 在庫不足（force なし）: 消費は行わず、不足アイテム一覧を警告表示
+  → ユーザー確認後に `force: true` で再実行
+- 消費処理自体の失敗（ロット競合など）: `failedItemIds` に集約しトースト警告
+- `consumption_logs` insert 失敗: `consumeItem` 既存の非致命フラグ
+  (`_logInsertFailed`) を集約しトースト警告（#441 と同じ扱い）
+
+### v1.3 範囲
+
+- `recipes` / `recipe_items` テーブル追加
+- `useRecipes` / `RecipeForm` / `/recipes` ルート
+- 在庫確認ロジック（`checkRecipeStock`）とバッチ消費オーケストレーション
+  （`executeRecipe`）の単体テスト
+
+### Backlog
+
+- レシピ実行専用の履歴テーブル・頻度順ソート
+- ダッシュボードでのレシピ直接実行（現状はダッシュボードから `/recipes`
+  へのショートカットのみ）
