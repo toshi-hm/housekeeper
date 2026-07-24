@@ -54,11 +54,15 @@ export const ItemConsumePage = () => {
   // 消費量の入力単位。デフォルトは item.content_unit だが、同一系統（mL↔L、g↔kg）
   // の単位であれば切り替えて入力できる（issue #462）。内部の保持単位・消費アルゴリズム
   // (computeConsumption / item.content_unit) は変えず、送信直前に content_unit へ換算する。
-  // item.content_unit が変わった（別アイテムに遷移した）タイミングでのみ追従させたいので、
+  // 別アイテムに遷移した（itemId が変わった）タイミングでのみ追従させたいので、
   // useEffect ではなく「レンダー中に前回値と比較して補正する」React 公式パターンを使う
   // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)。
+  // 同期のキーには item.content_unit ではなく itemId を使う: TanStack Router はパスパラメータ
+  // だけが変わってもこのコンポーネントを再マウントしないため、content_unit の値で比較すると
+  // 「新しい content_unit がたまたま前のアイテムと同じ文字列」のケースで deltaUnit が
+  // 前アイテムの選択のまま残ってしまう。
   const [deltaUnit, setDeltaUnit] = useState("");
-  const [syncedContentUnit, setSyncedContentUnit] = useState<string | undefined>(undefined);
+  const [syncedItemId, setSyncedItemId] = useState<string | undefined>(undefined);
   const [validationError, setValidationError] = useState("");
   const [showConsumeAll, setShowConsumeAll] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -78,8 +82,8 @@ export const ItemConsumePage = () => {
 
   const isLoading = itemLoading || lotsLoading;
 
-  if (item?.content_unit && item.content_unit !== syncedContentUnit) {
-    setSyncedContentUnit(item.content_unit);
+  if (item?.content_unit && itemId !== syncedItemId) {
+    setSyncedItemId(itemId);
     setDeltaUnit(item.content_unit);
   }
 
