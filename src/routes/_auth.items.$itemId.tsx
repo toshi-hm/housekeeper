@@ -19,7 +19,7 @@ import {
   TrendingDown,
   Zap,
 } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
@@ -39,6 +39,7 @@ import { useSignedItemImage } from "@/hooks/useItemImage";
 import { useItemLots } from "@/hooks/useItemLots";
 import { restoreItem, useItem, useSoftDeleteItem, useVerifyItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useRovingTabs } from "@/hooks/useRovingTabs";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useItemTagIds, useTags } from "@/hooks/useTags";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
@@ -118,6 +119,20 @@ const ItemDetailPage = () => {
   const setDetailTab = (tab: "info" | "lots" | "history") => {
     void navigate({ to: "/items/$itemId", params: { itemId }, search: { tab } });
   };
+
+  // #632: 実際に表示されているタブのみを対象に矢印キー/Home/Endでのroving tabindex
+  // ナビゲーションを行う（lotsタブはlots.length > 0のときだけ表示される）。
+  const visibleDetailTabs = (
+    lots.length > 0 ? (["info", "lots", "history"] as const) : (["info", "history"] as const)
+  ) satisfies readonly ("info" | "lots" | "history")[];
+  const { tablistProps: detailTablistProps, getTabProps: getDetailTabProps } = useRovingTabs(
+    visibleDetailTabs,
+    detailTab,
+    setDetailTab,
+  );
+  const infoTabId = useId();
+  const lotsTabId = useId();
+  const historyTabId = useId();
 
   const handleRestock = async () => {
     if (!item) return;
@@ -397,10 +412,13 @@ const ItemDetailPage = () => {
           </div>
 
           {/* Tab navigation */}
-          <div className="flex rounded-lg border p-1" role="tablist">
+          <div className="flex rounded-lg border p-1" role="tablist" {...detailTablistProps}>
             <button
+              id={infoTabId}
               role="tab"
               aria-selected={detailTab === "info"}
+              aria-controls={`${infoTabId}-panel`}
+              {...getDetailTabProps("info")}
               className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "info" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => setDetailTab("info")}
             >
@@ -409,8 +427,11 @@ const ItemDetailPage = () => {
             </button>
             {lots.length > 0 && (
               <button
+                id={lotsTabId}
                 role="tab"
                 aria-selected={detailTab === "lots"}
+                aria-controls={`${lotsTabId}-panel`}
+                {...getDetailTabProps("lots")}
                 className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "lots" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                 onClick={() => setDetailTab("lots")}
               >
@@ -424,8 +445,11 @@ const ItemDetailPage = () => {
               </button>
             )}
             <button
+              id={historyTabId}
               role="tab"
               aria-selected={detailTab === "history"}
+              aria-controls={`${historyTabId}-panel`}
+              {...getDetailTabProps("history")}
               className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "history" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => setDetailTab("history")}
             >
@@ -440,7 +464,12 @@ const ItemDetailPage = () => {
           </div>
 
           {detailTab === "info" && (
-            <Card>
+            <Card
+              id={`${infoTabId}-panel`}
+              role="tabpanel"
+              aria-labelledby={infoTabId}
+              tabIndex={0}
+            >
               <CardContent className="space-y-3 p-4">
                 <DetailRow
                   icon={<Package className="h-4 w-4" />}
@@ -511,7 +540,13 @@ const ItemDetailPage = () => {
           )}
 
           {detailTab === "lots" && (
-            <div className="space-y-2">
+            <div
+              id={`${lotsTabId}-panel`}
+              role="tabpanel"
+              aria-labelledby={lotsTabId}
+              tabIndex={0}
+              className="space-y-2"
+            >
               {lots.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">{t("noLots")}</p>
               ) : (
@@ -584,7 +619,13 @@ const ItemDetailPage = () => {
           )}
 
           {detailTab === "history" && (
-            <div className="space-y-2">
+            <div
+              id={`${historyTabId}-panel`}
+              role="tabpanel"
+              aria-labelledby={historyTabId}
+              tabIndex={0}
+              className="space-y-2"
+            >
               {logs.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">{t("noHistory")}</p>
               ) : (
