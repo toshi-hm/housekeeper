@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 const BUCKET = "location-photos";
 const SIGNED_URL_TTL = 60 * 50; // 50 minutes
 
-export const removeLocationPhotoFile = async (photoPath: string): Promise<void> => {
+const removeLocationPhotoFile = async (photoPath: string): Promise<void> => {
   requireOnline();
   await supabase.storage.from(BUCKET).remove([photoPath]);
 };

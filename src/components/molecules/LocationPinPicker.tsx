@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { LocationPin } from "@/components/atoms/LocationPin";
 import { Button } from "@/components/ui/button";
 
-export interface LocationPinPickerExistingPin {
+interface LocationPinPickerExistingPin {
   id: string;
   x: number;
   y: number;

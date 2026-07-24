@@ -2,14 +2,14 @@ import { useTranslation } from "react-i18next";
 
 import { LocationPin } from "@/components/atoms/LocationPin";
 
-export interface StorageLocationMapPin {
+interface StorageLocationMapPin {
   id: string;
   name: string;
   x: number;
   y: number;
 }
 
-export interface StorageLocationMapListItem {
+interface StorageLocationMapListItem {
   id: string;
   name: string;
 }
