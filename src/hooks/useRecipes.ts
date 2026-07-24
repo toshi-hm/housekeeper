@@ -9,11 +9,44 @@ import { useToast } from "@/lib/toast-context";
 import type { Item } from "@/types/item";
 import {
   checkRecipeStock,
+  type RecipeFefoLot,
   type RecipeItem,
   type RecipeItemInput,
   type RecipeShortage,
   type RecipeWithItems,
 } from "@/types/recipe";
+
+/**
+ * レシピの構成アイテムそれぞれについて、`consumeItem` が実際に消費対象とする
+ * FEFO ロット（賞味期限が最も近いロット。`consumeItem` と同じ並び順）を1件ずつ
+ * 取得する。`checkRecipeStock` の事前チェックを実消費と同じ基準（単一ロット）に
+ * 揃えるために使う。
+ */
+const fetchFefoLotByItemId = async (
+  itemIds: string[],
+): Promise<Record<string, RecipeFefoLot | undefined>> => {
+  if (itemIds.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from("item_lots")
+    .select("item_id, units, opened_remaining, expiry_date, created_at")
+    .in("item_id", itemIds)
+    .order("expiry_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  const result: Record<string, RecipeFefoLot | undefined> = {};
+  for (const lot of data ?? []) {
+    // Rows arrive pre-sorted in FEFO order; keep only the first (soonest
+    // expiring) lot seen per item.
+    if (result[lot.item_id as string]) continue;
+    result[lot.item_id as string] = {
+      units: lot.units as number,
+      opened_remaining: lot.opened_remaining as number | null,
+    };
+  }
+  return result;
+};
 
 export const RECIPES_KEY = ["recipes"] as const;
 
@@ -166,7 +199,8 @@ export const executeRecipe = async ({
   itemsById,
   force = false,
 }: ExecuteRecipeParams): Promise<ExecuteRecipeResult> => {
-  const stockCheck = checkRecipeStock(recipe.items, itemsById);
+  const fefoLotByItemId = await fetchFefoLotByItemId(recipe.items.map((ri) => ri.item_id));
+  const stockCheck = checkRecipeStock(recipe.items, itemsById, fefoLotByItemId);
 
   if (!stockCheck.ok && !force) {
     return {

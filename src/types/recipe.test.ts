@@ -72,4 +72,42 @@ describe("checkRecipeStock", () => {
     expect(result.shortages).toHaveLength(1);
     expect(result.shortages[0]?.item_id).toBe("item-2");
   });
+
+  describe("fefoLotByItemId (multi-lot items, #393)", () => {
+    // executeRecipe only ever consumes from a single lot (the FEFO one), so
+    // the pre-check must be based on that lot's remaining amount, not the
+    // aggregate `items.units` across all lots — otherwise a recipe could be
+    // reported as "sufficient" and then fail during actual consumption.
+    test("uses the FEFO lot's amount, not the aggregate, when fefoLotByItemId is provided", () => {
+      // Aggregate stock is 300g across lots, but the soonest-expiring lot
+      // only has 50g — insufficient for a 100g requirement despite the
+      // aggregate looking fine.
+      const items = {
+        "item-1": makeItem({ units: 3, content_amount: 100, opened_remaining: null }),
+      };
+      const fefoLots = { "item-1": { units: 0, opened_remaining: 50 } };
+      const result = checkRecipeStock([{ item_id: "item-1", amount: 100 }], items, fefoLots);
+      expect(result.ok).toBe(false);
+      expect(result.shortages).toEqual([
+        { item_id: "item-1", item_name: "コーヒー豆", required: 100, available: 50, unit: "g" },
+      ]);
+    });
+
+    test("passes when the FEFO lot alone has enough, even if it isn't the largest lot", () => {
+      const items = {
+        "item-1": makeItem({ units: 3, content_amount: 100, opened_remaining: null }),
+      };
+      const fefoLots = { "item-1": { units: 2, opened_remaining: null } };
+      const result = checkRecipeStock([{ item_id: "item-1", amount: 150 }], items, fefoLots);
+      expect(result.ok).toBe(true);
+    });
+
+    test("falls back to the aggregate when no FEFO lot is given for an item (no-lots consumeItem path)", () => {
+      const items = {
+        "item-1": makeItem({ units: 2, content_amount: 100, opened_remaining: null }),
+      };
+      const result = checkRecipeStock([{ item_id: "item-1", amount: 150 }], items, {});
+      expect(result.ok).toBe(true);
+    });
+  });
 });

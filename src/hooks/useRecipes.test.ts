@@ -115,8 +115,11 @@ describe("executeRecipe", () => {
     expect(result.consumedItemIds).toEqual([]);
     expect(result.shortages).toHaveLength(1);
     expect(result.shortages[0]?.item_id).toBe("item-1");
-    // Nothing was consumed, so no Supabase call should have been made at all.
-    expect(callLog).toEqual([]);
+    // Nothing was consumed. The only Supabase activity should be the
+    // pre-check's own FEFO-lot lookup (`fetchFefoLotByItemId`) — never a
+    // `consumeItem` call, which is distinguishable by its `.limit()` step.
+    expect(callLog.every((c) => c.table === "item_lots")).toBe(true);
+    expect(callLog.some((c) => c.method === "limit")).toBe(false);
   });
 
   test("全アイテムの在庫が足りていれば force なしでも消費を実行しstatus:executedを返す", async () => {
@@ -132,8 +135,12 @@ describe("executeRecipe", () => {
     };
     // Each item takes the "no lots" fallback path in consumeItem: item_lots
     // select (empty) -> items update -> consumption_logs insert -> items
-    // re-select. Two items => two of each in order.
+    // re-select. Two items => two of each in order, plus one leading
+    // item_lots select for executeRecipe's own FEFO pre-check
+    // (fetchFefoLotByItemId, a single batched `.in()` query covering both
+    // items) — also empty, so checkRecipeStock falls back to the aggregate.
     responseQueues.item_lots = [
+      { data: [], error: null }, // pre-check FEFO fetch
       { data: [], error: null },
       { data: [], error: null },
     ];
@@ -154,7 +161,8 @@ describe("executeRecipe", () => {
     expect(result.consumedItemIds).toEqual(["item-1", "item-2"]);
     expect(result.skippedItemIds).toEqual([]);
     expect(result.failedItemIds).toEqual([]);
-    expect(callLog.filter((c) => c.table === "item_lots" && c.method === "select")).toHaveLength(2);
+    // 1 pre-check select + 2 per-item consumeItem selects.
+    expect(callLog.filter((c) => c.table === "item_lots" && c.method === "select")).toHaveLength(3);
   });
 
   test("force:true の場合、在庫が足りるアイテムだけ消費し不足分はスキップする", async () => {
@@ -168,7 +176,10 @@ describe("executeRecipe", () => {
       "item-1": makeItem({ id: "item-1", units: 3, content_amount: 1, opened_remaining: null }),
       "item-2": makeItem({ id: "item-2", units: 0, content_amount: 1, opened_remaining: null }),
     };
-    responseQueues.item_lots = [{ data: [], error: null }];
+    responseQueues.item_lots = [
+      { data: [], error: null }, // pre-check FEFO fetch (covers both items)
+      { data: [], error: null }, // item-1's consumeItem fetch (item-2 is skipped)
+    ];
     responseQueues.items = [
       { data: null, error: null },
       { data: makeItem({ id: "item-1", units: 2 }), error: null },
@@ -181,8 +192,8 @@ describe("executeRecipe", () => {
     expect(result.consumedItemIds).toEqual(["item-1"]);
     expect(result.skippedItemIds).toEqual(["item-2"]);
     expect(result.failedItemIds).toEqual([]);
-    // Only the sufficient item should have triggered a consumeItem call.
-    expect(callLog.filter((c) => c.table === "item_lots" && c.method === "select")).toHaveLength(1);
+    // 1 pre-check select + 1 consumeItem select (only the sufficient item).
+    expect(callLog.filter((c) => c.table === "item_lots" && c.method === "select")).toHaveLength(2);
   });
 
   test("消費処理自体が失敗したアイテムはfailedItemIdsに入り、他アイテムの処理は続行される", async () => {
@@ -196,9 +207,11 @@ describe("executeRecipe", () => {
       "item-1": makeItem({ id: "item-1", units: 3, content_amount: 1, opened_remaining: null }),
       "item-2": makeItem({ id: "item-2", units: 3, content_amount: 1, opened_remaining: null }),
     };
-    // item-1's item_lots lookup errors out, causing consumeItem to throw and
-    // executeRecipe to record it as failed; item-2 proceeds normally.
+    // item-1's item_lots lookup (inside consumeItem, after the pre-check's
+    // own successful FEFO fetch) errors out, causing consumeItem to throw
+    // and executeRecipe to record it as failed; item-2 proceeds normally.
     responseQueues.item_lots = [
+      { data: [], error: null }, // pre-check FEFO fetch (covers both items)
       { data: null, error: { message: "boom" } },
       { data: [], error: null },
     ];
@@ -213,5 +226,30 @@ describe("executeRecipe", () => {
     expect(result.status).toBe("executed");
     expect(result.failedItemIds).toEqual(["item-1"]);
     expect(result.consumedItemIds).toEqual(["item-2"]);
+  });
+
+  test("複数ロットにまたがる在庫は集計ではなくFEFOロット基準でblockedと判定する(#393)", async () => {
+    // Aggregate stock (items.units) looks sufficient (3 units), but that's
+    // split across two lots and consumeItem only ever draws from the single
+    // soonest-expiring (FEFO) one. The pre-check must reflect that reality
+    // instead of the misleadingly-sufficient aggregate.
+    const recipe = makeRecipe({
+      items: [{ id: "ri-1", recipe_id: "recipe-1", item_id: "item-1", amount: 3, created_at: "" }],
+    });
+    const itemsById = {
+      "item-1": makeItem({ id: "item-1", units: 3, content_amount: 1, opened_remaining: null }),
+    };
+    // fetchFefoLotByItemId's single .in() query returns only the
+    // soonest-expiring lot's row for item-1: 1 unit, not the aggregate's 3.
+    responseQueues.item_lots = [{ data: [{ item_id: "item-1", units: 1 }], error: null }];
+
+    const result = await executeRecipe({ recipe, itemsById });
+
+    expect(result.status).toBe("blocked");
+    expect(result.shortages).toEqual([
+      { item_id: "item-1", item_name: "Test Item", required: 3, available: 1, unit: "個" },
+    ]);
+    // Blocked before ever calling consumeItem.
+    expect(callLog.some((c) => c.method === "limit")).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getLotRemainingAmount, type Item } from "@/types/item";
+import { getLotRemainingAmount, type Item, type ItemLot } from "@/types/item";
 
 export interface Recipe {
   id: string;
@@ -58,21 +58,43 @@ export interface RecipeStockCheckResult {
   shortages: RecipeShortage[];
 }
 
+/** Minimal FEFO (soonest-expiring) lot shape needed to compute how much of
+ *  an item `executeRecipe` would actually be able to consume from in one
+ *  `consumeItem` call, which only ever draws from a single lot. */
+export type RecipeFefoLot = Pick<ItemLot, "units" | "opened_remaining">;
+
 /**
  * レシピの構成アイテム全件について、在庫が足りているかを判定する。
  * item がまだ取得できていない/削除済みの場合は在庫0として扱う。
+ *
+ * `fefoLotByItemId` を渡した場合は、そのアイテムの「集計在庫（`items.units`）」
+ * ではなく「`consumeItem` が実際に消費する単一ロット（賞味期限が最も近いロット、
+ * FEFO）の残量」で判定する。`consumeItem` は複数ロットにまたがって消費すること
+ * はないため、集計在庫だけで判定すると「合計では足りているが、消費対象の
+ * 単一ロットには足りない」ケースを見逃し、事前チェックが「足りている」と
+ * 判定した直後に実消費が insufficientStock で失敗する不整合が起きる。
+ * ロットが1件も無いアイテム（`consumeItem` の no-lots フォールバック経路）は
+ * 従来通り集計在庫で判定する。
  */
 export const checkRecipeStock = (
   recipeItems: Pick<RecipeItem, "item_id" | "amount">[],
   itemsById: Record<string, RecipeStockItem | undefined>,
+  fefoLotByItemId: Record<string, RecipeFefoLot | undefined> = {},
 ): RecipeStockCheckResult => {
   const shortages: RecipeShortage[] = [];
 
   for (const recipeItem of recipeItems) {
     const item = itemsById[recipeItem.item_id];
-    const available = item
-      ? getLotRemainingAmount(item.units, item.content_amount, item.opened_remaining ?? null)
-      : 0;
+    const fefoLot = fefoLotByItemId[recipeItem.item_id];
+    const available = !item
+      ? 0
+      : fefoLot
+        ? getLotRemainingAmount(
+            fefoLot.units,
+            item.content_amount,
+            fefoLot.opened_remaining ?? null,
+          )
+        : getLotRemainingAmount(item.units, item.content_amount, item.opened_remaining ?? null);
 
     if (available < recipeItem.amount) {
       shortages.push({
