@@ -27,7 +27,13 @@ describe("NotificationSettings", () => {
   const mutateAsync = mock(() => Promise.resolve());
   const testNotificationMutate = mock(() => {});
 
-  const setPrefs = (overrides: Partial<{ push_enabled: boolean }> = {}) => {
+  const setPrefs = (
+    overrides: Partial<{
+      push_enabled: boolean;
+      email_enabled: boolean;
+      email_address: string | null;
+    }> = {},
+  ) => {
     prefsSpy.mockReturnValue({
       data: {
         user_id: "user-1",
@@ -132,5 +138,17 @@ describe("NotificationSettings", () => {
 
     expect(toastMock).toHaveBeenCalledWith(expect.any(String), "error");
     expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("メール通知が有効でもアドレス未設定の場合は永続的な警告が表示される (#572)", () => {
+    setPrefs({ email_enabled: true, email_address: null });
+    const { getByText } = render(<NotificationSettings />, { wrapper });
+    expect(getByText(/メールアドレスが未設定のため|No email address set/i)).toBeTruthy();
+  });
+
+  it("メール通知が有効でアドレス設定済みの場合は警告が表示されない (#572)", () => {
+    setPrefs({ email_enabled: true, email_address: "user@example.com" });
+    const { queryByText } = render(<NotificationSettings />, { wrapper });
+    expect(queryByText(/メールアドレスが未設定のため|No email address set/i)).toBeNull();
   });
 });

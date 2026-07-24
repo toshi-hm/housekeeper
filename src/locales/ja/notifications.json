@@ -1,6 +1,7 @@
 {
   "daysBefore": "日前",
   "emailAddress": "メールアドレス",
+  "emailAddressMissingWarning": "メールアドレスが未設定のため、通知は届きません。上の欄に入力してください。",
   "emailEnabled": "メール通知",
   "invalidEmailAddress": "有効なメールアドレスを入力してください",
   "invalidNotifyAt": "通知時刻を入力してください",
