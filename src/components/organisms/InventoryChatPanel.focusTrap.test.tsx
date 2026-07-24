@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, mock } from "bun:test";
@@ -10,21 +11,35 @@ import i18n from "@/lib/i18n";
 // `inventory-chat` Supabase Edge Function via `@/lib/supabase`. That module
 // throws at import time unless Supabase env vars are configured, and it also
 // performs real network calls, neither of which are relevant to the focus
-// management under test here, so the hook is stubbed out.
-mock.module("@/hooks/useInventoryChat", () => ({
-  useInventoryChat: () => ({
-    ask: () => Promise.resolve({ reply: "", items: [] }),
-    isLoading: false,
-    isError: false,
-    reset: () => {},
-  }),
+// management under test here.
+//
+// Mocked at the `@/lib/supabase` layer (not `@/hooks/useInventoryChat`)
+// deliberately: `mock.module` in bun:test is process-global, not scoped to
+// this file, and `InventoryChatPanel.test.tsx` (in the same directory, same
+// bun:test process) mocks `@/lib/supabase` to drive the real
+// `useInventoryChat` hook end-to-end. Mocking the hook itself here instead
+// would replace that real hook for every file in the run, silently breaking
+// the other test's assertions depending on load order. None of the tests in
+// this file actually send a message, so the mock only needs to exist, not
+// resolve anything meaningful.
+mock.module("@/lib/supabase", () => ({
+  supabase: {
+    functions: {
+      invoke: () => Promise.resolve({ data: { reply: "", items: [] }, error: null }),
+    },
+  },
 }));
 
 import { InventoryChatPanel } from "./InventoryChatPanel";
 
-const wrapper = ({ children }: { children: ReactNode }) => (
-  <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
-);
+const wrapper = ({ children }: { children: ReactNode }) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return (
+    <QueryClientProvider client={queryClient}>
+      <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+    </QueryClientProvider>
+  );
+};
 
 // Standalone trigger button + panel, mirroring how `_auth.tsx` wires the
 // AI chat button to `InventoryChatPanel`'s `open`/`onClose` props.
