@@ -63,7 +63,7 @@ mock.module("@/lib/requireOnline", () => ({
   requireOnline: () => undefined,
 }));
 
-const { purchaseShoppingItem } = await import("@/hooks/useShoppingList");
+const { purchaseShoppingItem, upsertShoppingItem } = await import("@/hooks/useShoppingList");
 
 const makeFormValues = (overrides: Partial<ItemFormValues> = {}): ItemFormValues => ({
   name: "テスト商品",
@@ -152,5 +152,65 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
     );
     // select は existingLots検索の1回のみ (createLotのinsert→singleは呼ばれない)
     expect(lotInserts.filter((c) => c.method === "single")).toHaveLength(0);
+  });
+});
+
+describe("upsertShoppingItem (#619: インライン編集での linked_item_id 消失の防止)", () => {
+  test("編集時に linked_item_id を渡さない場合、既存行の値を取得して保持する", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: "item-9" }, error: null }, // 既存値の取得(maybeSingle)
+      { data: { id: "row-1", linked_item_id: "item-9" }, error: null }, // upsert結果
+    ];
+
+    await upsertShoppingItem({ id: "row-1", name: "牛乳", desired_units: 2, note: null });
+
+    const upsertCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "upsert",
+    );
+    expect(upsertCall?.args[0]).toMatchObject({ linked_item_id: "item-9" });
+  });
+
+  test("編集時に linked_item_id が明示的に渡された場合はその値で上書きする", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { id: "row-1", linked_item_id: "item-2" }, error: null }, // upsert結果
+    ];
+
+    await upsertShoppingItem({ id: "row-1", name: "牛乳", linked_item_id: "item-2" });
+
+    // 既存値の取得(maybeSingle)は呼ばれない
+    expect(
+      callLog.filter((c) => c.table === "shopping_list_items" && c.method === "maybeSingle"),
+    ).toHaveLength(0);
+    const upsertCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "upsert",
+    );
+    expect(upsertCall?.args[0]).toMatchObject({ linked_item_id: "item-2" });
+  });
+
+  test("編集時に linked_item_id が明示的に null の場合はクリアする", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { id: "row-1", linked_item_id: null }, error: null },
+    ];
+
+    await upsertShoppingItem({ id: "row-1", name: "牛乳", linked_item_id: null });
+
+    const upsertCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "upsert",
+    );
+    expect(upsertCall?.args[0]).toMatchObject({ linked_item_id: null });
+  });
+
+  test("新規追加時（idなし）は既存値取得を行わず渡された linked_item_id をそのまま使う", async () => {
+    responseQueues.shopping_list_items = [
+      { data: [], error: null }, // 重複チェック(plannedRows)
+      { data: { id: "row-new", linked_item_id: "item-5" }, error: null }, // upsert結果
+    ];
+
+    await upsertShoppingItem({ name: "牛乳", linked_item_id: "item-5" });
+
+    const upsertCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "upsert",
+    );
+    expect(upsertCall?.args[0]).toMatchObject({ linked_item_id: "item-5" });
   });
 });

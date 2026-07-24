@@ -55,65 +55,83 @@ export const findDuplicatePlannedItem = (
   );
 };
 
+/** `useUpsertShoppingItem` の実処理。単体テストのため素の関数として切り出している。 */
+export const upsertShoppingItem = async (input: UpsertShoppingItemInput) => {
+  requireOnline();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // 新規追加時のみ重複防止チェック: 同一 linked_item_id、または同名（前後空白を無視し
+  // 大文字小文字を区別しない）の planned 行が既にあれば新規作成せず desired_units を
+  // インクリメントして統合する (#522, #447)
+  if (!input.id) {
+    const { data: plannedRows, error: plannedError } = await supabase
+      .from("shopping_list_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "planned");
+    if (plannedError) throw new Error(plannedError.message);
+
+    const duplicate = findDuplicatePlannedItem((plannedRows ?? []) as ShoppingItem[], input);
+
+    if (duplicate) {
+      const { data, error } = await supabase
+        .from("shopping_list_items")
+        .update({
+          desired_units: duplicate.desired_units + (input.desired_units ?? 1),
+          note: input.note ?? duplicate.note,
+          linked_item_id: duplicate.linked_item_id ?? input.linked_item_id ?? null,
+        })
+        .eq("id", duplicate.id)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return data;
+    }
+  }
+
+  // 既存行の編集時、呼び出し元が linked_item_id を渡さない（undefined）ケースが
+  // 大半のため、その場合は既存値を保持する。明示的に null/値が渡された場合のみ
+  // 上書きする (#619: インライン編集で linked_item_id が失われる問題の修正)。
+  let linkedItemId = input.linked_item_id;
+  if (input.id && linkedItemId === undefined) {
+    const { data: existing, error: existingError } = await supabase
+      .from("shopping_list_items")
+      .select("linked_item_id")
+      .eq("id", input.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (existingError) throw new Error(existingError.message);
+    linkedItemId = existing?.linked_item_id ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from("shopping_list_items")
+    .upsert(
+      {
+        id: input.id,
+        user_id: user.id,
+        name: input.name,
+        desired_units: input.desired_units ?? 1,
+        note: input.note ?? null,
+        linked_item_id: linkedItemId ?? null,
+      },
+      { onConflict: "id" },
+    )
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+};
+
 export const useUpsertShoppingItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("common");
   return useMutation({
-    mutationFn: async (input: UpsertShoppingItemInput) => {
-      requireOnline();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // 新規追加時のみ重複防止チェック: 同一 linked_item_id、または同名（前後空白を無視し
-      // 大文字小文字を区別しない）の planned 行が既にあれば新規作成せず desired_units を
-      // インクリメントして統合する (#522, #447)
-      if (!input.id) {
-        const { data: plannedRows, error: plannedError } = await supabase
-          .from("shopping_list_items")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("status", "planned");
-        if (plannedError) throw new Error(plannedError.message);
-
-        const duplicate = findDuplicatePlannedItem((plannedRows ?? []) as ShoppingItem[], input);
-
-        if (duplicate) {
-          const { data, error } = await supabase
-            .from("shopping_list_items")
-            .update({
-              desired_units: duplicate.desired_units + (input.desired_units ?? 1),
-              note: input.note ?? duplicate.note,
-              linked_item_id: duplicate.linked_item_id ?? input.linked_item_id ?? null,
-            })
-            .eq("id", duplicate.id)
-            .select()
-            .single();
-          if (error) throw new Error(error.message);
-          return data;
-        }
-      }
-
-      const { data, error } = await supabase
-        .from("shopping_list_items")
-        .upsert(
-          {
-            id: input.id,
-            user_id: user.id,
-            name: input.name,
-            desired_units: input.desired_units ?? 1,
-            note: input.note ?? null,
-            linked_item_id: input.linked_item_id ?? null,
-          },
-          { onConflict: "id" },
-        )
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return data;
-    },
+    mutationFn: upsertShoppingItem,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: [QUERY_KEY] });
     },
