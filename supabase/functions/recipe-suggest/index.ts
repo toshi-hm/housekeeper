@@ -58,6 +58,7 @@ Deno.serve(async (req: Request) => {
   // 4xx/5xx a client would need special-case handling for.
   const result = await fetchRecipeSuggestions(itemNames, {
     apiKey: Deno.env.get("RECIPE_API_KEY"),
+    baseUrl: Deno.env.get("RECIPE_API_BASE_URL"),
   });
 
   if (result.kind === "missing_key") {

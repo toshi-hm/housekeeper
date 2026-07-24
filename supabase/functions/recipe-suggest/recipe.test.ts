@@ -159,3 +159,33 @@ Deno.test("fetchRecipeSuggestions - returns a soft error when fetch throws", asy
 
   assert.deepStrictEqual(result, { kind: "error" });
 });
+
+Deno.test("fetchRecipeSuggestions - forwards an active AbortSignal to fetchImpl (timeout guard wiring)", async () => {
+  let receivedSignal: AbortSignal | undefined;
+  const fetchImpl = ((_input: string | URL | Request, init?: RequestInit) => {
+    receivedSignal = init?.signal ?? undefined;
+    return Promise.resolve(new Response("{}", { status: 200 }));
+  }) as typeof fetch;
+
+  await fetchRecipeSuggestions(["牛乳"], { apiKey: "test-key", fetchImpl });
+
+  // Confirms the 8s timeout guard is actually wired to the request (an
+  // AbortController's signal is passed through), not just present in name —
+  // without waiting out the real timeout, which would make this test slow.
+  assert.ok(receivedSignal instanceof AbortSignal);
+  assert.strictEqual(receivedSignal?.aborted, false);
+});
+
+Deno.test("fetchRecipeSuggestions - returns a soft error when the request is aborted (timeout)", async () => {
+  // Simulates what fetchImpl actually does when the internal 8s timeout
+  // guard fires and aborts its signal: the underlying fetch call rejects
+  // with an AbortError. Confirms that specific rejection is caught by the
+  // same soft-degradation path as any other fetch failure, rather than
+  // waiting out the real 8s timeout (which would make this test slow).
+  const fetchImpl = (() =>
+    Promise.reject(new DOMException("The signal has been aborted", "AbortError"))) as typeof fetch;
+
+  const result = await fetchRecipeSuggestions(["牛乳"], { apiKey: "test-key", fetchImpl });
+
+  assert.deepStrictEqual(result, { kind: "error" });
+});
