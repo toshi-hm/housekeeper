@@ -30,6 +30,31 @@ interface ExpiringItem {
   expiry_date: string;
 }
 
+// #630: Edge Functions can't use react-i18next, so notification copy is kept
+// in a small static per-language map instead of hardcoding Japanese.
+const EXPIRY_NOTIFICATION_TEXT: Record<
+  "ja" | "en",
+  {
+    title: (count: number) => string;
+    itemLine: (name: string, expiryDate: string) => string;
+    emailIntro: string;
+  }
+> = {
+  ja: {
+    title: (count) => `${count}件の食材が期限間近です`,
+    itemLine: (name, expiryDate) => `${name} (${expiryDate})`,
+    emailIntro: "期限間近の食材:",
+  },
+  en: {
+    title: (count) => `${count} item(s) are expiring soon`,
+    itemLine: (name, expiryDate) => `${name} (${expiryDate})`,
+    emailIntro: "Items expiring soon:",
+  },
+};
+
+const isSupportedLanguage = (value: unknown): value is "ja" | "en" =>
+  value === "ja" || value === "en";
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -96,6 +121,14 @@ Deno.serve(async (req: Request) => {
 
       const count = (items as ExpiringItem[]).length;
 
+      const { data: userSettings } = await supabase
+        .from("user_settings")
+        .select("language")
+        .eq("user_id", pref.user_id)
+        .maybeSingle();
+      const language = isSupportedLanguage(userSettings?.language) ? userSettings.language : "ja";
+      const text = EXPIRY_NOTIFICATION_TEXT[language];
+
       // 定期実行時は notification_logs で当日分の送信枠を確保（重複送信防止）。
       // ignoreDuplicates のため、既に当日送信済みなら空配列が返る → スキップ。
       if (scheduled) {
@@ -109,10 +142,10 @@ Deno.serve(async (req: Request) => {
         if (!claimed || claimed.length === 0) return;
       }
 
-      const title = `${count}件の食材が期限間近です`;
+      const title = text.title(count);
       const body = (items as ExpiringItem[])
         .slice(0, 3)
-        .map((i) => `${i.name} (${i.expiry_date})`)
+        .map((i) => text.itemLine(i.name, i.expiry_date))
         .join(", ");
 
       // Send push notifications
@@ -163,7 +196,7 @@ Deno.serve(async (req: Request) => {
             from: resendFrom,
             to: pref.email_address,
             subject: title,
-            text: `期限間近の食材:\n${(items as ExpiringItem[]).map((i) => `- ${i.name} (${i.expiry_date})`).join("\n")}`,
+            text: `${text.emailIntro}\n${(items as ExpiringItem[]).map((i) => `- ${i.name} (${i.expiry_date})`).join("\n")}`,
           }),
         });
         if (!res.ok) {

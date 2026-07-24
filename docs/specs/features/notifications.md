@@ -68,6 +68,11 @@ for each user:
     Resend で 1 通送信（subject: "X 件の食材が期限間近です"）
 ```
 
+通知本文（push/email の title・body・subject・text）は `user_settings.language`（#620/#630）に応じてja/en
+を出し分ける。Edge Functionは`react-i18next`を使えないため、`send-expiry-notifications`/
+`send-test-notification` それぞれの `index.ts` 内に `Record<"ja" | "en", ...>` 形式の静的マップを持つ
+（`language`未設定時は`ja`にフォールバック）。
+
 ## エラー
 
 - Push 購読失敗（権限拒否 / VAPID 不整合）→ 設定画面でメッセージ

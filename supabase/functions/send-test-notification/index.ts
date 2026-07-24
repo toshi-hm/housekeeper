@@ -15,8 +15,18 @@ interface PushSubscriptionRow {
   auth: string;
 }
 
-const TEST_NOTIFICATION_TITLE = "テスト通知";
-const TEST_NOTIFICATION_BODY = "housekeeper の通知設定が正常に機能しています";
+// #630: Edge Functions can't use react-i18next, so notification copy is kept
+// in a small static per-language map instead of hardcoding Japanese.
+const NOTIFICATION_TEXT: Record<"ja" | "en", { title: string; body: string }> = {
+  ja: { title: "テスト通知", body: "housekeeper の通知設定が正常に機能しています" },
+  en: {
+    title: "Test Notification",
+    body: "Your housekeeper notification settings are working correctly",
+  },
+};
+
+const isSupportedLanguage = (value: unknown): value is "ja" | "en" =>
+  value === "ja" || value === "en";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -68,6 +78,14 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const { data: userSettings } = await supabase
+    .from("user_settings")
+    .select("language")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const language = isSupportedLanguage(userSettings?.language) ? userSettings.language : "ja";
+  const { title: testNotificationTitle, body: testNotificationBody } = NOTIFICATION_TEXT[language];
+
   const { data: subs, error: subsError } = await supabase
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")
@@ -95,7 +113,7 @@ Deno.serve(async (req: Request) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({ title: TEST_NOTIFICATION_TITLE, body: TEST_NOTIFICATION_BODY }),
+          JSON.stringify({ title: testNotificationTitle, body: testNotificationBody }),
         );
       } catch (err: unknown) {
         const status = (err as { statusCode?: number }).statusCode;
