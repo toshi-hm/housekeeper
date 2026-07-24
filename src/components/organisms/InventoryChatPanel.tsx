@@ -25,6 +25,10 @@ interface InventoryChatPanelProps {
   onClose: () => void;
 }
 
+// Tab-trap候補: 非表示(disabled)を除くフォーカス可能要素
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 const createId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -35,11 +39,75 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
   const { ask, isLoading } = useInventoryChat();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  // パネルを開いたときに: (1) 開くトリガー要素を記憶し、(2) Textarea へ初期
+  // フォーカスを移し、(3) パネル以外のツリー（オーバーレイの祖先を辿った各階層の
+  // 兄弟要素）を inert にして、Tab 以外の手段（スクリーンリーダーの仮想カーソル等）
+  // で背景コンテンツに到達できないようにする。閉じたら inert を解除してから、記憶
+  // しておいたトリガー要素へフォーカスを戻す（トリガーが既に DOM から外れている
+  // 場合は無視する）。
+  useEffect(() => {
+    if (!open) return;
+    triggerRef.current = document.activeElement as HTMLElement | null;
+    textareaRef.current?.focus();
+
+    const inerted: Element[] = [];
+    let node: Element | null = overlayRef.current;
+    while (node && node !== document.body) {
+      const parent: Element | null = node.parentElement;
+      if (!parent) break;
+      for (const sibling of Array.from(parent.children)) {
+        if (sibling !== node && !sibling.hasAttribute("inert")) {
+          sibling.setAttribute("inert", "");
+          inerted.push(sibling);
+        }
+      }
+      node = parent;
+    }
+
+    return () => {
+      for (const el of inerted) el.removeAttribute("inert");
+      const trigger = triggerRef.current;
+      if (trigger && document.contains(trigger)) {
+        trigger.focus();
+      }
+      triggerRef.current = null;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      // フォーカストラップ: パネル内の先頭/末尾要素で Tab / Shift+Tab を折り返す
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement;
+
+      if (e.shiftKey) {
+        if (active === first || !panel.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last || !panel.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -76,9 +144,10 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
   const suggestions = [t("suggestion1"), t("suggestion2"), t("suggestion3")];
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center sm:items-center sm:p-4">
+    <div ref={overlayRef} className="fixed inset-0 z-50 flex justify-center sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={t("title")}
@@ -162,7 +231,11 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
           )}
         </div>
 
-        <ChatComposer onSend={(msg) => void handleSend(msg)} isLoading={isLoading} />
+        <ChatComposer
+          ref={textareaRef}
+          onSend={(msg) => void handleSend(msg)}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

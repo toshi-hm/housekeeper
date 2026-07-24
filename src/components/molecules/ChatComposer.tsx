@@ -1,5 +1,5 @@
 import { SendHorizonal } from "lucide-react";
-import { type FormEvent, type KeyboardEvent, useId, useRef, useState } from "react";
+import { type FormEvent, type KeyboardEvent, type Ref, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
@@ -11,11 +11,14 @@ import { CHAT_MAX_MESSAGE_LENGTH } from "@/types/chat";
 interface ChatComposerProps {
   onSend: (message: string) => void;
   isLoading?: boolean;
+  // 呼び出し側（InventoryChatPanel）がパネルオープン時に明示的に
+  // フォーカスを移すための ref（React 19 では ref を通常の prop として渡せる）
+  ref?: Ref<HTMLTextAreaElement>;
 }
 
 // Input area with a send button. Enter submits, Shift+Enter inserts a newline.
 // IME composition is respected so confirming Japanese input does not submit.
-export const ChatComposer = ({ onSend, isLoading = false }: ChatComposerProps) => {
+export const ChatComposer = ({ onSend, isLoading = false, ref }: ChatComposerProps) => {
   const { t } = useTranslation("chat");
   const [value, setValue] = useState("");
   const isComposing = useRef(false);
@@ -47,6 +50,7 @@ export const ChatComposer = ({ onSend, isLoading = false }: ChatComposerProps) =
     <form onSubmit={handleSubmit} className="flex flex-col gap-1 border-t bg-background p-3">
       <div className="flex items-end gap-2">
         <Textarea
+          ref={ref}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
