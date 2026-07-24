@@ -108,6 +108,7 @@ export interface Database {
           reorder_threshold: number | null;
           last_verified_at: string | null;
           deleted_at: string | null;
+          deletion_reason: "consumed" | "expired_waste" | "other" | null;
           created_at: string;
           updated_at: string;
         };
@@ -131,6 +132,7 @@ export interface Database {
           reorder_threshold?: number | null;
           last_verified_at?: string | null;
           deleted_at?: string | null;
+          deletion_reason?: "consumed" | "expired_waste" | "other" | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -154,6 +156,7 @@ export interface Database {
           reorder_threshold?: number | null;
           last_verified_at?: string | null;
           deleted_at?: string | null;
+          deletion_reason?: "consumed" | "expired_waste" | "other" | null;
           updated_at?: string;
         };
         Relationships: [

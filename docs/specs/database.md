@@ -61,6 +61,8 @@ create table items (
   auto_reorder boolean not null default false,   -- 定期購入フラグ（#353）
   reorder_threshold int check (reorder_threshold is null or reorder_threshold >= 0), -- 自動追加のしきい値。NULL = 0以下
   last_verified_at timestamptz,          -- 棚卸し（在庫確認）: 「在庫確認済み」ボタンで現在時刻に更新 (#375)
+  deleted_at timestamptz,                -- ソフトデリート（null = 生存）
+  deletion_reason text check (deletion_reason is null or deletion_reason in ('consumed', 'expired_waste', 'other')), -- 削除理由（フードロス集計用, #494）
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -75,6 +77,8 @@ create index items_location_idx on items(storage_location_id);
 - `image_path` は Storage バケット `item-images` の **オブジェクトキー**（公開 URL ではなく）
 - `opened_remaining = null` は「未開封」、`numeric` 値は「開封中で残量あり」、`0` は「開封済み・空（次の点に移行直前）」
 - 既存 `quantity` カラムは v1 移行時に `units` へ変換し DROP
+- `deleted_at` はソフトデリート日時。`deleted_at is null` を通常のクエリ（一覧・詳細・カレンダー）で常にフィルタ条件に含める
+- `deletion_reason`（#494）: ソフトデリート時に選択させる削除理由。`'consumed'`（使い切った） / `'expired_waste'`（期限切れで廃棄） / `'other'`（その他）。既存の理由未選択のソフトデリート行は `null` のまま残る。フードロスダッシュボード（`docs/specs/features/stats.md`）は `deletion_reason = 'expired_waste'` の行のみを集計対象にする。`units` / `content_amount` / `opened_remaining` はソフトデリート時に変更されないため、廃棄時点の推定残量はこれらのカラムから逆算できる（専用カラムは追加していない）
 
 ## item_lots
 

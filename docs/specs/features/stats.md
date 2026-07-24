@@ -7,13 +7,14 @@
 
 ## グラフ一覧
 
-| グラフ                          | 元データ                                                                            | 形式                |
-| ------------------------------- | ----------------------------------------------------------------------------------- | ------------------- |
-| カテゴリ別在庫件数              | 在庫が残る `items`（`units > 0`）を `category_id` で group                          | 横棒                |
-| 期限ステータス分布              | `items` を `getExpiryStatus()` で group                                             | ドーナツ            |
-| カテゴリ別在庫金額              | `item_lots`（`unit_price` 設定済みのみ）を `item_id → category_id` で group（#342） | 横棒                |
-| 月別消費量                      | `consumption_logs` を `occurred_at` 月で group、`delta_amount * 単位換算` の合計    | 縦棒（直近 6 ヶ月） |
-| 消費速度ランキング（#68, #392） | アイテムごとの直近 30 日間の1日あたり消費量 + 直前30日との比較トレンド              | 表                  |
+| グラフ                           | 元データ                                                                                                | 形式                                    |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| カテゴリ別在庫件数               | 在庫が残る `items`（`units > 0`）を `category_id` で group                                              | 横棒                                    |
+| 期限ステータス分布               | `items` を `getExpiryStatus()` で group                                                                 | ドーナツ                                |
+| カテゴリ別在庫金額               | `item_lots`（`unit_price` 設定済みのみ）を `item_id → category_id` で group（#342）                     | 横棒                                    |
+| 月別消費量                       | `consumption_logs` を `occurred_at` 月で group、`delta_amount * 単位換算` の合計                        | 縦棒（直近 6 ヶ月）                     |
+| 消費速度ランキング（#68, #392）  | アイテムごとの直近 30 日間の1日あたり消費量 + 直前30日との比較トレンド                                  | 表                                      |
+| フードロス（月次廃棄件数、#494） | `deletion_reason = 'expired_waste'` の `items` を `deleted_at` の月・`category_id` で group（積み上げ） | 縦棒（直近 6 ヶ月・カテゴリ別積み上げ） |
 
 ## ユーザーストーリー
 
@@ -61,14 +62,15 @@
 
 ## API（hook）
 
-| hook                                          | 機能                            |
-| --------------------------------------------- | ------------------------------- |
-| `useCategoryStats()`                          | カテゴリ別件数                  |
-| `useExpiryDistribution()`                     | 期限ステータス分布              |
-| `useCategoryValueStats()`                     | カテゴリ別在庫金額（#342）      |
-| `useMonthlyConsumption(months = 6)`           | 月別消費                        |
-| `useConsumptionSpeedRanking(windowDays = 30)` | 消費速度ランキング（#68, #392） |
-| `useForecastAlerts(items, thresholdDays)`     | 予測残日数が閾値以内のアイテム  |
+| hook                                          | 機能                             |
+| --------------------------------------------- | -------------------------------- |
+| `useCategoryStats()`                          | カテゴリ別件数                   |
+| `useExpiryDistribution()`                     | 期限ステータス分布               |
+| `useCategoryValueStats()`                     | カテゴリ別在庫金額（#342）       |
+| `useMonthlyConsumption(months = 6)`           | 月別消費                         |
+| `useConsumptionSpeedRanking(windowDays = 30)` | 消費速度ランキング（#68, #392）  |
+| `useForecastAlerts(items, thresholdDays)`     | 予測残日数が閾値以内のアイテム   |
+| `useWasteStats(months = 6)`                   | 月別廃棄件数（カテゴリ別、#494） |
 
 ## エラー
 
@@ -88,6 +90,14 @@
 - 削除・アーカイブ済みアイテムのロットは集計対象外とする。
 - 単価が1件も設定されていない場合はグラフに反映されない（EmptyState は既存の「データがありません」を流用）。
 
+## フードロスダッシュボード（#494）
+
+- `items.deletion_reason = 'expired_waste'`（ソフトデリート時に「期限切れで廃棄した」を選択したアイテム）のみを対象に、月別・カテゴリ別の件数を積み上げ棒グラフで表示する
+- 削除理由は `deletion_reason` カラムの仕様（`docs/specs/database.md`）参照。UI 側は `items.deleted_at` をセットする箇所（アイテム詳細の削除、ダッシュボードの一括削除）で `DeletionReasonDialog`（molecule）を使って選択させる
+- 廃棄時点の推定残量は専用カラムを持たず、ソフトデリートで変更されない `units` / `content_amount` / `opened_remaining` から都度算出できる
+- **金額換算は未実装**: `items.unit_price`（#342）がマージされ次第、`WasteStatsChart` に推定廃棄金額を追加する。本実装時点では #342 が `main` 未マージのため件数のみを表示している
+- カレンダーの期限チェック操作（`useCalendarConsume`）は `items.deleted_at` を変更せず、ロットを `consumption_logs` へ記録するだけの別経路のため、本ダッシュボードの集計対象外
+
 ## Backlog
 
 - カテゴリ別月次消費
@@ -95,3 +105,4 @@
 - 在庫推移（時系列）グラフ（消費ペース予測・消費速度ランキングとは別に、在庫数そのものの
   時系列推移を可視化するグラフは引き続き Backlog）
 - DB 側に Materialized View
+- フードロスダッシュボードの推定廃棄金額（unit_price 連携、#342 マージ後）

@@ -10,6 +10,7 @@ import { useToast } from "@/lib/toast-context";
 import {
   getLotRemainingAmount,
   type Item,
+  type ItemDeletionReason,
   type ItemFilters,
   type ItemFormValues,
   type ItemSortKey,
@@ -318,11 +319,17 @@ const updateItem = async (id: string, values: Partial<ItemFormValues>): Promise<
   return data as Item;
 };
 
-const softDeleteItem = async (id: string): Promise<void> => {
+interface SoftDeleteItemInput {
+  id: string;
+  /** #494: 未指定の場合は理由なしでソフトデリートする（後方互換）。 */
+  reason?: ItemDeletionReason;
+}
+
+const softDeleteItem = async ({ id, reason }: SoftDeleteItemInput): Promise<void> => {
   requireOnline();
   const { error } = await supabase
     .from("items")
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString(), deletion_reason: reason ?? null })
     .eq("id", id);
   if (error) throw error;
 };
@@ -626,12 +633,12 @@ const bulkUpdateItems = async (
 };
 
 /** 複数アイテムをソフトデリートする。 */
-const bulkSoftDeleteItems = async (ids: string[]): Promise<void> => {
+const bulkSoftDeleteItems = async (ids: string[], reason?: ItemDeletionReason): Promise<void> => {
   requireOnline();
   if (ids.length === 0) return;
   const { error } = await supabase
     .from("items")
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString(), deletion_reason: reason ?? null })
     .in("id", ids);
   if (error) throw error;
 };
@@ -713,6 +720,8 @@ interface BulkActionInput {
   ids: string[];
   /** updateLocation / updateCategory のときの対象ID（null = 未設定にする） */
   targetId?: string | null;
+  /** delete のときの削除理由（#494） */
+  reason?: ItemDeletionReason;
 }
 
 export const useBulkItemAction = () => {
@@ -720,7 +729,7 @@ export const useBulkItemAction = () => {
   const { toast } = useToast();
   const { t } = useTranslation(["common", "items"]);
   return useMutation({
-    mutationFn: async ({ action, ids, targetId = null }: BulkActionInput) => {
+    mutationFn: async ({ action, ids, targetId = null, reason }: BulkActionInput) => {
       switch (action) {
         case "updateLocation":
           await bulkUpdateItems(ids, { storage_location_id: targetId });
@@ -732,7 +741,7 @@ export const useBulkItemAction = () => {
           await bulkConsumeItems(ids);
           break;
         case "delete":
-          await bulkSoftDeleteItems(ids);
+          await bulkSoftDeleteItems(ids, reason);
           break;
       }
       return { action, count: ids.length };
