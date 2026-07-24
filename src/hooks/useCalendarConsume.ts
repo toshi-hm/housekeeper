@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { LOTS_KEY, restoreLotConsumption, syncItemAggregate } from "@/hooks/useItemLots";
+import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -23,7 +23,30 @@ export const useCalendarConsume = () => {
   const { toast } = useToast();
   const { t } = useTranslation("common");
   const { t: tc } = useTranslation("calendar");
-  const [pendingRemovals, setPendingRemovals] = useState<Record<string, PendingLotRemoval>>({});
+
+  // The calendar page renders its own persistent "pending removals" list
+  // (CalendarPage) instead of relying on the shared toast's action button,
+  // and — unlike the other flows built on this same generic hook — never
+  // auto-expires a pending removal (no `durationMs`), so a checked-off lot
+  // stays undo-able until the user explicitly undoes it.
+  const { start, undo, pendingList } = useUndoableAction<PendingLotRemoval>({
+    showToast: false,
+    onUndo: async (_lotId, pending) => {
+      try {
+        await restoreLotConsumption({
+          lotId: pending.lotId,
+          itemId: pending.itemId,
+          unitsBefore: pending.units,
+          openedRemainingBefore: pending.openedRemaining,
+          logId: pending.logId,
+        });
+        await invalidateCalendarQueries(qc, pending.itemId);
+      } catch (err) {
+        toast(err instanceof OfflineError ? t("offlineError") : t("unknownError"), "error");
+        throw err;
+      }
+    },
+  });
 
   const check = async (item: Item): Promise<void> => {
     try {
@@ -58,6 +81,10 @@ export const useCalendarConsume = () => {
         return;
       }
 
+      // Optimistic concurrency: only zero out the lot if it still has the
+      // exact units/opened_remaining we just read. If another request
+      // already consumed from this lot in the meantime, no row matches and
+      // we surface a conflict instead of silently overwriting it (#432).
       let updateQuery = supabase
         .from("item_lots")
         .update({ units: 0, opened_remaining: null, updated_at: new Date().toISOString() })
@@ -105,17 +132,14 @@ export const useCalendarConsume = () => {
       // Keyed by lotId (not itemId) so that checking multiple lots of the
       // same item in a row keeps every removal independently undo-able
       // instead of the latest one overwriting the previous entry (#486).
-      setPendingRemovals((prev) => ({
-        ...prev,
-        [targetLot.id]: {
-          lotId: targetLot.id,
-          itemId: item.id,
-          itemName: item.name,
-          units: targetLot.units,
-          openedRemaining: targetLot.opened_remaining,
-          logId: logData?.id ?? null,
-        },
-      }));
+      start(targetLot.id, {
+        lotId: targetLot.id,
+        itemId: item.id,
+        itemName: item.name,
+        units: targetLot.units,
+        openedRemaining: targetLot.opened_remaining,
+        logId: logData?.id ?? null,
+      });
     } catch (err) {
       const message =
         err instanceof OfflineError
@@ -128,43 +152,10 @@ export const useCalendarConsume = () => {
     }
   };
 
-  const undo = async (lotId: string): Promise<void> => {
-    try {
-      requireOnline();
-      const pending = pendingRemovals[lotId];
-      if (!pending) return;
-
-      const { error } = await supabase
-        .from("item_lots")
-        .update({
-          units: pending.units,
-          opened_remaining: pending.openedRemaining,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", pending.lotId);
-      if (error) throw error;
-
-      if (pending.logId) {
-        await supabase.from("consumption_logs").delete().eq("id", pending.logId);
-      }
-
-      await syncItemAggregate(pending.itemId);
-      await invalidateCalendarQueries(qc, pending.itemId);
-
-      setPendingRemovals((prev) => {
-        const next = { ...prev };
-        delete next[lotId];
-        return next;
-      });
-    } catch (err) {
-      toast(err instanceof OfflineError ? t("offlineError") : t("unknownError"), "error");
-    }
-  };
-
-  const pendingRemovalList = Object.values(pendingRemovals).map(({ lotId, itemId, itemName }) => ({
-    lotId,
-    itemId,
-    itemName,
+  const pendingRemovalList = pendingList.map(({ payload }) => ({
+    lotId: payload.lotId,
+    itemId: payload.itemId,
+    itemName: payload.itemName,
   }));
 
   return { check, undo, pendingRemovalList };

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
@@ -23,13 +24,22 @@ const stubRouter = {
   state: { location: { href: "/", pathname: "/" }, matches: [], pendingMatches: [] },
 } as unknown as Parameters<typeof routerContext.Provider>[0]["value"];
 
-const stubToast: ToastContextValue = { toasts: [], toast: () => {}, dismiss: () => {} };
+const stubToast: ToastContextValue = { toasts: [], toast: () => "toast-id", dismiss: () => {} };
 
-const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <routerContext.Provider value={stubRouter}>
-    <ToastContext.Provider value={stubToast}>{children}</ToastContext.Provider>
-  </routerContext.Provider>
-);
+// ItemConsumePage now calls useQueryClient() directly (to invalidate queries
+// after an undo, #478) in addition to the already-mocked useItem/useItemLots
+// query hooks, so it needs a real QueryClientProvider in scope even though
+// the query hooks themselves are spied on below.
+const Wrapper = ({ children }: { children: React.ReactNode }) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return (
+    <QueryClientProvider client={queryClient}>
+      <routerContext.Provider value={stubRouter}>
+        <ToastContext.Provider value={stubToast}>{children}</ToastContext.Provider>
+      </routerContext.Provider>
+    </QueryClientProvider>
+  );
+};
 
 const baseItem: Item = {
   id: "test-item-id",

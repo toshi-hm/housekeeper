@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -10,9 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useConsumeLot, useItemLots } from "@/hooks/useItemLots";
+import { LOTS_KEY, restoreLotConsumption, useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import { useItem } from "@/hooks/useItems";
+import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { parseLocalDate } from "@/lib/dateUtils";
+import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import { convertUnit, getConvertibleUnits } from "@/lib/units";
 import {
@@ -40,8 +43,17 @@ const consumeReasonLabelKey = {
   other: "consumeReasonOther",
 } as const satisfies Record<ConsumeReason, string>;
 
+interface ConsumeLotUndoPayload {
+  lotId: string;
+  itemId: string;
+  unitsBefore: number;
+  openedRemainingBefore: number | null;
+  logId: string | null;
+}
+
 export const ItemConsumePage = () => {
   const { t, i18n } = useTranslation("items");
+  const { t: tc } = useTranslation("common");
   const { itemId } = Route.useParams();
   const { lotId: preselectedLotId } = Route.useSearch();
   const navigate = useNavigate();
@@ -49,6 +61,39 @@ export const ItemConsumePage = () => {
   const { data: lots = [], isLoading: lotsLoading, isError: lotsError } = useItemLots(itemId);
   const consumeLot = useConsumeLot();
   const { toast } = useToast();
+  const qc = useQueryClient();
+
+  // ロット消費（＝ロットの在庫を取り除く操作）の取り消し（#478）。
+  // useCalendarConsume / ダッシュボードのクイック消費と同じ
+  // restoreLotConsumption を使い、ロットの units/opened_remaining と
+  // consumption_logs を消費前の状態に戻す。
+  const consumeUndo = useUndoableAction<ConsumeLotUndoPayload>({
+    durationMs: 6000,
+    message: () => t("consumeSuccess"),
+    undoLabel: tc("undo"),
+    onUndo: async (_id, payload) => {
+      try {
+        await restoreLotConsumption({
+          lotId: payload.lotId,
+          itemId: payload.itemId,
+          unitsBefore: payload.unitsBefore,
+          openedRemainingBefore: payload.openedRemainingBefore,
+          logId: payload.logId,
+        });
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["items"] }),
+          qc.invalidateQueries({ queryKey: [...LOTS_KEY, payload.itemId] }),
+          qc.invalidateQueries({ queryKey: ["consumption-logs", payload.itemId] }),
+          qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+        ]);
+        toast(tc("undoSuccess"), "success");
+      } catch (err) {
+        toast(err instanceof OfflineError ? tc("offlineError") : tc("unknownError"), "error");
+        throw err;
+      }
+    },
+  });
+
   const [selectedLotId, setSelectedLotId] = useState<string | null>(preselectedLotId ?? null);
   const [delta, setDelta] = useState("");
   // 消費量の入力単位。デフォルトは item.content_unit だが、同一系統（mL↔L、g↔kg）
@@ -142,13 +187,22 @@ export const ItemConsumePage = () => {
       return;
     }
     try {
-      await consumeLot.mutateAsync({
+      const result = await consumeLot.mutateAsync({
         lot: selectedLot,
         item,
         deltaAmount: amount,
         note: buildNote(),
       });
-      toast(t("consumeSuccess"), "success");
+      // Success toast (with an Undo action) is shown by consumeUndo.start —
+      // it survives the navigation below since ToastProvider is mounted
+      // above the router (#478).
+      consumeUndo.start(crypto.randomUUID(), {
+        lotId: selectedLot.id,
+        itemId: item.id,
+        unitsBefore: selectedLot.units,
+        openedRemainingBefore: selectedLot.opened_remaining ?? null,
+        logId: result._logId ?? null,
+      });
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
       // Error toast is handled by useConsumeLot.onError
@@ -158,14 +212,20 @@ export const ItemConsumePage = () => {
   const handleConsumeAll = async (totalAmount: number) => {
     if (!item || !selectedLot) return;
     try {
-      await consumeLot.mutateAsync({
+      const result = await consumeLot.mutateAsync({
         lot: selectedLot,
         item,
         deltaAmount: totalAmount,
         note: buildNote(),
       });
       setShowConsumeAll(false);
-      toast(t("consumeSuccess"), "success");
+      consumeUndo.start(crypto.randomUUID(), {
+        lotId: selectedLot.id,
+        itemId: item.id,
+        unitsBefore: selectedLot.units,
+        openedRemainingBefore: selectedLot.opened_remaining ?? null,
+        logId: result._logId ?? null,
+      });
       void navigate({ to: "/items/$itemId", params: { itemId } });
     } catch {
       setShowConsumeAll(false);

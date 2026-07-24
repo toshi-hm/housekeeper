@@ -26,6 +26,9 @@
   "save": "保存",
   "saveSuccess": "保存しました",
   "select": "選択",
+  "undo": "元に戻す",
+  "undoError": "元に戻せませんでした",
+  "undoSuccess": "元に戻しました",
   "unknownError": "エラーが発生しました",
   "voiceInput": "音声入力",
   "voiceInputListening": "音声を認識中..."

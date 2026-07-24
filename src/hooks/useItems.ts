@@ -348,6 +348,16 @@ const verifyItem = async (id: string): Promise<Item> => {
   return data as Item;
 };
 
+/** ソフトデリートしたアイテムを元に戻す（`deleted_at` を解除する）。Undo用 (#478)。 */
+export const restoreItem = async (id: string): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase
+    .from("items")
+    .update({ deleted_at: null, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+};
+
 /** バーコードでアクティブなアイテムを検索する (新規登録画面でのスタック検出用) */
 export const findActiveItemByBarcode = async (barcode: string): Promise<Item | null> => {
   const { data, error } = await supabase
@@ -492,16 +502,18 @@ export const useUpdateItem = (id: string) => {
 export const useSoftDeleteItem = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { t } = useTranslation(["common", "calendar"]);
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: softDeleteItem,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
-      toast(t("calendar:softDeleteSuccess"), "success");
+      // No success toast here — the caller (ItemDetailPage) shows an
+      // Undo-capable toast via useUndoableAction instead (#478), which
+      // would otherwise double up with this one.
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
-      else toast(t("common:unknownError"), "error");
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };
@@ -586,15 +598,6 @@ export const useDeletedItems = () =>
     queryFn: fetchDeletedItems,
     staleTime: 30_000,
   });
-
-const restoreItem = async (id: string): Promise<void> => {
-  requireOnline();
-  const { error } = await supabase
-    .from("items")
-    .update({ deleted_at: null, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
-};
 
 export const useRestoreItem = () => {
   const qc = useQueryClient();
