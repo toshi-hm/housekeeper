@@ -53,39 +53,22 @@ interface SaveTemplateInput {
   items: TemplateItemInput[];
 }
 
-const saveTemplate = async ({ id, name, items }: SaveTemplateInput): Promise<void> => {
+export const saveTemplate = async ({ id, name, items }: SaveTemplateInput): Promise<void> => {
   requireOnline();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
 
-  const { data: template, error } = await supabase
-    .from("shopping_list_templates")
-    .upsert({ id, user_id: user.id, name }, { onConflict: "id" })
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-
-  // アイテムは入れ替え方式（既存を削除して挿入し直す）でシンプルに同期する
-  const { error: deleteError } = await supabase
-    .from("shopping_list_template_items")
-    .delete()
-    .eq("template_id", template.id);
-  if (deleteError) throw new Error(deleteError.message);
-
-  const rows = items
+  // テンプレート本体の更新とアイテムの入れ替え（削除→挿入）を1つのDB関数呼び出しに
+  // まとめ、単一トランザクションとして実行する。途中で失敗しても全体がロールバック
+  // され、アイテムが全損することはない。
+  const payloadItems = items
     .filter((item) => item.name.trim().length > 0)
-    .map((item) => ({
-      template_id: template.id as string,
-      user_id: user.id,
-      name: item.name.trim(),
-      desired_units: item.desired_units,
-    }));
-  if (rows.length > 0) {
-    const { error: insertError } = await supabase.from("shopping_list_template_items").insert(rows);
-    if (insertError) throw new Error(insertError.message);
-  }
+    .map((item) => ({ name: item.name.trim(), desired_units: item.desired_units }));
+
+  const { error } = await supabase.rpc("save_shopping_list_template", {
+    p_id: id ?? null,
+    p_name: name,
+    p_items: payloadItems,
+  });
+  if (error) throw new Error(error.message);
 };
 
 export const useSaveShoppingTemplate = () => {

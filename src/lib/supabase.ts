@@ -657,6 +657,16 @@ export interface Database {
         Args: { p_item_ids: string[]; p_archived_at: string };
         Returns: number;
       };
+      // #573: atomic template upsert + item replacement — see
+      // supabase/migrations/20260724000001_atomic_save_shopping_template.sql
+      save_shopping_list_template: {
+        Args: {
+          p_id: string | null;
+          p_name: string;
+          p_items: { name: string; desired_units: number }[];
+        };
+        Returns: string;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
