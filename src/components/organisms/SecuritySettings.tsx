@@ -50,7 +50,7 @@ export const SecuritySettings = () => {
   const handleVerify = async () => {
     const result = totpCodeSchema.safeParse(code);
     if (!result.success) {
-      setCodeError(result.error.issues[0]?.message ?? t("codeInvalid"));
+      setCodeError(t(result.error.issues[0]?.message ?? "codeInvalid"));
       return;
     }
     if (!enrollment) return;
@@ -67,7 +67,7 @@ export const SecuritySettings = () => {
         toast(t("common:offlineError"), "error");
         return;
       }
-      setCodeError(translateMfaError(err instanceof Error ? err.message : t("verifyFailed")));
+      setCodeError(t(err instanceof Error ? translateMfaError(err.message) : "verifyFailed"));
     }
   };
 

@@ -121,24 +121,26 @@ describe("isMfaChallengeRequired", () => {
 // ---------------------------------------------------------------------------
 
 describe("translateMfaError", () => {
+  // #620: 表示文言のハードコードをやめ、i18nキー（mfa namespace）を返すように
+  // 変更した。呼び出し側で t() に通してから表示する。
+
   test("Invalid TOTP code", () => {
-    expect(translateMfaError("Invalid TOTP code entered")).toContain("正しくないか");
+    expect(translateMfaError("Invalid TOTP code entered")).toBe("codeInvalidOrExpired");
   });
 
   test("invalid_code", () => {
-    expect(translateMfaError("invalid_code")).toContain("正しくないか");
+    expect(translateMfaError("invalid_code")).toBe("codeInvalidOrExpired");
   });
 
   test("rate limit", () => {
-    expect(translateMfaError("over_email_send_rate_limit")).toContain("リクエストが多すぎます");
+    expect(translateMfaError("over_email_send_rate_limit")).toBe("rateLimitError");
   });
 
   test("factor not found", () => {
-    expect(translateMfaError("mfa_factor_not_found")).toContain("認証情報が見つかりません");
+    expect(translateMfaError("mfa_factor_not_found")).toBe("factorNotFound");
   });
 
-  test("未知のエラーはそのまま返す", () => {
-    const msg = "Some unexpected mfa error";
-    expect(translateMfaError(msg)).toBe(msg);
+  test("未知のエラーはverifyFailedキーにフォールバックする", () => {
+    expect(translateMfaError("Some unexpected mfa error")).toBe("verifyFailed");
   });
 });

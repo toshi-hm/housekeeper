@@ -7,63 +7,49 @@ import { loginSchema, passwordSchema, sha256hex, signupSchema, translateAuthErro
 // ---------------------------------------------------------------------------
 
 describe("translateAuthError", () => {
+  // #620: 表示文言のハードコードをやめ、i18nキー（auth namespace）を返すように
+  // 変更した。呼び出し側で t() に通してから表示する。
+
   test("rate limit error (over_email_send_rate_limit)", () => {
-    expect(translateAuthError("over_email_send_rate_limit")).toContain(
-      "メールの送信回数が上限に達しました",
-    );
+    expect(translateAuthError("over_email_send_rate_limit")).toBe("emailRateLimitError");
   });
 
   test("rate limit error (email rate limit)", () => {
-    expect(translateAuthError("email rate limit exceeded")).toContain(
-      "メールの送信回数が上限に達しました",
-    );
+    expect(translateAuthError("email rate limit exceeded")).toBe("emailRateLimitError");
   });
 
   test("already registered (User already registered)", () => {
-    expect(translateAuthError("User already registered")).toBe(
-      "このメールアドレスはすでに登録されています。",
-    );
+    expect(translateAuthError("User already registered")).toBe("emailAlreadyRegistered");
   });
 
   test("already registered (user_already_exists)", () => {
-    expect(translateAuthError("user_already_exists")).toBe(
-      "このメールアドレスはすでに登録されています。",
-    );
+    expect(translateAuthError("user_already_exists")).toBe("emailAlreadyRegistered");
   });
 
   test("already registered (already been registered)", () => {
-    expect(translateAuthError("Email has already been registered")).toBe(
-      "このメールアドレスはすでに登録されています。",
-    );
+    expect(translateAuthError("Email has already been registered")).toBe("emailAlreadyRegistered");
   });
 
   test("invalid credentials (Invalid login credentials)", () => {
-    expect(translateAuthError("Invalid login credentials")).toBe(
-      "メールアドレスまたはパスワードが正しくありません。",
-    );
+    expect(translateAuthError("Invalid login credentials")).toBe("invalidCredentials");
   });
 
   test("invalid credentials (invalid_credentials)", () => {
-    expect(translateAuthError("invalid_credentials")).toBe(
-      "メールアドレスまたはパスワードが正しくありません。",
-    );
+    expect(translateAuthError("invalid_credentials")).toBe("invalidCredentials");
   });
 
   test("email not confirmed", () => {
-    expect(translateAuthError("Email not confirmed")).toContain(
-      "メールアドレスが確認されていません",
-    );
+    expect(translateAuthError("Email not confirmed")).toBe("emailNotConfirmed");
   });
 
   test("password too short (Supabase message)", () => {
-    expect(translateAuthError("Password should be at least 6 characters")).toContain(
-      "パスワードが短すぎます",
+    expect(translateAuthError("Password should be at least 6 characters")).toBe(
+      "supabasePasswordTooShort",
     );
   });
 
-  test("unknown error is returned as-is", () => {
-    const msg = "Some unexpected error";
-    expect(translateAuthError(msg)).toBe(msg);
+  test("unknown error falls back to the generic authFailed key", () => {
+    expect(translateAuthError("Some unexpected error")).toBe("authFailed");
   });
 });
 
@@ -121,20 +107,20 @@ describe("passwordSchema — 3種類以上ルール", () => {
   });
 });
 
-describe("passwordSchema — エラーメッセージ", () => {
-  test("短すぎる場合のメッセージ", () => {
+describe("passwordSchema — エラーメッセージ（#620: i18nキーを返す）", () => {
+  test("短すぎる場合はpasswordTooShortキー", () => {
     const result = passwordSchema.safeParse("Ab1!");
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((i) => i.message.includes("8文字以上"))).toBe(true);
+      expect(result.error.issues.some((i) => i.message === "passwordTooShort")).toBe(true);
     }
   });
 
-  test("種類不足の場合のメッセージ", () => {
+  test("種類不足の場合はpasswordWeakキー", () => {
     const result = passwordSchema.safeParse("abcdefgh");
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((i) => i.message.includes("3種類以上"))).toBe(true);
+      expect(result.error.issues.some((i) => i.message === "passwordWeak")).toBe(true);
     }
   });
 });
@@ -181,7 +167,7 @@ describe("signupSchema — confirmPassword", () => {
     const result = signupSchema.safeParse({ ...base, confirmPassword: "Different1!" });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((i) => i.message.includes("一致しません"))).toBe(true);
+      expect(result.error.issues.some((i) => i.message === "confirmPasswordMismatch")).toBe(true);
     }
   });
 
