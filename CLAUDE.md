@@ -40,6 +40,7 @@ Read the relevant spec file before implementing any feature.
 - Expiry alerts: docs/specs/features/expiry-alert.md
 - Master data (categories/locations): docs/specs/features/master-data.md
 - Image storage: docs/specs/features/storage.md
+- Storage location photo map: docs/specs/features/storage-location-map.md
 - Shopping list: docs/specs/features/shopping-list.md
 - Consumption & purchase history: docs/specs/features/consumption-purchase.md
 - Notifications: docs/specs/features/notifications.md

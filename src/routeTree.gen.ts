@@ -23,6 +23,7 @@ import { Route as AuthSettingsPurchaseHistoryRouteImport } from './routes/_auth.
 import { Route as AuthSettingsLocationsRouteImport } from './routes/_auth.settings.locations'
 import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
 import { Route as AuthSettingsArchivedItemsRouteImport } from './routes/_auth.settings.archived-items'
+import { Route as AuthLocationsLocationIdRouteImport } from './routes/_auth.locations.$locationId'
 import { Route as AuthItemsNewRouteImport } from './routes/_auth.items.new'
 import { Route as AuthItemsItemIdRouteImport } from './routes/_auth.items.$itemId'
 import { Route as AuthItemsItemIdEditRouteImport } from './routes/_auth.items.$itemId.edit'
@@ -99,6 +100,11 @@ const AuthSettingsArchivedItemsRoute =
     path: '/archived-items',
     getParentRoute: () => AuthSettingsRoute,
   } as any)
+const AuthLocationsLocationIdRoute = AuthLocationsLocationIdRouteImport.update({
+  id: '/locations/$locationId',
+  path: '/locations/$locationId',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
   id: '/items/new',
   path: '/items/new',
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/stats': typeof AuthStatsRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
+  '/locations/$locationId': typeof AuthLocationsLocationIdRoute
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthIndexRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
+  '/locations/$locationId': typeof AuthLocationsLocationIdRoute
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/_auth/': typeof AuthIndexRoute
   '/_auth/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/_auth/items/new': typeof AuthItemsNewRoute
+  '/_auth/locations/$locationId': typeof AuthLocationsLocationIdRoute
   '/_auth/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/_auth/settings/categories': typeof AuthSettingsCategoriesRoute
   '/_auth/settings/locations': typeof AuthSettingsLocationsRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/stats'
     | '/items/$itemId'
     | '/items/new'
+    | '/locations/$locationId'
     | '/settings/archived-items'
     | '/settings/categories'
     | '/settings/locations'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/'
     | '/items/$itemId'
     | '/items/new'
+    | '/locations/$locationId'
     | '/settings/archived-items'
     | '/settings/categories'
     | '/settings/locations'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/_auth/'
     | '/_auth/items/$itemId'
     | '/_auth/items/new'
+    | '/_auth/locations/$locationId'
     | '/_auth/settings/archived-items'
     | '/_auth/settings/categories'
     | '/_auth/settings/locations'
@@ -346,6 +358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSettingsArchivedItemsRouteImport
       parentRoute: typeof AuthSettingsRoute
     }
+    '/_auth/locations/$locationId': {
+      id: '/_auth/locations/$locationId'
+      path: '/locations/$locationId'
+      fullPath: '/locations/$locationId'
+      preLoaderRoute: typeof AuthLocationsLocationIdRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/items/new': {
       id: '/_auth/items/new'
       path: '/items/new'
@@ -420,6 +439,7 @@ interface AuthRouteChildren {
   AuthIndexRoute: typeof AuthIndexRoute
   AuthItemsItemIdRoute: typeof AuthItemsItemIdRouteWithChildren
   AuthItemsNewRoute: typeof AuthItemsNewRoute
+  AuthLocationsLocationIdRoute: typeof AuthLocationsLocationIdRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
@@ -431,6 +451,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthIndexRoute: AuthIndexRoute,
   AuthItemsItemIdRoute: AuthItemsItemIdRouteWithChildren,
   AuthItemsNewRoute: AuthItemsNewRoute,
+  AuthLocationsLocationIdRoute: AuthLocationsLocationIdRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

@@ -86,5 +86,7 @@
 ## Backlog
 
 - カテゴリツリー（親子関係）
-- 保管場所のレイアウト図
 - カスタム単位の改名（update）・並び替え
+
+保管場所のレイアウト図（写真+ピンでの収納位置の可視化）は
+`docs/specs/features/storage-location-map.md`（#574）で実装済み。

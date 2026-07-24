@@ -63,6 +63,8 @@ create table items (
   last_verified_at timestamptz,          -- 棚卸し（在庫確認）: 「在庫確認済み」ボタンで現在時刻に更新 (#375)
   deleted_at timestamptz,                -- ソフトデリート（null = 生存）
   deletion_reason text check (deletion_reason is null or deletion_reason in ('consumed', 'expired_waste', 'other')), -- 削除理由（フードロス集計用, #494）
+  pin_x numeric(4,3) check (pin_x is null or (pin_x >= 0 and pin_x <= 1)), -- 保管場所写真上の相対位置（収納マップ, #574）
+  pin_y numeric(4,3) check (pin_y is null or (pin_y >= 0 and pin_y <= 1)),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -79,6 +81,9 @@ create index items_location_idx on items(storage_location_id);
 - 既存 `quantity` カラムは v1 移行時に `units` へ変換し DROP
 - `deleted_at` はソフトデリート日時。`deleted_at is null` を通常のクエリ（一覧・詳細・カレンダー）で常にフィルタ条件に含める
 - `deletion_reason`（#494）: ソフトデリート時に選択させる削除理由。`'consumed'`（使い切った） / `'expired_waste'`（期限切れで廃棄） / `'other'`（その他）。既存の理由未選択のソフトデリート行は `null` のまま残る。フードロスダッシュボード（`docs/specs/features/stats.md`）は `deletion_reason = 'expired_waste'` の行のみを集計対象にする。`units` / `content_amount` / `opened_remaining` はソフトデリート時に変更されないため、廃棄時点の推定残量はこれらのカラムから逆算できる（専用カラムは追加していない）
+- `pin_x` / `pin_y`（#574）: 保管場所（`storage_locations.photo_path`）の写真上の相対位置。左上を `(0, 0)`、
+  右下を `(1, 1)` とする。保管場所に写真が未登録、または位置未指定の場合は両方 `null`。
+  詳細は `docs/specs/features/storage-location-map.md` を参照
 
 ## item_lots
 
@@ -136,6 +141,7 @@ create table storage_locations (
   user_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
   icon text,
+  photo_path text,                       -- Storage バケット location-photos のオブジェクトキー（収納マップ, #574）
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, name)
@@ -143,6 +149,9 @@ create table storage_locations (
 
 create index storage_locations_user_id_idx on storage_locations(user_id);
 ```
+
+- `photo_path` は保管場所の「収納マップ」写真（`docs/specs/features/storage-location-map.md`）。
+  未登録時は `null`
 
 ## custom_units（v1.1）
 
@@ -428,6 +437,15 @@ create policy "item_images_owner_write"
 
 -- update / delete も同様
 ```
+
+### バケット `location-photos`（#574）
+
+- 種別: **private**
+- パス規約: `<user_id>/<location_id>.<ext>`（`ext` は `webp` / `jpg` / `png`）
+- アクセス: `supabase.storage.from('location-photos').createSignedUrl(path, 3000)` を
+  `useSignedLocationPhoto` 経由で取得
+- アップロード上限: 5 MB（クライアント側で検証、`item-images` と共通の `ImageUploader` を流用）
+- RLS ポリシーは `item-images` と同じ所有者チェックパターン（バケット名のみ置き換え）
 
 ---
 
