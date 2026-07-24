@@ -16,6 +16,7 @@ Supabase Auth（email + password）による単一ユーザー認証。
 - 未認証で保護ルートにアクセスすると `/login` にリダイレクトされる
 - ユーザーは設定画面から TOTP（認証アプリ）による2段階認証を有効化/無効化できる（#366）
 - 2段階認証が有効なユーザーは、email / password でのサインイン後に認証アプリの6桁コード入力を求められる
+- ユーザーはサインアップ時に秘密の質問と答えを登録し、パスワードを忘れた場合は `/forgot-password` から秘密の質問に答えることでパスワードを再設定できる（#449 実装済み）
 
 ## 画面・動線
 
@@ -52,6 +53,41 @@ supabase.auth.mfa.getAuthenticatorAssuranceLevel()
 ```
 
 `AuthProvider`（`src/lib/auth.tsx`）が session を Context で提供し、`_auth.tsx` が判定する。
+
+## パスワードリセット（秘密の質問、#449）
+
+Supabase Auth 標準のメールリンク方式ではなく、**秘密の質問と答え**によるパスワードリセットを実装している（`user_security_questions` テーブル、Edge Function 2本）。
+
+### データ
+
+`public.user_security_questions`（`supabase/migrations/20260506000001_create_user_security_questions.sql`）
+
+| カラム                      | 型          | 備考                                                                                 |
+| --------------------------- | ----------- | ------------------------------------------------------------------------------------ |
+| `user_id`                   | uuid PK     | `auth.users(id)` 参照、`on delete cascade`                                           |
+| `email`                     | text        | 検索用に正規化して保持                                                               |
+| `question`                  | text        | `SECURITY_QUESTIONS`（`src/lib/auth.ts`）から選択した質問文言（日本語固定）          |
+| `answer_hash`               | text        | `sha256(user_id + ":" + answer.toLowerCase().trim())` のハッシュ値。平文は保存しない |
+| `created_at` / `updated_at` | timestamptz |                                                                                      |
+
+RLS: `auth.uid() = user_id` の owner-only ポリシー。ただし読み書きは主に `SUPABASE_SERVICE_ROLE_KEY` を使う Edge Function 経由で行われる（未認証状態からの呼び出しのため）。
+
+### 登録フロー（サインアップ時）
+
+`LoginPage`（`src/components/pages/LoginPage.tsx`）のサインアップフォームで秘密の質問（`SECURITY_QUESTIONS` からの選択式）と答えを入力させ、サインアップ成功直後にクライアントから直接 `user_security_questions` に `upsert`する（答えは `sha256(user_id + ":" + answer)` としてハッシュ化してから保存、平文は送信元に残らない）。
+
+### リセットフロー（`/forgot-password`、未認証）
+
+1. **Step1**（メール入力）: Edge Function `get-security-question`（`supabase/functions/get-security-question/`）にメールアドレスを送信する。未登録メールの場合は 404 ではなく `question: null` を返し、クライアント側（`src/routes/forgot-password.tsx`）がそれを汎用の質問文言（`t("genericSecurityQuestion")`）にフォールバックして次のステップへ進むことで、メール存在を推測されないようにしている（#449）
+2. **Step2**（答え + 新パスワード入力）: Edge Function `verify-security-answer`（`supabase/functions/verify-security-answer/`）に答え・新パスワードを送信。サーバー側でハッシュを再計算し `timingSafeEqual` で定数時間比較、一致すれば `supabase.auth.admin.updateUserById()` でパスワードを更新する
+3. 両 Edge Function とも、未登録メール／不正解のいずれも同一のエラーレスポンス・ステータスコードを返し、メールアドレスの存在を推測させない
+4. 両 Edge Function とも `checkRateLimit()`（`supabase/_shared/rate-limit.ts`）でメールアドレス単位のレート制限を掛け、総当たり攻撃を抑止する（#433）
+
+### 制約・注意点
+
+- 秘密の質問はナレッジベース認証（knowledge-based authentication）であり、パスワードリセットの認証方式としては一般に強度が低いとされる（本人以外でも推測・調査で突破され得る）。単一ユーザー・自宅利用という本アプリの脅威モデル上は許容しているが、将来的にメールリンク方式や2要素の組み合わせへ強化する余地がある
+- 質問文言・答えは現状 i18n 非対応で日本語固定（#620 で追跡）
+- ログイン中（既存セッションあり）に `/forgot-password` へアクセスすると `/` にリダイレクトされる（`beforeLoad`）
 
 ## MFA（2段階認証、TOTP）
 
@@ -107,6 +143,5 @@ UIロジックは `SecuritySettings`（`src/components/organisms/SecuritySetting
 
 ## v1.1+ Backlog
 
-- パスワードリセット
 - OAuth プロバイダ追加
 - ~~2FA~~ → TOTPによる2段階認証は実装済み（#366）。Email OTPは引き続きBacklog
