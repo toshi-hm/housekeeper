@@ -54,7 +54,12 @@ export const BulkMoveDialog = ({
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <Select value={value} onChange={(e) => setValue(e.target.value)} className="mb-4">
+        <Select
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="mb-4"
+          aria-label={title}
+        >
           <option value="">{noneLabel}</option>
           {options.map((option) => (
             <option key={option.id} value={option.id}>

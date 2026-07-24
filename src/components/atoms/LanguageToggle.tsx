@@ -10,7 +10,7 @@ interface LanguageToggleProps {
 export const LanguageToggle = ({ value, onChange }: LanguageToggleProps) => {
   const { t } = useTranslation("settings");
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)}>
+    <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label={t("language")}>
       <option value="ja">{t("languageJa")}</option>
       <option value="en">{t("languageEn")}</option>
     </Select>
