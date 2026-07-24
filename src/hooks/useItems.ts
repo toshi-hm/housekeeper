@@ -6,6 +6,7 @@ import { maybeAutoReorder } from "@/lib/autoReorder";
 import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { fetchAllPages } from "@/lib/supabasePagination";
 import { useToast } from "@/lib/toast-context";
 import {
   getLotRemainingAmount,
@@ -61,38 +62,47 @@ export const buildNameOrBarcodeSearchFilter = (search: string): string => {
   return `name.ilike."%${escaped}%",barcode.ilike."%${escaped}%"`;
 };
 
-const fetchItems = async (
+export const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
 ): Promise<Item[]> => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
-  let query = supabase
-    .from("items")
-    .select("*")
-    .eq("user_id", userData.user.id)
-    .is("deleted_at", null);
+  const buildQuery = () => {
+    let query = supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", userData.user.id)
+      .is("deleted_at", null);
 
-  if (filters.search) {
-    query = query.or(buildNameOrBarcodeSearchFilter(filters.search));
-  }
-  if (filters.categoryId) {
-    query = query.eq("category_id", filters.categoryId);
-  }
-  if (filters.storageLocationId) {
-    query = query.eq("storage_location_id", filters.storageLocationId);
-  }
+    if (filters.search) {
+      query = query.or(buildNameOrBarcodeSearchFilter(filters.search));
+    }
+    if (filters.categoryId) {
+      query = query.eq("category_id", filters.categoryId);
+    }
+    if (filters.storageLocationId) {
+      query = query.eq("storage_location_id", filters.storageLocationId);
+    }
 
-  if (sort === "expiry_date") {
-    query = query.order("expiry_date", { ascending: true, nullsFirst: false });
-  } else {
-    query = query.order(sort, { ascending: false });
-  }
+    if (sort === "expiry_date") {
+      query = query.order("expiry_date", { ascending: true, nullsFirst: false });
+    } else {
+      query = query.order(sort, { ascending: false });
+    }
+    // #622: tiebreaker so pagination (.range()) is deterministic even when
+    // many rows share the same sort value.
+    return query.order("id", { ascending: true });
+  };
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as Item[];
+  // #622: a single unbounded select silently truncates once a user's items
+  // exceed PostgREST's row cap (default 1000). Page through instead.
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await buildQuery().range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Item[];
+  });
 };
 
 export const fetchItem = async (id: string): Promise<Item> => {
