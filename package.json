@@ -22,7 +22,8 @@
     "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/supabase.ts && node scripts/fix-supabase-types.mjs",
     "test:db": "supabase test db",
     "release": "changelogen --release --push",
-    "spec-drift-check": "node scripts/check-spec-drift.mjs"
+    "spec-drift-check": "node scripts/check-spec-drift.mjs",
+    "api-contract-monitor": "bun run scripts/api-contract-monitor.ts"
   },
   "dependencies": {
     "@sentry/react": "^10.66.0",
