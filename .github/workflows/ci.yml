@@ -31,3 +31,6 @@ jobs:
 
   lighthouse:
     uses: ./.github/workflows/_lighthouse.yml
+
+  a11y:
+    uses: ./.github/workflows/_a11y.yml

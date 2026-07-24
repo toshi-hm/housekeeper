@@ -31,8 +31,15 @@ export const Default: Story = {
  * カメラ起動済みで「撮影する」ボタンを押せる状態。
  * tesseract.js の OCR 呼び出しは Storybook 上で実ネットワーク/実CPUを使わないよう
  * createWorker をモックし、常に固定の認識結果を返すようにしている。
+ *
+ * `!test` タグで @storybook/test-runner（CI の a11y ジョブ）の対象から除外している:
+ * `Tesseract.createWorker` はビルド後の ES module namespace 上では再定義不可の
+ * named export で、test-runner がこの story を複数回訪問すると2回目の `spyOn` が
+ * "Cannot redefine property" で例外になる。VRT（Chromatic）や `storybook dev` での
+ * 手動確認は引き続き有効。
  */
 export const CameraReady: Story = {
+  tags: ["!test"],
   beforeEach() {
     spyOn(ZxingBrowser.BrowserMultiFormatReader, "listVideoInputDevices").mockResolvedValue([]);
     spyOn(

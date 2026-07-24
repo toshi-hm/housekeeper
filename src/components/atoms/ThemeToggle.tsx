@@ -7,7 +7,11 @@ export const ThemeToggle = () => {
   const { t } = useTranslation("settings");
   const { theme, setTheme } = useTheme();
   return (
-    <Select value={theme} onChange={(e) => setTheme(e.target.value as Theme)}>
+    <Select
+      value={theme}
+      onChange={(e) => setTheme(e.target.value as Theme)}
+      aria-label={t("theme")}
+    >
       <option value="system">{t("themeSystem")}</option>
       <option value="light">{t("themeLight")}</option>
       <option value="dark">{t("themeDark")}</option>

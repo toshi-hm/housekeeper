@@ -17,5 +17,5 @@
     "@stryker-mutator/command-runner",
     "changelogen"
   ],
-  "ignoreBinaries": ["wait-on", "changelogen"]
+  "ignoreBinaries": ["wait-on", "changelogen", "serve"]
 }
