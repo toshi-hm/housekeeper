@@ -14,10 +14,12 @@ import {
   computeExpiryDistribution,
   computeForecastAlerts,
   computeMonthlyConsumption,
+  computeMonthlySpending,
   computeMonthlyWasteStats,
   DEFAULT_FORECAST_LOOKBACK_DAYS,
   type LotValueRow,
   type RawWasteItem,
+  type SpendingLotRow,
 } from "@/types/stats";
 
 export const useCategoryStats = () => {
@@ -66,6 +68,34 @@ const useAllLotsForValue = () =>
     queryFn: fetchAllLotsForValue,
     staleTime: 30_000,
   });
+
+const fetchAllLotsForSpending = async (): Promise<SpendingLotRow[]> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("item_lots")
+    .select("unit_price, purchased_units, purchase_date")
+    .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as SpendingLotRow[];
+};
+
+/** 月次支出トレンド（#633）。単価または購入日未設定のロットは集計から除外される。 */
+export const useMonthlySpending = (months = 6) => {
+  const {
+    data: lots = [],
+    isLoading,
+    isError,
+  } = useQuery<SpendingLotRow[]>({
+    queryKey: [...LOTS_KEY, "spending-all"],
+    queryFn: fetchAllLotsForSpending,
+    staleTime: 30_000,
+  });
+  return { data: computeMonthlySpending(lots, months), isLoading, isError };
+};
 
 /** カテゴリ別在庫総額（#342）。単価未設定のロットは集計から除外される。 */
 export const useCategoryValueStats = () => {

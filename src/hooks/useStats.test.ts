@@ -9,11 +9,13 @@ import {
   computeForecastAlerts,
   computeItemConsumptionPace,
   computeMonthlyConsumption,
+  computeMonthlySpending,
   computeMonthlyWasteStats,
   type ItemConsumptionLogEntry,
   type LotValueRow,
   type RawLog,
   type RawWasteItem,
+  type SpendingLotRow,
 } from "../../src/types/stats";
 
 // helpers
@@ -302,6 +304,60 @@ describe("computeMonthlyConsumption", () => {
     ];
     const result = computeMonthlyConsumption(logs, 1, fixedNow);
     expect(result[0]?.totals).toEqual([{ unit: "g", total: 0.3 }]);
+  });
+});
+
+// --- computeMonthlySpending (#633) ---
+
+describe("computeMonthlySpending", () => {
+  const fixedNow = new Date(2026, 3, 30); // April 2026
+
+  test("returns 6 entries by default", () => {
+    expect(computeMonthlySpending([], 6, fixedNow)).toHaveLength(6);
+  });
+
+  test("returns correct month labels in order", () => {
+    const result = computeMonthlySpending([], 3, fixedNow);
+    expect(result.map((r) => r.month)).toEqual(["2026/02", "2026/03", "2026/04"]);
+  });
+
+  test("0 total for months with no purchases", () => {
+    expect(computeMonthlySpending([], 2, fixedNow)[0]?.total).toBe(0);
+  });
+
+  test("sums unit_price * purchased_units for the correct month", () => {
+    const lots: SpendingLotRow[] = [
+      { unit_price: 200, purchased_units: 2, purchase_date: "2026-04-01" },
+      { unit_price: 500, purchased_units: 1, purchase_date: "2026-04-15" },
+    ];
+    expect(computeMonthlySpending(lots, 1, fixedNow)[0]?.total).toBe(900);
+  });
+
+  test("ignores lots from other months", () => {
+    const lots: SpendingLotRow[] = [
+      { unit_price: 300, purchased_units: 1, purchase_date: "2025-12-01" },
+    ];
+    expect(computeMonthlySpending(lots, 1, fixedNow)[0]?.total).toBe(0);
+  });
+
+  test("excludes lots with unit_price === null", () => {
+    const lots: SpendingLotRow[] = [
+      { unit_price: null, purchased_units: 5, purchase_date: "2026-04-01" },
+    ];
+    expect(computeMonthlySpending(lots, 1, fixedNow)[0]?.total).toBe(0);
+  });
+
+  test("excludes lots with purchase_date === null", () => {
+    const lots: SpendingLotRow[] = [{ unit_price: 300, purchased_units: 2, purchase_date: null }];
+    expect(computeMonthlySpending(lots, 1, fixedNow)[0]?.total).toBe(0);
+  });
+
+  test("rounds the monthly total", () => {
+    const lots: SpendingLotRow[] = [
+      { unit_price: 100.4, purchased_units: 1, purchase_date: "2026-04-01" },
+      { unit_price: 100.4, purchased_units: 1, purchase_date: "2026-04-02" },
+    ];
+    expect(computeMonthlySpending(lots, 1, fixedNow)[0]?.total).toBe(201);
   });
 });
 

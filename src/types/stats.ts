@@ -42,6 +42,17 @@ export interface MonthlyConsumptionEntry {
   totals: UnitTotal[];
 }
 
+export interface SpendingLotRow {
+  unit_price: number | null;
+  purchased_units: number;
+  purchase_date: string | null;
+}
+
+export interface MonthlySpendingEntry {
+  month: string;
+  total: number;
+}
+
 export interface RawLog {
   delta_amount: number;
   delta_unit: string;
@@ -157,6 +168,37 @@ export const computeMonthlyConsumption = (
       .sort((a, b) => b.total - a.total);
 
     result.push({ month: label, totals });
+  }
+
+  return result;
+};
+
+/**
+ * ロット単位の購入データから月次支出合計を計算する（#633）。
+ * `purchase_date` または `unit_price` が未設定のロットは金額不明として集計から
+ * 除外する（`computeCategoryValueStats` と同じ除外ルール）。
+ */
+export const computeMonthlySpending = (
+  lots: SpendingLotRow[],
+  months = 6,
+  now = new Date(),
+): MonthlySpendingEntry[] => {
+  const result: MonthlySpendingEntry[] = [];
+
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const label = `${year}/${String(month + 1).padStart(2, "0")}`;
+
+    const total = lots.reduce((sum, lot) => {
+      if (lot.unit_price === null || !lot.purchase_date) return sum;
+      const purchaseDate = new Date(lot.purchase_date);
+      if (purchaseDate.getFullYear() !== year || purchaseDate.getMonth() !== month) return sum;
+      return sum + lot.unit_price * lot.purchased_units;
+    }, 0);
+
+    result.push({ month: label, total: Math.round(total) });
   }
 
   return result;
