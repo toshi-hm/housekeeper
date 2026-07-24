@@ -1,6 +1,7 @@
 {
   "daysBefore": "days",
   "emailAddress": "Email Address",
+  "emailAddressMissingWarning": "No email address set, so notifications will not be delivered. Please fill in the field above.",
   "emailEnabled": "Email Notifications",
   "invalidEmailAddress": "Please enter a valid email address",
   "invalidNotifyAt": "Please enter a notification time",

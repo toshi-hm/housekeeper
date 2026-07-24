@@ -189,6 +189,9 @@ export const NotificationSettings = () => {
               placeholder="you@example.com"
               onBlur={(e) => void handleEmailAddressBlur(e.target.value)}
             />
+            {!prefs.email_address && (
+              <p className="text-xs text-destructive">{t("emailAddressMissingWarning")}</p>
+            )}
           </div>
         )}
       </div>
