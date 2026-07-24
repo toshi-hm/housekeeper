@@ -385,6 +385,8 @@ export const ItemForm = ({
                 value={values.name}
                 onChange={(e) => set("name", e.target.value)}
                 placeholder={t("namePlaceholder")}
+                aria-invalid={!!nameError}
+                aria-describedby={nameError ? "name-error" : undefined}
               />
               <VoiceInputButton
                 isSupported={speechInput.isSupported}
@@ -395,7 +397,11 @@ export const ItemForm = ({
               />
             </div>
           </div>
-          {nameError && <p className="text-sm text-destructive">{nameError}</p>}
+          {nameError && (
+            <p id="name-error" className="text-sm text-destructive">
+              {nameError}
+            </p>
+          )}
         </div>
 
         {/* Category */}
@@ -459,10 +465,16 @@ export const ItemForm = ({
                 if (raw !== "") set("units", parsed);
               }}
               className="w-24"
+              aria-invalid={!!unitsError}
+              aria-describedby={unitsError ? "units-error" : undefined}
             />
             <span className="text-sm text-muted-foreground">{t("unitsLabel")}</span>
           </div>
-          {unitsError && <p className="text-sm text-destructive">{unitsError}</p>}
+          {unitsError && (
+            <p id="units-error" className="text-sm text-destructive">
+              {unitsError}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -481,8 +493,14 @@ export const ItemForm = ({
                 const num = parseFloat(raw);
                 if (!isNaN(num) && num > 0) set("content_amount", num);
               }}
+              aria-invalid={!!contentAmountError}
+              aria-describedby={contentAmountError ? "content-amount-error" : undefined}
             />
-            {contentAmountError && <p className="text-sm text-destructive">{contentAmountError}</p>}
+            {contentAmountError && (
+              <p id="content-amount-error" className="text-sm text-destructive">
+                {contentAmountError}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="content_unit">{t("contentUnit")}</Label>
@@ -551,7 +569,9 @@ export const ItemForm = ({
         {/* Minimum stock */}
         <div className="space-y-2">
           <Label htmlFor="minimum_stock">{t("minimumStock")}</Label>
-          <p className="text-xs text-muted-foreground">{t("minimumStockHelp")}</p>
+          <p id="minimum-stock-help" className="text-xs text-muted-foreground">
+            {t("minimumStockHelp")}
+          </p>
           <Input
             id="minimum_stock"
             type="number"
@@ -570,14 +590,24 @@ export const ItemForm = ({
               set("minimum_stock", isNaN(parsed) ? null : parsed);
               setMinimumStockError(!isNaN(parsed) && parsed < 0 ? t("minimumStockInvalid") : "");
             }}
+            aria-invalid={!!minimumStockError}
+            aria-describedby={
+              minimumStockError ? "minimum-stock-help minimum-stock-error" : "minimum-stock-help"
+            }
           />
-          {minimumStockError && <p className="text-sm text-destructive">{minimumStockError}</p>}
+          {minimumStockError && (
+            <p id="minimum-stock-error" className="text-sm text-destructive">
+              {minimumStockError}
+            </p>
+          )}
         </div>
 
         {/* Unit price */}
         <div className="space-y-2">
           <Label htmlFor="unit_price">{t("unitPrice")}</Label>
-          <p className="text-xs text-muted-foreground">{t("unitPriceHelp")}</p>
+          <p id="unit-price-help" className="text-xs text-muted-foreground">
+            {t("unitPriceHelp")}
+          </p>
           <div className="flex items-center gap-2">
             <Input
               id="unit_price"
@@ -598,10 +628,18 @@ export const ItemForm = ({
                 set("unit_price", isNaN(parsed) ? null : parsed);
                 setUnitPriceError(!isNaN(parsed) && parsed < 0 ? t("unitPriceInvalid") : "");
               }}
+              aria-invalid={!!unitPriceError}
+              aria-describedby={
+                unitPriceError ? "unit-price-help unit-price-error" : "unit-price-help"
+              }
             />
             <span className="text-sm text-muted-foreground">{t("unitPriceSuffix")}</span>
           </div>
-          {unitPriceError && <p className="text-sm text-destructive">{unitPriceError}</p>}
+          {unitPriceError && (
+            <p id="unit-price-error" className="text-sm text-destructive">
+              {unitPriceError}
+            </p>
+          )}
         </div>
 
         {/* Auto reorder */}
@@ -622,7 +660,9 @@ export const ItemForm = ({
           {values.auto_reorder && (
             <div className="space-y-1 pl-6">
               <Label htmlFor="reorder_threshold">{t("reorderThreshold")}</Label>
-              <p className="text-xs text-muted-foreground">{t("reorderThresholdHelp")}</p>
+              <p id="reorder-threshold-help" className="text-xs text-muted-foreground">
+                {t("reorderThresholdHelp")}
+              </p>
               <Input
                 id="reorder_threshold"
                 type="number"
@@ -643,9 +683,17 @@ export const ItemForm = ({
                     !isNaN(parsed) && parsed < 0 ? t("reorderThresholdInvalid") : "",
                   );
                 }}
+                aria-invalid={!!reorderThresholdError}
+                aria-describedby={
+                  reorderThresholdError
+                    ? "reorder-threshold-help reorder-threshold-error"
+                    : "reorder-threshold-help"
+                }
               />
               {reorderThresholdError && (
-                <p className="text-sm text-destructive">{reorderThresholdError}</p>
+                <p id="reorder-threshold-error" className="text-sm text-destructive">
+                  {reorderThresholdError}
+                </p>
               )}
             </div>
           )}
