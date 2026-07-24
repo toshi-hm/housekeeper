@@ -336,7 +336,7 @@ export const DashboardPage = () => {
   // 期限バナー（見出し件数・アコーディオン内訳・一括追加ボタン）は在庫が残っている
   // (units > 0) 期限切れ/期限間近アイテムのみを対象にする。見出しの urgentCount も
   // この units > 0 の集合から算出し、内訳・ボタン対象と件数を一致させる (#450)。
-  const urgentItems = items.filter((item) => {
+  const urgentItems = allItems.filter((item) => {
     const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
   });
@@ -367,7 +367,9 @@ export const DashboardPage = () => {
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   ).length;
 
-  const lowStockItems = baseFiltered.filter(
+  // 低在庫/消費ペース予測バナーも期限バナーと同様、検索/カテゴリ/保管場所/
+  // hideEmpty設定で絞り込んでも消えてはならない (#618) ため allItems を対象にする。
+  const lowStockItems = allItems.filter(
     (item) =>
       item.minimum_stock !== null &&
       item.minimum_stock !== undefined &&
@@ -379,12 +381,12 @@ export const DashboardPage = () => {
   const lowStockIds = new Set(lowStockItems.map((item) => item.id));
   const forecastThresholdDays =
     userSettings?.low_stock_forecast_days ?? DEFAULT_LOW_STOCK_FORECAST_DAYS;
-  const { alerts: forecastAlerts } = useForecastAlerts(baseFiltered, forecastThresholdDays);
+  const { alerts: forecastAlerts } = useForecastAlerts(allItems, forecastThresholdDays);
   const forecastAlertItems = forecastAlerts
     .filter((forecastAlert) => !lowStockIds.has(forecastAlert.itemId))
     .map((forecastAlert) => ({
       forecastAlert,
-      item: baseFiltered.find((item) => item.id === forecastAlert.itemId),
+      item: allItems.find((item) => item.id === forecastAlert.itemId),
     }))
     .filter((entry): entry is { forecastAlert: (typeof forecastAlerts)[number]; item: Item } =>
       Boolean(entry.item),

@@ -293,6 +293,75 @@ describe("DashboardPage", () => {
     );
   });
 
+  it("検索で一覧を絞り込んでも低在庫バナーは全在庫を対象にし続ける (#618)", async () => {
+    const lowStockItem = makeItem({
+      id: "low-stock",
+      name: "低在庫商品",
+      units: 0,
+      minimum_stock: 2,
+    } as Partial<Item>);
+    itemsspy.mockImplementation(
+      (filters = {}) =>
+        ({
+          data: filters.search ? [] : [lowStockItem],
+          isLoading: false,
+          error: null,
+        }) as ReturnType<typeof useItemsModule.useItems>,
+    );
+
+    const user = userEvent.setup();
+    const { getByPlaceholderText, queryByText } = await renderPage();
+    const banner = /low on stock|最低在庫数以下/i;
+    expect(queryByText(banner)).not.toBeNull();
+
+    await user.type(getByPlaceholderText(/search by name|商品名・バーコードで検索/i), "missing");
+    await waitFor(() => {
+      const filteredCall = itemsspy.mock.calls.findLast(
+        ([filters]) => filters?.search === "missing",
+      );
+      expect(filteredCall).toBeDefined();
+    });
+
+    expect(queryByText(banner)).not.toBeNull();
+  });
+
+  it("カテゴリ・保管場所で絞り込んでも期限切れ警告バナーは全在庫を対象にし続ける (#618)", async () => {
+    itemsspy.mockImplementation(
+      (filters = {}) =>
+        ({
+          data: filters.categoryId
+            ? []
+            : [makeItem({ id: "expired", expiry_date: "2000-01-01", units: 1 })],
+          isLoading: false,
+          error: null,
+        }) as ReturnType<typeof useItemsModule.useItems>,
+    );
+    categoriesspy.mockReturnValue({
+      data: [{ id: "cat-1", name: "飲料" }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+
+    const { getByLabelText, queryByText, getAllByRole } = await renderPage();
+    expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
+
+    const filterBtn = getByLabelText(/filter|絞り込み/i);
+    await act(async () => {
+      fireEvent.click(filterBtn);
+    });
+    const selects = getAllByRole("combobox");
+    await act(async () => {
+      fireEvent.change(selects[0]!, { target: { value: "cat-1" } });
+    });
+    await waitFor(() => {
+      const filteredCall = itemsspy.mock.calls.findLast(
+        ([filters]) => filters?.categoryId === "cat-1",
+      );
+      expect(filteredCall).toBeDefined();
+    });
+
+    expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
+  });
+
   it("検索がデバウンス確定してもフォーカスが外れない（再マウントしない） (#527)", async () => {
     const user = userEvent.setup();
     const { getByPlaceholderText } = await renderPage();
