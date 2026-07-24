@@ -1,8 +1,9 @@
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface BulkMoveDialogOption {
   id: string;
@@ -36,14 +37,29 @@ export const BulkMoveDialog = ({
   onClose,
 }: BulkMoveDialogProps) => {
   const [value, setValue] = useState("");
+  const titleId = useId();
+  const containerRef = useDialogA11y<HTMLDivElement>({
+    open,
+    onClose,
+    disableClose: isSubmitting,
+  });
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/50 sm:items-center sm:justify-center">
-      <div className="w-full rounded-t-2xl bg-background p-4 shadow-xl sm:max-w-sm sm:rounded-2xl">
+      <div
+        ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="w-full rounded-t-2xl bg-background p-4 shadow-xl sm:max-w-sm sm:rounded-2xl"
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{title}</h2>
+          <h2 id={titleId} className="text-lg font-bold">
+            {title}
+          </h2>
           <Button
             variant="ghost"
             size="icon"

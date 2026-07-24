@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
@@ -10,6 +10,7 @@ import { MultiTagSelect } from "@/components/molecules/MultiTagSelect";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useCreateItem, useItem } from "@/hooks/useItems";
 import { useStorageLocations } from "@/hooks/useMasterData";
@@ -38,6 +39,11 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const createTag = useCreateTag();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [showStackDialog, setShowStackDialog] = useState(false);
+  const stackDialogTitleId = useId();
+  const stackDialogContainerRef = useDialogA11y<HTMLDivElement>({
+    open: showStackDialog,
+    onClose: () => setShowStackDialog(false),
+  });
 
   const { data: cloneSource, isLoading: isCloneLoading } = useItem(cloneFrom ?? "");
   const { data: userSettings, isLoading: isSettingsLoading } = useUserSettings();
@@ -221,11 +227,18 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
           onClick={() => setShowStackDialog(false)}
         >
           <div
+            ref={stackDialogContainerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={stackDialogTitleId}
+            tabIndex={-1}
             className="w-full max-w-sm space-y-4 rounded-xl bg-background p-5 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <div>
-              <h2 className="text-base font-semibold">{t("stackDialogTitle")}</h2>
+              <h2 id={stackDialogTitleId} className="text-base font-semibold">
+                {t("stackDialogTitle")}
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {t("stackDialogBody", { name: existingItem.name, units: existingItem.units })}
               </p>
