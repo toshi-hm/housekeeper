@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { type Database, supabase } from "@/lib/supabase";
+import { fetchAllPages } from "@/lib/supabasePagination";
 
 type ConsumptionLog = Database["public"]["Tables"]["consumption_logs"]["Row"];
 
@@ -38,13 +39,20 @@ export const useAllConsumptionLogs = () =>
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { data, error } = await supabase
-        .from("consumption_logs")
-        .select("item_id, delta_amount, delta_unit, occurred_at")
-        .eq("user_id", user.id)
-        .order("occurred_at", { ascending: true });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as ConsumptionLogForAggregation[];
+      // #622: a single unbounded select silently truncates once a user's
+      // consumption_logs exceed PostgREST's row cap (default 1000). Page
+      // through with a stable order (occurred_at + id tiebreaker) instead.
+      return fetchAllPages(async (from, to) => {
+        const { data, error } = await supabase
+          .from("consumption_logs")
+          .select("item_id, delta_amount, delta_unit, occurred_at")
+          .eq("user_id", user.id)
+          .order("occurred_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to);
+        if (error) throw new Error(error.message);
+        return (data ?? []) as ConsumptionLogForAggregation[];
+      });
     },
     staleTime: 0,
   });

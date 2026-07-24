@@ -5,6 +5,7 @@ import { LOTS_KEY } from "@/hooks/useItemLots";
 import { useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
 import { supabase } from "@/lib/supabase";
+import { fetchAllPages } from "@/lib/supabasePagination";
 import type { Item } from "@/types/item";
 import {
   computeCategoryStats,
@@ -44,12 +45,19 @@ const fetchAllLotsForValue = async (): Promise<LotValueRow[]> => {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { data, error } = await supabase
-    .from("item_lots")
-    .select("item_id, units, opened_remaining, unit_price")
-    .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as LotValueRow[];
+  // #622: a single unbounded select silently truncates once a user's
+  // item_lots exceed PostgREST's row cap (default 1000). Page through with a
+  // stable order (id) instead.
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("item_lots")
+      .select("item_id, units, opened_remaining, unit_price")
+      .eq("user_id", user.id)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as LotValueRow[];
+  });
 };
 
 const useAllLotsForValue = () =>
