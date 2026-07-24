@@ -1,8 +1,6 @@
-import { z } from "zod";
-
 import { getLotRemainingAmount, type Item, type ItemLot } from "@/types/item";
 
-export interface Recipe {
+interface Recipe {
   id: string;
   user_id: string;
   name: string;
@@ -27,17 +25,10 @@ export interface RecipeItemInput {
   amount: number;
 }
 
-export const recipeItemInputSchema = z.object({
-  item_id: z.string().min(1),
-  amount: z.coerce.number().positive(),
-});
-
-export const recipeFormSchema = z.object({
-  name: z.string().min(1),
-  items: z.array(recipeItemInputSchema).min(1),
-});
-
-export type RecipeFormValues = z.infer<typeof recipeFormSchema>;
+export interface RecipeFormValues {
+  name: string;
+  items: RecipeItemInput[];
+}
 
 /** Minimal item shape needed to compute how much of it remains in stock. */
 export type RecipeStockItem = Pick<

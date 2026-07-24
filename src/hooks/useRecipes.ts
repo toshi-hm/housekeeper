@@ -48,7 +48,7 @@ const fetchFefoLotByItemId = async (
   return result;
 };
 
-export const RECIPES_KEY = ["recipes"] as const;
+const RECIPES_KEY = ["recipes"] as const;
 
 const fetchRecipes = async (): Promise<RecipeWithItems[]> => {
   const { data: recipes, error } = await supabase
