@@ -12,7 +12,7 @@
  * `findUnitGroup` が `undefined` を返し、換算候補は自分自身のみになる。
  */
 
-export type UnitGroupId = "volume" | "weight";
+type UnitGroupId = "volume" | "weight";
 
 export interface UnitGroup {
   id: UnitGroupId;
