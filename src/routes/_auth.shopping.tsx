@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { LayoutList, Plus, ScanLine, ShoppingCart } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ShareButton } from "@/components/atoms/ShareButton";
@@ -21,6 +21,7 @@ import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
+import { useRovingTabs } from "@/hooks/useRovingTabs";
 import {
   QUERY_KEY as SHOPPING_QUERY_KEY,
   restoreShoppingItem,
@@ -71,6 +72,8 @@ interface ScanDraft {
 
 type ShoppingTab = "planned" | "purchased";
 
+const SHOPPING_TABS = ["planned", "purchased"] as const satisfies readonly ShoppingTab[];
+
 const tabLabelKey = {
   planned: "statusPlanned",
   purchased: "statusPurchased",
@@ -85,6 +88,15 @@ const ShoppingPage = () => {
   const pendingPurchaseFileRef = useRef<File | null>(null);
   const pendingPurchaseImageUrlRef = useRef<string | null>(null);
   const [tab, setTab] = useState<ShoppingTab>("planned");
+  const { tablistProps: shoppingTablistProps, getTabProps: getShoppingTabProps } = useRovingTabs(
+    SHOPPING_TABS,
+    tab,
+    setTab,
+  );
+  const plannedTabId = useId();
+  const purchasedTabId = useId();
+  const shoppingTabIds = { planned: plannedTabId, purchased: purchasedTabId } as const;
+  const activeShoppingTabId = shoppingTabIds[tab];
   const [addName, setAddName] = useState("");
   const [addNote, setAddNote] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -563,12 +575,15 @@ const ShoppingPage = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex rounded-lg border p-1" role="tablist">
-        {(["planned", "purchased"] as const satisfies ShoppingTab[]).map((s) => (
+      <div className="flex rounded-lg border p-1" role="tablist" {...shoppingTablistProps}>
+        {SHOPPING_TABS.map((s) => (
           <button
             key={s}
+            id={shoppingTabIds[s]}
             role="tab"
             aria-selected={tab === s}
+            aria-controls={`${shoppingTabIds[s]}-panel`}
+            {...getShoppingTabProps(s)}
             className={`flex-1 rounded py-1.5 text-sm font-medium transition-colors ${
               tab === s
                 ? "bg-primary text-primary-foreground"
@@ -585,75 +600,83 @@ const ShoppingPage = () => {
         ))}
       </div>
 
-      {/* Sort / group control */}
-      {items.length > 0 && (
-        <div className="flex items-center justify-end gap-2">
-          <label htmlFor="shopping-sort" className="text-xs text-muted-foreground">
-            {t("sortLabel")}
-          </label>
-          <Select
-            id="shopping-sort"
-            className="h-8 w-auto"
-            value={sort}
-            onChange={(e) => {
-              if (isShoppingSortKey(e.target.value)) handleSortChange(e.target.value);
-            }}
-          >
-            {SHOPPING_SORT_KEYS.map((key) => (
-              <option key={key} value={key}>
-                {t(sortLabelKey[key])}
-              </option>
+      <div
+        id={`${activeShoppingTabId}-panel`}
+        role="tabpanel"
+        aria-labelledby={activeShoppingTabId}
+        tabIndex={0}
+        className="space-y-4"
+      >
+        {/* Sort / group control */}
+        {items.length > 0 && (
+          <div className="flex items-center justify-end gap-2">
+            <label htmlFor="shopping-sort" className="text-xs text-muted-foreground">
+              {t("sortLabel")}
+            </label>
+            <Select
+              id="shopping-sort"
+              className="h-8 w-auto"
+              value={sort}
+              onChange={(e) => {
+                if (isShoppingSortKey(e.target.value)) handleSortChange(e.target.value);
+              }}
+            >
+              {SHOPPING_SORT_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {t(sortLabelKey[key])}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+
+        {/* Clear purchased button */}
+        {tab === "purchased" && items.length > 0 && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setShowClearPurchased(true)}
+            >
+              {t("clearPurchased")}
+            </Button>
+          </div>
+        )}
+
+        {/* List */}
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+                <Skeleton className="h-5 w-5 rounded" />
+                <Skeleton className="h-4 flex-1" />
+                <Skeleton className="h-8 w-16 rounded-md" />
+              </div>
             ))}
-          </Select>
-        </div>
-      )}
-
-      {/* Clear purchased button */}
-      {tab === "purchased" && items.length > 0 && (
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={() => setShowClearPurchased(true)}
-          >
-            {t("clearPurchased")}
-          </Button>
-        </div>
-      )}
-
-      {/* List */}
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
-              <Skeleton className="h-5 w-5 rounded" />
-              <Skeleton className="h-4 flex-1" />
-              <Skeleton className="h-8 w-16 rounded-md" />
-            </div>
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <p className="py-8 text-center text-muted-foreground">
-          {tab === "planned" ? t("noItems") : t("noPurchased")}
-        </p>
-      ) : groups ? (
-        <div className="space-y-3">
-          {groups.map((group) => (
-            <div key={group.categoryId ?? "__other__"} className="space-y-2">
-              <ShoppingGroupHeader
-                name={group.categoryName}
-                color={group.color}
-                count={group.items.length}
-                otherLabel={t("groupOther")}
-              />
-              {group.items.map(renderRow)}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2">{sortedItems.map(renderRow)}</div>
-      )}
+          </div>
+        ) : items.length === 0 ? (
+          <p className="py-8 text-center text-muted-foreground">
+            {tab === "planned" ? t("noItems") : t("noPurchased")}
+          </p>
+        ) : groups ? (
+          <div className="space-y-3">
+            {groups.map((group) => (
+              <div key={group.categoryId ?? "__other__"} className="space-y-2">
+                <ShoppingGroupHeader
+                  name={group.categoryName}
+                  color={group.color}
+                  count={group.items.length}
+                  otherLabel={t("groupOther")}
+                />
+                {group.items.map(renderRow)}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">{sortedItems.map(renderRow)}</div>
+        )}
+      </div>
     </div>
   );
 };

@@ -140,6 +140,34 @@ handle Tab-wrapping) rather than inventing a different mechanism. If a
 future refactor consolidates these into a shared `useFocusTrap` hook or
 switches to Radix `Dialog`, update this doc.
 
+### 5. Tabs (roving tabindex)
+
+Custom `role="tablist"`/`role="tab"` UI (the info/lots/history tabs on the
+item detail page, the planned/purchased tabs on the shopping list) must
+follow the WAI-ARIA Authoring Practices tabs pattern, not just
+`role`/`aria-selected`:
+
+- Each tab gets `aria-controls` pointing at its panel's `id`; each panel
+  gets `role="tabpanel"` + `aria-labelledby` pointing back at its tab's
+  `id` (generate ids with `useId()`).
+- Only the selected tab has `tabIndex={0}`; the rest have `tabIndex={-1}`
+  ("roving tabindex") so a single `Tab` press skips the whole tablist,
+  and `ArrowLeft`/`ArrowRight`/`Home`/`End` move focus (and selection)
+  between tabs instead.
+
+`useRovingTabs` (`src/hooks/useRovingTabs.ts`, added for
+[#632](https://github.com/toshi-hm/housekeeper/issues/632)) implements this:
+pass it the ordered list of currently-visible tab ids, the active tab, and
+its setter; spread the returned `tablistProps` onto the `role="tablist"`
+container and `getTabProps(tab)` onto each tab button. If some tabs are
+conditionally rendered (e.g. a "lots" tab that only exists when the item
+has lots), pass only the currently-visible ids — the hook re-derives
+next/prev/wrap-around from whatever list it's given on each render, so it
+doesn't need to know why a tab is hidden.
+
+New tab UIs should use `useRovingTabs` rather than reimplementing
+`aria-selected`-only tabs.
+
 ## Known gaps
 
 This list exists so the next contributor doesn't have to rediscover these
