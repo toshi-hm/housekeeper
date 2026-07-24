@@ -19,6 +19,8 @@ interface ItemCardProps {
   warningDays?: number;
   onQuickConsume?: (item: Item) => void;
   isQuickConsuming?: boolean;
+  /** 他アイテムのクイック消費が処理中の間、このボタンを無効化する（#571）。 */
+  quickConsumeDisabled?: boolean;
   /** クイックメモ（#380）を開くトリガー。詳細ページへ遷移せず notes だけを編集する。 */
   onQuickMemo?: (item: Item) => void;
   /** Pre-resolved signed image URL (e.g. from useSignedItemImages) to avoid a per-card fetch. */
@@ -36,6 +38,7 @@ export const ItemCard = ({
   warningDays,
   onQuickConsume,
   isQuickConsuming = false,
+  quickConsumeDisabled = false,
   onQuickMemo,
   imageUrl,
   selectionMode = false,
@@ -134,7 +137,7 @@ export const ItemCard = ({
               size="icon"
               className="relative h-7 w-7 shrink-0 after:absolute after:-inset-2 after:content-['']"
               aria-label={t("quickConsume")}
-              disabled={isQuickConsuming}
+              disabled={isQuickConsuming || quickConsumeDisabled}
               onClick={() => onQuickConsume(item)}
             >
               {isQuickConsuming ? (

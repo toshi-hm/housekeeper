@@ -776,6 +776,7 @@ export const DashboardPage = () => {
                   }
                   warningDays={warningDays}
                   isQuickConsuming={quickConsumingId === item.id}
+                  quickConsumeDisabled={quickConsumingId !== null && quickConsumingId !== item.id}
                   onQuickConsume={(i) => {
                     void handleQuickConsume(i);
                   }}

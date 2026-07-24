@@ -94,6 +94,20 @@ describe("ItemCard", () => {
     expect(btn.disabled).toBe(true);
   });
 
+  it("disables quick consume button when quickConsumeDisabled=true even without its own spinner", async () => {
+    const { container } = await renderCard({
+      item: baseItem,
+      onQuickConsume: () => {},
+      isQuickConsuming: false,
+      quickConsumeDisabled: true,
+    });
+    const btn = container.querySelector("button") as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    expect(btn.disabled).toBe(true);
+    const spinner = container.querySelector('[role="status"]');
+    expect(spinner).toBeNull();
+  });
+
   it("does not show quick consume button when units=0", async () => {
     const { container } = await renderCard({
       item: { ...baseItem, units: 0 },
