@@ -16,7 +16,6 @@ import {
   computeMonthlyWasteStats,
   DEFAULT_FORECAST_LOOKBACK_DAYS,
   type LotValueRow,
-  type RawLog,
   type RawWasteItem,
 } from "@/types/stats";
 
