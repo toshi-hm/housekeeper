@@ -415,6 +415,8 @@ export const ItemConsumePage = () => {
                 placeholder={t("consumeAmountPlaceholder")}
                 autoFocus={!hasMultipleLots}
                 className="flex-1"
+                aria-invalid={!!validationError}
+                aria-describedby={validationError ? "delta-error" : undefined}
               />
               {canConvertUnit && (
                 <Select
@@ -439,7 +441,11 @@ export const ItemConsumePage = () => {
                 })}
               </p>
             )}
-            {validationError && <p className="text-sm text-destructive">{validationError}</p>}
+            {validationError && (
+              <p id="delta-error" className="text-sm text-destructive">
+                {validationError}
+              </p>
+            )}
           </div>
 
           {/* Preview */}
