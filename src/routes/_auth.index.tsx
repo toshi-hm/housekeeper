@@ -17,6 +17,7 @@ import { ViewModeToggle } from "@/components/atoms/ViewModeToggle";
 import { BulkActionBar } from "@/components/molecules/BulkActionBar";
 import { BulkMoveDialog } from "@/components/molecules/BulkMoveDialog";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { ExpiryRecipeSuggestions } from "@/components/molecules/ExpiryRecipeSuggestions";
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { ItemListRow } from "@/components/molecules/ItemListRow";
 import { QuickMemoSheet } from "@/components/molecules/QuickMemoSheet";
@@ -35,6 +36,7 @@ import {
   useUpdateItem,
 } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { useForecastAlerts } from "@/hooks/useStats";
 import { useUserSettings } from "@/hooks/useUserSettings";
@@ -301,6 +303,12 @@ export const DashboardPage = () => {
     void updateAppBadge(urgentCount);
   }, [urgentCount]);
 
+  // 期限切れ/期限間近アイテムを使い切れる外部レシピの提案 (#461)。
+  // sanitizeItemNames (Edge Function側) と合わせて先頭5件までに絞る。
+  const recipeSuggestItemNames = urgentItems.slice(0, 5).map((item) => item.name);
+  const { data: recipeSuggestions = [], isLoading: isRecipeSuggestionsLoading } =
+    useRecipeSuggestions(recipeSuggestItemNames);
+
   // クイックフィルターチップの件数。チップをタップしたときに表示される filtered
   // (baseFiltered を期限状態で絞ったもの) と一致させるため baseFiltered 基準で数える。
   const expiredCount = baseFiltered.filter(
@@ -494,6 +502,14 @@ export const DashboardPage = () => {
             </Button>
           )}
         </div>
+      )}
+
+      {/* Recipe suggestions for expiring/expired items (#461) */}
+      {urgentCount > 0 && (
+        <ExpiryRecipeSuggestions
+          isLoading={isRecipeSuggestionsLoading}
+          suggestions={recipeSuggestions}
+        />
       )}
 
       {/* Low-stock alert banner */}
