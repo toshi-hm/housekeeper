@@ -12,6 +12,7 @@
   "itemNameLabel": "商品名",
   "last6Months": "直近6ヶ月",
   "noData": "データがありません",
+  "spendingTrend": "月別支出",
   "title": "統計",
   "trend": {
     "accelerating": "加速中",

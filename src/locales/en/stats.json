@@ -12,6 +12,7 @@
   "itemNameLabel": "Item",
   "last6Months": "Last 6 months",
   "noData": "No data available",
+  "spendingTrend": "Monthly Spending",
   "title": "Stats",
   "trend": {
     "accelerating": "Accelerating",

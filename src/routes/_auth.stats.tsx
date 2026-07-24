@@ -7,6 +7,7 @@ import { CategoryValueChart } from "@/components/organisms/CategoryValueChart";
 import { ConsumptionChart } from "@/components/organisms/ConsumptionChart";
 import { ConsumptionSpeedRanking } from "@/components/organisms/ConsumptionSpeedRanking";
 import { ExpiryChart } from "@/components/organisms/ExpiryChart";
+import { SpendingChart } from "@/components/organisms/SpendingChart";
 import { WasteStatsChart } from "@/components/organisms/WasteStatsChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -15,6 +16,7 @@ import {
   useConsumptionSpeedRanking,
   useExpiryDistribution,
   useMonthlyConsumption,
+  useMonthlySpending,
   useWasteStats,
 } from "@/hooks/useStats";
 import { useUserSettings } from "@/hooks/useUserSettings";
@@ -86,6 +88,11 @@ const StatsPage = () => {
     isError: speedError,
   } = useConsumptionSpeedRanking();
   const { data: wasteData, isLoading: wasteLoading, isError: wasteError } = useWasteStats(6);
+  const {
+    data: spendingData,
+    isLoading: spendingLoading,
+    isError: spendingError,
+  } = useMonthlySpending(6);
 
   return (
     <div className="space-y-4">
@@ -121,6 +128,15 @@ const StatsPage = () => {
         isError={monthlyError}
       >
         <ConsumptionChart data={monthlyData} />
+      </ChartCard>
+
+      <ChartCard
+        title={t("spendingTrend")}
+        subtitle={t("last6Months")}
+        isLoading={spendingLoading}
+        isError={spendingError}
+      >
+        <SpendingChart data={spendingData} />
       </ChartCard>
 
       <ChartCard

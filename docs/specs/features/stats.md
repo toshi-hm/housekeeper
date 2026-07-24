@@ -7,14 +7,15 @@
 
 ## グラフ一覧
 
-| グラフ                           | 元データ                                                                                                | 形式                                    |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| カテゴリ別在庫件数               | 在庫が残る `items`（`units > 0`）を `category_id` で group                                              | 横棒                                    |
-| 期限ステータス分布               | `items` を `getExpiryStatus()` で group                                                                 | ドーナツ                                |
-| カテゴリ別在庫金額               | `item_lots`（`unit_price` 設定済みのみ）を `item_id → category_id` で group（#342）                     | 横棒                                    |
-| 月別消費量                       | `consumption_logs` を `occurred_at` 月で group、`delta_amount * 単位換算` の合計                        | 縦棒（直近 6 ヶ月）                     |
-| 消費速度ランキング（#68, #392）  | アイテムごとの直近 30 日間の1日あたり消費量 + 直前30日との比較トレンド                                  | 表                                      |
-| フードロス（月次廃棄件数、#494） | `deletion_reason = 'expired_waste'` の `items` を `deleted_at` の月・`category_id` で group（積み上げ） | 縦棒（直近 6 ヶ月・カテゴリ別積み上げ） |
+| グラフ                           | 元データ                                                                                                                       | 形式                                    |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| カテゴリ別在庫件数               | 在庫が残る `items`（`units > 0`）を `category_id` で group                                                                     | 横棒                                    |
+| 期限ステータス分布               | `items` を `getExpiryStatus()` で group                                                                                        | ドーナツ                                |
+| カテゴリ別在庫金額               | `item_lots`（`unit_price` 設定済みのみ）を `item_id → category_id` で group（#342）                                            | 横棒                                    |
+| 月別消費量                       | `consumption_logs` を `occurred_at` 月で group、`delta_amount * 単位換算` の合計                                               | 縦棒（直近 6 ヶ月）                     |
+| 月別支出（#633）                 | `item_lots`（`unit_price`/`purchase_date` 設定済みのみ）を `purchase_date` の月で group、`unit_price * purchased_units` の合計 | 縦棒（直近 6 ヶ月）                     |
+| 消費速度ランキング（#68, #392）  | アイテムごとの直近 30 日間の1日あたり消費量 + 直前30日との比較トレンド                                                         | 表                                      |
+| フードロス（月次廃棄件数、#494） | `deletion_reason = 'expired_waste'` の `items` を `deleted_at` の月・`category_id` で group（積み上げ）                        | 縦棒（直近 6 ヶ月・カテゴリ別積み上げ） |
 
 ## ユーザーストーリー
 
@@ -68,6 +69,7 @@
 | `useExpiryDistribution()`                     | 期限ステータス分布               |
 | `useCategoryValueStats()`                     | カテゴリ別在庫金額（#342）       |
 | `useMonthlyConsumption(months = 6)`           | 月別消費                         |
+| `useMonthlySpending(months = 6)`              | 月別支出（#633）                 |
 | `useConsumptionSpeedRanking(windowDays = 30)` | 消費速度ランキング（#68, #392）  |
 | `useForecastAlerts(items, thresholdDays)`     | 予測残日数が閾値以内のアイテム   |
 | `useWasteStats(months = 6)`                   | 月別廃棄件数（カテゴリ別、#494） |
