@@ -1,21 +1,23 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, PackagePlus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { AlreadyInStockBanner } from "@/components/molecules/AlreadyInStockBanner";
 import { MultiTagSelect } from "@/components/molecules/MultiTagSelect";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useCreateItem, useItem } from "@/hooks/useItems";
+import { useStorageLocations } from "@/hooks/useMasterData";
 import { setItemTags, useCreateTag, useTags } from "@/hooks/useTags";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
-import type { Item, ItemFormValues } from "@/types/item";
+import { isAlreadyInStock, type Item, type ItemFormValues } from "@/types/item";
 
 interface NewItemPageProps {
   cloneFrom?: string;
@@ -39,6 +41,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
 
   const { data: cloneSource, isLoading: isCloneLoading } = useItem(cloneFrom ?? "");
   const { data: userSettings, isLoading: isSettingsLoading } = useUserSettings();
+  const { data: locations = [] } = useStorageLocations();
 
   const handleBarcodeScanned = async (barcode: string, source: "db" | "api" | null) => {
     if (source !== "db") {
@@ -46,8 +49,14 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
       return;
     }
     const found = await findActiveItemByBarcode(barcode);
-    setExistingItem(found);
+    // 使い切り済み（在庫なし）のアイテムまでバナー表示すると誤ってスタックを
+    // 迷わせるため、実在庫がある場合のみ「すでに在庫あり」として扱う (#559)。
+    setExistingItem(found && isAlreadyInStock(found) ? found : null);
   };
+
+  const existingItemLocationName = existingItem?.storage_location_id
+    ? (locations.find((l) => l.id === existingItem.storage_location_id)?.name ?? null)
+    : null;
 
   const submitItem = async (values: ItemFormValues, forceNew: boolean) => {
     setIsSubmitting(true);
@@ -161,15 +170,15 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
       </div>
 
       {existingItem && (
-        <div className="flex items-start gap-3 rounded-lg border border-primary/40 bg-primary/5 p-3">
-          <PackagePlus className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-          <div className="text-sm">
-            <p className="font-medium text-primary">{t("stackBannerTitle")}</p>
-            <p className="mt-0.5 text-muted-foreground">
-              {t("stackBannerBody", { name: existingItem.name })}
-            </p>
-          </div>
-        </div>
+        <AlreadyInStockBanner
+          units={existingItem.units}
+          locationName={existingItemLocationName}
+          expiryDate={existingItem.expiry_date}
+          onAddNewLot={() => setExistingItem(null)}
+          onViewExisting={() => {
+            void navigate({ to: "/items/$itemId", params: { itemId: existingItem.id } });
+          }}
+        />
       )}
 
       <ItemForm

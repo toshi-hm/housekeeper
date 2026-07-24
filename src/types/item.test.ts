@@ -5,8 +5,10 @@ import {
   DEFAULT_EXPIRY_WARNING_DAYS,
   DEFAULT_STOCKTAKE_ALERT_DAYS,
   formatRemaining,
+  getExpiryApprox,
   getExpiryStatus,
   getLotRemainingAmount,
+  isAlreadyInStock,
   isItemUnverified,
   itemFormSchema,
   itemLotSchema,
@@ -357,5 +359,91 @@ describe("isItemUnverified", () => {
     expect(isItemUnverified(item, undefined, now)).toBe(true);
     const notYet = { last_verified_at: daysAgo(89), created_at: daysAgo(400) };
     expect(isItemUnverified(notYet, undefined, now)).toBe(false);
+  });
+});
+
+// --- isAlreadyInStock (#559) ---
+
+describe("isAlreadyInStock", () => {
+  test("units > 0 and no opened_remaining => in stock", () => {
+    expect(isAlreadyInStock({ units: 2, opened_remaining: null })).toBe(true);
+  });
+
+  test("units > 0 with opened_remaining set => in stock", () => {
+    expect(isAlreadyInStock({ units: 2, opened_remaining: 300 })).toBe(true);
+  });
+
+  test("units = 0 but opened_remaining > 0 => still in stock (opened package remains)", () => {
+    expect(isAlreadyInStock({ units: 0, opened_remaining: 150 })).toBe(true);
+  });
+
+  test("units = 0 and opened_remaining = null => used up, not in stock", () => {
+    expect(isAlreadyInStock({ units: 0, opened_remaining: null })).toBe(false);
+  });
+
+  test("units = 0 and opened_remaining = 0 => used up, not in stock", () => {
+    expect(isAlreadyInStock({ units: 0, opened_remaining: 0 })).toBe(false);
+  });
+
+  test("units = 0 and opened_remaining undefined => treated as used up", () => {
+    expect(isAlreadyInStock({ units: 0, opened_remaining: undefined })).toBe(false);
+  });
+});
+
+// --- getExpiryApprox (#559) ---
+
+describe("getExpiryApprox", () => {
+  const now = new Date("2026-07-23T00:00:00");
+  const fmt = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const addDays = (n: number) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + n);
+    return d;
+  };
+
+  test("a couple months out => month unit, ~2 months, future", () => {
+    const result = getExpiryApprox(fmt(addDays(61)), now);
+    expect(result.unit).toBe("month");
+    expect(result.value).toBe(2);
+    expect(result.isPast).toBe(false);
+  });
+
+  test("well within 60 days => day unit, future", () => {
+    const result = getExpiryApprox(fmt(addDays(10)), now);
+    expect(result.unit).toBe("day");
+    expect(result.value).toBe(10);
+    expect(result.isPast).toBe(false);
+  });
+
+  test("today => 0 days, not past", () => {
+    const result = getExpiryApprox(fmt(now), now);
+    expect(result.unit).toBe("day");
+    expect(result.value).toBe(0);
+    expect(result.isPast).toBe(false);
+  });
+
+  test("past date within 60 days => day unit, past", () => {
+    const result = getExpiryApprox(fmt(addDays(-5)), now);
+    expect(result.unit).toBe("day");
+    expect(result.value).toBe(5);
+    expect(result.isPast).toBe(true);
+  });
+
+  test("past date beyond 60 days => month unit, past", () => {
+    const result = getExpiryApprox(fmt(addDays(-90)), now);
+    expect(result.unit).toBe("month");
+    expect(result.value).toBe(3);
+    expect(result.isPast).toBe(true);
+  });
+
+  test("value is never rounded down to 0 months once in month territory", () => {
+    const result = getExpiryApprox(fmt(addDays(60)), now);
+    expect(result.unit).toBe("month");
+    expect(result.value).toBeGreaterThanOrEqual(1);
   });
 });

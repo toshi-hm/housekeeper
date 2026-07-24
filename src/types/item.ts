@@ -170,6 +170,38 @@ export const DEFAULT_STOCKTAKE_ALERT_DAYS = 90;
 /** 一度も確認されていないアイテムを「未確認」とみなすまでの猶予日数（作成日起点、固定値）。 */
 export const STOCKTAKE_NEW_ITEM_GRACE_DAYS = 30;
 
+/** バーコード再スキャン時に「すでに在庫あり」バナーを出すかどうかの判定 (#559)。
+ *  未開封の点数か、開封中の残量のいずれかがあれば在庫ありとみなす。
+ *  使い切り済み（units=0 かつ opened_remaining が 0 または未設定）は除外する。 */
+export const isAlreadyInStock = (item: Pick<Item, "units" | "opened_remaining">): boolean =>
+  item.units > 0 || (item.opened_remaining ?? 0) > 0;
+
+/** 期限までの残り日数を「日」または「ヶ月」単位のおおよその値に丸めた結果 (#559)。
+ *  60日未満は日数、それ以上は30日=1ヶ月換算で月数に丸める。 */
+export interface ExpiryApprox {
+  unit: "day" | "month";
+  value: number;
+  isPast: boolean;
+}
+
+const APPROX_MONTH_THRESHOLD_DAYS = 60;
+const DAYS_PER_MONTH = 30;
+
+/** `expiryDate` (YYYY-MM-DD) から「期限まで約2ヶ月」のような表示に使う概算値を求める純関数。 */
+export const getExpiryApprox = (expiryDate: string, now: Date = new Date()): ExpiryApprox => {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [year, month, day] = expiryDate.split("-").map(Number) as [number, number, number];
+  const expiry = new Date(year, month - 1, day);
+  const diffDays = Math.round((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const isPast = diffDays < 0;
+  const absDays = Math.abs(diffDays);
+
+  if (absDays >= APPROX_MONTH_THRESHOLD_DAYS) {
+    return { unit: "month", value: Math.max(1, Math.round(absDays / DAYS_PER_MONTH)), isPast };
+  }
+  return { unit: "day", value: absDays, isPast };
+};
+
 /** プリセットの単位一覧。ユーザーは `custom_units`（`useCustomUnits`）で独自の単位を
  *  追加できる — 参照箇所（ItemForm の単位選択、設定画面のデフォルト単位）はプリセットと
  *  カスタム単位をマージして表示すること。 */
