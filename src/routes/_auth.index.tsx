@@ -24,6 +24,10 @@ import { ExpiryRecipeSuggestions } from "@/components/molecules/ExpiryRecipeSugg
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { ItemListRow } from "@/components/molecules/ItemListRow";
 import { QuickMemoSheet } from "@/components/molecules/QuickMemoSheet";
+import {
+  DashboardNotificationCenter,
+  type NotificationChip,
+} from "@/components/organisms/DashboardNotificationCenter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -399,6 +403,33 @@ export const DashboardPage = () => {
     ? allItems.filter((item) => item.units > 0 && isItemUnverified(item, stocktakeAlertDays))
     : [];
 
+  // 通知センター（#624）のサマリーチップ。0件の種別は含めない。
+  const notificationChips: (NotificationChip | false)[] = [
+    urgentCount > 0 && {
+      key: "urgent",
+      icon: <AlertTriangle className="h-4 w-4 shrink-0 text-yellow-600" />,
+      text: t("urgentBanner", { count: urgentCount }),
+    },
+    lowStockItems.length > 0 && {
+      key: "lowStock",
+      icon: <AlertTriangle className="h-4 w-4 shrink-0 text-orange-600" />,
+      text: t("lowStockBanner", { count: lowStockItems.length }),
+    },
+    forecastAlertItems.length > 0 && {
+      key: "forecast",
+      icon: <AlertTriangle className="h-4 w-4 shrink-0 text-blue-600" />,
+      text: t("forecastAlertBanner", { count: forecastAlertItems.length }),
+    },
+    unverifiedItems.length > 0 && {
+      key: "stocktake",
+      icon: <AlertTriangle className="h-4 w-4 shrink-0 text-blue-600" />,
+      text: t("stocktakeBanner", { count: unverifiedItems.length }),
+    },
+  ];
+  const visibleNotificationChips = notificationChips.filter(
+    (chip): chip is NotificationChip => chip !== false,
+  );
+
   const handleBulkAddToShopping = async () => {
     if (isBulkAdding) return;
     setIsBulkAdding(true);
@@ -490,177 +521,183 @@ export const DashboardPage = () => {
         </div>
       )}
 
-      {/* Expiry alert banner */}
-      {urgentCount > 0 && (
-        <div className="space-y-3 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-            <p className="text-sm">
-              <span className="font-medium">{t("urgentBanner", { count: urgentCount })}</span>
-            </p>
-          </div>
-          <details className="rounded-md border border-yellow-200 bg-yellow-100/50 p-2">
-            <summary className="cursor-pointer text-sm font-medium">
-              {t("urgentBannerDetails")}
-            </summary>
-            <div className="mt-3 space-y-3 text-sm">
-              <div>
-                <p className="mb-1 font-medium">{t("expiryStatus.expired")}</p>
-                {expiredItems.length === 0 ? (
-                  <p className="text-xs text-yellow-700">{t("urgentBannerNoExpiredItems")}</p>
-                ) : (
-                  <ul className="list-inside list-disc space-y-1">
-                    {expiredItems.map((item) => (
-                      <li key={item.id}>
-                        <Link
-                          className="underline decoration-yellow-800 underline-offset-2 hover:opacity-80"
-                          to="/items/$itemId"
-                          params={{ itemId: item.id }}
-                        >
-                          {item.name}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div>
-                <p className="mb-1 font-medium">{t("expiryStatus.expiring-soon")}</p>
-                {expiringSoonItems.length === 0 ? (
-                  <p className="text-xs text-yellow-700">{t("urgentBannerNoExpiringSoonItems")}</p>
-                ) : (
-                  <ul className="list-inside list-disc space-y-1">
-                    {expiringSoonItems.map((item) => (
-                      <li key={item.id}>
-                        <Link
-                          className="underline decoration-yellow-800 underline-offset-2 hover:opacity-80"
-                          to="/items/$itemId"
-                          params={{ itemId: item.id }}
-                        >
-                          {item.name}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+      <DashboardNotificationCenter chips={visibleNotificationChips}>
+        {/* Expiry alert banner */}
+        {urgentCount > 0 && (
+          <div className="space-y-3 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <p className="text-sm">
+                <span className="font-medium">{t("urgentBanner", { count: urgentCount })}</span>
+              </p>
             </div>
-          </details>
-          {urgentItems.length > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full border-yellow-400 bg-yellow-50 text-yellow-800 hover:bg-yellow-100"
-              onClick={() => void handleBulkAddToShopping()}
-              disabled={isBulkAdding}
-            >
-              <ShoppingCart className="mr-1.5 h-4 w-4" />
-              {isBulkAdding ? tc("loading") : t("bulkAddToShopping", { count: urgentItems.length })}
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Recipe suggestions for expiring/expired items (#461) */}
-      {urgentCount > 0 && (
-        <ExpiryRecipeSuggestions
-          isLoading={isRecipeSuggestionsLoading}
-          suggestions={recipeSuggestions}
-        />
-      )}
-
-      {/* Low-stock alert banner */}
-      {lowStockItems.length > 0 && (
-        <div className="space-y-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-orange-800">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-            <p className="text-sm font-medium">
-              {t("lowStockBanner", { count: lowStockItems.length })}
-            </p>
+            <details className="rounded-md border border-yellow-200 bg-yellow-100/50 p-2">
+              <summary className="cursor-pointer text-sm font-medium">
+                {t("urgentBannerDetails")}
+              </summary>
+              <div className="mt-3 space-y-3 text-sm">
+                <div>
+                  <p className="mb-1 font-medium">{t("expiryStatus.expired")}</p>
+                  {expiredItems.length === 0 ? (
+                    <p className="text-xs text-yellow-700">{t("urgentBannerNoExpiredItems")}</p>
+                  ) : (
+                    <ul className="list-inside list-disc space-y-1">
+                      {expiredItems.map((item) => (
+                        <li key={item.id}>
+                          <Link
+                            className="underline decoration-yellow-800 underline-offset-2 hover:opacity-80"
+                            to="/items/$itemId"
+                            params={{ itemId: item.id }}
+                          >
+                            {item.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-1 font-medium">{t("expiryStatus.expiring-soon")}</p>
+                  {expiringSoonItems.length === 0 ? (
+                    <p className="text-xs text-yellow-700">
+                      {t("urgentBannerNoExpiringSoonItems")}
+                    </p>
+                  ) : (
+                    <ul className="list-inside list-disc space-y-1">
+                      {expiringSoonItems.map((item) => (
+                        <li key={item.id}>
+                          <Link
+                            className="underline decoration-yellow-800 underline-offset-2 hover:opacity-80"
+                            to="/items/$itemId"
+                            params={{ itemId: item.id }}
+                          >
+                            {item.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </details>
+            {urgentItems.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full border-yellow-400 bg-yellow-50 text-yellow-800 hover:bg-yellow-100"
+                onClick={() => void handleBulkAddToShopping()}
+                disabled={isBulkAdding}
+              >
+                <ShoppingCart className="mr-1.5 h-4 w-4" />
+                {isBulkAdding
+                  ? tc("loading")
+                  : t("bulkAddToShopping", { count: urgentItems.length })}
+              </Button>
+            )}
           </div>
-          <details className="rounded-md border border-orange-200 bg-orange-100/50 p-2">
-            <summary className="cursor-pointer text-sm font-medium">
-              {t("lowStockBannerDetails")}
-            </summary>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
-              {lowStockItems.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    className="underline decoration-orange-800 underline-offset-2 hover:opacity-80"
-                    to="/items/$itemId"
-                    params={{ itemId: item.id }}
-                  >
-                    {item.name} ({item.units} / {item.minimum_stock})
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </details>
-        </div>
-      )}
+        )}
 
-      {/* Consumption-pace forecast banner (#392) */}
-      {forecastAlertItems.length > 0 && (
-        <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-            <p className="text-sm font-medium">
-              {t("forecastAlertBanner", { count: forecastAlertItems.length })}
-            </p>
-          </div>
-          <details className="rounded-md border border-blue-200 bg-blue-100/50 p-2">
-            <summary className="cursor-pointer text-sm font-medium">
-              {t("forecastAlertBannerDetails")}
-            </summary>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
-              {forecastAlertItems.map(({ forecastAlert, item }) => (
-                <li key={item.id}>
-                  <Link
-                    className="underline decoration-blue-800 underline-offset-2 hover:opacity-80"
-                    to="/items/$itemId"
-                    params={{ itemId: item.id }}
-                  >
-                    {t("forecastAlertItemLine", {
-                      name: item.name,
-                      days: forecastAlert.predictedRemainingDays,
-                    })}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </details>
-        </div>
-      )}
+        {/* Recipe suggestions for expiring/expired items (#461) */}
+        {urgentCount > 0 && (
+          <ExpiryRecipeSuggestions
+            isLoading={isRecipeSuggestionsLoading}
+            suggestions={recipeSuggestions}
+          />
+        )}
 
-      {/* 棚卸し（在庫確認）未確認アラート (#375) */}
-      {unverifiedItems.length > 0 && (
-        <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-            <p className="text-sm font-medium">
-              {t("stocktakeBanner", { count: unverifiedItems.length })}
-            </p>
+        {/* Low-stock alert banner */}
+        {lowStockItems.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-orange-800">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <p className="text-sm font-medium">
+                {t("lowStockBanner", { count: lowStockItems.length })}
+              </p>
+            </div>
+            <details className="rounded-md border border-orange-200 bg-orange-100/50 p-2">
+              <summary className="cursor-pointer text-sm font-medium">
+                {t("lowStockBannerDetails")}
+              </summary>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+                {lowStockItems.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      className="underline decoration-orange-800 underline-offset-2 hover:opacity-80"
+                      to="/items/$itemId"
+                      params={{ itemId: item.id }}
+                    >
+                      {item.name} ({item.units} / {item.minimum_stock})
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </div>
-          <details className="rounded-md border border-blue-200 bg-blue-100/50 p-2">
-            <summary className="cursor-pointer text-sm font-medium">
-              {t("stocktakeBannerDetails")}
-            </summary>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
-              {unverifiedItems.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    className="underline decoration-blue-800 underline-offset-2 hover:opacity-80"
-                    to="/items/$itemId"
-                    params={{ itemId: item.id }}
-                  >
-                    {item.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </details>
-        </div>
-      )}
+        )}
+
+        {/* Consumption-pace forecast banner (#392) */}
+        {forecastAlertItems.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <p className="text-sm font-medium">
+                {t("forecastAlertBanner", { count: forecastAlertItems.length })}
+              </p>
+            </div>
+            <details className="rounded-md border border-blue-200 bg-blue-100/50 p-2">
+              <summary className="cursor-pointer text-sm font-medium">
+                {t("forecastAlertBannerDetails")}
+              </summary>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+                {forecastAlertItems.map(({ forecastAlert, item }) => (
+                  <li key={item.id}>
+                    <Link
+                      className="underline decoration-blue-800 underline-offset-2 hover:opacity-80"
+                      to="/items/$itemId"
+                      params={{ itemId: item.id }}
+                    >
+                      {t("forecastAlertItemLine", {
+                        name: item.name,
+                        days: forecastAlert.predictedRemainingDays,
+                      })}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </div>
+        )}
+
+        {/* 棚卸し（在庫確認）未確認アラート (#375) */}
+        {unverifiedItems.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <p className="text-sm font-medium">
+                {t("stocktakeBanner", { count: unverifiedItems.length })}
+              </p>
+            </div>
+            <details className="rounded-md border border-blue-200 bg-blue-100/50 p-2">
+              <summary className="cursor-pointer text-sm font-medium">
+                {t("stocktakeBannerDetails")}
+              </summary>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+                {unverifiedItems.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      className="underline decoration-blue-800 underline-offset-2 hover:opacity-80"
+                      to="/items/$itemId"
+                      params={{ itemId: item.id }}
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </div>
+        )}
+      </DashboardNotificationCenter>
 
       {/* Search */}
       <div className="flex gap-2">
