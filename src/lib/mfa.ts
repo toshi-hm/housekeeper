@@ -4,10 +4,11 @@ import { z } from "zod";
 // TOTP code validation
 // ---------------------------------------------------------------------------
 
+// messageはi18nキー（mfa namespace）。呼び出し側でt()に通してから表示すること（#620）。
 export const totpCodeSchema = z
   .string()
   .trim()
-  .regex(/^\d{6}$/, "6桁の数字を入力してください");
+  .regex(/^\d{6}$/, "codeInvalid");
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,18 +55,22 @@ export const isMfaChallengeRequired = (
 // Error translation
 // ---------------------------------------------------------------------------
 
+/**
+ * SupabaseのMFAエラーメッセージを、表示用のi18nキー（mfa namespace）へ変換する。
+ * 呼び出し側で t() に通してから表示すること（#620）。
+ */
 export const translateMfaError = (message: string): string => {
   if (message.includes("Invalid TOTP code") || message.includes("invalid_code")) {
-    return "認証コードが正しくないか、期限切れです。";
+    return "codeInvalidOrExpired";
   }
   if (message.includes("factor is not verified") || message.includes("not_verified")) {
-    return "認証に失敗しました。もう一度お試しください。";
+    return "verificationFailed";
   }
   if (message.includes("over_email_send_rate_limit") || message.includes("rate limit")) {
-    return "リクエストが多すぎます。しばらく時間をおいてからお試しください。";
+    return "rateLimitError";
   }
   if (message.includes("mfa_factor_not_found") || message.includes("Factor not found")) {
-    return "認証情報が見つかりません。設定からやり直してください。";
+    return "factorNotFound";
   }
-  return message;
+  return "verifyFailed";
 };

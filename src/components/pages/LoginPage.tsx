@@ -13,7 +13,8 @@ import { Select } from "@/components/ui/select";
 import { isAvailableRegisterNewUser } from "@/config/auth";
 import {
   loginSchema,
-  SECURITY_QUESTIONS,
+  SECURITY_QUESTION_IDS,
+  securityQuestionLabelKey,
   sha256hex,
   signupSchema,
   translateAuthError,
@@ -116,13 +117,13 @@ export const LoginPage = () => {
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
       const errs: Record<string, string> = {};
-      for (const issue of result.error.issues) errs[issue.path[0] as string] = issue.message;
+      for (const issue of result.error.issues) errs[issue.path[0] as string] = t(issue.message);
       setFieldErrors(errs);
       return;
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(translateAuthError(error.message));
+    if (error) throw new Error(t(translateAuthError(error.message)));
 
     const factorId = await resolvePendingTotpFactorId();
     if (factorId) {
@@ -148,13 +149,13 @@ export const LoginPage = () => {
     });
     if (!result.success) {
       const errs: Record<string, string> = {};
-      for (const issue of result.error.issues) errs[issue.path[0] as string] = issue.message;
+      for (const issue of result.error.issues) errs[issue.path[0] as string] = t(issue.message);
       setFieldErrors(errs);
       return;
     }
 
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw new Error(translateAuthError(error.message));
+    if (error) throw new Error(t(translateAuthError(error.message)));
 
     if (!data.session) {
       // Email confirmation required
@@ -186,7 +187,7 @@ export const LoginPage = () => {
   const handleMfaVerify = async () => {
     const result = totpCodeSchema.safeParse(mfaCode);
     if (!result.success) {
-      setFieldErrors({ mfaCode: result.error.issues[0]?.message ?? tm("codeInvalid") });
+      setFieldErrors({ mfaCode: tm(result.error.issues[0]?.message ?? "codeInvalid") });
       return;
     }
     if (!mfaFactorId) {
@@ -198,7 +199,7 @@ export const LoginPage = () => {
       factorId: mfaFactorId,
       code: result.data,
     });
-    if (error) throw new Error(translateMfaError(error.message));
+    if (error) throw new Error(tm(translateMfaError(error.message)));
     void navigate({ to: "/" });
   };
 
@@ -400,9 +401,9 @@ export const LoginPage = () => {
                         required
                       >
                         <option value="">{t("selectSecurityQuestion")}</option>
-                        {SECURITY_QUESTIONS.map((q) => (
-                          <option key={q} value={q}>
-                            {q}
+                        {SECURITY_QUESTION_IDS.map((id) => (
+                          <option key={id} value={t(securityQuestionLabelKey[id])}>
+                            {t(securityQuestionLabelKey[id])}
                           </option>
                         ))}
                       </Select>

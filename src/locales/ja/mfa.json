@@ -1,6 +1,7 @@
 {
   "cancelSetup": "キャンセル",
   "codeInvalid": "6桁の数字を入力してください",
+  "codeInvalidOrExpired": "認証コードが正しくないか、期限切れです。",
   "codeLabel": "認証コード",
   "disableButton": "無効化",
   "disableConfirmMessage": "2段階認証を無効にしますか？次回サインイン時からコード入力は不要になります。",
@@ -11,16 +12,19 @@
   "enabledHelp": "2段階認証は有効です。サインイン時に認証アプリのコード入力が必要になります。",
   "enrollFailed": "設定の開始に失敗しました。もう一度お試しください",
   "enrollSuccess": "2段階認証を有効にしました",
+  "factorNotFound": "認証情報が見つかりません。設定からやり直してください。",
   "loginBackToPassword": "サインアウトしてやり直す",
   "loginChallengeSubtitle": "認証アプリに表示されている6桁のコードを入力してください",
   "loginChallengeTitle": "認証コードを入力",
   "loginVerifyButton": "認証してサインイン",
   "manualEntryLabel": "QRコードを読み取れない場合は、このコードを手動で入力してください",
   "qrCodeAlt": "認証アプリでスキャンするQRコード",
+  "rateLimitError": "リクエストが多すぎます。しばらく時間をおいてからお試しください。",
   "setupInstructions": "Google Authenticator などの認証アプリでQRコードを読み取り、表示された6桁のコードを入力してください。",
   "setupTitle": "認証アプリでQRコードをスキャン",
   "title": "2段階認証",
   "unenrollFailed": "無効化に失敗しました。もう一度お試しください",
+  "verificationFailed": "認証に失敗しました。もう一度お試しください。",
   "verifyButton": "確認して有効化",
   "verifyFailed": "認証コードが正しくありません"
 }

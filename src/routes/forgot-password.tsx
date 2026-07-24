@@ -142,7 +142,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
     const pwResult = passwordSchema.safeParse(newPassword);
     if (!pwResult.success) {
       setFieldErrors({
-        newPassword: pwResult.error.issues[0]?.message ?? t("common:unknownError"),
+        newPassword: t(pwResult.error.issues[0]?.message ?? "common:unknownError"),
       });
       return;
     }
