@@ -1,11 +1,12 @@
 import { PackageCheck, PackageSearch, X } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface ScanToShoppingDialogProps {
   open: boolean;
@@ -33,6 +34,12 @@ export const ScanToShoppingDialog = ({
   const { t: tCommon } = useTranslation("common");
   const [name, setName] = useState(defaultName);
   const [prevDefaultName, setPrevDefaultName] = useState(defaultName);
+  const titleId = useId();
+  const containerRef = useDialogA11y<HTMLDivElement>({
+    open,
+    onClose,
+    disableClose: isSubmitting,
+  });
 
   // 照合完了後に解決済みの商品名を入力欄へ反映する（prop 変化時の state 調整）
   if (defaultName !== prevDefaultName) {
@@ -49,9 +56,18 @@ export const ScanToShoppingDialog = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/50 sm:items-center sm:justify-center">
-      <div className="w-full rounded-t-2xl bg-background p-4 shadow-xl sm:max-w-md sm:rounded-2xl">
+      <div
+        ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="w-full rounded-t-2xl bg-background p-4 shadow-xl sm:max-w-md sm:rounded-2xl"
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{t("scanDialogTitle")}</h2>
+          <h2 id={titleId} className="text-lg font-bold">
+            {t("scanDialogTitle")}
+          </h2>
           <Button
             variant="ghost"
             size="icon"

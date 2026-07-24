@@ -1,8 +1,9 @@
 import QRCode from "qrcode";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface QRCodeDialogProps {
   value: string;
@@ -36,6 +37,10 @@ const QRCodeCanvas = ({
 export const QRCodeDialog = ({ value, title, onClose }: QRCodeDialogProps) => {
   const { t } = useTranslation("items");
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const titleId = useId();
+  // このコンポーネントは親が条件付きマウント/アンマウントで開閉するため、
+  // マウントされている間は常に open 扱いにする（#631）。
+  const containerRef = useDialogA11y<HTMLDivElement>({ open: true, onClose });
 
   const handlePrint = () => {
     const canvas = canvasRef.current;
@@ -59,10 +64,17 @@ export const QRCodeDialog = ({ value, title, onClose }: QRCodeDialogProps) => {
       onClick={onClose}
     >
       <div
+        ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="w-full max-w-xs space-y-4 rounded-xl bg-background p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-center text-base font-semibold">{title}</h2>
+        <h2 id={titleId} className="text-center text-base font-semibold">
+          {title}
+        </h2>
         <div className="flex justify-center">
           <QRCodeCanvas value={value} canvasRef={canvasRef} />
         </div>

@@ -101,44 +101,35 @@ purely visual feedback.
 ### 4. Focus trap / modal dialogs
 
 This app does not use Radix's `Dialog` primitive for its custom overlay
-components (`ConfirmDialog`, `PurchaseDialog`, `InventoryChatPanel`, the
-various bottom-sheet dialogs like `BulkMoveDialog` /
-`ScanToShoppingDialog`) — they're hand-rolled `fixed inset-0` overlays.
-That means focus trapping, initial focus, and focus restoration are **not**
-free from the framework and must be implemented per component.
+components — they're hand-rolled `fixed inset-0` overlays. That means focus
+trapping, initial focus, and focus restoration are **not** free from the
+framework.
 
-The canonical pattern for this is the focus trap implemented for
-`InventoryChatPanel` for [#556](https://github.com/toshi-hm/housekeeper/issues/556)
-(PR [#577](https://github.com/toshi-hm/housekeeper/pull/577)). Shape:
+`useDialogA11y` (`src/hooks/useDialogA11y.ts`, added for
+[#631](https://github.com/toshi-hm/housekeeper/issues/631)) is the shared
+hook for this: pass it `{ open, onClose, disableClose? }`, attach the
+returned ref to the dialog panel element (with `role="dialog"`
+`aria-modal="true"` `aria-labelledby={titleId}` `tabIndex={-1}`), and it
+handles Escape-to-close, Tab/Shift+Tab focus trapping within the panel,
+moving focus into the panel on open, and restoring focus to whatever was
+focused before on close. `onClose`/`disableClose` are read from refs
+internally so the effect only re-runs on `open` transitions, not on every
+render of a caller that passes a fresh closure each time.
 
-```tsx
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+`BulkMoveDialog`, `QRCodeDialog`, `ScanToShoppingDialog`, `PurchaseDialog`,
+and the stacking-confirmation dialog in `NewItemPage.tsx` all use this hook.
+`InventoryChatPanel` predates the hook and has its own equivalent
+hand-rolled focus trap (the pattern `useDialogA11y` was extracted from). A
+future cleanup could migrate it onto `useDialogA11y` too.
 
-// On open: remember document.activeElement, then move focus into the panel
-// (typically the primary input). On close: restore focus to what was
-// remembered.
-useEffect(() => {
-  if (open) {
-    previousFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    initialFocusRef.current?.focus();
-  } else if (previousFocusRef.current) {
-    previousFocusRef.current.focus();
-    previousFocusRef.current = null;
-  }
-}, [open]);
+`ConfirmDialog` (`role="alertdialog"` + Escape handler) still has **no
+focus trap** — Tab can move focus to elements behind the overlay, and
+focus is not moved into the dialog on open or restored on close. It was
+out of scope for #631 (not listed among that issue's affected components)
+but is a good candidate to migrate onto `useDialogA11y` in a follow-up.
 
-// In the existing Escape-key keydown listener, also handle Tab: compute the
-// panel's focusable elements, and when Tab/Shift+Tab would move focus
-// outside the first/last one, preventDefault() and wrap around instead.
-```
-
-New modal-style components should follow this same shape (own `dialogRef`,
-own `previousFocusRef`, reuse the existing Escape-to-close listener to also
-handle Tab-wrapping) rather than inventing a different mechanism. If a
-future refactor consolidates these into a shared `useFocusTrap` hook or
-switches to Radix `Dialog`, update this doc.
+New modal-style components should use `useDialogA11y` rather than
+reinventing this mechanism.
 
 ## Known gaps
 
@@ -147,13 +138,10 @@ by hand. None of these are fixed by this PR — they're scoped out
 deliberately (see PR description) and are good candidates for follow-up
 issues:
 
-- **`ConfirmDialog` and `PurchaseDialog` have no focus trap.** Both have
-  `role="alertdialog"`/dialog semantics and an Escape handler, but (unlike
-  `InventoryChatPanel` after #556/#577) Tab can still move focus to
-  elements behind the overlay, and focus is not moved into the dialog on
-  open or restored to the trigger on close.
-- **`BulkMoveDialog` and `ScanToShoppingDialog` (bottom-sheet dialogs) have
-  no `role="dialog"`/`aria-modal` at all**, in addition to no focus trap.
+- **`ConfirmDialog` has no focus trap** (see "Focus trap / modal dialogs"
+  above). `PurchaseDialog`, `BulkMoveDialog`, and `ScanToShoppingDialog`
+  were fixed for [#631](https://github.com/toshi-hm/housekeeper/issues/631)
+  via `useDialogA11y`.
 - **CI a11y checks only cover what axe-core can detect statically.**
   [#497](https://github.com/toshi-hm/housekeeper/issues/497) wired
   `@storybook/test-runner` + `axe-playwright` into CI (see above), but that
