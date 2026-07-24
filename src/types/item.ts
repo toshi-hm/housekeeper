@@ -15,6 +15,7 @@ export interface StorageLocation {
   user_id: string;
   name: string;
   icon?: string | null;
+  photo_path?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +59,9 @@ export interface Item {
   last_verified_at?: string | null;
   deleted_at?: string | null;
   deletion_reason?: ItemDeletionReason | null;
+  /** 保管場所の写真上の相対位置（0〜1）。保管場所に写真が未登録、または未指定の場合は null（#574）。 */
+  pin_x?: number | null;
+  pin_y?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -86,6 +90,8 @@ export const itemFormSchema = z.object({
   unit_price: z.coerce.number().int().min(0).nullable().optional(),
   auto_reorder: z.boolean().default(false),
   reorder_threshold: z.coerce.number().int().min(0).nullable().optional(),
+  pin_x: z.coerce.number().min(0).max(1).nullable().optional(),
+  pin_y: z.coerce.number().min(0).max(1).nullable().optional(),
 });
 
 export const itemLotSchema = z.object({
