@@ -289,12 +289,16 @@ describe("ItemConsumePage", () => {
 
       // No hint while the unit still matches item.content_unit.
       await user.type(amountInput, "100");
-      expect(queryByText("consumeConvertedHint")).toBeNull();
+      expect(queryByText(/consumeConvertedHint|Recorded as|として記録されます/)).toBeNull();
 
       await act(async () => {
         fireEvent.change(unitSelect, { target: { value: "L" } });
       });
-      expect(getByText("consumeConvertedHint")).toBeDefined();
+      // The i18n instance is a process-wide singleton (bun:test runs all files
+      // in one process): whether "consumeConvertedHint" renders as the raw key
+      // or its real translation depends on whether another already-run test
+      // file has initialized it, so match either form.
+      expect(getByText(/consumeConvertedHint|Recorded as|として記録されます/)).toBeDefined();
     });
 
     it("validates over-consumption using the converted amount, not the raw input value (#462)", async () => {
