@@ -1,4 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { createElement, type ReactNode } from "react";
 
 import type { Item } from "@/types/item";
 
@@ -61,7 +64,18 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { consumeItem } = await import("@/hooks/useConsumeItem");
+const { consumeItem, useConsumeItem } = await import("@/hooks/useConsumeItem");
+const { ToastContext } = await import("@/lib/toast-context");
+
+const makeWrapper = (qc: QueryClient) => {
+  const stubToast = { toasts: [], toast: () => {}, dismiss: () => {} };
+  return ({ children }: { children: ReactNode }) =>
+    createElement(
+      QueryClientProvider,
+      { client: qc },
+      createElement(ToastContext, { value: stubToast }, children),
+    );
+};
 
 const makeItem = (overrides: Partial<Item> = {}): Item => ({
   id: "item-1",
@@ -155,5 +169,27 @@ describe("consumeItem", () => {
 
     const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
     expect(logInsert?.args[0]).toMatchObject({ note: "贈り物" });
+  });
+});
+
+describe("useConsumeItem", () => {
+  test("成功時に買い物リストのキャッシュも無効化する (#649)", async () => {
+    responseQueues.item_lots = [{ data: [], error: null }];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+    responseQueues.items = [{ data: makeItem({ units: 2 }), error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useConsumeItem(), { wrapper: makeWrapper(qc) });
+    result.current.mutate({ item: makeItem(), deltaAmount: 1 });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["shopping"]);
   });
 });
