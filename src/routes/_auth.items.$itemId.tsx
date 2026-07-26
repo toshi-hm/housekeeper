@@ -10,6 +10,7 @@ import {
   History,
   JapaneseYen,
   Layers,
+  Map,
   MapPin,
   Package,
   QrCode,
@@ -508,11 +509,28 @@ const ItemDetailPage = () => {
                   />
                 )}
                 {location && (
-                  <DetailRow
-                    icon={<MapPin className="h-4 w-4" />}
-                    label={t("storageLocation")}
-                    value={location.name}
-                  />
+                  <div className="flex items-start justify-between gap-3">
+                    <DetailRow
+                      icon={<MapPin className="h-4 w-4" />}
+                      label={t("storageLocation")}
+                      value={location.name}
+                    />
+                    {location.photo_path && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          void navigate({
+                            to: "/locations/$locationId",
+                            params: { locationId: location.id },
+                          })
+                        }
+                      >
+                        <Map className="mr-1 h-4 w-4" />
+                        {t("settings:viewMap")}
+                      </Button>
+                    )}
+                  </div>
                 )}
                 {item.purchase_date && (
                   <DetailRow

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ImageUploader } from "@/components/molecules/ImageUploader";
+import { LocationPinPicker } from "@/components/molecules/LocationPinPicker";
 import { ProductLookupResult } from "@/components/molecules/ProductLookupResult";
 import { QuickAddSelect } from "@/components/molecules/QuickAddSelect";
 import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
@@ -15,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { type ProductInfo, useBarcodeLookup } from "@/hooks/useBarcodeLookup";
 import { useCreateCustomUnit, useCustomUnits, useDeleteCustomUnit } from "@/hooks/useCustomUnits";
 import { useSignedItemImage } from "@/hooks/useItemImage";
+import { useSignedLocationPhoto } from "@/hooks/useLocationPhoto";
 import {
   checkCategoryUsage,
   checkLocationUsage,
@@ -84,6 +86,8 @@ export const ItemForm = ({
     unit_price: defaultValues?.unit_price ?? null,
     auto_reorder: defaultValues?.auto_reorder ?? false,
     reorder_threshold: defaultValues?.reorder_threshold ?? null,
+    pin_x: defaultValues?.pin_x ?? null,
+    pin_y: defaultValues?.pin_y ?? null,
   });
   const [unitsRaw, setUnitsRaw] = useState(String(defaultValues?.units ?? 1));
   const [contentAmountRaw, setContentAmountRaw] = useState(
@@ -115,6 +119,9 @@ export const ItemForm = ({
   const { data: existingImageUrl } = useSignedItemImage(
     localPreviewUrl ? null : values.image_path || null,
   );
+
+  const selectedLocation = locations.find((l) => l.id === values.storage_location_id);
+  const { data: selectedLocationPhotoUrl } = useSignedLocationPhoto(selectedLocation?.photo_path);
 
   const set = <K extends keyof ItemFormValues>(field: K, value: ItemFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -428,7 +435,13 @@ export const ItemForm = ({
           <QuickAddSelect
             id="storage_location_id"
             value={values.storage_location_id ?? ""}
-            onChange={(value) => set("storage_location_id", value || null)}
+            onChange={(value) => {
+              if (value !== values.storage_location_id) {
+                set("pin_x", null);
+                set("pin_y", null);
+              }
+              set("storage_location_id", value || null);
+            }}
             options={locations.map((l) => ({ value: l.id, label: l.name, icon: l.icon }))}
             placeholder={t("storageLocationPlaceholder")}
             onAdd={handleAddLocation}
@@ -438,6 +451,23 @@ export const ItemForm = ({
             cancelLabel={t("common:cancel")}
             addErrorMessage={t("addError")}
           />
+          {selectedLocationPhotoUrl && (
+            <LocationPinPicker
+              photoUrl={selectedLocationPhotoUrl}
+              value={
+                values.pin_x !== null &&
+                values.pin_x !== undefined &&
+                values.pin_y !== null &&
+                values.pin_y !== undefined
+                  ? { x: values.pin_x, y: values.pin_y }
+                  : null
+              }
+              onChange={(pos) => {
+                set("pin_x", pos?.x ?? null);
+                set("pin_y", pos?.y ?? null);
+              }}
+            />
+          )}
         </div>
 
         {extraFields}

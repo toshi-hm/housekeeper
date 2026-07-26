@@ -54,7 +54,10 @@
   "languageEn": "English",
   "languageJa": "日本語",
   "locationInUse": "この保管場所は使用中のため削除できません",
+  "locationMapNoPhoto": "この保管場所には写真が登録されていません",
+  "locationMapUnpinnedItems": "位置未指定のアイテム",
   "locationName": "保管場所名",
+  "locationPhoto": "収納写真",
   "lowStockForecastDays": "低在庫予測日数",
   "lowStockForecastDaysHelp": "消費ペースからの予測残日数がこの日数以内になったら警告を表示する",
   "masterData": "マスタデータ",
@@ -75,6 +78,7 @@
   "stocktakeAlertDays": "未確認とみなすまでの日数",
   "stocktakeAlertDaysHelp": "最終確認日からこの日数以上経過したアイテムをダッシュボードで警告します",
   "stocktakeAlertEnabled": "棚卸しアラートを有効にする",
+  "storageLocationMap": "収納マップ",
   "storageLocations": "保管場所管理",
   "tagName": "タグ名",
   "tags": "タグ管理",
@@ -82,5 +86,6 @@
   "themeDark": "ダーク",
   "themeLight": "ライト",
   "themeSystem": "システム設定に合わせる",
-  "title": "設定"
+  "title": "設定",
+  "viewMap": "マップで見る"
 }

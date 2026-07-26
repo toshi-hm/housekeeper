@@ -1,5 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Map, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,8 +8,14 @@ import { IconPicker } from "@/components/atoms/IconPicker";
 import { MasterDataIcon } from "@/components/atoms/MasterDataIcon";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  deleteLocationPhoto,
+  uploadLocationPhoto,
+  useSignedLocationPhoto,
+} from "@/hooks/useLocationPhoto";
 import {
   checkLocationUsage,
   useCreateStorageLocation,
@@ -17,6 +24,59 @@ import {
   useUpdateStorageLocation,
 } from "@/hooks/useMasterData";
 import { useToast } from "@/lib/toast-context";
+import type { StorageLocation } from "@/types/item";
+
+/** 保管場所ごとの収納写真アップロード（#574）。行ごとに独立した
+ *  アップロード状態・signed URL 取得を持つため、専用の子コンポーネントに切り出す。 */
+const LocationPhotoSection = ({ location }: { location: StorageLocation }) => {
+  const { t } = useTranslation("settings");
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [isUploading, setIsUploading] = useState(false);
+  const { data: photoUrl } = useSignedLocationPhoto(location.photo_path);
+
+  const handleFile = async (file: File) => {
+    setIsUploading(true);
+    try {
+      await uploadLocationPhoto({
+        locationId: location.id,
+        file,
+        oldPhotoPath: location.photo_path,
+        queryClient: qc,
+      });
+      toast(t("common:saveSuccess"), "success");
+    } catch {
+      toast(t("common:unknownError"), "error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!location.photo_path) return;
+    setIsUploading(true);
+    try {
+      await deleteLocationPhoto(location.id, location.photo_path, qc);
+      toast(t("common:deleteSuccess"), "success");
+    } catch {
+      toast(t("common:unknownError"), "error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-muted-foreground">{t("locationPhoto")}</p>
+      <ImageUploader
+        previewUrl={photoUrl}
+        isUploading={isUploading}
+        onFile={(file) => void handleFile(file)}
+        onDelete={location.photo_path ? () => void handleDelete() : undefined}
+      />
+    </div>
+  );
+};
 
 const LocationsPage = () => {
   const { t } = useTranslation("settings");
@@ -35,6 +95,7 @@ const LocationsPage = () => {
   const [editIcon, setEditIcon] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [photoOpenId, setPhotoOpenId] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -177,38 +238,68 @@ const LocationsPage = () => {
                   <IconPicker value={editIcon} onChange={setEditIcon} />
                 </>
               ) : (
-                <div className="flex items-center gap-3">
-                  <MasterDataIcon icon={l.icon} />
-                  <span className="flex-1">{l.name}</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={tc("edit")}
-                    onClick={() => {
-                      setEditId(l.id);
-                      setEditName(l.name);
-                      setEditIcon(l.icon ?? null);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="text-destructive"
-                    aria-label={tc("delete")}
-                    disabled={checkingId === l.id}
-                    onClick={() => {
-                      void handleDeleteClick(l.id);
-                    }}
-                  >
-                    {checkingId === l.id ? (
-                      <Spinner className="h-4 w-4" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+                <>
+                  <div className="flex items-center gap-3">
+                    <MasterDataIcon icon={l.icon} />
+                    <span className="flex-1">{l.name}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={t("locationPhoto")}
+                      onClick={() => setPhotoOpenId(photoOpenId === l.id ? null : l.id)}
+                    >
+                      <Map className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={tc("edit")}
+                      onClick={() => {
+                        setEditId(l.id);
+                        setEditName(l.name);
+                        setEditIcon(l.icon ?? null);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive"
+                      aria-label={tc("delete")}
+                      disabled={checkingId === l.id}
+                      onClick={() => {
+                        void handleDeleteClick(l.id);
+                      }}
+                    >
+                      {checkingId === l.id ? (
+                        <Spinner className="h-4 w-4" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {photoOpenId === l.id && (
+                    <div className="space-y-2 pl-7">
+                      <LocationPhotoSection location={l} />
+                      {l.photo_path && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            void navigate({
+                              to: "/locations/$locationId",
+                              params: { locationId: l.id },
+                            })
+                          }
+                        >
+                          <Map className="mr-1 h-4 w-4" />
+                          {t("viewMap")}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </li>
           ))}

@@ -54,7 +54,10 @@
   "languageEn": "English",
   "languageJa": "日本語",
   "locationInUse": "Cannot delete: this location is used by existing items",
+  "locationMapNoPhoto": "No photo has been added for this storage location",
+  "locationMapUnpinnedItems": "Items without a pinned position",
   "locationName": "Location name",
+  "locationPhoto": "Storage photo",
   "lowStockForecastDays": "Low-stock forecast days",
   "lowStockForecastDaysHelp": "Show a warning when the predicted remaining days (based on consumption pace) falls within this many days",
   "masterData": "Master Data",
@@ -75,6 +78,7 @@
   "stocktakeAlertDays": "Days before considered unverified",
   "stocktakeAlertDaysHelp": "Warn on the dashboard when an item hasn't been verified for this many days",
   "stocktakeAlertEnabled": "Enable stocktake alerts",
+  "storageLocationMap": "Storage Map",
   "storageLocations": "Storage Location Management",
   "tagName": "Tag name",
   "tags": "Tag Management",
@@ -82,5 +86,6 @@
   "themeDark": "Dark",
   "themeLight": "Light",
   "themeSystem": "System",
-  "title": "Settings"
+  "title": "Settings",
+  "viewMap": "View map"
 }

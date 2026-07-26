@@ -47,6 +47,7 @@ export interface Database {
           user_id: string;
           name: string;
           icon: string | null;
+          photo_path: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -55,6 +56,7 @@ export interface Database {
           user_id: string;
           name: string;
           icon?: string | null;
+          photo_path?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -63,6 +65,7 @@ export interface Database {
           user_id?: string;
           name?: string;
           icon?: string | null;
+          photo_path?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -109,6 +112,8 @@ export interface Database {
           last_verified_at: string | null;
           deleted_at: string | null;
           deletion_reason: "consumed" | "expired_waste" | "other" | null;
+          pin_x: number | null;
+          pin_y: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -133,6 +138,8 @@ export interface Database {
           last_verified_at?: string | null;
           deleted_at?: string | null;
           deletion_reason?: "consumed" | "expired_waste" | "other" | null;
+          pin_x?: number | null;
+          pin_y?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -157,6 +164,8 @@ export interface Database {
           last_verified_at?: string | null;
           deleted_at?: string | null;
           deletion_reason?: "consumed" | "expired_waste" | "other" | null;
+          pin_x?: number | null;
+          pin_y?: number | null;
           updated_at?: string;
         };
         Relationships: [
