@@ -19,6 +19,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   const { t: tCommon } = useTranslation("common");
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
+  const isMountedRef = useRef(true);
   const hasScannedRef = useRef(false);
   const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +67,10 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
             }
           },
         );
+        if (!isMountedRef.current) {
+          controls.stop();
+          return;
+        }
         controlsRef.current = controls;
         setIsStarting(false);
         scanTimeoutRef.current = setTimeout(() => {
@@ -136,6 +141,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
     return () => {
       cancelled = true;
+      isMountedRef.current = false;
       controlsRef.current?.stop();
       if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
     };
