@@ -68,6 +68,7 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
 
   useEffect(() => {
     let cancelled = false;
+    isMountedRef.current = true;
 
     const init = async () => {
       try {

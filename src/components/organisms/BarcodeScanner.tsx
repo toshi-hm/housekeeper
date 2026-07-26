@@ -86,6 +86,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
   useEffect(() => {
     let cancelled = false;
+    isMountedRef.current = true;
 
     const init = async () => {
       try {
