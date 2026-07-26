@@ -75,12 +75,18 @@ const fetchAllLotsForSpending = async (): Promise<SpendingLotRow[]> => {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { data, error } = await supabase
-    .from("item_lots")
-    .select("unit_price, purchased_units, purchase_date")
-    .eq("user_id", user.id);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as SpendingLotRow[];
+  // #652: 同じ #622 の行数上限バグを再発させないよう、fetchAllLotsForValue と
+  // 同様にページングする。
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("item_lots")
+      .select("unit_price, purchased_units, purchase_date")
+      .eq("user_id", user.id)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as SpendingLotRow[];
+  });
 };
 
 /** 月次支出トレンド（#633）。単価または購入日未設定のロットは集計から除外される。 */

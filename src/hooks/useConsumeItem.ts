@@ -170,6 +170,10 @@ export const useConsumeItem = () => {
         qc.invalidateQueries({ queryKey: LOTS_KEY }),
         qc.invalidateQueries({ queryKey: ["consumption-logs", data.id] }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+        // #649: consumeItem は内部で consumeLot 経由の maybeAutoReorder を
+        // 呼びうるため、useConsumeLot/一括消費と同様に買い物リストのキャッシュも
+        // 無効化する（#353）。
+        qc.invalidateQueries({ queryKey: ["shopping"] }),
       ]);
       if (data._logInsertFailed) toast(t("consumptionLogFailed"), "warning");
     },
