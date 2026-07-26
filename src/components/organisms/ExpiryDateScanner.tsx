@@ -26,6 +26,7 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
+  const isMountedRef = useRef(true);
 
   const [stage, setStage] = useState<Stage>("camera");
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +52,10 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
         const controls = await reader.decodeFromVideoDevice(deviceId, videoRef.current, () => {
           // OCRでは連続デコードは不要なため結果・エラーともに無視する
         });
+        if (!isMountedRef.current) {
+          controls.stop();
+          return;
+        }
         controlsRef.current = controls;
         setIsStarting(false);
       } catch (err) {
@@ -63,6 +68,7 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
 
   useEffect(() => {
     let cancelled = false;
+    isMountedRef.current = true;
 
     const init = async () => {
       try {
@@ -95,6 +101,7 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
 
     return () => {
       cancelled = true;
+      isMountedRef.current = false;
       controlsRef.current?.stop();
     };
   }, [startCamera, t]);

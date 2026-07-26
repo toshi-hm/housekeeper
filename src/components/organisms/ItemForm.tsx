@@ -328,9 +328,9 @@ export const ItemForm = ({
               onChange={(e) => set("barcode", e.target.value)}
               placeholder={t("barcodePlaceholder")}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && values.barcode) {
+                if (e.key === "Enter") {
                   e.preventDefault();
-                  void handleBarcodeScan(values.barcode);
+                  if (values.barcode) void handleBarcodeScan(values.barcode);
                 }
               }}
             />

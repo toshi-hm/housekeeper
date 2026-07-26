@@ -83,4 +83,15 @@ describe("ItemForm — aria-describedby / aria-invalid (#621)", () => {
     // help textのみを指し、エラーidは含まれない
     expect(minStockInput.getAttribute("aria-describedby")).toBe("minimum-stock-help");
   });
+
+  it("バーコード欄が空の状態でEnterキーを押してもフォームは送信されない（#656）", () => {
+    const onSubmit = spyOn({ onSubmit: () => {} }, "onSubmit");
+    const { container } = render(<ItemForm onSubmit={onSubmit} />, { wrapper });
+
+    const barcodeInput = container.querySelector("#barcode") as HTMLInputElement;
+    expect(barcodeInput.value).toBe("");
+    fireEvent.keyDown(barcodeInput, { key: "Enter" });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });
