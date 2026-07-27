@@ -1,4 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { createElement, type ReactNode } from "react";
 
 import type { Item } from "@/types/item";
 import type { RecipeWithItems } from "@/types/recipe";
@@ -62,7 +65,18 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { executeRecipe } = await import("@/hooks/useRecipes");
+const { executeRecipe, useExecuteRecipe } = await import("@/hooks/useRecipes");
+const { ToastContext } = await import("@/lib/toast-context");
+
+const makeWrapper = (qc: QueryClient) => {
+  const stubToast = { toasts: [], toast: () => {}, dismiss: () => {} };
+  return ({ children }: { children: ReactNode }) =>
+    createElement(
+      QueryClientProvider,
+      { client: qc },
+      createElement(ToastContext, { value: stubToast }, children),
+    );
+};
 
 const makeItem = (overrides: Partial<Item> = {}): Item => ({
   id: "item-1",
@@ -251,5 +265,37 @@ describe("executeRecipe", () => {
     ]);
     // Blocked before ever calling consumeItem.
     expect(callLog.some((c) => c.method === "limit")).toBe(false);
+  });
+});
+
+describe("useExecuteRecipe", () => {
+  test("成功時に買い物リストのキャッシュも無効化する (#662)", async () => {
+    const recipe = makeRecipe();
+    const itemsById = {
+      "item-1": makeItem({ id: "item-1", units: 3, content_amount: 1, opened_remaining: null }),
+    };
+    responseQueues.item_lots = [
+      { data: [], error: null }, // pre-check FEFO fetch
+      { data: [], error: null }, // item-1's consumeItem fetch
+    ];
+    responseQueues.items = [
+      { data: null, error: null },
+      { data: makeItem({ id: "item-1", units: 2 }), error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useExecuteRecipe(), { wrapper: makeWrapper(qc) });
+    result.current.mutate({ recipe, itemsById });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["shopping"]);
   });
 });

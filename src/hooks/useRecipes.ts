@@ -263,6 +263,9 @@ export const useExecuteRecipe = () => {
         qc.invalidateQueries({ queryKey: ["items"] }),
         qc.invalidateQueries({ queryKey: LOTS_KEY }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+        // 消費で auto_reorder がトリガーされ shopping_list_items に自動追加される
+        // ことがあるため、買い物リストのキャッシュも更新する (#353, #662)。
+        qc.invalidateQueries({ queryKey: ["shopping"] }),
       ]);
       if (result.logInsertFailed) toast(t("consumptionLogFailed"), "warning");
     },
