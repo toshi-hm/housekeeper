@@ -774,6 +774,9 @@ export const useBulkItemAction = () => {
         // bulkConsumeItems の auto_reorder トリガーで shopping_list_items が
         // 更新されることがあるため、買い物リストのキャッシュも更新する (#353)。
         qc.invalidateQueries({ queryKey: ["shopping"] }),
+        // bulkConsumeItems は consumption_logs へも書き込むため、統計/エクスポート/
+        // アイテム詳細の履歴タブが参照するキャッシュも更新する (#668)。
+        qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
       ]);
       toast(t("items:bulkActionSuccess"), "success");
     },
