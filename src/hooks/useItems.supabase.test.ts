@@ -1,4 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { createElement, type ReactNode } from "react";
 
 import type { Item } from "@/types/item";
 
@@ -66,7 +69,19 @@ const {
   buildNameOrBarcodeSearchFilter,
   escapeOrFilterValue,
   bulkConsumeItems,
+  useBulkItemAction,
 } = await import("@/hooks/useItems");
+const { ToastContext } = await import("@/lib/toast-context");
+
+const makeWrapper = (qc: QueryClient) => {
+  const stubToast = { toasts: [], toast: () => {}, dismiss: () => {} };
+  return ({ children }: { children: ReactNode }) =>
+    createElement(
+      QueryClientProvider,
+      { client: qc },
+      createElement(ToastContext, { value: stubToast }, children),
+    );
+};
 
 const makeItem = (overrides: Partial<Item> = {}): Item => ({
   id: "item-1",
@@ -217,6 +232,32 @@ describe("bulkConsumeItems", () => {
       desired_units: 1,
       linked_item_id: "item-1",
     });
+  });
+});
+
+describe("useBulkItemAction", () => {
+  test("consume成功時にconsumption-logs-allのキャッシュも無効化する (#668)", async () => {
+    responseQueues.item_lots = [
+      { data: [{ id: "lot-1", item_id: "item-1", units: 2, opened_remaining: null }], error: null },
+    ];
+    responseQueues.items = [
+      { data: [{ id: "item-1", content_amount: 1, content_unit: "個" }], error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useBulkItemAction(), { wrapper: makeWrapper(qc) });
+    result.current.mutate({ action: "consume", ids: ["item-1"] });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["consumption-logs-all"]);
   });
 });
 
