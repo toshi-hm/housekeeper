@@ -28,8 +28,11 @@ import {
   useStorageLocations,
 } from "@/hooks/useMasterData";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
+import { clearItemFormDraft, loadItemFormDraft, saveItemFormDraft } from "@/lib/itemFormDraft";
 import { useToast } from "@/lib/toast-context";
 import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
+
+const DRAFT_SAVE_DEBOUNCE_MS = 600;
 
 interface ItemFormProps {
   defaultValues?: Partial<ItemFormValues>;
@@ -42,6 +45,13 @@ interface ItemFormProps {
   onBarcodeScanned?: (barcode: string, source: "db" | "api" | null) => void;
   /** カテゴリ・保管場所の下に差し込む追加フィールド（タグ選択など） */
   extraFields?: ReactNode;
+  /**
+   * #672: 指定すると入力中の値をlocalStorageに下書き保存し、次回マウント時に
+   * 復元/破棄を選べるようにする（ネットワーク失敗・タブ誤操作等からの救済、
+   * PLANS.md §7.4）。省略時は下書き機能自体が無効（例: 既存アイテムの編集画面は
+   * defaultValuesに実データが入っているため対象外）。
+   */
+  draftKey?: string;
 }
 
 export const ItemForm = ({
@@ -53,6 +63,7 @@ export const ItemForm = ({
   onPendingImageUrlChange,
   onBarcodeScanned,
   extraFields,
+  draftKey,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
   const { t: tc } = useTranslation("common");
@@ -105,10 +116,36 @@ export const ItemForm = ({
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
   const [lookupSource, setLookupSource] = useState<"db" | "api" | null>(null);
+  // #672: マウント時に既存の下書きがあれば復元/破棄を選ばせる。ユーザーが選ぶまでは
+  // 自動保存を止めておく（さもないと未決の間に空の初期値で上書きしてしまう）。
+  const [pendingDraft, setPendingDraft] = useState(() =>
+    draftKey ? loadItemFormDraft(draftKey) : null,
+  );
   const speechInput = useSpeechInput((transcript) => {
     setValues((previous) => ({ ...previous, name: transcript }));
     setNameError("");
   });
+
+  useEffect(() => {
+    if (!draftKey || pendingDraft) return;
+    const timer = setTimeout(() => {
+      saveItemFormDraft(draftKey, { values, unitsRaw, contentAmountRaw });
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [draftKey, pendingDraft, values, unitsRaw, contentAmountRaw]);
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    setValues(pendingDraft.payload.values);
+    setUnitsRaw(pendingDraft.payload.unitsRaw);
+    setContentAmountRaw(pendingDraft.payload.contentAmountRaw);
+    setPendingDraft(null);
+  };
+
+  const discardDraft = () => {
+    if (draftKey) clearItemFormDraft(draftKey);
+    setPendingDraft(null);
+  };
 
   useEffect(() => {
     return () => {
@@ -315,6 +352,23 @@ export const ItemForm = ({
           }}
           onClose={() => setShowExpiryScanner(false)}
         />
+      )}
+
+      {pendingDraft && (
+        <div
+          role="status"
+          className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+        >
+          <span>{t("draftRestorePrompt")}</span>
+          <div className="flex shrink-0 gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={discardDraft}>
+              {t("draftDiscard")}
+            </Button>
+            <Button type="button" size="sm" onClick={restoreDraft}>
+              {t("draftRestore")}
+            </Button>
+          </div>
+        </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4 pb-6">
