@@ -143,7 +143,28 @@ export const useUndoableAction = <TPayload>(
       setPending((prev) => ({ ...prev, [id]: payload }));
 
       const opts = optionsRef.current;
+
+      const finalizeExpiry = () => {
+        delete timers.current[id];
+        delete toastIds.current[id];
+        const finalPayload = pendingRef.current[id];
+        if (finalPayload === undefined) return;
+        delete pendingRef.current[id];
+        setPending((prev) => {
+          if (!(id in prev)) return prev;
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        void opts.onExpire?.(id, finalPayload);
+      };
+
       if (opts.showToast !== false) {
+        // #673: the undo window's expiry is driven by the toast's own
+        // auto-dismiss timer (which pauses while the toast has hover/focus)
+        // instead of a second, unpausable timer — otherwise a user who keeps
+        // the toast open past its original duration could click "Undo" on a
+        // toast whose underlying action had already silently finalized.
         const toastId = toast(opts.message?.(payload) ?? "", opts.variant ?? "success", {
           action: {
             label: opts.undoLabel ?? "",
@@ -155,25 +176,13 @@ export const useUndoableAction = <TPayload>(
             },
           },
           durationMs: opts.durationMs,
+          onAutoDismiss: opts.durationMs !== undefined ? finalizeExpiry : undefined,
         });
         toastIds.current[id] = toastId;
-      }
-
-      if (opts.durationMs !== undefined) {
-        timers.current[id] = setTimeout(() => {
-          delete timers.current[id];
-          delete toastIds.current[id];
-          const finalPayload = pendingRef.current[id];
-          if (finalPayload === undefined) return;
-          delete pendingRef.current[id];
-          setPending((prev) => {
-            if (!(id in prev)) return prev;
-            const next = { ...prev };
-            delete next[id];
-            return next;
-          });
-          void opts.onExpire?.(id, finalPayload);
-        }, opts.durationMs);
+      } else if (opts.durationMs !== undefined) {
+        // No toast is rendered here, so there's no hoverable UI to pause
+        // against — keep a plain independent timer.
+        timers.current[id] = setTimeout(finalizeExpiry, opts.durationMs);
       }
     },
     [removeEntry, toast, undo],
