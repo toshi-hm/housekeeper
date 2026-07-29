@@ -29,8 +29,20 @@ test.describe("PWA オフライン挙動", () => {
     await page.waitForURL(/\/items\/new$/);
     await page.locator("#name").fill(itemName);
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL(/\/$/);
+    // The dashboard route always serializes its (default-valued) search params into
+    // the URL, so match an optional trailing query string too (#658).
+    await page.waitForURL(/\/(\?.*)?$/);
     await expect(page.getByText(itemName)).toBeVisible();
+
+    // Visit the item detail page once while still online so its own query
+    // (`useItem(id)`, keyed separately from the dashboard's list query) is
+    // cached before we go offline — otherwise navigating there while offline
+    // hits an uncached query, which is paused/never resolves and renders
+    // the page's "not found" branch instead of the cached detail (#658).
+    await page.getByRole("link", { name: itemName }).click();
+    await page.waitForURL(/\/items\/[^/]+$/);
+    await page.getByRole("link", { name: "Home" }).click();
+    await page.waitForURL(/\/(\?.*)?$/);
 
     // --- Go offline ---
     await context.setOffline(true);
@@ -40,17 +52,26 @@ test.describe("PWA オフライン挙動", () => {
 
     // A mutation attempt (consume) must be blocked with the offline toast rather
     // than hanging on a network request that will never resolve.
-    await page.getByText(itemName).click();
+    // ItemCard's clickable overlay is an aria-labeled <Link>, not the visible
+    // text node directly — target it by accessible name (#658).
+    await page.getByRole("link", { name: itemName }).click();
     await page.waitForURL(/\/items\/[^/]+$/);
-    await page.getByRole("link", { name: "Use" }).click();
-    await page.waitForURL(/\/consume$/);
-    await page.locator("#delta").fill("1");
+    // The item detail page's "Use" action is a Button that calls navigate()
+    // programmatically, not a Link (#658 — the E2E spec had drifted from
+    // this since it was never actually run in CI due to #664).
     await page.getByRole("button", { name: "Use" }).click();
+    // The item detail page carries a `tab` search param that survives this
+    // navigation (e.g. "?tab=info"), so match an optional trailing query
+    // string here too (#658).
+    await page.waitForURL(/\/consume(\?.*)?$/);
+    await page.locator("#delta").fill("1");
+    // exact:true avoids matching the sibling "Use all (1pcs)" button (#658).
+    await page.getByRole("button", { name: "Use", exact: true }).click();
     await expect(page.getByText("Cannot perform this action while offline")).toBeVisible();
 
     // --- Back online ---
     await context.setOffline(false);
-    await page.getByRole("button", { name: "Use" }).click();
+    await page.getByRole("button", { name: "Use", exact: true }).click();
     await page.waitForURL(/\/items\/[^/]+$/);
   });
 });

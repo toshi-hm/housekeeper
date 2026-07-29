@@ -1,8 +1,10 @@
 # E2E tests
 
 Playwright specs in this directory run against `vite --mode test` (see
-`playwright.config.ts` / `.env.test`) with `.github/workflows/e2e.yml` gating
-execution behind the `e2e` PR label (or manual dispatch) to control CI cost.
+`playwright.config.ts` / `.env.test`), with `.github/workflows/e2e.yml`
+running on every PR and on push to `main` (#664 — previously gated behind an
+`e2e` PR label that was easy to forget, so E2E almost never ran in CI and
+several specs silently rotted; see #658 for what that surfaced).
 
 ## Backend strategy: network-level Supabase mock, not a real project
 
@@ -46,3 +48,42 @@ If/when a seeded local Supabase stack becomes cheap enough for gated PRs (e.g.
 a prebuilt container image), swapping the fixture for the real thing should be
 a drop-in replacement — `installSupabaseMock`/`loginAsFakeUser` are the only
 things specs depend on.
+
+## Specs in this directory
+
+- `auth.spec.ts` — unauthenticated login screen smoke tests.
+- `main-flow.spec.ts` — add item -> consume -> shopping list (#516).
+- `pwa-offline.spec.ts` — offline mutation guard + cached data visibility (#518).
+- `calendar.spec.ts` — expiry calendar check-off + undo (#658).
+- `recipes.spec.ts` — recipe creation and execution (consumption recording, #658).
+- `bulk-actions.spec.ts` — dashboard multi-select bulk move/consume/delete (#658).
+
+## Mock fixture gotchas (learned the hard way, #658)
+
+Fixing #664 above made every spec in this directory actually run in CI for the
+first time in a long while, which surfaced several latent bugs in the mock
+fixture and in the specs themselves — none of them app bugs. Worth knowing if
+you add a new spec:
+
+- **The access token must be a structurally-valid JWT.** `@supabase/auth-js`'s
+  `decodeJWT` requires exactly 3 base64url segments and throws
+  `AuthInvalidJwtError: Invalid JWT structure` on a plain opaque string.
+  `createFakeAccessToken()` builds an unsigned-but-well-formed token; reuse it
+  rather than hand-rolling another fake token.
+- **Routes with a `validateSearch` schema serialize their (even default-valued)
+  search params into the URL.** A `waitForURL(/\/some-route$/)` regex will
+  never match `/some-route?tab=info`. Match an optional trailing query string
+  instead (`/\/some-route(\?.*)?$/`), or rely on `[^/]+$`-style patterns that
+  happen to swallow query strings too.
+- **The mock has no schema/constraint awareness**, so a column the real
+  Postgres schema defaults (e.g. `shopping_list_items.status default
+'planned'`) comes back `undefined` on a row inserted without that column
+  explicitly set, silently breaking any later `.eq(...)` filter that assumes
+  it. Add missing defaults to `ROW_DEFAULTS` in `fixtures/supabaseMock.ts`
+  rather than changing the app to always pass the column explicitly.
+- **`ItemCard`'s whole-card click target is an absolutely-positioned
+  `<Link aria-label={item.name}>` overlay, not the visible text.** Target it
+  with `page.getByRole("link", { name: itemName })`; clicking the text node
+  directly makes Playwright's actionability check spin until timeout even
+  though a real click at that point does land on (and navigate via) the
+  overlay.

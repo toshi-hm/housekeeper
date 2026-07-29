@@ -28,9 +28,47 @@ type Store = Record<string, Row[]>;
 
 const nowIso = () => new Date().toISOString();
 
+const base64UrlEncode = (value: Record<string, unknown>): string =>
+  Buffer.from(JSON.stringify(value)).toString("base64url");
+
+/**
+ * Builds a structurally-valid (but unsigned/unverified) fake JWT for the
+ * session's access_token. @supabase/auth-js's `decodeJWT` requires exactly
+ * 3 base64url segments and throws `AuthInvalidJwtError: Invalid JWT
+ * structure` otherwise — a plain opaque string like "e2e-fake-access-token"
+ * fails this check and breaks every E2E spec's login step (#658).
+ */
+const createFakeAccessToken = (): string => {
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64UrlEncode({ alg: "HS256", typ: "JWT" });
+  const payload = base64UrlEncode({
+    sub: FAKE_USER_ID,
+    email: FAKE_USER_EMAIL,
+    role: "authenticated",
+    aud: "authenticated",
+    iat: now,
+    exp: now + 3600,
+  });
+  const signature = base64UrlEncode({ sig: "e2e-fake" });
+  return `${header}.${payload}.${signature}`;
+};
+
 const uuid = (): string => {
   // crypto.randomUUID is available in the Playwright-driven browser context.
   return crypto.randomUUID();
+};
+
+/**
+ * Column DEFAULTs the real Postgres schema applies on insert that this
+ * mock must replicate, since it has no schema/constraint awareness of its
+ * own. Without this, a row inserted without an explicit value ends up with
+ * the column simply absent (`undefined`) instead of the DB's default,
+ * silently failing any later `.eq("status", ...)` filter that assumes it
+ * (e.g. shopping_list_items.status defaults to 'planned' — see
+ * supabase/migrations/20260430000007_create_shopping_list_items.sql) (#658).
+ */
+const ROW_DEFAULTS: Record<string, Row> = {
+  shopping_list_items: { status: "planned" },
 };
 
 const createStore = (): Store => ({
@@ -186,7 +224,7 @@ export const installSupabaseMock = async (page: Page): Promise<Store> => {
       created_at: nowIso(),
     };
     const session = {
-      access_token: "e2e-fake-access-token",
+      access_token: createFakeAccessToken(),
       token_type: "bearer",
       expires_in: 3600,
       expires_at: Math.floor(Date.now() / 1000) + 3600,
@@ -288,6 +326,7 @@ export const installSupabaseMock = async (page: Page): Promise<Store> => {
             id: uuid(),
             created_at: nowIso(),
             updated_at: nowIso(),
+            ...ROW_DEFAULTS[table],
             ...input,
           };
           rows.push(row);
@@ -349,5 +388,8 @@ export const loginAsFakeUser = async (page: Page): Promise<void> => {
   await page.locator("#email").fill(FAKE_USER_EMAIL);
   await page.locator("#password").fill("e2e-password-not-checked");
   await page.locator('form button[type="submit"]').click();
-  await page.waitForURL(/\/$/);
+  // The dashboard route has an optional search-params schema (filters), so
+  // match an optional trailing query string too instead of requiring the
+  // URL to end exactly at "/".
+  await page.waitForURL(/\/(\?.*)?$/);
 };
