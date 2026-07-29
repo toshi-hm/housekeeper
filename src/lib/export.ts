@@ -11,11 +11,17 @@ import type { Category, Item, StorageLocation } from "@/types/item";
 /** Excel（特に日本語版）が UTF-8 CSV を文字化けせず開けるよう先頭に付与する BOM。 */
 const CSV_BOM = "﻿";
 
+/** スプレッドシートソフトが数式として評価しうる先頭文字（CSVインジェクション対策、#677）。 */
+const FORMULA_TRIGGER_CHARS = /^[=+\-@]/;
+
 const escapeCsvField = (value: string): string => {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  // 外部API由来の値（バーコード検索結果の商品名等）がそのままセルに入り得るため、
+  // 数式と解釈される先頭文字にはシングルクオートを付与して無害化する（#677）。
+  const sanitized = FORMULA_TRIGGER_CHARS.test(value) ? `'${value}` : value;
+  if (/[",\n\r]/.test(sanitized)) {
+    return `"${sanitized.replace(/"/g, '""')}"`;
   }
-  return value;
+  return sanitized;
 };
 
 const toCsvLine = (fields: (string | number | null | undefined)[]): string =>
