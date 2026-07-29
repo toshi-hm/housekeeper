@@ -45,29 +45,67 @@ export const ConsumptionChart = ({ data }: ConsumptionChartProps) => {
     return row;
   });
 
+  const summary = `${t("consumptionTrend")}: ${data
+    .map((d) => `${d.month} ${d.totals.map((u) => `${u.unit} ${u.total}`).join("/") || `0`}`)
+    .join("、")}`;
+
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <BarChart data={chartData} margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-        <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={45} />
-        <Tooltip
-          formatter={(value, name) => [`${value ?? 0}${name}`, t("consumptionTrend")]}
-          contentStyle={{ fontSize: 12 }}
-        />
-        {units.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
-        {units.map((unit, index) => (
-          <Bar
-            key={unit}
-            dataKey={unit}
-            name={unit}
-            stackId="consumption"
-            fill={BAR_COLORS[index % BAR_COLORS.length]}
-            radius={index === units.length - 1 ? [4, 4, 0, 0] : undefined}
-            isAnimationActive={false}
-          />
-        ))}
-      </BarChart>
-    </ResponsiveContainer>
+    <div role="img" aria-label={summary}>
+      <div aria-hidden="true">
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart
+            data={chartData}
+            margin={{ left: 0, right: 8, top: 8, bottom: 8 }}
+            accessibilityLayer={false}
+          >
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+            <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={45} />
+            <Tooltip
+              formatter={(value, name) => [`${value ?? 0}${name}`, t("consumptionTrend")]}
+              contentStyle={{ fontSize: 12 }}
+            />
+            {units.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
+            {units.map((unit, index) => (
+              <Bar
+                key={unit}
+                dataKey={unit}
+                name={unit}
+                stackId="consumption"
+                fill={BAR_COLORS[index % BAR_COLORS.length]}
+                radius={index === units.length - 1 ? [4, 4, 0, 0] : undefined}
+                isAnimationActive={false}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>{t("consumptionTrend")}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("chartMonth")}</th>
+            {units.map((unit) => (
+              <th key={unit} scope="col">
+                {unit}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => {
+            const totalsByUnit = Object.fromEntries(d.totals.map((u) => [u.unit, u.total]));
+            return (
+              <tr key={d.month}>
+                <th scope="row">{d.month}</th>
+                {units.map((unit) => (
+                  <td key={unit}>{totalsByUnit[unit] ?? 0}</td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 };

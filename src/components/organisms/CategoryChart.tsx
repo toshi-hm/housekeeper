@@ -38,28 +38,58 @@ export const CategoryChart = ({ stats }: CategoryChartProps) => {
     label: `${s.count}${t("itemCount")}`,
   }));
 
+  const summary = `${t("categoryBreakdown")}: ${data
+    .map((d) => `${d.displayName} ${d.count}${t("itemCount")}`)
+    .join("、")}`;
+
   return (
-    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 40)}>
-      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 32, top: 8, bottom: 8 }}>
-        <XAxis type="number" hide />
-        <YAxis
-          type="category"
-          dataKey="displayName"
-          width={80}
-          tick={{ fontSize: 12 }}
-          tickLine={false}
-          axisLine={false}
-        />
-        <Tooltip
-          formatter={(value) => [`${value ?? 0}${t("itemCount")}`, ti("units")]}
-          contentStyle={{ fontSize: 12 }}
-        />
-        <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-          {data.map((_, index) => (
-            <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+    <div role="img" aria-label={summary}>
+      <div aria-hidden="true">
+        <ResponsiveContainer width="100%" height={Math.max(160, data.length * 40)}>
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ left: 8, right: 32, top: 8, bottom: 8 }}
+            accessibilityLayer={false}
+          >
+            <XAxis type="number" hide />
+            <YAxis
+              type="category"
+              dataKey="displayName"
+              width={80}
+              tick={{ fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip
+              formatter={(value) => [`${value ?? 0}${t("itemCount")}`, ti("units")]}
+              contentStyle={{ fontSize: 12 }}
+            />
+            <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive={false}>
+              {data.map((_, index) => (
+                <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>{t("categoryBreakdown")}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("chartCategory")}</th>
+            <th scope="col">{t("itemCount")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => (
+            <tr key={d.categoryId ?? d.displayName}>
+              <th scope="row">{d.displayName}</th>
+              <td>{d.count}</td>
+            </tr>
           ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+        </tbody>
+      </table>
+    </div>
   );
 };

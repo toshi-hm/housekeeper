@@ -32,29 +32,55 @@ export const ExpiryChart = ({ distribution }: ExpiryChartProps) => {
     status: entry.status,
   }));
 
+  const summary = `${t("expiryBreakdown")}: ${data
+    .map((d) => `${d.name} ${d.value}${t("itemCount")}`)
+    .join("、")}`;
+
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          innerRadius={50}
-          outerRadius={80}
-          dataKey="value"
-          paddingAngle={2}
-          isAnimationActive={false}
-        >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status] ?? "#94a3b8"} />
+    <div role="img" aria-label={summary}>
+      <div aria-hidden="true">
+        <ResponsiveContainer width="100%" height={220}>
+          <PieChart accessibilityLayer={false}>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={50}
+              outerRadius={80}
+              dataKey="value"
+              paddingAngle={2}
+              isAnimationActive={false}
+              rootTabIndex={-1}
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status] ?? "#94a3b8"} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value, name) => [`${value ?? 0}${t("itemCount")}`, String(name)]}
+              contentStyle={{ fontSize: 12 }}
+            />
+            <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>{t("expiryBreakdown")}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("chartStatus")}</th>
+            <th scope="col">{t("itemCount")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => (
+            <tr key={d.status}>
+              <th scope="row">{d.name}</th>
+              <td>{d.value}</td>
+            </tr>
           ))}
-        </Pie>
-        <Tooltip
-          formatter={(value, name) => [`${value ?? 0}${t("itemCount")}`, String(name)]}
-          contentStyle={{ fontSize: 12 }}
-        />
-        <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-      </PieChart>
-    </ResponsiveContainer>
+        </tbody>
+      </table>
+    </div>
   );
 };
