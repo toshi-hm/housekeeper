@@ -83,6 +83,29 @@ describe("itemsToCSV", () => {
     const dataLine = csv.slice(1).split("\r\n")[1];
     expect(dataLine).toBe("牛乳,,,,2,1000,mL,2026-07-15,2026-07-01,");
   });
+
+  test("neutralizes formula-triggering leading characters to prevent CSV injection (#677)", () => {
+    const item = makeItem({ name: "=HYPERLINK(evil.example)", notes: "+CMD|'/c calc'!A1" });
+    const csv = itemsToCSV([item], [], []);
+    const dataLine = csv.slice(1).split("\r\n")[1] ?? "";
+    expect(dataLine).toContain("'=HYPERLINK(evil.example)");
+    expect(dataLine).toContain("'+CMD|'/c calc'!A1");
+    expect(dataLine).not.toContain(",=HYPERLINK");
+  });
+
+  test("also neutralizes '-' and '@' leading characters", () => {
+    const csvMinus = itemsToCSV([makeItem({ name: "-2+3", notes: null })], [], []);
+    expect(csvMinus).toContain("'-2+3");
+    const csvAt = itemsToCSV([makeItem({ name: "@SUM(1,1)", notes: null })], [], []);
+    expect(csvAt).toContain("'@SUM(1,1)");
+  });
+
+  test("does not alter fields that don't start with a formula-trigger character", () => {
+    const item = makeItem({ name: "牛乳（1本）" });
+    const csv = itemsToCSV([item], [], []);
+    const dataLine = csv.slice(1).split("\r\n")[1];
+    expect(dataLine).toBe("牛乳（1本）,,,,2,1000,mL,2026-07-15,2026-07-01,");
+  });
 });
 
 describe("itemsToJSON", () => {
