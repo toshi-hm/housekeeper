@@ -132,7 +132,7 @@ end $$;
   （UI 言語に関わらず日本語ヘッダー。カテゴリ/保管場所は ID ではなく名前に解決する）
 - JSON: バックアップ向け。`{ exported_at: string, version: 1, items: Item[] }`
 - 対象は `useItems()` が返すアクティブな（`deleted_at IS NULL`）アイテムのみ
-- 将来のインポート機能は今回スコープ外（`itemsToJSON` はエクスポート専用）
+- このJSON形式はインポート（下記）でも読み込める
 
 ### 消費・購入履歴（#381）
 
@@ -162,6 +162,37 @@ end $$;
     `item_id, purchased_units, purchase_date`
 - UI organism: `src/components/organisms/DataExportPanel.tsx`（設定ページに埋め込み）
 
+## インポート（復元）（#657）
+
+サーバー側バックアップの仕組みを持たないクライアントサイドのみの構成のため、
+上記の JSON エクスポートを唯一のバックアップ/リカバリー導線として使えるよう、
+設定ページの「データのエクスポート」の隣に「データのインポート（復元）」
+セクションを設ける。
+
+- 入力は `itemsToJSON` が生成した `{exported_at, version: 1, items}` 形式のみ
+  受け付ける（Zod でパース・検証。壊れたJSON/想定外の形式は理由別のエラー
+  トーストで拒否する）
+- **カテゴリ・保管場所（`category_id` / `storage_location_id`）は復元対象に
+  含めない**: エクスポートJSONにはIDのみが入っており名前を含まないため、
+  別プロジェクトへの移行時にはそのIDが指す行が存在せず外部キー制約違反に
+  なり得る。安全側に倒し、インポート後にユーザーが手動で再設定する運用とする
+- バーコードが既存アイテムと一致した場合の重複時の扱いをユーザーが選べる:
+  - スキップ: 何もしない
+  - 上書き: 既存アイテムのロットを入れ替え、名前・内容量・単位・メモ・
+    最小在庫数・自動リピート設定を上書きする（在庫数量はロット単位で管理
+    されているため `items.units` 等は直接書き換えず、ロット入れ替え後に
+    `syncItemAggregate` で再計算させる）
+  - 新規として追加: 重複を無視して常に新規アイテムとして作成する
+- 同一インポート内で同じバーコードが複数回登場した場合、2件目以降は
+  「このインポートで直前に作成した行」を重複として扱う
+
+### 実装
+
+- 純粋関数: `jsonToItems`（`src/lib/export.ts`）— Zodバリデーション、
+  `ImportParseError`（`reason: "invalid_json" | "invalid_format"`）を投げる
+- データ書き込み: `importItems` / `useImportItems`（`src/hooks/useImportItems.ts`）
+- UI organism: `src/components/organisms/DataImportPanel.tsx`（設定ページに埋め込み）
+
 ## v1.3 範囲（消費ペース予測）
 
 - `consumption_logs` を元にした消費ペース予測 / 補充タイミング予測（#68, #392）。
@@ -185,7 +216,6 @@ end $$;
 - 単位換算（mL ⇔ L）
 - 消費の取り消し（log の rollback）
 - 購入履歴専用テーブル（同 SKU 再購入の集約）
-- CSV / JSON からのインポート（#66 系の将来拡張、今回は対象外）
 
 ## レシピ/セット消費（v1.3, #393）
 

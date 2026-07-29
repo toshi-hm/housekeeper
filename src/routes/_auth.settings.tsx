@@ -17,6 +17,7 @@ import {
   Shield,
   Tag,
   Tags,
+  Upload,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -27,6 +28,7 @@ import { Skeleton } from "@/components/atoms/Skeleton";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ThemeToggle } from "@/components/atoms/ThemeToggle";
 import { DataExportPanel } from "@/components/organisms/DataExportPanel";
+import { DataImportPanel } from "@/components/organisms/DataImportPanel";
 import { NotificationSettings } from "@/components/organisms/NotificationSettings";
 import { SecuritySettings } from "@/components/organisms/SecuritySettings";
 import { Button } from "@/components/ui/button";
@@ -465,6 +467,15 @@ export const SettingsPage = () => {
               {t("exportDataSection")}
             </h2>
             <DataExportPanel />
+          </section>
+
+          {/* Data import (restore) */}
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Upload className="h-4 w-4" />
+              {t("importDataSection")}
+            </h2>
+            <DataImportPanel />
           </section>
 
           {/* Security (MFA) */}
