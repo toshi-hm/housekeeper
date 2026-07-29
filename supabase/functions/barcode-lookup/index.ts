@@ -57,7 +57,10 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!isValidBarcode(barcode)) {
-      return new Response(JSON.stringify({ error: "Invalid barcode format" }), {
+      // #655: distinct error code from "product not found" (which is a
+      // 200 response with product: null) so the client doesn't conflate a
+      // malformed request with a genuine catalog miss.
+      return new Response(JSON.stringify({ error: "invalid_barcode" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -66,7 +69,7 @@ Deno.serve(async (req: Request) => {
     const appId = Deno.env.get("YAHOO_SHOPPING_APP_ID");
     if (!appId) {
       console.error("YAHOO_SHOPPING_APP_ID is not set");
-      return new Response(JSON.stringify({ product: null }), {
+      return new Response(JSON.stringify({ error: "missing_api_config" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -80,7 +83,13 @@ Deno.serve(async (req: Request) => {
     const res = await fetch(url.toString());
 
     if (!res.ok) {
-      return new Response(JSON.stringify({ product: null }), {
+      // #655: an upstream Yahoo Shopping API failure is a server-side
+      // problem, not "no such product" — surface it as an error instead of
+      // a silent 200 with product: null, which the client used to
+      // indistinguishably render as "商品が見つかりません".
+      console.error("Yahoo Shopping API error:", res.status, await res.text());
+      return new Response(JSON.stringify({ error: "upstream_error" }), {
+        status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -108,7 +117,7 @@ Deno.serve(async (req: Request) => {
     );
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ product: null }), {
+    return new Response(JSON.stringify({ error: "internal_error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

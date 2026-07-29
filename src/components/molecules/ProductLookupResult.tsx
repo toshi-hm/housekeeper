@@ -1,12 +1,12 @@
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import type { ProductInfo } from "@/hooks/useBarcodeLookup";
+import type { BarcodeLookupErrorType, ProductInfo } from "@/hooks/useBarcodeLookup";
 
 interface ProductLookupResultProps {
   isLoading: boolean;
   product: ProductInfo | null | undefined;
-  errorType?: "network" | "not_found" | null;
+  errorType?: BarcodeLookupErrorType | null;
 }
 
 export const ProductLookupResult = ({
@@ -26,12 +26,16 @@ export const ProductLookupResult = ({
   }
 
   if (product === null) {
+    const errorMessageKey = {
+      network: "common:offlineError",
+      server_error: "items:productLookupServerError",
+    } as const satisfies Record<BarcodeLookupErrorType, string>;
+    const message = errorType ? t(errorMessageKey[errorType]) : t("items:productNotFound");
+
     return (
       <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
         <AlertCircle className="h-4 w-4 shrink-0" />
-        <span>
-          {errorType === "network" ? t("common:offlineError") : t("items:productNotFound")}
-        </span>
+        <span>{message}</span>
       </div>
     );
   }
