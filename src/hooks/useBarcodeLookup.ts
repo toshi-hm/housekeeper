@@ -19,9 +19,14 @@ interface ItemLookupRow {
   image_path: string | null;
 }
 
+/** "not_found"（該当商品なし）は成功レスポンス（200 + product: null）として
+ *  扱われるため、このフックがエラー状態として設定するのは network / server_error
+ *  のみ。#655 */
+export type BarcodeLookupErrorType = "network" | "server_error";
+
 export const useBarcodeLookup = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<"network" | "not_found" | null>(null);
+  const [error, setError] = useState<BarcodeLookupErrorType | null>(null);
 
   const isNetworkError = (message: string | undefined) => {
     const normalized = message?.toLowerCase() ?? "";
@@ -70,8 +75,13 @@ export const useBarcodeLookup = () => {
         { body: { barcode } },
       );
       if (fnError) {
+        // #655: barcode-lookup only ever returns a non-2xx response for
+        // genuine server-side problems (invalid request, missing API
+        // config, upstream failure) — a real "no such product" is always a
+        // 200 with product: null (handled below). So any non-network fnError
+        // here is a server error, never "not found".
         const isNetwork = isNetworkError(fnError.message);
-        setError(isNetwork ? "network" : "not_found");
+        setError(isNetwork ? "network" : "server_error");
         return { product: null, source: null };
       }
       if (!data?.product) return { product: null, source: null };
@@ -85,8 +95,10 @@ export const useBarcodeLookup = () => {
         source: "api",
       };
     } catch (err) {
+      // #655: unexpected exceptions here (auth failure, thrown fetch
+      // errors, etc.) are never "no such product" either.
       const isNetwork = err instanceof TypeError && isNetworkError(err.message);
-      setError(isNetwork ? "network" : "not_found");
+      setError(isNetwork ? "network" : "server_error");
       return { product: null, source: null };
     } finally {
       setIsLoading(false);

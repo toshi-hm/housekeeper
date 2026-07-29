@@ -157,6 +157,7 @@
   "pinPickerSelected": "選択中の位置",
   "presetUnitCannotDelete": "プリセット単位は削除できません",
   "productBrand": "ブランド",
+  "productLookupServerError": "商品検索でエラーが発生しました。しばらくしてから再度お試しください",
   "productNotFound": "該当の商品が見つかりませんでした",
   "productSearching": "商品を検索中...",
   "purchaseDate": "購入日",
