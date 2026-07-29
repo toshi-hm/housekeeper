@@ -17,19 +17,43 @@ interface ToastCall {
   options?: ToastOptions;
 }
 
-/** A minimal stand-in for ToastProvider that records every toast()/dismiss() call. */
+/**
+ * A minimal stand-in for ToastProvider that records every toast()/dismiss()
+ * call. Also simulates just enough of the real ToastProvider's auto-dismiss
+ * timer (#673: driven by the toast itself rather than a second timer in
+ * useUndoableAction) — schedule onAutoDismiss at durationMs, and cancel it if
+ * dismiss() is called first (e.g. after a successful undo) — so the existing
+ * fake-timer expiry tests below still exercise real end-to-end timing.
+ */
 const makeToastContext = () => {
   const calls: ToastCall[] = [];
   const dismissed: string[] = [];
+  const timers = new Map<string, ReturnType<typeof setTimeout>>();
   let nextId = 0;
+
+  const dismiss = mock((id: string) => {
+    const timeoutId = timers.get(id);
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+      timers.delete(id);
+    }
+    dismissed.push(id);
+  });
 
   const toast = mock((message: string, variant?: ToastVariant, options?: ToastOptions) => {
     const id = `toast-${nextId++}`;
     calls.push({ id, message, variant, options });
+    if (options?.durationMs !== undefined) {
+      timers.set(
+        id,
+        setTimeout(() => {
+          timers.delete(id);
+          options.onAutoDismiss?.();
+          dismissed.push(id);
+        }, options.durationMs),
+      );
+    }
     return id;
-  });
-  const dismiss = mock((id: string) => {
-    dismissed.push(id);
   });
 
   const value: ToastContextValue = { toasts: [], toast, dismiss };
