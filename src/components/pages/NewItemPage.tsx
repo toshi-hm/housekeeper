@@ -18,7 +18,12 @@ import { setItemTags, useCreateTag, useTags } from "@/hooks/useTags";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
-import { isAlreadyInStock, type Item, type ItemFormValues } from "@/types/item";
+import {
+  isAlreadyInStock,
+  type Item,
+  type ItemFormValues,
+  targetsExistingItem,
+} from "@/types/item";
 
 interface NewItemPageProps {
   cloneFrom?: string;
@@ -69,9 +74,12 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
     try {
       const item = await createItem.mutateAsync({ values, forceNew });
       const result = item as Item & { _stacked?: boolean; _revived?: boolean };
+      // #650: スタック（既存アイテムへの在庫加算）・復活（ソフトデリート解除）の
+      // いずれも既存アイテムが対象なので、選択した画像・タグで上書きしてはならない。
+      const isExistingItem = targetsExistingItem(result);
 
-      // タグを保存（既存アイテムへのスタック時は上書きしない）
-      if (selectedTagIds.length > 0 && !result._stacked) {
+      // タグを保存（既存アイテムへのスタック/復活時は上書きしない）
+      if (selectedTagIds.length > 0 && !isExistingItem) {
         try {
           await setItemTags(item.id, selectedTagIds);
         } catch {
@@ -81,7 +89,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
 
       const pendingFile = pendingFileRef.current;
       const pendingImageUrl = pendingImageUrlRef.current;
-      if ((pendingFile || pendingImageUrl) && item && !result._stacked) {
+      if ((pendingFile || pendingImageUrl) && item && !isExistingItem) {
         try {
           const file =
             pendingFile ??

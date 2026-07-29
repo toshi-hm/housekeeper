@@ -182,6 +182,12 @@ export const STOCKTAKE_NEW_ITEM_GRACE_DAYS = 30;
 export const isAlreadyInStock = (item: Pick<Item, "units" | "opened_remaining">): boolean =>
   item.units > 0 || (item.opened_remaining ?? 0) > 0;
 
+/** #650: createItem / purchaseShoppingItem の結果が「新規作成」ではなく、既存アイテムを
+ *  スタック（在庫加算）またはソフトデリートから復活させたものかどうか。true の場合、
+ *  呼び出し側は選択した画像・タグで既存アイテムの値を上書きしてはならない。 */
+export const targetsExistingItem = (result: { _stacked?: boolean; _revived?: boolean }): boolean =>
+  Boolean(result._stacked || result._revived);
+
 /** 期限までの残り日数を「日」または「ヶ月」単位のおおよその値に丸めた結果 (#559)。
  *  60日未満は日数、それ以上は30日=1ヶ月換算で月数に丸める。 */
 export interface ExpiryApprox {

@@ -14,6 +14,7 @@ import {
   itemLotSchema,
   roundFloat,
   STOCKTAKE_NEW_ITEM_GRACE_DAYS,
+  targetsExistingItem,
 } from "./item";
 
 // --- itemFormSchema ---
@@ -387,6 +388,26 @@ describe("isAlreadyInStock", () => {
 
   test("units = 0 and opened_remaining undefined => treated as used up", () => {
     expect(isAlreadyInStock({ units: 0, opened_remaining: undefined })).toBe(false);
+  });
+});
+
+// --- targetsExistingItem (#650) ---
+
+describe("targetsExistingItem", () => {
+  test("plain new item (no flags) => false", () => {
+    expect(targetsExistingItem({})).toBe(false);
+  });
+
+  test("stacked onto an active item => true", () => {
+    expect(targetsExistingItem({ _stacked: true })).toBe(true);
+  });
+
+  test("revived from soft-delete => true", () => {
+    expect(targetsExistingItem({ _revived: true })).toBe(true);
+  });
+
+  test("explicitly false flags => false", () => {
+    expect(targetsExistingItem({ _stacked: false, _revived: false })).toBe(false);
   });
 });
 
