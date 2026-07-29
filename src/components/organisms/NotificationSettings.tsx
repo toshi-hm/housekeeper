@@ -1,10 +1,11 @@
 import { Bell, Loader2, Mail, Send } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   subscribePush,
   unsubscribePush,
@@ -13,6 +14,7 @@ import {
   useUpdateNotificationPreferences,
 } from "@/hooks/useNotificationPreferences";
 import { OfflineError } from "@/lib/requireOnline";
+import { listAvailableTimezones } from "@/lib/timezone";
 import { useToast } from "@/lib/toast-context";
 
 export const NotificationSettings = () => {
@@ -124,6 +126,18 @@ export const NotificationSettings = () => {
     }
   };
 
+  const handleTimezoneChange = async (value: string) => {
+    try {
+      await updatePrefs.mutateAsync({ timezone: value });
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+    }
+  };
+
+  const timezones = useMemo(() => listAvailableTimezones(), []);
+
   // key forces re-mount of uncontrolled inputs when prefs load
   return (
     <div className="space-y-5" key={prefs?.user_id ?? "loading"}>
@@ -221,6 +235,21 @@ export const NotificationSettings = () => {
             defaultValue={prefs?.notify_at ?? "08:00"}
             onBlur={(e) => void handleNotifyAtBlur(e.target.value)}
           />
+        </div>
+        <div className="col-span-2 space-y-1">
+          <Label htmlFor="timezone">{t("timezone")}</Label>
+          <Select
+            id="timezone"
+            defaultValue={prefs?.timezone ?? "Asia/Tokyo"}
+            onChange={(e) => void handleTimezoneChange(e.target.value)}
+          >
+            {timezones.map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </Select>
+          <p className="text-xs text-muted-foreground">{t("timezoneHelp")}</p>
         </div>
       </div>
     </div>

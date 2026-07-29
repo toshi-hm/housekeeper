@@ -296,6 +296,7 @@ create table notification_preferences (
   email_enabled boolean not null default false,
   threshold_days int not null default 3 check (threshold_days >= 0),
   notify_at time not null default '08:00',
+  timezone text not null default 'Asia/Tokyo', -- #660: notify_at の解釈に使うIANAタイムゾーン
   updated_at timestamptz not null default now()
 );
 ```

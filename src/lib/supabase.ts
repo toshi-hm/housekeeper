@@ -274,6 +274,7 @@ export interface Database {
           email_address: string | null;
           threshold_days: number;
           notify_at: string;
+          timezone: string;
           updated_at: string;
         };
         Insert: {
@@ -283,6 +284,7 @@ export interface Database {
           email_address?: string | null;
           threshold_days?: number;
           notify_at?: string;
+          timezone?: string;
           updated_at?: string;
         };
         Update: {
@@ -292,6 +294,7 @@ export interface Database {
           email_address?: string | null;
           threshold_days?: number;
           notify_at?: string;
+          timezone?: string;
           updated_at?: string;
         };
         Relationships: [];

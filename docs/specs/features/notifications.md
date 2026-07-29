@@ -10,6 +10,7 @@
 - 設定画面で Push / Email / 両方 / なし を選べる
 - 通知を出す閾値日数（デフォルト 3）を変更できる
 - 通知時刻（デフォルト 08:00）を変更できる
+- 通知時刻を解釈するタイムゾーン（デフォルト Asia/Tokyo）を変更できる（#660、旅行・出張・海外赴任時など）
 - Push を有効化すると、ブラウザ通知許可がリクエストされる
 - iOS Safari など対応外環境ではトーストで案内し、Email を代替で勧める
 - 1 日 1 回の配信で、対象 item 件数とサマリが届く
@@ -28,11 +29,11 @@
 
 ### Edge Functions
 
-| 名前                        | 内容                                                                                                | トリガ                                                                                    |
-| --------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `subscribe-push`            | クライアントから受け取った購読を `push_subscriptions` に upsert（VAPID 鍵管理を Function 内に隠す） | クライアント                                                                              |
-| `send-expiry-notifications` | 全ユーザーをループし、`notification_preferences` を見て送信                                         | `pg_cron` で `notify_at` 付近に発火（ユーザー TZ は当面サーバ TZ で代替、Backlog で改善） |
-| `send-test-notification`    | 呼び出しユーザー自身の `push_subscriptions` にのみテスト通知を即時送信（#388）                      | クライアント（設定画面の「テスト通知を送信」ボタン）                                      |
+| 名前                        | 内容                                                                                                | トリガ                                                                                                                        |
+| --------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `subscribe-push`            | クライアントから受け取った購読を `push_subscriptions` に upsert（VAPID 鍵管理を Function 内に隠す） | クライアント                                                                                                                  |
+| `send-expiry-notifications` | 全ユーザーをループし、`notification_preferences` を見て送信                                         | `pg_cron` で `notify_at` 付近に発火（`notification_preferences.timezone` で指定されたユーザーごとのタイムゾーンで解釈、#660） |
+| `send-test-notification`    | 呼び出しユーザー自身の `push_subscriptions` にのみテスト通知を即時送信（#388）                      | クライアント（設定画面の「テスト通知を送信」ボタン）                                                                          |
 
 ### 環境変数（Edge Function 側）
 
@@ -97,8 +98,9 @@ Service Worker は `vite-plugin-pwa` の `injectManifest` 戦略で書く（PWA 
 ## 定期送信（pg_cron + pg_net）#354
 
 - `pg_cron` で **毎時** `send-expiry-notifications?scheduled=true` を呼び出す（`pg_net.http_post`）。
-- Edge Function は `scheduled=true` のとき、各ユーザーの `notification_preferences.notify_at`（JST）の「時」と
-  現在時刻(JST)が一致する場合のみ送信する。これにより「朝7時」などユーザー指定時刻に配信できる。
+- Edge Function は `scheduled=true` のとき、各ユーザーの `notification_preferences.notify_at` の「時」と、
+  そのユーザーの `notification_preferences.timezone`（#660、未設定時は既定の Asia/Tokyo）で解釈した現在時刻の
+  「時」が一致する場合のみ送信する。これにより「朝7時」などユーザー指定時刻・タイムゾーンで配信できる。
 - `notification_logs(user_id, sent_on)` の UNIQUE 制約 + `ignoreDuplicates` upsert で**1 ユーザー 1 日 1 通**に制限。
 - 手動呼び出し（クエリなし）は従来どおり全有効ユーザーへ即時送信（デバッグ用途）。
 - `X-Cron-Secret` ヘッダーによる呼び出し元認証（#444）を pg_net の呼び出しにも付与する。
@@ -109,6 +111,5 @@ Service Worker は `vite-plugin-pwa` の `injectManifest` 戦略で書く（PWA 
 
 ## Backlog
 
-- ユーザータイムゾーン対応（現状は JST 固定）
 - 通知種別の細分化（期限切れ / 在庫切れ / 補充提案）
 - アプリ内通知センター

@@ -13,5 +13,7 @@
   "sendTestNotification": "テスト通知を送信",
   "testNotificationError": "テスト通知の送信に失敗しました",
   "testNotificationSuccess": "テスト通知を送信しました",
-  "thresholdDays": "通知する日数前"
+  "thresholdDays": "通知する日数前",
+  "timezone": "タイムゾーン",
+  "timezoneHelp": "通知時刻はこのタイムゾーンで解釈されます"
 }
