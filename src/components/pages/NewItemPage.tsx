@@ -16,6 +16,7 @@ import { findActiveItemByBarcode, useCreateItem, useItem } from "@/hooks/useItem
 import { useStorageLocations } from "@/hooks/useMasterData";
 import { setItemTags, useCreateTag, useTags } from "@/hooks/useTags";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { clearItemFormDraft } from "@/lib/itemFormDraft";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import {
@@ -77,6 +78,9 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
       // #650: スタック（既存アイテムへの在庫加算）・復活（ソフトデリート解除）の
       // いずれも既存アイテムが対象なので、選択した画像・タグで上書きしてはならない。
       const isExistingItem = targetsExistingItem(result);
+      // #672: アイテム自体の作成に成功した時点で下書きの役目は終わり
+      // （タグ・画像の付随処理が後で失敗しても、テキスト項目の下書きは不要）。
+      if (!cloneFrom) clearItemFormDraft("new-item");
 
       // タグを保存（既存アイテムへのスタック/復活時は上書きしない）
       if (selectedTagIds.length > 0 && !isExistingItem) {
@@ -209,6 +213,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         }}
         submitLabel={existingItem ? t("stackSubmitLabel") : undefined}
         defaultValues={cloneDefaultValues}
+        draftKey={cloneFrom ? undefined : "new-item"}
         extraFields={
           <div className="space-y-2">
             <Label>{t("tags")}</Label>
