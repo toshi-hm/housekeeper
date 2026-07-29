@@ -48,37 +48,78 @@ export const WasteStatsChart = ({ data }: WasteStatsChartProps) => {
     return row;
   });
 
+  const summary = `${t("wasteBreakdown")}: ${data
+    .map((d) => `${d.month} ${t("itemCount")} ${d.total}`)
+    .join("、")}`;
+
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <BarChart data={chartData} margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-        <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis
-          tick={{ fontSize: 11 }}
-          tickLine={false}
-          axisLine={false}
-          width={32}
-          allowDecimals={false}
-        />
-        <Tooltip
-          formatter={(value, name) => [`${value ?? 0}${t("itemCount")}`, displayName(String(name))]}
-          contentStyle={{ fontSize: 12 }}
-        />
-        {categoryNames.length > 1 && (
-          <Legend wrapperStyle={{ fontSize: 12 }} formatter={displayName} />
-        )}
-        {categoryNames.map((name, index) => (
-          <Bar
-            key={name}
-            dataKey={name}
-            name={displayName(name)}
-            stackId="waste"
-            fill={BAR_COLORS[index % BAR_COLORS.length]}
-            radius={index === categoryNames.length - 1 ? [4, 4, 0, 0] : undefined}
-            isAnimationActive={false}
-          />
-        ))}
-      </BarChart>
-    </ResponsiveContainer>
+    <div role="img" aria-label={summary}>
+      <div aria-hidden="true">
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart
+            data={chartData}
+            margin={{ left: 0, right: 8, top: 8, bottom: 8 }}
+            accessibilityLayer={false}
+          >
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+            <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+            <YAxis
+              tick={{ fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              width={32}
+              allowDecimals={false}
+            />
+            <Tooltip
+              formatter={(value, name) => [
+                `${value ?? 0}${t("itemCount")}`,
+                displayName(String(name)),
+              ]}
+              contentStyle={{ fontSize: 12 }}
+            />
+            {categoryNames.length > 1 && (
+              <Legend wrapperStyle={{ fontSize: 12 }} formatter={displayName} />
+            )}
+            {categoryNames.map((name, index) => (
+              <Bar
+                key={name}
+                dataKey={name}
+                name={displayName(name)}
+                stackId="waste"
+                fill={BAR_COLORS[index % BAR_COLORS.length]}
+                radius={index === categoryNames.length - 1 ? [4, 4, 0, 0] : undefined}
+                isAnimationActive={false}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>{t("wasteBreakdown")}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("chartMonth")}</th>
+            {categoryNames.map((name) => (
+              <th key={name} scope="col">
+                {displayName(name)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => {
+            const countsByCategory = Object.fromEntries(d.byCategory.map((c) => [c.name, c.count]));
+            return (
+              <tr key={d.month}>
+                <th scope="row">{d.month}</th>
+                {categoryNames.map((name) => (
+                  <td key={name}>{countsByCategory[name] ?? 0}</td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 };
