@@ -17,8 +17,10 @@ interface UseDialogA11yOptions {
  * - オープン時にダイアログ内へ初期フォーカス
  * - クローズ時にオープン前のフォーカスを復元
  *
- * `ConfirmDialog`（`role="alertdialog"` + Escapeハンドラ）と同じパターンを、
- * 自前実装している他のダイアログにも適用するための共通フックとして切り出した。
+ * 元々 `ConfirmDialog` が持っていた素朴なEscapeハンドラ（フォーカストラップ無し）
+ * を発展させ、自前実装している他のダイアログ全般に適用できる共通フックとして
+ * 切り出したもの。`ConfirmDialog` / `DeletionReasonDialog` 自身も #654 でこの
+ * フックへ移行済み。
  * `onClose`/`disableClose` はrefで保持し、依存配列は `open` のみにすることで、
  * 呼び出し側が毎レンダーで新しい関数を渡しても再フォーカス/再トラップが起きない
  * ようにしている。
