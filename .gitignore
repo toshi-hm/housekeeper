@@ -20,12 +20,6 @@ dist-ssr
 # Storybook build output
 storybook-static
 
-# VRT screenshots and reports
-__screenshots__
-__diff__
-reg-report.html
-reg.json
-
 # Playwright E2E
 test-results
 playwright-report
