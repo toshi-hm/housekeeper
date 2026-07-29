@@ -1,14 +1,17 @@
 name: Mutation Testing
 
+# #674: coverageAnalysis is "off" (the "command" test runner can't instrument
+# per-mutant coverage), so every mutant re-runs the full `bun test` suite.
+# With src/hooks + src/lib + src/types mutated, a cold run takes ~3.5h -
+# far past the old 75-minute per-PR timeout, so every PR run was silently
+# `cancelled` before Stryker ever produced a report. Running that on every
+# PR is also not a reasonable use of CI time. Moved to a weekly scheduled
+# run (with enough timeout headroom to actually finish) instead of gating
+# PRs; `workflow_dispatch` still allows an on-demand run against a specific
+# PR for manual investigation.
 on:
-  pull_request:
-    paths:
-      - "src/hooks/**"
-      - "src/lib/**"
-      - "src/types/**"
-      - "stryker.config.json"
-      - "scripts/mutation-report.ts"
-      - ".github/workflows/mutation.yml"
+  schedule:
+    - cron: "0 18 * * 0" # 03:00 JST Monday
   workflow_dispatch:
     inputs:
       pull_request_number:
@@ -21,17 +24,18 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: mutation-${{ github.event.pull_request.number || inputs.pull_request_number || github.ref }}
+  group: mutation-${{ inputs.pull_request_number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   mutation:
     name: Mutation Testing (Stryker)
     runs-on: ubuntu-latest
-    # A cold full run currently takes about 57 minutes on ubuntu-latest.
-    # Keep enough headroom for runner variance; successful runs then seed the
-    # incremental cache and make subsequent PR checks substantially faster.
-    timeout-minutes: 75
+    # A cold full run currently takes about 3.5 hours on ubuntu-latest since
+    # coverageAnalysis is "off". Keep enough headroom for runner variance;
+    # successful runs then seed the incremental cache and make subsequent
+    # runs substantially faster.
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v7
 
@@ -61,10 +65,23 @@ jobs:
             echo "MUTATION_REPORT_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Write report to job summary
+        if: always()
+        run: echo "${{ steps.report.outputs.comment }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload mutation report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-${{ github.run_id }}
+          path: reports/mutation/
+          retention-days: 30
+          if-no-files-found: ignore
+
       - name: Post or update mutation report comment
-        if: always() && (github.event_name == 'pull_request' || inputs.pull_request_number != '')
+        if: always() && inputs.pull_request_number != ''
         uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: mutation-report
-          number: ${{ github.event.pull_request.number || inputs.pull_request_number }}
+          number: ${{ inputs.pull_request_number }}
           message: ${{ steps.report.outputs.comment }}
