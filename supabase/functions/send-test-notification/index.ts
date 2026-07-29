@@ -113,7 +113,13 @@ Deno.serve(async (req: Request) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({ title: testNotificationTitle, body: testNotificationBody }),
+          // #671: テスト通知は通知設定画面から送るものなので、タップ後もその画面に
+          // 戻すのが自然（対象アイテムは無いため sw.ts の既定値 "/" ではなく明示する）。
+          JSON.stringify({
+            title: testNotificationTitle,
+            body: testNotificationBody,
+            data: { url: "/settings" },
+          }),
         );
       } catch (err: unknown) {
         const status = (err as { statusCode?: number }).statusCode;
