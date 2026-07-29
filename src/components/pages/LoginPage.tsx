@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { isAvailableRegisterNewUser } from "@/config/auth";
+import { upsertSecurityQuestion } from "@/hooks/useSecurityQuestion";
 import {
   loginSchema,
   SECURITY_QUESTION_IDS,
@@ -25,6 +26,7 @@ import {
   totpCodeSchema,
   translateMfaError,
 } from "@/lib/mfa";
+import { OfflineError } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 
@@ -170,15 +172,19 @@ export const LoginPage = () => {
     const answerHash = await sha256hex(
       data.session.user.id + ":" + securityAnswer.toLowerCase().trim(),
     );
-    const { error: sqError } = await supabase.from("user_security_questions").upsert({
-      user_id: data.session.user.id,
-      email: email.toLowerCase().trim(),
-      question: securityQuestion,
-      answer_hash: answerHash,
-    });
-    if (sqError) {
+    try {
+      await upsertSecurityQuestion({
+        userId: data.session.user.id,
+        email: email.toLowerCase().trim(),
+        question: securityQuestion,
+        answerHash,
+      });
+    } catch (sqError) {
       await supabase.auth.signOut();
-      throw new Error(t("accountSetupFailed"));
+      throw new Error(
+        sqError instanceof OfflineError ? t("common:offlineError") : t("accountSetupFailed"),
+        { cause: sqError },
+      );
     }
 
     void navigate({ to: "/" });
