@@ -271,6 +271,7 @@ export interface Database {
           notify_at: string;
           push_enabled: boolean;
           threshold_days: number;
+          timezone: string;
           updated_at: string;
           user_id: string;
         };
@@ -280,6 +281,7 @@ export interface Database {
           notify_at?: string;
           push_enabled?: boolean;
           threshold_days?: number;
+          timezone?: string;
           updated_at?: string;
           user_id: string;
         };
@@ -289,6 +291,7 @@ export interface Database {
           notify_at?: string;
           push_enabled?: boolean;
           threshold_days?: number;
+          timezone?: string;
           updated_at?: string;
           user_id?: string;
         };

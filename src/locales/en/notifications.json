@@ -13,5 +13,7 @@
   "sendTestNotification": "Send test notification",
   "testNotificationError": "Failed to send test notification",
   "testNotificationSuccess": "Test notification sent",
-  "thresholdDays": "Days before to notify"
+  "thresholdDays": "Days before to notify",
+  "timezone": "Timezone",
+  "timezoneHelp": "Notification time is interpreted in this timezone"
 }

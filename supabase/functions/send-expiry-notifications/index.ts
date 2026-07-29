@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 import { isAuthorizedCronRequest } from "./auth.ts";
-import { jstDateString, jstNow } from "./date.ts";
+import { zonedDateString, zonedNow } from "./date.ts";
 import { buildNotificationTargetUrl } from "./notificationUrl.ts";
 
 const corsHeaders = {
@@ -17,6 +17,7 @@ interface NotificationPreference {
   email_address: string | null;
   threshold_days: number;
   notify_at: string | null;
+  timezone: string | null;
 }
 
 interface PushSubscription {
@@ -76,16 +77,18 @@ Deno.serve(async (req: Request) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // pg_cron からの定期実行（?scheduled=true）では、ユーザーごとの notify_at(JST) に
-  // 一致する時刻のみ送信し、notification_logs で 1 日 1 通に制限する。
+  // pg_cron からの定期実行（?scheduled=true）では、ユーザーごとの notify_at を
+  // そのユーザーの timezone（#660、未設定時は Asia/Tokyo）で解釈した時刻に
+  // 一致する場合のみ送信し、notification_logs で 1 日 1 通に制限する。
   // 手動呼び出し（クエリなし）では従来どおり全有効ユーザーへ即時送信する。
   const scheduled = new URL(req.url).searchParams.get("scheduled") === "true";
-  const jst = jstNow();
 
   // Fetch all users with notifications enabled
   const { data: prefs, error: prefsError } = await supabase
     .from("notification_preferences")
-    .select("user_id, push_enabled, email_enabled, email_address, threshold_days, notify_at")
+    .select(
+      "user_id, push_enabled, email_enabled, email_address, threshold_days, notify_at, timezone",
+    )
     .or("push_enabled.eq.true,email_enabled.eq.true");
 
   if (prefsError) {
@@ -98,14 +101,18 @@ Deno.serve(async (req: Request) => {
 
   const results = await Promise.allSettled(
     (prefs as NotificationPreference[]).map(async (pref) => {
-      // 定期実行時は、ユーザーが設定した通知時刻(JST)の「時」に一致する場合のみ送信する
+      const timezone = pref.timezone ?? "Asia/Tokyo";
+      const zoned = zonedNow(timezone);
+
+      // 定期実行時は、ユーザーが設定した通知時刻(そのユーザーのtimezone基準)の
+      // 「時」に一致する場合のみ送信する
       if (scheduled) {
         const notifyHour = pref.notify_at ? parseInt(pref.notify_at.split(":")[0], 10) : 8;
-        if (notifyHour !== jst.hour) return;
+        if (notifyHour !== zoned.hour) return;
       }
 
-      // Calculate the threshold date (JST基準)
-      const thresholdStr = jstDateString(pref.threshold_days);
+      // Calculate the threshold date (ユーザーのtimezone基準)
+      const thresholdStr = zonedDateString(timezone, pref.threshold_days);
 
       // Fetch expiring/expired items for this user.
       // 下限(gte today)は設けない — 既に期限切れの item も対象に含める（#445）。
@@ -137,7 +144,7 @@ Deno.serve(async (req: Request) => {
         const { data: claimed } = await supabase
           .from("notification_logs")
           .upsert(
-            { user_id: pref.user_id, sent_on: jst.date, item_count: count },
+            { user_id: pref.user_id, sent_on: zoned.date, item_count: count },
             { onConflict: "user_id,sent_on", ignoreDuplicates: true },
           )
           .select();

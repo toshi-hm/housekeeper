@@ -151,4 +151,29 @@ describe("NotificationSettings", () => {
     const { queryByText } = render(<NotificationSettings />, { wrapper });
     expect(queryByText(/メールアドレスが未設定のため|No email address set/i)).toBeNull();
   });
+
+  it("タイムゾーンを選択すると保存される (#660)", () => {
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const timezoneSelect = getByLabelText(/タイムゾーン|Timezone/i);
+    fireEvent.change(timezoneSelect, { target: { value: "America/Los_Angeles" } });
+
+    expect(mutateAsync).toHaveBeenCalledWith({ timezone: "America/Los_Angeles" });
+  });
+
+  it("既定では設定済みのtimezoneが選択された状態で表示される (#660)", () => {
+    prefsSpy.mockReturnValue({
+      data: {
+        user_id: "user-1",
+        push_enabled: false,
+        email_enabled: false,
+        email_address: null,
+        threshold_days: 3,
+        notify_at: "08:00",
+        timezone: "America/Los_Angeles",
+      },
+    } as unknown as ReturnType<typeof useNotificationPreferencesModule.useNotificationPreferences>);
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const timezoneSelect = getByLabelText(/タイムゾーン|Timezone/i) as HTMLSelectElement;
+    expect(timezoneSelect.value).toBe("America/Los_Angeles");
+  });
 });
