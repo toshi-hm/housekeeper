@@ -25,16 +25,32 @@ test.describe("メイン認証フロー（追加 → 消費 → 買い物リス�
     await page.locator('button[type="submit"]').click();
 
     // Successful create navigates back to the dashboard where the new item is listed.
-    await page.waitForURL(/\/$/);
+    // The dashboard route always serializes its (default-valued) search params into
+    // the URL, so match an optional trailing query string too (#658).
+    await page.waitForURL(/\/(\?.*)?$/);
     await expect(page.getByText(itemName)).toBeVisible();
 
     // --- Consume ---
-    await page.getByText(itemName).click();
+    // ItemCard renders an absolutely-positioned <Link aria-label={item.name}>
+    // overlay on top of the card's visible text (so the whole card is
+    // clickable), so target that overlay by its accessible name instead of
+    // the underlying text node — clicking the text directly makes Playwright's
+    // actionability check spin forever on "element intercepts pointer events"
+    // even though a real click at that point does land on (and navigate via)
+    // the overlay (#658).
+    await page.getByRole("link", { name: itemName }).click();
     await page.waitForURL(/\/items\/[^/]+$/);
-    await page.getByRole("link", { name: "Use" }).click();
-    await page.waitForURL(/\/consume$/);
-    await page.locator("#delta").fill("1");
+    // The item detail page's "Use" action is a Button that calls navigate()
+    // programmatically, not a Link (#658 — the E2E spec had drifted from
+    // this since it was never actually run in CI due to #664).
     await page.getByRole("button", { name: "Use" }).click();
+    // The item detail page carries a `tab` search param that survives this
+    // navigation (e.g. "?tab=info"), so match an optional trailing query
+    // string here too (#658).
+    await page.waitForURL(/\/consume(\?.*)?$/);
+    await page.locator("#delta").fill("1");
+    // exact:true avoids matching the sibling "Use all (1pcs)" button (#658).
+    await page.getByRole("button", { name: "Use", exact: true }).click();
     await page.waitForURL(/\/items\/[^/]+$/);
 
     // --- Shopping list ---
