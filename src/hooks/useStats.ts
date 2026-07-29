@@ -179,25 +179,32 @@ export const useForecastAlerts = (
 
 /** 廃棄理由（deletion_reason = 'expired_waste'）でソフトデリートされたアイテムを全件取得する。
  *  通常の `useItems` は `deleted_at IS NULL` でフィルタするため使えない。 */
+const fetchAllWasteItems = async (): Promise<RawWasteItem[]> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // #663: 同じ #622 の行数上限バグを再発させないよう、fetchAllLotsForValue と
+  // 同様にページングする。ソート列（id）が一意なので安定した順序でページングできる。
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("items")
+      .select("category_id, deleted_at")
+      .eq("user_id", user.id)
+      .eq("deletion_reason", "expired_waste")
+      .not("deleted_at", "is", null)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as RawWasteItem[];
+  });
+};
+
 const useAllWasteItems = () =>
   useQuery<RawWasteItem[]>({
     queryKey: ["waste-items-all"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from("items")
-        .select("category_id, deleted_at")
-        .eq("user_id", user.id)
-        .eq("deletion_reason", "expired_waste")
-        .not("deleted_at", "is", null)
-        .order("deleted_at", { ascending: true });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as RawWasteItem[];
-    },
+    queryFn: fetchAllWasteItems,
     staleTime: 0,
   });
 

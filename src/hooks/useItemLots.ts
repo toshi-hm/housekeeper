@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { maybeAutoReorder } from "@/lib/autoReorder";
 import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { fetchAllPages } from "@/lib/supabasePagination";
 import { useToast } from "@/lib/toast-context";
 import {
   computeConsumption,
@@ -301,13 +302,20 @@ const fetchAllLots = async (): Promise<PurchaseLotForExport[]> => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
-  const { data, error } = await supabase
-    .from("item_lots")
-    .select("item_id, purchased_units, purchase_date")
-    .eq("user_id", userData.user.id)
-    .order("purchase_date", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as PurchaseLotForExport[];
+  // #663: 単一の無制限selectはPostgRESTの行数上限（デフォルト1000）超過時に静かに
+  // 欠落するため、fetchAllLotsForValue（useStats.ts）と同様にページングする。
+  // purchase_date は同値がありうるため id を tiebreaker にして安定した順序にする。
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("item_lots")
+      .select("item_id, purchased_units, purchase_date")
+      .eq("user_id", userData.user.id)
+      .order("purchase_date", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as PurchaseLotForExport[];
+  });
 };
 
 export const useAllItemLots = () =>
