@@ -123,4 +123,54 @@ describe("DeletionReasonDialog", () => {
       expect((radio as HTMLInputElement).disabled).toBe(true);
     });
   });
+
+  // #654: useDialogA11y への移行でフォーカストラップ・初期フォーカスが
+  // 効くようになったことの回帰テスト。
+  it("EscapeキーでonCancelが呼ばれる（isConfirming=falseのとき）", () => {
+    const onCancel = mock(() => {});
+    render(
+      <DeletionReasonDialog
+        open={true}
+        title="削除"
+        message="削除しますか？"
+        onConfirm={() => {}}
+        onCancel={onCancel}
+      />,
+      { wrapper },
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("isConfirming=trueのときEscapeキーではonCancelが呼ばれない", () => {
+    const onCancel = mock(() => {});
+    render(
+      <DeletionReasonDialog
+        open={true}
+        title="削除"
+        message="削除しますか？"
+        isConfirming={true}
+        onConfirm={() => {}}
+        onCancel={onCancel}
+      />,
+      { wrapper },
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("開いたときにダイアログコンテナ内へ初期フォーカスが当たる", () => {
+    const { container } = render(
+      <DeletionReasonDialog
+        open={true}
+        title="削除"
+        message="削除しますか？"
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+      { wrapper },
+    );
+    const dialog = container.querySelector('[role="alertdialog"]');
+    expect(dialog?.contains(document.activeElement)).toBe(true);
+  });
 });

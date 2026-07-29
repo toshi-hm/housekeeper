@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
 import { Button } from "@/components/ui/button";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -28,15 +28,11 @@ export const ConfirmDialog = ({
   onCancel,
 }: ConfirmDialogProps) => {
   const { t } = useTranslation();
-
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isConfirming) onCancel();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, isConfirming, onCancel]);
+  const containerRef = useDialogA11y<HTMLDivElement>({
+    open,
+    onClose: onCancel,
+    disableClose: isConfirming,
+  });
 
   if (!open) return null;
 
@@ -48,10 +44,12 @@ export const ConfirmDialog = ({
         aria-hidden="true"
       />
       <div
+        ref={containerRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-desc"
+        tabIndex={-1}
         className="relative w-full max-w-sm rounded-xl bg-background p-6 shadow-xl"
       >
         <h2 id="confirm-dialog-title" className="text-lg font-semibold">
