@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type { Category, Item, StorageLocation } from "@/types/item";
 
 /**
@@ -70,7 +72,7 @@ export const itemsToCSV = (
   return buildCsv(header, rows);
 };
 
-export interface ItemsExportPayload {
+interface ItemsExportPayload {
   exported_at: string;
   version: 1;
   items: Item[];
@@ -84,6 +86,68 @@ export const itemsToJSON = (items: Item[], now: () => Date = () => new Date()): 
     items,
   };
   return JSON.stringify(payload, null, 2);
+};
+
+// --- Items import (#657) ---
+
+/**
+ * インポート対象として受け入れるアイテムのフィールド。`category_id` /
+ * `storage_location_id` は別プロジェクトへの移行時には無効な参照になる
+ * （現プロジェクトの categories/storage_locations テーブルに存在しない
+ * ID を指すため FK 違反になる）ため、意図的に取り込まない。カテゴリ・
+ * 保管場所はインポート後に手動で再設定する運用とする。
+ */
+const importItemSchema = z.object({
+  name: z.string().min(1),
+  barcode: z.string().nullable().optional(),
+  units: z.number().int().min(0),
+  content_amount: z.number().positive(),
+  content_unit: z.string().min(1),
+  opened_remaining: z.number().min(0).nullable().optional(),
+  purchase_date: z.string().nullable().optional(),
+  expiry_date: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  minimum_stock: z.number().int().min(0).nullable().optional(),
+  auto_reorder: z.boolean().optional(),
+  reorder_threshold: z.number().int().min(0).nullable().optional(),
+});
+
+export type ImportItemInput = z.infer<typeof importItemSchema>;
+
+const importPayloadSchema = z.object({
+  exported_at: z.string(),
+  version: z.literal(1),
+  items: z.array(importItemSchema),
+});
+
+/** `jsonToItems` が投げるエラーの理由。i18n キーの切り替えに使う (Key Map パターン)。 */
+export type ImportParseErrorReason = "invalid_json" | "invalid_format";
+
+export class ImportParseError extends Error {
+  readonly reason: ImportParseErrorReason;
+  constructor(reason: ImportParseErrorReason) {
+    super(`Failed to parse import file: ${reason}`);
+    this.reason = reason;
+  }
+}
+
+/**
+ * `itemsToJSON` が生成した `{exported_at, version: 1, items}` 形式のバックアップ
+ * JSON をパース・検証する（#657）。不正な JSON / 想定外の形式は
+ * `ImportParseError` を投げる。
+ */
+export const jsonToItems = (jsonText: string): ImportItemInput[] => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new ImportParseError("invalid_json");
+  }
+  const result = importPayloadSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new ImportParseError("invalid_format");
+  }
+  return result.data.items;
 };
 
 // --- Consumption / purchase history export (#381) ---
@@ -207,7 +271,7 @@ export const DEFAULT_HISTORY_CSV_HEADER = [
   "メモ",
 ] as const;
 
-export const DEFAULT_HISTORY_TYPE_LABELS: Record<HistoryExportType, string> = {
+const DEFAULT_HISTORY_TYPE_LABELS: Record<HistoryExportType, string> = {
   consumption: "消費",
   purchase: "購入",
 };

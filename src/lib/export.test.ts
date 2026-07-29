@@ -12,8 +12,10 @@ import {
   getPeriodStartDate,
   type HistoryExportRow,
   historyRowsToCSV,
+  ImportParseError,
   itemsToCSV,
   itemsToJSON,
+  jsonToItems,
 } from "./export";
 
 const makeItem = (overrides: Partial<Item> = {}): Item => ({
@@ -100,6 +102,59 @@ describe("itemsToJSON", () => {
     const json = itemsToJSON([]);
     const parsed = JSON.parse(json) as { items: Item[] };
     expect(parsed.items).toEqual([]);
+  });
+});
+
+describe("jsonToItems", () => {
+  test("round-trips a valid itemsToJSON payload, dropping category/location references", () => {
+    const item = makeItem({
+      barcode: "1234567890123",
+      category_id: "cat-1",
+      storage_location_id: "loc-1",
+    });
+    const json = itemsToJSON([item]);
+    const result = jsonToItems(json);
+    // category_id / storage_location_id are intentionally not carried over —
+    // they'd reference IDs that may not exist in the importing project (#657).
+    expect(result).toEqual([
+      {
+        name: item.name,
+        barcode: item.barcode,
+        units: item.units,
+        content_amount: item.content_amount,
+        content_unit: item.content_unit,
+        opened_remaining: item.opened_remaining,
+        purchase_date: item.purchase_date,
+        expiry_date: item.expiry_date,
+        notes: item.notes,
+        minimum_stock: item.minimum_stock,
+      },
+    ]);
+  });
+
+  test("throws ImportParseError('invalid_json') for text that isn't JSON", () => {
+    expect(() => jsonToItems("not json")).toThrow(ImportParseError);
+    try {
+      jsonToItems("not json");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ImportParseError);
+      expect((err as ImportParseError).reason).toBe("invalid_json");
+    }
+  });
+
+  test("throws ImportParseError('invalid_format') for valid JSON in the wrong shape", () => {
+    expect(() => jsonToItems(JSON.stringify({ foo: "bar" }))).toThrow(ImportParseError);
+    try {
+      jsonToItems(JSON.stringify({ version: 2, items: [] }));
+    } catch (err) {
+      expect(err).toBeInstanceOf(ImportParseError);
+      expect((err as ImportParseError).reason).toBe("invalid_format");
+    }
+  });
+
+  test("rejects an item missing a required field", () => {
+    const payload = { exported_at: "2026-07-19T00:00:00Z", version: 1, items: [{ name: "" }] };
+    expect(() => jsonToItems(JSON.stringify(payload))).toThrow(ImportParseError);
   });
 });
 
