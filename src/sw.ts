@@ -3,6 +3,8 @@ import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { NetworkFirst } from "workbox-strategies";
 
+import { resolveNotificationTargetUrl } from "@/lib/notificationTarget";
+
 declare const self: ServiceWorkerGlobalScope;
 
 cleanupOutdatedCaches();
@@ -34,23 +36,24 @@ registerRoute(
 // Handle push notifications
 self.addEventListener("push", (event: PushEvent) => {
   if (!event.data) return;
-  const data = event.data.json() as { title?: string; body?: string };
+  const data = event.data.json() as { title?: string; body?: string; data?: { url?: string } };
   event.waitUntil(
     self.registration.showNotification(data.title ?? "housekeeper", {
       body: data.body,
       icon: "/favicon.svg",
       badge: "/favicon.svg",
+      // #671: 対象アイテム/期限カレンダーへのディープリンク。notificationclick側で読む。
+      data: data.data,
     }),
   );
 });
 
-const NOTIFICATION_TARGET_URL = "/";
-
 self.addEventListener("notificationclick", (event: NotificationEvent) => {
   event.notification.close();
+  const targetPath = resolveNotificationTargetUrl(event.notification.data);
   event.waitUntil(
     (async () => {
-      const targetUrl = new URL(NOTIFICATION_TARGET_URL, self.location.origin).href;
+      const targetUrl = new URL(targetPath, self.location.origin).href;
       const allClients = await self.clients.matchAll({
         type: "window",
         includeUncontrolled: true,
@@ -61,7 +64,7 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
       if (existing) {
         await existing.focus();
       } else {
-        await self.clients.openWindow(NOTIFICATION_TARGET_URL);
+        await self.clients.openWindow(targetPath);
       }
     })(),
   );

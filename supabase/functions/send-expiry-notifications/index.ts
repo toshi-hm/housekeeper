@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { jstDateString, jstNow } from "./date.ts";
+import { buildNotificationTargetUrl } from "./notificationUrl.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +27,7 @@ interface PushSubscription {
 }
 
 interface ExpiringItem {
+  id: string;
   name: string;
   expiry_date: string;
 }
@@ -110,7 +112,7 @@ Deno.serve(async (req: Request) => {
       // opened_remaining = 0（開封済み・空）の item は対象外とする（#445）。
       const { data: items } = await supabase
         .from("items")
-        .select("name, expiry_date")
+        .select("id, name, expiry_date")
         .eq("user_id", pref.user_id)
         .not("expiry_date", "is", null)
         .lte("expiry_date", thresholdStr)
@@ -147,6 +149,7 @@ Deno.serve(async (req: Request) => {
         .slice(0, 3)
         .map((i) => text.itemLine(i.name, i.expiry_date))
         .join(", ");
+      const notificationUrl = buildNotificationTargetUrl(items as ExpiringItem[]);
 
       // Send push notifications
       if (pref.push_enabled) {
@@ -167,7 +170,7 @@ Deno.serve(async (req: Request) => {
               try {
                 await webpush.sendNotification(
                   { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-                  JSON.stringify({ title, body }),
+                  JSON.stringify({ title, body, data: { url: notificationUrl } }),
                 );
               } catch (err: unknown) {
                 const status = (err as { statusCode?: number }).statusCode;
