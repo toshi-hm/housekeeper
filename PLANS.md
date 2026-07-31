@@ -444,12 +444,19 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 ### 8.5. Backlog（v2 以降 / 未確定）
 
-- 多人数共有（家族）
 - ダークモード
 - CSV / JSON エクスポート
 - Sentry / 観測基盤
 - 定期購入予測
 - 在庫推移グラフ
+
+以下は spec ドラフト済み・実装方針が決まったため Backlog から昇格した（タスク breakdown は §10）:
+
+- 購入先（店舗）記録と店舗別価格比較（v1.6, #697） — 詳細: `docs/specs/features/consumption-purchase.md`
+  「購入先（店舗）記録と店舗別価格比較」節
+- レシート一括登録（v1.7, #696） — 詳細: `docs/specs/features/receipt-scan.md`
+- 多人数共有 + Alexa マルチユーザー対応（v2, #64 / #159） — 詳細: `docs/specs/features/household-sharing.md`。
+  「Single user」制約の変更を伴う根本方針変更のため、実装は複数 PR に分割する（§9 決定ログ参照）
 
 ### 8.6. MVP の完了判定
 
@@ -461,14 +468,16 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 ## §9. 決定ログ
 
-| 日付       | 決定                                                            | 理由    |
-| ---------- | --------------------------------------------------------------- | ------- |
-| 2026-04-30 | MVP 再定義（既存実装の抜けを取り込む）                          | Q1=b    |
-| 2026-04-30 | 通知は Push + Email のユーザー選択制                            | Q4=c    |
-| 2026-04-30 | オフラインは参照のみ                                            | Q5=a    |
-| 2026-04-30 | テストランナーは `bun test` を採用、Vitest 不採用               | Q6=b    |
-| 2026-04-30 | 数量は `units × content_amount` + `opened_remaining` モデル     | Q7 補足 |
-| 2026-04-30 | Issue 同期は Skill (`.claude/skills/project/issue-sync`) で運用 | Q8=b    |
+| 日付       | 決定                                                                                                                                                | 理由                                                          |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 2026-04-30 | MVP 再定義（既存実装の抜けを取り込む）                                                                                                              | Q1=b                                                          |
+| 2026-04-30 | 通知は Push + Email のユーザー選択制                                                                                                                | Q4=c                                                          |
+| 2026-04-30 | オフラインは参照のみ                                                                                                                                | Q5=a                                                          |
+| 2026-04-30 | テストランナーは `bun test` を採用、Vitest 不採用                                                                                                   | Q6=b                                                          |
+| 2026-04-30 | 数量は `units × content_amount` + `opened_remaining` モデル                                                                                         | Q7 補足                                                       |
+| 2026-04-30 | Issue 同期は Skill (`.claude/skills/project/issue-sync`) で運用                                                                                     | Q8=b                                                          |
+| 2026-07-31 | 「Single user」制約を変更し、世帯（household）単位の多人数共有を実装する方針を承認（#64 / #159）。設計は `docs/specs/features/household-sharing.md` | ユーザー承認（issue #64/#159 対応の feature-proposal フロー） |
+| 2026-07-31 | レシート一括登録（#696）・購入先/店舗別価格比較（#697）を spec ドラフト済みとして Backlog から昇格                                                  | ユーザー承認（feature-proposal フロー）                       |
 
 ---
 
@@ -599,7 +608,52 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [ ] レイアウト統合（AI ボタン）+ i18n `chat` 名前空間 <!-- issue:#428 -->
 - [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#429 -->
 
-- [ ] 多人数共有 <!-- issue:#64 -->
+### v1.6 — 購入先（店舗）記録と店舗別価格比較
+
+> 設計: `docs/specs/features/consumption-purchase.md`「購入先（店舗）記録と店舗別価格比較」節（親 Issue: #697）
+
+- [ ] migration: `item_lots.store_name text null` 追加
+- [ ] `createLot` / `updateLot` に `store_name` を追加
+- [ ] 購入（ロット編集）フォームに店舗名入力 + サジェスト（`useStoreNameSuggestions`）
+- [ ] 購入履歴画面に店舗名列を追加
+- [ ] `useStorePriceComparison` + 統計ページの店舗別価格比較カード
+- [ ] JSON バックアップ（v2, #693）の `ItemLotExport` に `store_name` を追加（後方互換）
+- [ ] テスト / CI 整備と PR CI グリーン化
+
+### v1.7 — レシート一括登録（Gemini Vision）
+
+> 設計: `docs/specs/features/receipt-scan.md`（親 Issue: #696）
+
+- [ ] Edge Function `receipt-scan` 新設（Gemini Vision / RLS スコープ / レート制限）
+- [ ] `useReceiptScan` hook + 型 / Zod
+- [ ] レビュー UI（`ReceiptLineItemRow` / `ReceiptReviewPanel` + Story）
+- [ ] `ReceiptScanPage` ルート追加 + ダッシュボードからのエントリーポイント
+- [ ] i18n `receiptScan` 名前空間
+- [ ] テスト / CI 整備と PR CI グリーン化
+
+### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
+
+> 「Single user」制約を変更する根本方針変更。設計: `docs/specs/features/household-sharing.md`
+> （親 Issue: #64 / #159）。実装は本セクションの順序（データ → RLS → 移行 → UI → Alexa）で
+> 複数 PR に分割する。
+
+- [ ] migration: `households` / `household_members` / `household_invites` テーブル新設
+- [ ] `redeem_household_invite` RPC（招待コードによる参加をアトミックに処理）
+- [ ] 共有対象テーブル（items, item_lots, categories, storage_locations, custom_units,
+      consumption_logs, shopping_list_items, shopping_list_archive, shopping_list_templates,
+      shopping_list_template_items, recipes, recipe_items, tags, items_to_tags）への
+      `household_id` 追加 + RLS を `household_id` ベースに切り替え
+- [ ] Storage バケット（`item-images` / `location-photos`）のパスを `<household_id>/...` に変更 + RLS更新
+- [ ] 既存ユーザーの個人世帯自動作成 + `household_id` バックフィル（データマイグレーション）
+- [ ] `useHousehold` / `useCreateHouseholdInvite` / `useRedeemHouseholdInvite` /
+      `useRemoveHouseholdMember` / `useRenameHousehold` hook
+- [ ] 世帯管理画面（`/_auth/settings/household`）
+- [ ] pgTAP: `rls_household.test.sql` 新規 + 既存 RLS テストの household 対応更新
+- [ ] Alexa: Account Linking 設定 + Edge Function を service-role+USER_ID から
+      anon key+JWT に変更（#159）
+- [ ] `docs/specs/features/auth.md` の「単一ユーザー」記述を更新
+- [ ] テスト / CI 整備と PR CI グリーン化
+
 - [ ] ダークモード <!-- issue:#65 -->
 - [x] CSV / JSON エクスポート <!-- issue:#66 -->
 - [x] Sentry など観測 <!-- issue:#67 -->

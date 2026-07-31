@@ -211,6 +211,54 @@ end $$;
   週あたり平均消費ペース」で算出する。直近3ヶ月に消費ログが無い場合はデータ不足メッセージを表示する
 - 表示のみ（書き込みなし）。データ取得・算出は呼び出し側（`_auth/items/$itemId` route）が行う
 
+## 購入先（店舗）記録と店舗別価格比較（#697）
+
+`item_lots.unit_price`（購入時単価）は既にあるが、購入先（店舗名）を保持する列がなく、
+「同じ商品をどの店で買うと安いか」の比較に使えなかった。任意項目として店舗名を追加する。
+
+### スコープ
+
+- やること: `item_lots` への店舗名保持、購入（ロット編集）フォームへの入力欄追加、
+  購入履歴表示への反映、同一商品を複数店舗で買った場合の簡易な価格比較表示
+- やらないこと: 店舗の位置情報・地図連携。`stores` マスタテーブル化（カテゴリ/保管場所と
+  同様のCRUD画面）は今回は行わず、自由入力の text 列に留める。既存データ・既存フローへの
+  破壊的変更は発生しない（任意項目・NULL許容のため）
+
+### データ
+
+- `item_lots.store_name text null` を追加（`docs/specs/database.md` の `item_lots` に準拠する
+  マイグレーション）。`unit_price` と同様、既存ロットは全て `NULL`（後方互換）
+- 将来、店舗ごとの分析が重要になった場合は `stores` マスタテーブルへの昇格を検討する
+  （`master-data.md` の `categories` / `storage_locations` と同じパターンで追加できる設計に
+  しておく — 今回はその布石として、`store_name` は自由入力だがトリムした文字列として
+  一貫性を保つ）
+
+### 画面
+
+- 購入（ロット新規登録・編集）フォームに「店舗名」の任意テキスト入力を追加。直近使用した
+  店舗名（`item_lots.store_name` の distinct 値、自ユーザー分）をサジェストする
+- 購入履歴画面（`docs/specs/features/consumption-purchase.md` の「エクスポート」節と同じ
+  `item_lots` ベースの一覧）に店舗名列を追加
+- 統計ページ（`docs/specs/features/stats.md`）に、同一アイテムで複数店舗の `unit_price` が
+  記録されている場合のみ表示する簡易カード（店舗名 × 直近単価の一覧、安い順）を追加。
+  対象データが無いユーザーには何も表示しない（Empty状態で場所を取らない）
+
+### API（hook）
+
+- 既存 `createLot` / `updateLot`（`src/hooks/useItemLots.ts`）の引数に `store_name` を追加
+- 新規 `useStoreNameSuggestions()`: 自ユーザーの `item_lots.store_name` の distinct 値を返す
+  軽量クエリ（フォームのサジェスト用）
+- 新規 `useStorePriceComparison(itemId)`: 指定アイテムの店舗別最新単価一覧を返す
+
+### エクスポート/インポートへの影響
+
+- JSON バックアップ（v2, #693）の `ItemLotExport` に `store_name` を追加する（後方互換:
+  旧v1・store_name追加前のv2バックアップは `store_name: null` として読み込む）
+
+### やらないこと（スコープ外、再掲）
+
+- 店舗の位置情報・地図連携、店舗マスタテーブル化（自由入力に留める）
+
 ## Backlog
 
 - 単位換算（mL ⇔ L）

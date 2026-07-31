@@ -3,7 +3,10 @@
 ## Project Overview
 
 Self-hosted home inventory management web app.
-Single user. No public-facing features. CRUD-centric.
+No public-facing features. CRUD-centric.
+Currently single-owner per Supabase project (`user_id`-scoped RLS); household
+(multi-user) sharing is planned but not yet implemented — see
+docs/specs/features/household-sharing.md and docs/specs/features/auth.md.
 
 ## Tech Stack
 
@@ -48,6 +51,8 @@ Read the relevant spec file before implementing any feature.
 - i18n: docs/specs/features/i18n.md
 - Stats: docs/specs/features/stats.md
 - Accessibility: docs/specs/accessibility.md
+- Household sharing (multi-user, planned): docs/specs/features/household-sharing.md
+- Receipt scan bulk registration (planned): docs/specs/features/receipt-scan.md
 
 ## TODO / Progress
 
