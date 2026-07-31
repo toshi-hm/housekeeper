@@ -25,6 +25,7 @@ export const DashboardNotificationCenter = ({
   children,
 }: DashboardNotificationCenterProps) => {
   const [expanded, setExpanded] = useState(false);
+  const contentId = "dashboard-notification-center-content";
 
   if (chips.length === 0) return null;
 
@@ -35,6 +36,7 @@ export const DashboardNotificationCenter = ({
         className="flex w-full items-center justify-between gap-2 p-3 text-left"
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
+        aria-controls={contentId}
       >
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium">
           {chips.map((chip) => (
@@ -50,7 +52,11 @@ export const DashboardNotificationCenter = ({
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         )}
       </button>
-      {expanded && <div className="space-y-3 border-t p-3">{children}</div>}
+      {expanded && (
+        <div id={contentId} className="space-y-3 border-t p-3">
+          {children}
+        </div>
+      )}
     </div>
   );
 };
