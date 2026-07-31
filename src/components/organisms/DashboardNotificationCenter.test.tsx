@@ -41,6 +41,22 @@ describe("DashboardNotificationCenter (#624)", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
   });
 
+  it("トグルボタンのaria-controlsが展開エリアのidと一致する（#700）", () => {
+    const { getByRole, container } = render(
+      <DashboardNotificationCenter chips={[{ key: "a", icon: null, text: "3件の期限切れ" }]}>
+        <p>expanded content</p>
+      </DashboardNotificationCenter>,
+    );
+    const toggle = getByRole("button");
+    const controlsId = toggle.getAttribute("aria-controls");
+    expect(controlsId).not.toBeNull();
+
+    fireEvent.click(toggle);
+    const content = container.querySelector(`#${controlsId}`);
+    expect(content).not.toBeNull();
+    expect(content?.textContent).toContain("expanded content");
+  });
+
   it("複数のchipsをすべて表示する", () => {
     const { getByText } = render(
       <DashboardNotificationCenter
