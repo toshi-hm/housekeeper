@@ -325,6 +325,43 @@ export const useAllItemLots = () =>
     staleTime: 0,
   });
 
+/** JSONバックアップ（#693）用: ユーザーの全ロットをロット単位のまま取得する。
+ *  `fetchAllLots` は購入履歴CSV専用の軽量な列だけを持つため、バックアップの
+ *  復元に必要な列（opened_remaining / unit_price / expiry_date）を別途取得する。 */
+interface FullLotForExport {
+  item_id: string;
+  units: number;
+  opened_remaining: number | null;
+  unit_price: number | null;
+  purchase_date: string | null;
+  expiry_date: string | null;
+}
+
+const fetchAllLotsFull = async (): Promise<FullLotForExport[]> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
+  // #663と同じ理由でページングする（PostgRESTのデフォルト行数上限対策）。
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("item_lots")
+      .select("item_id, units, opened_remaining, unit_price, purchase_date, expiry_date, id")
+      .eq("user_id", userData.user.id)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as FullLotForExport[];
+  });
+};
+
+export const useAllItemLotsFull = () =>
+  useQuery({
+    queryKey: [...LOTS_KEY, "all-full"],
+    queryFn: fetchAllLotsFull,
+    staleTime: 0,
+  });
+
 export const useItemLots = (itemId: string) =>
   useQuery({
     queryKey: [...LOTS_KEY, itemId],

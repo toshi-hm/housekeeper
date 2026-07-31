@@ -77,6 +77,18 @@ describe("DataExportPanel", () => {
     spyOn(useItemLotsModule, "useAllItemLots").mockReturnValue({
       data: [{ item_id: "item-1", purchased_units: 1, purchase_date: "2026-07-01" }],
     } as unknown as ReturnType<typeof useItemLotsModule.useAllItemLots>);
+    spyOn(useItemLotsModule, "useAllItemLotsFull").mockReturnValue({
+      data: [
+        {
+          item_id: "item-1",
+          units: 1,
+          opened_remaining: null,
+          unit_price: null,
+          purchase_date: "2026-07-01",
+          expiry_date: "2026-07-15",
+        },
+      ],
+    } as unknown as ReturnType<typeof useItemLotsModule.useAllItemLotsFull>);
 
     downloadSpy = spyOn(exportLib, "downloadTextFile").mockImplementation(() => {});
   });
@@ -105,7 +117,7 @@ describe("DataExportPanel", () => {
     expect(downloadSpy).toHaveBeenCalledTimes(1);
     const [content, filename, mimeType] = downloadSpy.mock.calls[0] as [string, string, string];
     const parsed = JSON.parse(content) as { version: number; items: Item[] };
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.items).toHaveLength(1);
     expect(filename).toMatch(/^items-\d{8}\.json$/);
     expect(mimeType).toBe("application/json");

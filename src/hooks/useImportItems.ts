@@ -65,18 +65,17 @@ export const importItems = async ({
       // 数量・期限・開封残量はロット単位で管理されているため、items 行を
       // 直接上書きするのではなく既存ロットを入れ替えてから
       // syncItemAggregate で反映する（items.units 等との不整合を防ぐ）。
+      // #693: バックアップは複数ロットを保持しうるので、1件だけでなく
+      // item.lots 全件を作り直す。
       const { error: deleteLotsError } = await supabase
         .from("item_lots")
         .delete()
         .eq("item_id", existingId);
       if (deleteLotsError) throw new Error(deleteLotsError.message);
 
-      await createLot(userId, existingId, {
-        units: item.units,
-        opened_remaining: item.opened_remaining ?? null,
-        purchase_date: item.purchase_date ?? null,
-        expiry_date: item.expiry_date ?? null,
-      });
+      for (const lot of item.lots) {
+        await createLot(userId, existingId, lot);
+      }
 
       const { error } = await supabase
         .from("items")
@@ -117,12 +116,10 @@ export const importItems = async ({
     if (createError) throw new Error(createError.message);
 
     const createdId = (created as { id: string }).id;
-    await createLot(userId, createdId, {
-      units: item.units,
-      opened_remaining: item.opened_remaining ?? null,
-      purchase_date: item.purchase_date ?? null,
-      expiry_date: item.expiry_date ?? null,
-    });
+    // #693: バックアップが複数ロットを持つ場合、そのすべてを個別のロットとして復元する。
+    for (const lot of item.lots) {
+      await createLot(userId, createdId, lot);
+    }
     await syncItemAggregate(createdId);
 
     // 同一インポート内で同じバーコードが複数回出てきた場合に備え、今作った

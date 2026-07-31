@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useAllConsumptionLogs } from "@/hooks/useConsumptionLogs";
-import { useAllItemLots } from "@/hooks/useItemLots";
+import { useAllItemLots, useAllItemLotsFull } from "@/hooks/useItemLots";
 import { useItems, useItemsForExport } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import {
@@ -17,6 +17,7 @@ import {
   type ExportPeriod,
   filterHistoryRowsByPeriod,
   historyRowsToCSV,
+  type ItemLotExport,
   itemsToCSV,
   itemsToJSON,
 } from "@/lib/export";
@@ -33,9 +34,11 @@ export const DataExportPanel = () => {
   const itemsQuery = useItems({}, "created_at");
   const categoriesQuery = useCategories();
   const locationsQuery = useStorageLocations();
+  const fullLotsQuery = useAllItemLotsFull();
   const { data: items = [] } = itemsQuery;
   const { data: categories = [] } = categoriesQuery;
   const { data: locations = [] } = locationsQuery;
+  const { data: fullLots = [] } = fullLotsQuery;
 
   const itemLookupsQuery = useItemsForExport();
   const consumptionLogsQuery = useAllConsumptionLogs();
@@ -52,9 +55,31 @@ export const DataExportPanel = () => {
     () => new Map(categories.map((c) => [c.id, c.name])),
     [categories],
   );
+  const lotsByItemId = useMemo(() => {
+    const map = new Map<string, ItemLotExport[]>();
+    for (const lot of fullLots) {
+      const lots = map.get(lot.item_id) ?? [];
+      lots.push({
+        units: lot.units,
+        opened_remaining: lot.opened_remaining,
+        unit_price: lot.unit_price,
+        purchase_date: lot.purchase_date,
+        expiry_date: lot.expiry_date,
+      });
+      map.set(lot.item_id, lots);
+    }
+    return map;
+  }, [fullLots]);
   const itemsPending =
-    itemsQuery.isPending || categoriesQuery.isPending || locationsQuery.isPending;
-  const itemsFailed = itemsQuery.isError || categoriesQuery.isError || locationsQuery.isError;
+    itemsQuery.isPending ||
+    categoriesQuery.isPending ||
+    locationsQuery.isPending ||
+    fullLotsQuery.isPending;
+  const itemsFailed =
+    itemsQuery.isError ||
+    categoriesQuery.isError ||
+    locationsQuery.isError ||
+    fullLotsQuery.isError;
   const historyPending =
     itemLookupsQuery.isPending ||
     categoriesQuery.isPending ||
@@ -83,7 +108,7 @@ export const DataExportPanel = () => {
       showExportError();
       return;
     }
-    const json = itemsToJSON(items);
+    const json = itemsToJSON(items, lotsByItemId);
     downloadTextFile(json, buildExportFilename("items", "json"), "application/json");
     toast(t("exportSuccess"), "success");
   };

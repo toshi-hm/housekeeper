@@ -111,31 +111,96 @@ describe("itemsToCSV", () => {
 });
 
 describe("itemsToJSON", () => {
-  test("produces {exported_at, version, items}", () => {
+  test("produces {exported_at, version: 2, items} with a lots array per item", () => {
     const fixedNow = () => new Date("2026-07-19T12:00:00Z");
     const item = makeItem();
-    const json = itemsToJSON([item], fixedNow);
-    const parsed = JSON.parse(json) as { exported_at: string; version: number; items: Item[] };
+    const lots = new Map([
+      [
+        item.id,
+        [
+          {
+            units: 1,
+            opened_remaining: null,
+            unit_price: 200,
+            purchase_date: "2026-07-01",
+            expiry_date: "2026-08-01",
+          },
+          {
+            units: 1,
+            opened_remaining: null,
+            unit_price: null,
+            purchase_date: "2026-07-10",
+            expiry_date: "2026-09-15",
+          },
+        ],
+      ],
+    ]);
+    const json = itemsToJSON([item], lots, fixedNow);
+    const parsed = JSON.parse(json) as {
+      exported_at: string;
+      version: number;
+      items: { name: string; lots: unknown[] }[];
+    };
     expect(parsed.exported_at).toBe("2026-07-19T12:00:00.000Z");
-    expect(parsed.version).toBe(1);
-    expect(parsed.items).toEqual([item]);
+    expect(parsed.version).toBe(2);
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.items[0]?.name).toBe(item.name);
+    // #693: both lots (with distinct expiry dates) must survive the export,
+    // not just the earliest one that would have won on the aggregated row.
+    expect(parsed.items[0]?.lots).toEqual(lots.get(item.id));
+  });
+
+  test("falls back to the item's own aggregate as a single lot when no lots are supplied", () => {
+    const item = makeItem();
+    const json = itemsToJSON([item], new Map());
+    const parsed = JSON.parse(json) as { items: { lots: unknown[] }[] };
+    expect(parsed.items[0]?.lots).toEqual([
+      {
+        units: item.units,
+        opened_remaining: item.opened_remaining,
+        unit_price: null,
+        purchase_date: item.purchase_date,
+        expiry_date: item.expiry_date,
+      },
+    ]);
   });
 
   test("empty items array still produces a valid payload", () => {
-    const json = itemsToJSON([]);
-    const parsed = JSON.parse(json) as { items: Item[] };
+    const json = itemsToJSON([], new Map());
+    const parsed = JSON.parse(json) as { items: unknown[] };
     expect(parsed.items).toEqual([]);
   });
 });
 
 describe("jsonToItems", () => {
-  test("round-trips a valid itemsToJSON payload, dropping category/location references", () => {
+  test("round-trips a valid itemsToJSON (v2) payload, dropping category/location references", () => {
     const item = makeItem({
       barcode: "1234567890123",
       category_id: "cat-1",
       storage_location_id: "loc-1",
     });
-    const json = itemsToJSON([item]);
+    const lots = new Map([
+      [
+        item.id,
+        [
+          {
+            units: 1,
+            opened_remaining: null,
+            unit_price: null,
+            purchase_date: "2026-07-01",
+            expiry_date: "2026-08-01",
+          },
+          {
+            units: 1,
+            opened_remaining: null,
+            unit_price: null,
+            purchase_date: "2026-07-10",
+            expiry_date: "2026-09-15",
+          },
+        ],
+      ],
+    ]);
+    const json = itemsToJSON([item], lots);
     const result = jsonToItems(json);
     // category_id / storage_location_id are intentionally not carried over —
     // they'd reference IDs that may not exist in the importing project (#657).
@@ -143,14 +208,56 @@ describe("jsonToItems", () => {
       {
         name: item.name,
         barcode: item.barcode,
-        units: item.units,
         content_amount: item.content_amount,
         content_unit: item.content_unit,
-        opened_remaining: item.opened_remaining,
-        purchase_date: item.purchase_date,
-        expiry_date: item.expiry_date,
         notes: item.notes,
         minimum_stock: item.minimum_stock,
+        auto_reorder: false,
+        reorder_threshold: null,
+        lots: lots.get(item.id),
+      },
+    ]);
+  });
+
+  test("reads an old v1 (aggregate-only) backup, synthesizing a single lot", () => {
+    const payload = {
+      exported_at: "2026-07-19T00:00:00Z",
+      version: 1,
+      items: [
+        {
+          name: "牛乳",
+          barcode: "123",
+          units: 2,
+          content_amount: 1000,
+          content_unit: "mL",
+          opened_remaining: null,
+          purchase_date: "2026-07-01",
+          expiry_date: "2026-07-15",
+          notes: null,
+          minimum_stock: null,
+        },
+      ],
+    };
+    const result = jsonToItems(JSON.stringify(payload));
+    expect(result).toEqual([
+      {
+        name: "牛乳",
+        barcode: "123",
+        content_amount: 1000,
+        content_unit: "mL",
+        notes: null,
+        minimum_stock: null,
+        auto_reorder: undefined,
+        reorder_threshold: undefined,
+        lots: [
+          {
+            units: 2,
+            opened_remaining: null,
+            unit_price: null,
+            purchase_date: "2026-07-01",
+            expiry_date: "2026-07-15",
+          },
+        ],
       },
     ]);
   });
