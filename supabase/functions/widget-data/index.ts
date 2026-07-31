@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchAllPages } from "../_shared/pagination.ts";
 import { jstTodayString } from "./date.ts";
 import { buildWidgetSummary, type WidgetItemInput } from "./summary.ts";
 
@@ -64,19 +65,30 @@ Deno.serve(async (req: Request) => {
   const warningDays =
     (settings as { expiry_warning_days: number } | null)?.expiry_warning_days ?? 3;
 
-  const { data: items, error: itemsError } = await supabase
-    .from("items")
-    .select("name, units, expiry_date, opened_remaining, minimum_stock")
-    .eq("user_id", user.id)
-    .is("deleted_at", null);
-
-  if (itemsError) {
-    console.error("Failed to fetch items for widget-data:", itemsError);
-    return jsonResponse({ error: itemsError.message }, 500);
+  let items: WidgetItemInput[];
+  try {
+    // #695: mirrors the #669 fix — a single unbounded select silently
+    // truncates once a user's items exceed PostgREST's row cap (default
+    // 1000), undercounting the widget's expired/expiring/low-stock badges.
+    items = await fetchAllPages(async (from, to) => {
+      const { data, error } = await supabase
+        .from("items")
+        .select("name, units, expiry_date, opened_remaining, minimum_stock")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return (data ?? []) as WidgetItemInput[];
+    });
+  } catch (error) {
+    console.error("Failed to fetch items for widget-data:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return jsonResponse({ error: message }, 500);
   }
 
   const summary = buildWidgetSummary(
-    (items ?? []) as WidgetItemInput[],
+    items,
     jstTodayString(),
     warningDays,
     new Date().toISOString(),
