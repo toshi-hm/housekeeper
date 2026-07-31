@@ -17,9 +17,13 @@ export const LocationPin = ({ x, y, label, onClick, variant = "default" }: Locat
   return (
     <button
       type="button"
-      className="absolute -translate-x-1/2 -translate-y-full"
+      className="absolute -translate-x-1/2 -translate-y-full disabled:cursor-default"
       style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
       onClick={onClick}
+      // onClickが無いピン（他アイテムの参考表示など）は非インタラクティブとして
+      // disabled にし、フォーカス可能だが何も起きない「動作しないボタン」を
+      // キーボード/スクリーンリーダー利用者に見せないようにする（#699）。
+      disabled={!onClick}
       aria-label={label}
       title={label}
     >

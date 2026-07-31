@@ -45,6 +45,47 @@ describe("LocationPinPicker (#574)", () => {
         onChange={() => {}}
       />,
     );
-    expect(getByRole("button", { name: "牛乳" })).not.toBeNull();
+    const referencePin = getByRole("button", { name: "牛乳" });
+    expect(referencePin).not.toBeNull();
+    // クリックしても何も起きない「動作しないボタン」に見えないよう、
+    // 参考ピンはdisabledでフォーカス/操作不可にする（#699）。
+    expect(referencePin.hasAttribute("disabled")).toBe(true);
+  });
+
+  it("フォーカスしてEnterキーを押すと中央にピンを配置する（#699）", () => {
+    const onChange = mock(() => {});
+    const { container } = renderWithI18n(
+      <LocationPinPicker photoUrl={PHOTO_URL} value={null} onChange={onChange} />,
+    );
+    const picker = container.querySelector('[role="button"]') as HTMLDivElement;
+    expect(picker.tabIndex).toBe(0);
+
+    fireEvent.keyDown(picker, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith({ x: 0.5, y: 0.5 });
+  });
+
+  it("ピンが置かれている状態で矢印キーを押すと位置を微調整する（#699）", () => {
+    const onChange = mock(() => {});
+    const { container } = renderWithI18n(
+      <LocationPinPicker photoUrl={PHOTO_URL} value={{ x: 0.5, y: 0.5 }} onChange={onChange} />,
+    );
+    const picker = container.querySelector('[role="button"]') as HTMLDivElement;
+
+    fireEvent.keyDown(picker, { key: "ArrowRight" });
+    expect(onChange).toHaveBeenCalledWith({ x: 0.52, y: 0.5 });
+
+    fireEvent.keyDown(picker, { key: "ArrowUp" });
+    expect(onChange).toHaveBeenCalledWith({ x: 0.5, y: 0.48 });
+  });
+
+  it("ピン未配置のときは矢印キーを押しても何もしない", () => {
+    const onChange = mock(() => {});
+    const { container } = renderWithI18n(
+      <LocationPinPicker photoUrl={PHOTO_URL} value={null} onChange={onChange} />,
+    );
+    const picker = container.querySelector('[role="button"]') as HTMLDivElement;
+
+    fireEvent.keyDown(picker, { key: "ArrowRight" });
+    expect(onChange).not.toHaveBeenCalled();
   });
 });
