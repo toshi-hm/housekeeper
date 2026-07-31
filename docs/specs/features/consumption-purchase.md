@@ -130,9 +130,15 @@ end $$;
 - CSV: スプレッドシート向け。ヘッダーは固定で
   `名前,バーコード,カテゴリ,保管場所,個数,内容量,単位,期限,購入日,メモ`
   （UI 言語に関わらず日本語ヘッダー。カテゴリ/保管場所は ID ではなく名前に解決する）
-- JSON: バックアップ向け。`{ exported_at: string, version: 1, items: Item[] }`
+- JSON: バックアップ向け。`{ exported_at: string, version: 2, items: ItemExportV2[] }`
+  （`ItemExportV2` はアイテムの基本情報 + `lots: ItemLotExport[]`。`items` テーブルの
+  集約行ではなく `item_lots` の実体をロット単位でそのまま書き出す。期限日の異なる
+  複数ロット（例: 古いロットと買い足した新しいロット）を持つアイテムでも、集約時に
+  最も早い期限しか残らない、といった情報の欠落が起きないようにするため、#693）
 - 対象は `useItems()` が返すアクティブな（`deleted_at IS NULL`）アイテムのみ
-- このJSON形式はインポート（下記）でも読み込める
+- このJSON形式はインポート（下記）でも読み込める。旧 version 1（アイテム単位の
+  集約値のみを持つ形式）で書き出された既存のバックアップファイルも、インポート側は
+  後方互換で読み込める（1アイテムにつき単一のロットとして復元する）
 
 ### 消費・購入履歴（#381）
 
@@ -159,19 +165,24 @@ end $$;
   - `useItemsForExport`（`src/hooks/useItems.ts`）: 削除済みも含む軽量ルックアップ
   - `useAllConsumptionLogs`（`src/hooks/useConsumptionLogs.ts`）: 統計画面（`useStats.ts`）と共有
   - `useAllItemLots`（`src/hooks/useItemLots.ts`）: 全ロットの
-    `item_id, purchased_units, purchase_date`
+    `item_id, purchased_units, purchase_date`（購入履歴CSV専用の軽量版）
+  - `useAllItemLotsFull`（`src/hooks/useItemLots.ts`）: JSONバックアップ用に、
+    ロット単位のまま `units, opened_remaining, unit_price, purchase_date, expiry_date`
+    を取得する（#693）
 - UI organism: `src/components/organisms/DataExportPanel.tsx`（設定ページに埋め込み）
 
-## インポート（復元）（#657）
+## インポート（復元）（#657 / #693 / #694）
 
 サーバー側バックアップの仕組みを持たないクライアントサイドのみの構成のため、
 上記の JSON エクスポートを唯一のバックアップ/リカバリー導線として使えるよう、
 設定ページの「データのエクスポート」の隣に「データのインポート（復元）」
 セクションを設ける。
 
-- 入力は `itemsToJSON` が生成した `{exported_at, version: 1, items}` 形式のみ
-  受け付ける（Zod でパース・検証。壊れたJSON/想定外の形式は理由別のエラー
-  トーストで拒否する）
+- 入力は `itemsToJSON` が生成した JSON のみ受け付ける（Zod でパース・検証。
+  壊れたJSON/想定外の形式は理由別のエラートーストで拒否する）。現行の
+  version 2（アイテムごとに `lots` 配列を持つ）を優先してパースし、失敗したら
+  後方互換として旧 version 1（アイテム単位の集約値のみ）を単一ロットとして
+  読み込む
 - **カテゴリ・保管場所（`category_id` / `storage_location_id`）は復元対象に
   含めない**: エクスポートJSONにはIDのみが入っており名前を含まないため、
   別プロジェクトへの移行時にはそのIDが指す行が存在せず外部キー制約違反に
@@ -185,6 +196,15 @@ end $$;
   - 新規として追加: 重複を無視して常に新規アイテムとして作成する
 - 同一インポート内で同じバーコードが複数回登場した場合、2件目以降は
   「このインポートで直前に作成した行」を重複として扱う
+- **バッチ全体を単一トランザクションで処理する**（#694）: アイテムの
+  作成/更新・ロットの入れ替えは Postgres 関数 `import_items_batch`
+  （`supabase/migrations/20260731000001_atomic_import_items.sql`）にまとめて
+  おり、途中の1件が失敗した場合はバッチ全体がロールバックされ、何も反映
+  されない。これにより「途中まで成功→エラー→同じファイルを再インポート」
+  してもバーコードを持たないアイテムが二重作成されることがない
+  （アイテム集約値の再計算 `syncItemAggregate` のみは、他のミューテーション
+  と同様にトランザクションの外側で行う別ステップであり、失敗しても
+  非致命的）
 
 ### 実装
 

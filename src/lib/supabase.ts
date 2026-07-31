@@ -679,6 +679,15 @@ export interface Database {
         };
         Returns: string;
       };
+      // #694: atomic batch import — see
+      // supabase/migrations/20260731000001_atomic_import_items.sql
+      import_items_batch: {
+        Args: {
+          p_items: unknown;
+          p_duplicate_strategy: string;
+        };
+        Returns: Array<{ item_id: string; action: "created" | "updated" | "skipped" }>;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
