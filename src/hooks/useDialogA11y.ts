@@ -75,7 +75,13 @@ export const useDialogA11y = <T extends HTMLElement>({
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      previouslyFocusedRef.current?.focus();
+      // ダイアログを開いた際のトリガー要素が、閉じる操作と同じレンダリングで
+      // DOMから消えているケース（例: 成功時にトリガーごと非表示になるフォーム）
+      // では、既に切断された要素への focus() は何もしない（#698）。呼び出し側が
+      // 別途フォーカス移動先を明示した場合、ここで意図せず上書きしないようにする。
+      if (previouslyFocusedRef.current?.isConnected) {
+        previouslyFocusedRef.current.focus();
+      }
     };
   }, [open]);
 

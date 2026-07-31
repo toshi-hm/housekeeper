@@ -27,6 +27,7 @@ export const DataImportPanel = () => {
   const { t } = useTranslation("settings");
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectFileButtonRef = useRef<HTMLButtonElement>(null);
   const importItems = useImportItems();
 
   const [parsedItems, setParsedItems] = useState<ImportItemInput[] | null>(null);
@@ -65,6 +66,11 @@ export const DataImportPanel = () => {
           );
           setParsedItems(null);
           setShowConfirm(false);
+          // 確認ダイアログ・プレビューが同時に閉じ、それらの内部にあった
+          // トリガー要素ごとDOMから消えるため、useDialogA11yのフォーカス復元
+          // (previouslyFocusedRef) が対象を失いフォーカスが失われる（#698）。
+          // 常に残る「ファイルを選択」ボタンへ明示的にフォーカスを移す。
+          selectFileButtonRef.current?.focus();
         },
       },
     );
@@ -87,6 +93,7 @@ export const DataImportPanel = () => {
         }}
       />
       <Button
+        ref={selectFileButtonRef}
         type="button"
         variant="outline"
         size="sm"

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
@@ -119,5 +120,40 @@ describe("DataImportPanel", () => {
       { items, duplicateStrategy: "overwrite" },
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
+  });
+
+  it("moves focus back to the select-file button after a successful import (#698)", async () => {
+    // userEvent (not fireEvent) is required here: fireEvent.click dispatches a
+    // click event without moving real focus, so it can't reproduce the actual
+    // bug — the confirm-dialog trigger button unmounting while it still holds
+    // focus. userEvent.click focuses the element first, like a real click.
+    const user = userEvent.setup();
+    const items = [
+      { name: "牛乳", units: 1, content_amount: 1000, content_unit: "mL" },
+    ] as exportLib.ImportItemInput[];
+    spyOn(exportLib, "jsonToItems").mockReturnValue(items);
+
+    const { getByRole, container } = render(<DataImportPanel />, { wrapper });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [makeFile("{}")] } });
+
+    await waitFor(() => expect(getByRole("button", { name: "Import" })).toBeTruthy());
+    await user.click(getByRole("button", { name: "Import" }));
+
+    const confirmDialog = getByRole("alertdialog");
+    const confirmButton = Array.from(confirmDialog.querySelectorAll("button")).find(
+      (b) => b.textContent === "Import",
+    ) as HTMLElement;
+    await user.click(confirmButton);
+
+    const onSuccess = mutateMock.mock.calls[0]?.[1]?.onSuccess;
+    act(() => {
+      onSuccess?.({ createdCount: 1, updatedCount: 0, skippedCount: 0 });
+    });
+
+    const selectFileButton = getByRole("button", { name: "Select file" });
+    // Compared as a boolean (not `.toBe(selectFileButton)`) so a failure
+    // doesn't dump the entire DOM node tree into the test output.
+    expect(document.activeElement === selectFileButton).toBe(true);
   });
 });
