@@ -4,7 +4,14 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 
-const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+// #702: This only guards against pathologically large picks (e.g. a
+// multi-shot burst mistakenly selected) so the browser doesn't hang trying
+// to decode them. It intentionally does NOT enforce the final 5MB upload
+// limit — modern phone cameras routinely produce 6-15MB photos, and
+// rejecting those here would block the file before compressImageForUpload
+// (called later, in uploadItemImage) ever gets a chance to shrink it well
+// under 5MB. The real size limit is enforced post-compression instead.
+const MAX_RAW_SIZE_BYTES = 30 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 interface ImageUploaderProps {
@@ -28,7 +35,7 @@ export const ImageUploader = ({
 
   const validate = (file: File): string => {
     if (!ALLOWED_TYPES.includes(file.type)) return t("imageErrorType");
-    if (file.size > MAX_SIZE_BYTES) return t("imageErrorSize");
+    if (file.size > MAX_RAW_SIZE_BYTES) return t("imageErrorSize");
     return "";
   };
 
