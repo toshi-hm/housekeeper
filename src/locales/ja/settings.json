@@ -93,6 +93,7 @@
   "stocktakeAlertDaysHelp": "最終確認日からこの日数以上経過したアイテムをダッシュボードで警告します",
   "stocktakeAlertEnabled": "棚卸しアラートを有効にする",
   "storageLocationMap": "収納マップ",
+  "storageLocationMapLoadError": "収納マップの読み込みに失敗しました。時間をおいて再試行してください。",
   "storageLocations": "保管場所管理",
   "tagName": "タグ名",
   "tags": "タグ管理",
