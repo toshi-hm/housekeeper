@@ -41,6 +41,32 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// Captures the action button (e.g. "元に戻す"/Undo) passed to the most recent
+// toast() call, so tests can invoke it directly instead of rendering the real
+// ToastProvider (#713).
+interface CapturedToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+const createCapturingToast = (): {
+  toastValue: ToastContextValue;
+  getLastAction: () => CapturedToastAction | undefined;
+} => {
+  let lastAction: CapturedToastAction | undefined;
+  return {
+    toastValue: {
+      toasts: [],
+      toast: (_message, _variant, options) => {
+        lastAction = options?.action;
+        return "toast-id";
+      },
+      dismiss: () => {},
+    },
+    getLastAction: () => lastAction,
+  };
+};
+
 const baseItem: Item = {
   id: "test-item-id",
   user_id: "test-user-id",
@@ -346,6 +372,99 @@ describe("ItemConsumePage", () => {
       await user.type(amountInput, "0.5");
 
       expect(queryByText("insufficientStock")).toBeNull();
+    });
+  });
+});
+
+// 消費実行後の「元に戻す」トースト・取り消し導線（#713）。既存のUndoパターン
+// （カレンダーのチェック取り消し・自動アーカイブ）と同じ useUndoableAction を
+// 再利用しているため、ここでは「トーストのアクションボタンが呼ばれたら
+// restoreLotConsumption に正しい引数を渡す」ことを確認する。
+describe("ItemConsumePage consume undo", () => {
+  let lotsspy: ReturnType<typeof spyOn>;
+  let itemspy: ReturnType<typeof spyOn>;
+  let consumespy: ReturnType<typeof spyOn>;
+  let paramsspy: ReturnType<typeof spyOn>;
+  let searchspy: ReturnType<typeof spyOn>;
+  let restoreSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    paramsspy = spyOn(Route, "useParams").mockReturnValue({
+      itemId: "test-item-id",
+    } as ReturnType<typeof Route.useParams>);
+
+    searchspy = spyOn(Route, "useSearch").mockReturnValue({
+      lotId: undefined,
+    } as ReturnType<typeof Route.useSearch>);
+
+    lotsspy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data: [baseLot],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useItemLotsModule.useItemLots>);
+
+    itemspy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: baseItem,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+
+    consumespy = spyOn(useItemLotsModule, "useConsumeLot").mockReturnValue({
+      mutateAsync: async () => ({ ...baseLot, _logId: "log-1" }),
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useConsumeLot>);
+
+    restoreSpy = spyOn(useItemLotsModule, "restoreLotConsumption").mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    paramsspy.mockRestore();
+    searchspy.mockRestore();
+    lotsspy.mockRestore();
+    itemspy.mockRestore();
+    consumespy.mockRestore();
+    restoreSpy.mockRestore();
+    cleanup();
+  });
+
+  it("shows an undo action after a successful consume, and restores the lot's pre-consume state when it is invoked", async () => {
+    const { toastValue, getLastAction } = createCapturingToast();
+    const CapturingWrapper = ({ children }: { children: React.ReactNode }) => {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      return (
+        <QueryClientProvider client={queryClient}>
+          <routerContext.Provider value={stubRouter}>
+            <ToastContext.Provider value={toastValue}>{children}</ToastContext.Provider>
+          </routerContext.Provider>
+        </QueryClientProvider>
+      );
+    };
+
+    const user = userEvent.setup();
+    const { getByRole } = render(<ItemConsumePage />, {
+      wrapper: CapturingWrapper as React.ComponentType,
+    });
+
+    await user.type(getByRole("spinbutton"), "100");
+    await act(async () => {
+      fireEvent.click(getByRole("button", { name: /^(使う|Use|consume)$/ }));
+    });
+
+    // The success toast (rendered by consumeUndo.start) carries the "元に戻す"
+    // action button — capture it instead of asserting on toast markup, since
+    // the toast itself is stubbed out here.
+    const action = getLastAction();
+    expect(action).toBeDefined();
+
+    await act(async () => {
+      action?.onClick();
+    });
+
+    expect(restoreSpy).toHaveBeenCalledWith({
+      lotId: baseLot.id,
+      itemId: baseItem.id,
+      unitsBefore: baseLot.units,
+      openedRemainingBefore: baseLot.opened_remaining ?? null,
+      logId: "log-1",
     });
   });
 });

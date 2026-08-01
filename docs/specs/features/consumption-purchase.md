@@ -282,7 +282,11 @@ end $$;
 ## Backlog
 
 - 単位換算（mL ⇔ L）
-- 消費の取り消し（log の rollback）
+- ~~消費の取り消し（log の rollback）~~ → トースト方式（メモリ上state・非永続）で実装済み（[#713](https://github.com/toshi-hm/housekeeper/issues/713)）。
+  `ItemConsumePage` / ダッシュボードのクイック消費の両方で、消費直後の「元に戻す」トーストからロットの
+  `units` / `opened_remaining` と対応する `consumption_logs` 行を消費前の状態へ復元できる
+  (`useUndoableAction` + `restoreLotConsumption` / `undoConsumeItem`)。消費履歴タブからの取り消し
+  （`consumption_logs.reversed_at` 追加が必要な発展案）は引き続き Backlog。
 - 購入履歴専用テーブル（同 SKU 再購入の集約）
 
 ## レシピ/セット消費（v1.3, #393）

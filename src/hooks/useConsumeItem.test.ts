@@ -33,6 +33,7 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     order: chainMethod("order"),
     insert: chainMethod("insert"),
     update: chainMethod("update"),
+    delete: chainMethod("delete"),
     single: () => {
       callLog.push({ table, method: "single", args: [] });
       return Promise.resolve(response);
@@ -64,7 +65,7 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { consumeItem, useConsumeItem } = await import("@/hooks/useConsumeItem");
+const { consumeItem, undoConsumeItem, useConsumeItem } = await import("@/hooks/useConsumeItem");
 const { ToastContext } = await import("@/lib/toast-context");
 
 const makeWrapper = (qc: QueryClient) => {
@@ -169,6 +170,84 @@ describe("consumeItem", () => {
 
     const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
     expect(logInsert?.args[0]).toMatchObject({ note: "贈り物" });
+  });
+});
+
+describe("undoConsumeItem", () => {
+  // 消費の取り消し（#478, #713）: consumeItem が返した _undo メタデータから、
+  // 消費前の状態へロールバックする。
+
+  test("kind: 'lot' の場合はrestoreLotConsumption経由でロットとconsumption_logsを復元する", async () => {
+    responseQueues.item_lots = [
+      { data: null, error: null }, // item_lots update (restore)
+      { data: [{ units: 2, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate read
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate read
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+
+    await undoConsumeItem({
+      kind: "lot",
+      itemId: "item-1",
+      lotId: "lot-1",
+      unitsBefore: 2,
+      openedRemainingBefore: null,
+      logId: "log-1",
+    });
+
+    const lotUpdateCall = callLog.find((c) => c.table === "item_lots" && c.method === "update");
+    expect(lotUpdateCall?.args[0]).toMatchObject({ units: 2, opened_remaining: null });
+    const logDeleteCall = callLog.find(
+      (c) => c.table === "consumption_logs" && c.method === "delete",
+    );
+    expect(logDeleteCall).toBeDefined();
+    const logEqCall = callLog.find(
+      (c) => c.table === "consumption_logs" && c.method === "eq" && c.args[0] === "id",
+    );
+    expect(logEqCall?.args).toEqual(["id", "log-1"]);
+  });
+
+  test("kind: 'direct' の場合はitemsを直接更新し、logIdがあればconsumption_logsを削除する", async () => {
+    responseQueues.items = [{ data: null, error: null }]; // items update
+
+    await undoConsumeItem({
+      kind: "direct",
+      itemId: "item-1",
+      unitsBefore: 3,
+      openedRemainingBefore: 0.4,
+      logId: "log-2",
+    });
+
+    const itemsUpdateCall = callLog.find((c) => c.table === "items" && c.method === "update");
+    expect(itemsUpdateCall?.args[0]).toMatchObject({ units: 3, opened_remaining: 0.4 });
+    const itemsEqCall = callLog.find(
+      (c) => c.table === "items" && c.method === "eq" && c.args[0] === "id",
+    );
+    expect(itemsEqCall?.args).toEqual(["id", "item-1"]);
+
+    const logDeleteCall = callLog.find(
+      (c) => c.table === "consumption_logs" && c.method === "delete",
+    );
+    expect(logDeleteCall).toBeDefined();
+    const logEqCall = callLog.find(
+      (c) => c.table === "consumption_logs" && c.method === "eq" && c.args[0] === "id",
+    );
+    expect(logEqCall?.args).toEqual(["id", "log-2"]);
+  });
+
+  test("kind: 'direct' でlogIdがnullの場合はconsumption_logsのdeleteを呼ばない", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    await undoConsumeItem({
+      kind: "direct",
+      itemId: "item-1",
+      unitsBefore: 1,
+      openedRemainingBefore: null,
+      logId: null,
+    });
+
+    expect(callLog.some((c) => c.table === "consumption_logs")).toBe(false);
   });
 });
 

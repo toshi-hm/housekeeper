@@ -63,12 +63,14 @@ export const ItemConsumePage = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  // ロット消費（＝ロットの在庫を取り除く操作）の取り消し（#478）。
+  // ロット消費（＝ロットの在庫を取り除く操作）の取り消し（#478, #713）。
   // useCalendarConsume / ダッシュボードのクイック消費と同じ
   // restoreLotConsumption を使い、ロットの units/opened_remaining と
   // consumption_logs を消費前の状態に戻す。
+  // durationMs は #673 でアクション付きトーストの既定値が8000msに延長されたのに
+  // 合わせ、他の取り消し可能操作（アイテム削除の取り消し等）と揃えている。
   const consumeUndo = useUndoableAction<ConsumeLotUndoPayload>({
-    durationMs: 6000,
+    durationMs: 8000,
     message: () => t("consumeSuccess"),
     undoLabel: tc("undo"),
     onUndo: async (_id, payload) => {

@@ -62,7 +62,7 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { consumeLot, createLot, syncItemAggregate, useUpdateLot } =
+const { consumeLot, createLot, restoreLotConsumption, syncItemAggregate, useUpdateLot } =
   await import("@/hooks/useItemLots");
 const { ConcurrentUpdateError } = await import("@/lib/requireOnline");
 const { ToastContext } = await import("@/lib/toast-context");
@@ -331,6 +331,109 @@ describe("consumeLot", () => {
       method: "eq",
       args: ["opened_remaining", 0.3],
     });
+  });
+});
+
+describe("restoreLotConsumption", () => {
+  // 消費の取り消し（#478, #713）: consumeLot が行った更新を、消費前の値へ戻す。
+
+  test("ロットのunits/opened_remainingを消費前の値に戻し、対応するconsumption_logsを削除する", async () => {
+    responseQueues.item_lots = [
+      { data: null, error: null }, // item_lots update
+      { data: [{ units: 3, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate read
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate read
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+
+    await restoreLotConsumption({
+      lotId: "lot-1",
+      itemId: "item-1",
+      unitsBefore: 3,
+      openedRemainingBefore: null,
+      logId: "log-1",
+    });
+
+    const lotUpdateCall = callLog.find((c) => c.table === "item_lots" && c.method === "update");
+    expect(lotUpdateCall?.args[0]).toMatchObject({ units: 3, opened_remaining: null });
+    const lotEqCall = callLog.find(
+      (c) => c.table === "item_lots" && c.method === "eq" && c.args[0] === "id",
+    );
+    expect(lotEqCall?.args).toEqual(["id", "lot-1"]);
+
+    const logDeleteCall = callLog.find(
+      (c) => c.table === "consumption_logs" && c.method === "delete",
+    );
+    expect(logDeleteCall).toBeDefined();
+    const logEqCall = callLog.find(
+      (c) => c.table === "consumption_logs" && c.method === "eq" && c.args[0] === "id",
+    );
+    expect(logEqCall?.args).toEqual(["id", "log-1"]);
+
+    // アグリゲート再計算も走る（ロット単体だけでなくitems側の集計値も戻す）。
+    const itemsUpdateCall = callLog.find((c) => c.table === "items" && c.method === "update");
+    expect(itemsUpdateCall).toBeDefined();
+  });
+
+  test("開封中ロットのopened_remainingも消費前の値へ復元する", async () => {
+    responseQueues.item_lots = [
+      { data: null, error: null },
+      { data: [{ units: 2, expiry_date: null, opened_remaining: 0.5 }], error: null },
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: null, error: null },
+    ];
+
+    await restoreLotConsumption({
+      lotId: "lot-1",
+      itemId: "item-1",
+      unitsBefore: 2,
+      openedRemainingBefore: 0.5,
+      logId: "log-1",
+    });
+
+    const lotUpdateCall = callLog.find((c) => c.table === "item_lots" && c.method === "update");
+    expect(lotUpdateCall?.args[0]).toMatchObject({ units: 2, opened_remaining: 0.5 });
+  });
+
+  test("logIdがnullの場合はconsumption_logsのdeleteを呼ばない", async () => {
+    responseQueues.item_lots = [
+      { data: null, error: null },
+      { data: [{ units: 1, expiry_date: null, opened_remaining: null }], error: null },
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: null, error: null },
+    ];
+
+    await restoreLotConsumption({
+      lotId: "lot-1",
+      itemId: "item-1",
+      unitsBefore: 1,
+      openedRemainingBefore: null,
+      logId: null,
+    });
+
+    expect(callLog.some((c) => c.table === "consumption_logs")).toBe(false);
+  });
+
+  test("item_lotsのupdateが失敗した場合はconsumption_logsの削除・アグリゲート再計算を行わずthrowする", async () => {
+    responseQueues.item_lots = [{ data: null, error: { message: "update failed" } }];
+
+    await expect(
+      restoreLotConsumption({
+        lotId: "lot-1",
+        itemId: "item-1",
+        unitsBefore: 1,
+        openedRemainingBefore: null,
+        logId: "log-1",
+      }),
+    ).rejects.toMatchObject({ message: "update failed" });
+
+    expect(callLog.some((c) => c.table === "consumption_logs")).toBe(false);
+    expect(callLog.some((c) => c.table === "items")).toBe(false);
   });
 });
 
