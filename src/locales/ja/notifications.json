@@ -7,6 +7,7 @@
   "invalidNotifyAt": "通知時刻を入力してください",
   "invalidThresholdDays": "0〜30の範囲で入力してください",
   "notifyAt": "通知時刻",
+  "notifyAtHelp": "通知は1時間ごとに配信されるため、分は指定できません（毎時0分に配信）",
   "pushEnabled": "プッシュ通知",
   "pushNotSupported": "このブラウザはプッシュ通知に対応していません。メール通知をご利用ください。",
   "pushPermissionDenied": "プッシュ通知の許可が拒否されました",

@@ -7,6 +7,7 @@
   "invalidNotifyAt": "Please enter a notification time",
   "invalidThresholdDays": "Please enter a value between 0 and 30",
   "notifyAt": "Notification time",
+  "notifyAtHelp": "Notifications are delivered hourly, so minutes can't be set (sent at the top of the hour)",
   "pushEnabled": "Push Notifications",
   "pushNotSupported": "Push notifications are not supported in this browser. Please use email notifications instead.",
   "pushPermissionDenied": "Push notification permission denied",
