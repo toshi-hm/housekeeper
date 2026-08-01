@@ -455,6 +455,10 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - 購入先（店舗）記録と店舗別価格比較（v1.6, #697） — 詳細: `docs/specs/features/consumption-purchase.md`
   「購入先（店舗）記録と店舗別価格比較」節
 - レシート一括登録（v1.7, #696） — 詳細: `docs/specs/features/receipt-scan.md`
+- 在庫優先の週間献立プランナー（v1.8, #715） — 詳細: `docs/specs/features/meal-plan.md`。
+  `recipes`/`recipe_items`・`recipe-suggest`・買い物リスト・期限アラートを統合する新規
+  `meal_plans` テーブル + `/_auth/meal-plan` ルート。実装は spec ドラフトのみで、本 spec
+  ドラフト PR には含めない
 - 多人数共有 + Alexa マルチユーザー対応（v2, #64 / #159） — 詳細: `docs/specs/features/household-sharing.md`。
   「Single user」制約の変更を伴う根本方針変更のため、実装は複数 PR に分割する（§9 決定ログ参照）
 
@@ -478,6 +482,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 | 2026-04-30 | Issue 同期は Skill (`.claude/skills/project/issue-sync`) で運用                                                                                     | Q8=b                                                          |
 | 2026-07-31 | 「Single user」制約を変更し、世帯（household）単位の多人数共有を実装する方針を承認（#64 / #159）。設計は `docs/specs/features/household-sharing.md` | ユーザー承認（issue #64/#159 対応の feature-proposal フロー） |
 | 2026-07-31 | レシート一括登録（#696）・購入先/店舗別価格比較（#697）を spec ドラフト済みとして Backlog から昇格                                                  | ユーザー承認（feature-proposal フロー）                       |
+| 2026-08-01 | 在庫優先の週間献立プランナー（#715）を spec ドラフト済みとして Backlog から昇格                                                                     | ユーザー承認（feature-proposal フロー）                       |
 
 ---
 
@@ -631,6 +636,23 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [ ] i18n `receiptScan` 名前空間
 - [ ] テスト / CI 整備と PR CI グリーン化
 
+### v1.8 — 在庫優先の週間献立プランナー（Weekly Meal Planner）
+
+> 設計: `docs/specs/features/meal-plan.md`（親 Issue: #715）。`recipes`/`recipe_items`・
+> `checkRecipeStock`/`useExecuteRecipe`・買い物リスト・期限アラートを統合する。
+
+- [ ] migration: `meal_plans` テーブル新設（`unique(user_id, planned_date)` + RLS）
+- [ ] `useMealPlans` / `useUpsertMealPlan` hook
+- [ ] `useExecuteMealPlan` hook（既存 `useExecuteRecipe` のラッパー + `executed_at` 更新）
+- [ ] 在庫確認・買い物リスト追加導線（`checkRecipeStock` / `useUpsertShoppingItem` 再利用）
+- [ ] `MealSlot` / `MealSlotRecipePicker` / `MealPlanStockWarning` molecule + Story
+- [ ] `WeeklyMealPlanner` organism + Story
+- [ ] 空き枠レコメンド（内部 `rankRecipesByExpiringStock` + 外部 `recipe-suggest` フォールバック、
+      `MealPlanExpiryRecommendation` molecule + Story）
+- [ ] `/_auth/meal-plan` ルート + ダッシュボードからのショートカット
+- [ ] i18n `mealPlan` 名前空間
+- [ ] テスト / CI 整備と PR CI グリーン化
+
 ### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
 
 > 「Single user」制約を変更する根本方針変更。設計: `docs/specs/features/household-sharing.md`
@@ -675,6 +697,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - `docs/specs/features/storage.md`
 - `docs/specs/features/shopping-list.md`
 - `docs/specs/features/consumption-purchase.md`
+- `docs/specs/features/meal-plan.md`
 - `docs/specs/features/notifications.md`
 - `docs/specs/features/pwa.md`
 - `docs/specs/features/i18n.md`
