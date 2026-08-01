@@ -401,6 +401,7 @@ const ItemDetailPage = () => {
               <ExpiryBadge
                 expiryDate={item.expiry_date}
                 warningDays={userSettings?.expiry_warning_days}
+                expiryType={item.expiry_type}
               />
             </div>
             {itemTags.length > 0 && (

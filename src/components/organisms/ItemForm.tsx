@@ -2,6 +2,7 @@ import { Barcode, Camera, Loader2, Search } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ExpiryTypeSelect } from "@/components/atoms/ExpiryTypeSelect";
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { LocationPinPicker } from "@/components/molecules/LocationPinPicker";
@@ -91,6 +92,7 @@ export const ItemForm = ({
     opened_remaining: defaultValues?.opened_remaining ?? null,
     purchase_date: defaultValues?.purchase_date ?? "",
     expiry_date: defaultValues?.expiry_date ?? "",
+    expiry_type: defaultValues?.expiry_type ?? null,
     notes: defaultValues?.notes ?? "",
     image_path: defaultValues?.image_path ?? "",
     minimum_stock: defaultValues?.minimum_stock ?? null,
@@ -636,6 +638,18 @@ export const ItemForm = ({
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Expiry type: best-before (quality) vs use-by (safety), #714 */}
+        <div className="space-y-2">
+          <Label>{t("expiryType")}</Label>
+          <p id="expiry-type-help" className="text-xs text-muted-foreground">
+            {t("expiryTypeHelp")}
+          </p>
+          <ExpiryTypeSelect
+            value={values.expiry_type ?? null}
+            onChange={(value) => set("expiry_type", value)}
+          />
         </div>
 
         {/* Notes */}

@@ -6,6 +6,7 @@ import {
   DEFAULT_STOCKTAKE_ALERT_DAYS,
   formatRemaining,
   getExpiryApprox,
+  getExpirySeverity,
   getExpiryStatus,
   getLotRemainingAmount,
   isAlreadyInStock,
@@ -209,6 +210,35 @@ describe("getExpiryStatus", () => {
   test("custom warningDays", () => {
     expect(getExpiryStatus(fmt(addDays(5)), 7)).toBe("expiring-soon");
     expect(getExpiryStatus(fmt(addDays(8)), 7)).toBe("ok");
+  });
+});
+
+// --- getExpirySeverity (#714) ---
+
+describe("getExpirySeverity", () => {
+  test("expired + use_by => danger", () => {
+    expect(getExpirySeverity("expired", "use_by")).toBe("danger");
+  });
+
+  test("expired + best_before => caution (softer, not a safety issue)", () => {
+    expect(getExpirySeverity("expired", "best_before")).toBe("caution");
+  });
+
+  test("expired + null/undefined (no distinction) => danger (preserves existing behavior)", () => {
+    expect(getExpirySeverity("expired", null)).toBe("danger");
+    expect(getExpirySeverity("expired", undefined)).toBe("danger");
+    expect(getExpirySeverity("expired")).toBe("danger");
+  });
+
+  test("expiring-soon is always warning regardless of expiry_type", () => {
+    expect(getExpirySeverity("expiring-soon", "use_by")).toBe("warning");
+    expect(getExpirySeverity("expiring-soon", "best_before")).toBe("warning");
+    expect(getExpirySeverity("expiring-soon", null)).toBe("warning");
+  });
+
+  test("ok and unknown pass through unchanged", () => {
+    expect(getExpirySeverity("ok", "best_before")).toBe("ok");
+    expect(getExpirySeverity("unknown", "use_by")).toBe("unknown");
   });
 });
 

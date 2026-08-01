@@ -71,9 +71,39 @@ export const getExpiryStatus = (
   基盤（`useSoftDeleteItem` / バーコード再スキャンによる `tryReviveItem` 等）をそのまま流用し、
   復元専用の `useRestoreItem` / `useDeletedItems`（`src/hooks/useItems.ts`）を追加した。
 
+## 賞味期限 / 消費期限の区別（#714）
+
+日本の食品表示は「賞味期限」（best-before, 品質の目安 = 過ぎても食べられることが多い）と
+「消費期限」（use-by, 安全性の目安 = 過ぎたら食べない方がよい）を区別する。以前は全ての
+`expiry_date` を一律に扱っていたため、賞味期限切れの通知が消費期限切れと同じ強さで届き
+アラート疲れを招いていた。
+
+- `items.expiry_type text check (expiry_type in ('best_before','use_by')) null`
+  （マイグレーション: `20260801000001_add_expiry_type_to_items.sql`）。
+  **nullable、デフォルト `null`**（後方互換 — 既存アイテムは区別なしのまま）
+- `ItemForm` に `ExpiryTypeSelect` atom（未設定 / 賞味期限 / 消費期限の3択セグメントコントロール）
+  を追加。デフォルトは未設定（カテゴリ別デフォルト `categories.default_expiry_type` は
+  未実装 — Backlog参照）
+- 表示側は `getExpiryStatus`（`src/types/item.ts`）の4状態契約（expired/expiring-soon/
+  ok/unknown）を変更せず維持し、`expiry_type` による表示の強弱は新設の
+  `getExpirySeverity(status, expiryType)` が別途担う:
+  - `expired` + `use_by`（または未設定 `null`、既存アイテム互換）→ `danger`（従来通りの赤バッジ）
+  - `expired` + `best_before` → `caution`（amber/警告色。「品質の目安超過」と表示し、
+    安全性の問題であるかのような文言にしない）
+  - `expiring-soon` は区別に関わらず `warning`
+  - `ExpiryBadge` atom がこの重大度に応じてバッジの色・文言を出し分ける
+  - ダッシュボードの期限バナー（`_auth.index.tsx`）の「期限切れ」内訳リストは、
+    `best_before` の item にのみ「（賞味期限：品質の目安）」の注記を添える
+    （消費期限/未設定は従来通りの表示のまま）
+- 通知 Edge Function（`supabase/functions/send-expiry-notifications/index.ts`）は、
+  対象 item に `use_by`（または未設定）が1件でも含まれる場合は従来通りの文言、
+  `best_before` のみで構成される場合は穏やかな文言（品質の目安）にタイトル・本文を出し分ける。
+  時刻一致判定（`scheduled` 分岐）等の既存ロジックは変更していない
+
 ## Backlog
 
-- 「賞味期限」と「消費期限」の区別（UX 上の重要度を分ける）
+- カテゴリ別のデフォルト期限種別（`categories.default_expiry_type`）— `ItemForm` の
+  カテゴリ選択時に `expiry_type` を自動プリセットする
 - カテゴリ別に閾値を変える
 
 ## 外部レシピ提案（#461）

@@ -65,7 +65,11 @@ export const ItemListRow = ({
               unit: item.content_unit,
             })}
       </span>
-      <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />
+      <ExpiryBadge
+        expiryDate={item.expiry_date}
+        warningDays={warningDays}
+        expiryType={item.expiry_type}
+      />
     </div>
   );
 

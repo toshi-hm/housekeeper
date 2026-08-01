@@ -55,6 +55,7 @@ create table items (
 
   purchase_date date,
   expiry_date date,
+  expiry_type text check (expiry_type is null or expiry_type in ('best_before', 'use_by')), -- 賞味期限/消費期限の区別。null = 区別なし（既存アイテム互換, #714）
   notes text,
   image_path text,                       -- Storage 内のオブジェクトキー（"<user_id>/<item_id>.<ext>"）
   minimum_stock int check (minimum_stock is null or minimum_stock >= 0), -- ダッシュボード警告用
@@ -84,6 +85,9 @@ create index items_location_idx on items(storage_location_id);
 - `pin_x` / `pin_y`（#574）: 保管場所（`storage_locations.photo_path`）の写真上の相対位置。左上を `(0, 0)`、
   右下を `(1, 1)` とする。保管場所に写真が未登録、または位置未指定の場合は両方 `null`。
   詳細は `docs/specs/features/storage-location-map.md` を参照
+- `expiry_type`（#714）: 「賞味期限」（`best_before`, 品質の目安）と「消費期限」（`use_by`,
+  安全性の目安）の区別。`null` = 未設定（既存アイテムはこのまま、区別なしの従来挙動を維持）。
+  詳細は `docs/specs/features/expiry-alert.md` を参照
 
 ## item_lots
 

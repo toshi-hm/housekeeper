@@ -35,8 +35,12 @@ export const A11Y_BASELINE = new Set<string>([
   "components-atoms-tagbadge--no-color",
   "components-atoms-tagbadge--removable",
   // atoms/ExpiryBadge: the "expired" status color fails contrast. ItemCard /
-  // ItemListRow embed this same badge for expired/low-stock items.
+  // ItemListRow embed this same badge for expired/low-stock items. "danger"
+  // severity (#714) reuses the same destructive badge variant/colors, so
+  // ExpiredUseBy (expiry_type=use_by, also severity=danger) hits the same
+  // pre-existing contrast issue.
   "components-atoms-expirybadge--expired",
+  "components-atoms-expirybadge--expired-use-by",
   "components-molecules-itemcard--expired",
   "components-molecules-itemlistrow--expired",
   "components-molecules-itemlistrow--empty-stock",

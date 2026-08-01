@@ -25,6 +25,14 @@ export const Expired: Story = {
   args: { expiryDate: "2020-01-01" },
 };
 
+export const ExpiredUseBy: Story = {
+  args: { expiryDate: "2020-01-01", expiryType: "use_by" },
+};
+
+export const ExpiredBestBefore: Story = {
+  args: { expiryDate: "2020-01-01", expiryType: "best_before" },
+};
+
 export const NoExpiry: Story = {
   args: { expiryDate: null },
 };

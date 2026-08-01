@@ -112,6 +112,7 @@ export interface Database {
           last_verified_at: string | null;
           deleted_at: string | null;
           deletion_reason: "consumed" | "expired_waste" | "other" | null;
+          expiry_type: "best_before" | "use_by" | null;
           pin_x: number | null;
           pin_y: number | null;
           created_at: string;
@@ -138,6 +139,7 @@ export interface Database {
           last_verified_at?: string | null;
           deleted_at?: string | null;
           deletion_reason?: "consumed" | "expired_waste" | "other" | null;
+          expiry_type?: "best_before" | "use_by" | null;
           pin_x?: number | null;
           pin_y?: number | null;
           created_at?: string;
@@ -164,6 +166,7 @@ export interface Database {
           last_verified_at?: string | null;
           deleted_at?: string | null;
           deletion_reason?: "consumed" | "expired_waste" | "other" | null;
+          expiry_type?: "best_before" | "use_by" | null;
           pin_x?: number | null;
           pin_y?: number | null;
           updated_at?: string;

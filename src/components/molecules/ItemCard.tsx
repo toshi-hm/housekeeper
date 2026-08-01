@@ -147,7 +147,11 @@ export const ItemCard = ({
               )}
             </Button>
           )}
-          <ExpiryBadge expiryDate={item.expiry_date} warningDays={warningDays} />
+          <ExpiryBadge
+            expiryDate={item.expiry_date}
+            warningDays={warningDays}
+            expiryType={item.expiry_type}
+          />
         </div>
       </CardFooter>
     </Card>
