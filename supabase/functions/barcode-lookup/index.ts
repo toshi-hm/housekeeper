@@ -1,24 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { isValidBarcode } from "./validation.ts";
+import { fetchYahooShoppingProduct } from "./yahoo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-interface YahooShoppingHit {
-  name?: string;
-  description?: string;
-  image?: { medium?: string };
-  brand?: { name?: string };
-}
-
-interface YahooShoppingResponse {
-  totalResultsReturned?: number;
-  hits?: YahooShoppingHit[];
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -75,46 +64,33 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const url = new URL("https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch");
-    url.searchParams.set("appid", appId);
-    url.searchParams.set("jan_code", barcode);
-    url.searchParams.set("results", "1");
+    const result = await fetchYahooShoppingProduct({ appId, barcode });
 
-    const res = await fetch(url.toString());
+    if (result.kind === "timeout") {
+      // #709: the external API used to be able to hang forever with no
+      // timeout guard, so the client's lookup spinner never resolved. Mirror
+      // the 504 `timeout` shape already used by inventory-chat/recipe-suggest
+      // so the client can surface a distinct, actionable error.
+      return new Response(JSON.stringify({ error: "timeout" }), {
+        status: 504,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    if (!res.ok) {
+    if (result.kind === "error") {
       // #655: an upstream Yahoo Shopping API failure is a server-side
       // problem, not "no such product" — surface it as an error instead of
       // a silent 200 with product: null, which the client used to
       // indistinguishably render as "商品が見つかりません".
-      console.error("Yahoo Shopping API error:", res.status, await res.text());
       return new Response(JSON.stringify({ error: "upstream_error" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const json = (await res.json()) as YahooShoppingResponse;
-
-    if (!json.hits || json.hits.length === 0) {
-      return new Response(JSON.stringify({ product: null }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const hit = json.hits[0];
-
-    return new Response(
-      JSON.stringify({
-        product: {
-          name: hit.name ?? "",
-          description: hit.description ?? null,
-          image_url: hit.image?.medium ?? null,
-          brand: hit.brand?.name ?? null,
-        },
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ product: result.product }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error(err);
     return new Response(JSON.stringify({ error: "internal_error" }), {

@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
@@ -16,7 +17,7 @@ Object.assign(noLocalMatchBuilder, {
 });
 const fromMock = mock(() => noLocalMatchBuilder);
 
-let invokeResponse: { data: unknown; error: { message: string } | null } = {
+let invokeResponse: { data: unknown; error: { message: string } | FunctionsHttpError | null } = {
   data: null,
   error: null,
 };
@@ -69,6 +70,16 @@ describe("useBarcodeLookup (#655)", () => {
     await result.current.lookup("4901234567894");
 
     await waitFor(() => expect(result.current.error).toBe("network"));
+  });
+
+  test("Edge Functionが504 (timeout) を返した場合はtimeoutになる (#709)", async () => {
+    invokeResponse = { data: null, error: new FunctionsHttpError({ status: 504 }) };
+    const { result } = renderHook(() => useBarcodeLookup());
+
+    const lookupResult = await result.current.lookup("4901234567894");
+
+    expect(lookupResult).toEqual({ product: null, source: null });
+    await waitFor(() => expect(result.current.error).toBe("timeout"));
   });
 
   test("商品が見つからない場合(200 + product:null)はerrorを設定しない", async () => {
