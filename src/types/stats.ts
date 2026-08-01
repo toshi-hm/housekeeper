@@ -193,7 +193,16 @@ export const computeMonthlySpending = (
 
     const total = lots.reduce((sum, lot) => {
       if (lot.unit_price === null || !lot.purchase_date) return sum;
-      const purchaseDate = new Date(lot.purchase_date);
+      // `purchase_date` is a DB `date` column (e.g. "2026-07-31"). Parsing it
+      // directly with `new Date(str)` treats it as UTC midnight, but
+      // getFullYear()/getMonth() below read back in local time — for
+      // timezones west of UTC this can shift the date back a day and miscount
+      // a purchase into the wrong month (#710). Build the date from local
+      // components instead, matching `getExpiryStatus` in `src/types/item.ts`.
+      const [purchaseYear, purchaseMonth, purchaseDay] = lot.purchase_date
+        .split("-")
+        .map(Number) as [number, number, number];
+      const purchaseDate = new Date(purchaseYear, purchaseMonth - 1, purchaseDay);
       if (purchaseDate.getFullYear() !== year || purchaseDate.getMonth() !== month) return sum;
       return sum + lot.unit_price * lot.purchased_units;
     }, 0);
