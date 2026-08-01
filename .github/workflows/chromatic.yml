@@ -28,7 +28,7 @@ jobs:
 
       - name: Checkout
         if: steps.guard.outputs.enabled == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Chromatic は TurboSnap / baseline 判定に履歴を使うため全履歴を取得する
           fetch-depth: 0
