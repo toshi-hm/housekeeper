@@ -58,14 +58,13 @@ const { importItems } = await import("@/hooks/useImportItems");
 const makeImportItem = (overrides: Partial<ImportItemInput> = {}): ImportItemInput => ({
   name: "牛乳",
   barcode: null,
-  units: 1,
   content_amount: 1000,
   content_unit: "mL",
-  opened_remaining: null,
-  purchase_date: null,
-  expiry_date: null,
   notes: null,
   minimum_stock: null,
+  lots: [
+    { units: 1, opened_remaining: null, unit_price: null, purchase_date: null, expiry_date: null },
+  ],
   ...overrides,
 });
 
@@ -155,6 +154,77 @@ describe("importItems", () => {
     expect(result).toEqual({ createdCount: 1, updatedCount: 0, skippedCount: 0 });
     const insertCall = callLog.find((c) => c.table === "items" && c.method === "insert");
     expect(insertCall).toBeTruthy();
+  });
+
+  // #693: JSONバックアップは複数ロット（期限日違い等）を保持できるため、
+  // インポート時にすべてのロットを個別に復元しなければならない。
+  test("複数ロットを持つアイテムは、新規作成時にロットごとにcreateLotを呼ぶ", async () => {
+    responseQueues.items = [
+      { data: [], error: null },
+      { data: { id: "new-item-1" }, error: null },
+    ];
+
+    const result = await importItems({
+      items: [
+        makeImportItem({
+          barcode: "123",
+          lots: [
+            {
+              units: 1,
+              opened_remaining: null,
+              unit_price: null,
+              purchase_date: "2026-07-01",
+              expiry_date: "2026-08-01",
+            },
+            {
+              units: 1,
+              opened_remaining: null,
+              unit_price: null,
+              purchase_date: "2026-07-10",
+              expiry_date: "2026-09-15",
+            },
+          ],
+        }),
+      ],
+      duplicateStrategy: "skip",
+    });
+
+    expect(result).toEqual({ createdCount: 1, updatedCount: 0, skippedCount: 0 });
+    expect(createLotMock).toHaveBeenCalledTimes(2);
+    expect(createLotMock.mock.calls[0]?.[2]).toMatchObject({ expiry_date: "2026-08-01" });
+    expect(createLotMock.mock.calls[1]?.[2]).toMatchObject({ expiry_date: "2026-09-15" });
+  });
+
+  test("複数ロットを持つアイテムは、overwrite時もロットごとにcreateLotを呼ぶ", async () => {
+    responseQueues.items = [{ data: [{ id: "existing-1", barcode: "123" }], error: null }];
+
+    const result = await importItems({
+      items: [
+        makeImportItem({
+          barcode: "123",
+          lots: [
+            {
+              units: 1,
+              opened_remaining: null,
+              unit_price: null,
+              purchase_date: "2026-07-01",
+              expiry_date: "2026-08-01",
+            },
+            {
+              units: 1,
+              opened_remaining: null,
+              unit_price: null,
+              purchase_date: "2026-07-10",
+              expiry_date: "2026-09-15",
+            },
+          ],
+        }),
+      ],
+      duplicateStrategy: "overwrite",
+    });
+
+    expect(result).toEqual({ createdCount: 0, updatedCount: 1, skippedCount: 0 });
+    expect(createLotMock).toHaveBeenCalledTimes(2);
   });
 
   test("同一バーコードが複数行に含まれる場合、2件目以降は今回作成した行を重複として扱う", async () => {

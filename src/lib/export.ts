@@ -78,23 +78,85 @@ export const itemsToCSV = (
   return buildCsv(header, rows);
 };
 
-interface ItemsExportPayload {
-  exported_at: string;
-  version: 1;
-  items: Item[];
+/** 1ロット分のバックアップ用データ。`item_lots` の実体をそのまま持ち回る（#693）。 */
+export interface ItemLotExport {
+  units: number;
+  opened_remaining: number | null;
+  unit_price: number | null;
+  purchase_date: string | null;
+  expiry_date: string | null;
 }
 
-/** #358: `{exported_at, version, items: [...]}` 形式のバックアップ用 JSON を生成する。 */
-export const itemsToJSON = (items: Item[], now: () => Date = () => new Date()): string => {
-  const payload: ItemsExportPayload = {
+interface ItemExportV2 {
+  name: string;
+  barcode: string | null;
+  content_amount: number;
+  content_unit: string;
+  notes: string | null;
+  minimum_stock: number | null;
+  auto_reorder: boolean;
+  reorder_threshold: number | null;
+  lots: ItemLotExport[];
+}
+
+interface ItemsExportPayloadV2 {
+  exported_at: string;
+  version: 2;
+  items: ItemExportV2[];
+}
+
+/**
+ * #693: `items` テーブルの行（＝`item_lots` から再計算される集約値。複数ロットが
+ * あるアイテムは `expiry_date` が最も早い1件しか残らない）をそのままバックアップに
+ * 書き出すと、ロット単位の期限・購入日・数量が失われる。v2 ではロット配列
+ * （`lotsByItemId`）をアイテムごとに個別に持たせ、ロットの粒度を保持する。
+ * 復元側（`jsonToItems`）は引き続き旧 v1 形式も読み込める。
+ */
+export const itemsToJSON = (
+  items: Item[],
+  lotsByItemId: Map<string, ItemLotExport[]>,
+  now: () => Date = () => new Date(),
+): string => {
+  const payload: ItemsExportPayloadV2 = {
     exported_at: now().toISOString(),
-    version: 1,
-    items,
+    version: 2,
+    items: items.map((item) => ({
+      name: item.name,
+      barcode: item.barcode ?? null,
+      content_amount: item.content_amount,
+      content_unit: item.content_unit,
+      notes: item.notes ?? null,
+      minimum_stock: item.minimum_stock ?? null,
+      auto_reorder: item.auto_reorder ?? false,
+      reorder_threshold: item.reorder_threshold ?? null,
+      // 通常は全アイテムが >=1 件のロットを持つが、取得漏れ等で空だった場合に
+      // 備え、アイテム自身の集約値を1ロットとしてフォールバックする。
+      lots: lotsByItemId.get(item.id) ?? [
+        {
+          units: item.units,
+          opened_remaining: item.opened_remaining ?? null,
+          unit_price: null,
+          purchase_date: item.purchase_date ?? null,
+          expiry_date: item.expiry_date ?? null,
+        },
+      ],
+    })),
   };
   return JSON.stringify(payload, null, 2);
 };
 
 // --- Items import (#657) ---
+
+/** 1ロット分のインポート入力。`createLot` にほぼそのまま渡せる形。 */
+const importLotSchema = z.object({
+  units: z.number().int().min(0),
+  opened_remaining: z.number().min(0).nullable().optional(),
+  unit_price: z.number().int().min(0).nullable().optional(),
+  purchase_date: z.string().nullable().optional(),
+  expiry_date: z.string().nullable().optional(),
+});
+
+type ImportLotInput = z.infer<typeof importLotSchema>;
 
 /**
  * インポート対象として受け入れるアイテムのフィールド。`category_id` /
@@ -103,27 +165,54 @@ export const itemsToJSON = (items: Item[], now: () => Date = () => new Date()): 
  * ID を指すため FK 違反になる）ため、意図的に取り込まない。カテゴリ・
  * 保管場所はインポート後に手動で再設定する運用とする。
  */
-const importItemSchema = z.object({
+const importItemBaseSchema = z.object({
   name: z.string().min(1),
   barcode: z.string().nullable().optional(),
-  units: z.number().int().min(0),
   content_amount: z.number().positive(),
   content_unit: z.string().min(1),
-  opened_remaining: z.number().min(0).nullable().optional(),
-  purchase_date: z.string().nullable().optional(),
-  expiry_date: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   minimum_stock: z.number().int().min(0).nullable().optional(),
   auto_reorder: z.boolean().optional(),
   reorder_threshold: z.number().int().min(0).nullable().optional(),
 });
 
-export type ImportItemInput = z.infer<typeof importItemSchema>;
+/** v1: ロットの区別がなく、アイテム行自体が単一ロット相当の集約値を持つ旧形式。 */
+const importItemV1Schema = importItemBaseSchema.extend({
+  units: z.number().int().min(0),
+  opened_remaining: z.number().min(0).nullable().optional(),
+  purchase_date: z.string().nullable().optional(),
+  expiry_date: z.string().nullable().optional(),
+});
 
-const importPayloadSchema = z.object({
+/** v2: ロット配列を明示的に持つ形式（#693）。 */
+const importItemV2Schema = importItemBaseSchema.extend({
+  lots: z.array(importLotSchema).min(1),
+});
+
+/** パース後、呼び出し側（`useImportItems`）が扱う正規化済みの形。v1/v2どちらの
+ *  ソースから読み込んでも、常に `lots` 配列を持つ。 */
+export interface ImportItemInput {
+  name: string;
+  barcode?: string | null;
+  content_amount: number;
+  content_unit: string;
+  notes?: string | null;
+  minimum_stock?: number | null;
+  auto_reorder?: boolean;
+  reorder_threshold?: number | null;
+  lots: ImportLotInput[];
+}
+
+const importPayloadV1Schema = z.object({
   exported_at: z.string(),
   version: z.literal(1),
-  items: z.array(importItemSchema),
+  items: z.array(importItemV1Schema),
+});
+
+const importPayloadV2Schema = z.object({
+  exported_at: z.string(),
+  version: z.literal(2),
+  items: z.array(importItemV2Schema),
 });
 
 /** `jsonToItems` が投げるエラーの理由。i18n キーの切り替えに使う (Key Map パターン)。 */
@@ -137,10 +226,43 @@ export class ImportParseError extends Error {
   }
 }
 
+const normalizeV2Item = (item: z.infer<typeof importItemV2Schema>): ImportItemInput => ({
+  name: item.name,
+  barcode: item.barcode,
+  content_amount: item.content_amount,
+  content_unit: item.content_unit,
+  notes: item.notes,
+  minimum_stock: item.minimum_stock,
+  auto_reorder: item.auto_reorder,
+  reorder_threshold: item.reorder_threshold,
+  lots: item.lots,
+});
+
+const normalizeV1Item = (item: z.infer<typeof importItemV1Schema>): ImportItemInput => ({
+  name: item.name,
+  barcode: item.barcode,
+  content_amount: item.content_amount,
+  content_unit: item.content_unit,
+  notes: item.notes,
+  minimum_stock: item.minimum_stock,
+  auto_reorder: item.auto_reorder,
+  reorder_threshold: item.reorder_threshold,
+  lots: [
+    {
+      units: item.units,
+      opened_remaining: item.opened_remaining ?? null,
+      unit_price: null,
+      purchase_date: item.purchase_date ?? null,
+      expiry_date: item.expiry_date ?? null,
+    },
+  ],
+});
+
 /**
- * `itemsToJSON` が生成した `{exported_at, version: 1, items}` 形式のバックアップ
- * JSON をパース・検証する（#657）。不正な JSON / 想定外の形式は
- * `ImportParseError` を投げる。
+ * `itemsToJSON` が生成したバックアップ JSON をパース・検証する（#657 / #693）。
+ * v2（ロット配列を持つ現行形式）を優先して試し、失敗したら旧 v1（アイテム単位の
+ * 集約値のみ）として読み込む。どちらでも合わなければ不正な JSON /
+ * 想定外の形式として `ImportParseError` を投げる。
  */
 export const jsonToItems = (jsonText: string): ImportItemInput[] => {
   let parsed: unknown;
@@ -149,11 +271,14 @@ export const jsonToItems = (jsonText: string): ImportItemInput[] => {
   } catch {
     throw new ImportParseError("invalid_json");
   }
-  const result = importPayloadSchema.safeParse(parsed);
-  if (!result.success) {
-    throw new ImportParseError("invalid_format");
-  }
-  return result.data.items;
+
+  const v2 = importPayloadV2Schema.safeParse(parsed);
+  if (v2.success) return v2.data.items.map(normalizeV2Item);
+
+  const v1 = importPayloadV1Schema.safeParse(parsed);
+  if (v1.success) return v1.data.items.map(normalizeV1Item);
+
+  throw new ImportParseError("invalid_format");
 };
 
 // --- Consumption / purchase history export (#381) ---
