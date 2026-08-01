@@ -98,6 +98,67 @@ describe("ItemForm — aria-describedby / aria-invalid (#621)", () => {
   });
 });
 
+describe("ItemForm — 期限種別セレクタ (#714)", () => {
+  beforeEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+  });
+
+  afterEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockRestore();
+    spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+  });
+
+  it("デフォルトでは未設定が選択されている", () => {
+    const { getByRole } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "テスト", units: 1 }} />,
+      { wrapper },
+    );
+    expect(
+      getByRole("button", { name: i18n.t("items:expiryTypeUnset") }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("賞味期限を選んで送信するとonSubmitにexpiry_type: 'best_before'が渡る", () => {
+    const onSubmit = spyOn({ onSubmit: () => {} }, "onSubmit");
+    const { container, getByRole } = render(
+      <ItemForm onSubmit={onSubmit} defaultValues={{ name: "テスト", units: 1 }} />,
+      { wrapper },
+    );
+
+    fireEvent.click(getByRole("button", { name: i18n.t("items:expiryTypeBestBefore") }));
+
+    const form = container.querySelector("form")!;
+    fireEvent.submit(form);
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ expiry_type: "best_before" }));
+  });
+
+  it("既存アイテム編集時はdefaultValues.expiry_typeが反映される", () => {
+    const { getByRole } = render(
+      <ItemForm
+        onSubmit={() => {}}
+        defaultValues={{ name: "テスト", units: 1, expiry_type: "use_by" }}
+      />,
+      { wrapper },
+    );
+    expect(
+      getByRole("button", { name: i18n.t("items:expiryTypeUseBy") }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+});
+
 describe("ItemForm — 下書き保存/復元 (#672)", () => {
   beforeEach(() => {
     localStorage.clear();

@@ -27,30 +27,56 @@ interface PushSubscription {
   auth: string;
 }
 
+type ExpiryType = "best_before" | "use_by" | null;
+
 interface ExpiringItem {
   id: string;
   name: string;
   expiry_date: string;
+  // #714: 「賞味期限」(品質の目安) と「消費期限」(安全性の目安) の区別。
+  // null = 未設定（区別なし、既存アイテム）で従来通りの一律の通知文言のまま扱う。
+  expiry_type: ExpiryType;
 }
 
 // #630: Edge Functions can't use react-i18next, so notification copy is kept
 // in a small static per-language map instead of hardcoding Japanese.
+// #714: title()/itemLine() take expiry_type-aware inputs so wording/priority
+// can reflect 賞味期限 (best-before, mild) vs 消費期限 (use-by, urgent) without
+// touching the hour-matching / scheduling logic above (kept untouched to avoid
+// conflicting with #708, which is also editing this file).
 const EXPIRY_NOTIFICATION_TEXT: Record<
   "ja" | "en",
   {
-    title: (count: number) => string;
-    itemLine: (name: string, expiryDate: string) => string;
+    title: (count: number, hasUrgent: boolean) => string;
+    itemLine: (name: string, expiryDate: string, expiryType: ExpiryType) => string;
     emailIntro: string;
   }
 > = {
   ja: {
-    title: (count) => `${count}件の食材が期限間近です`,
-    itemLine: (name, expiryDate) => `${name} (${expiryDate})`,
+    // 消費期限（安全性）を含む場合は従来通りの表現、賞味期限のみなら穏やかな表現にする
+    title: (count, hasUrgent) =>
+      hasUrgent
+        ? `${count}件の食材が期限間近です`
+        : `${count}件の食材の賞味期限（品質の目安）が近づいています`,
+    itemLine: (name, expiryDate, expiryType) =>
+      expiryType === "best_before"
+        ? `${name} (${expiryDate}, 賞味期限)`
+        : expiryType === "use_by"
+          ? `${name} (${expiryDate}, 消費期限)`
+          : `${name} (${expiryDate})`,
     emailIntro: "期限間近の食材:",
   },
   en: {
-    title: (count) => `${count} item(s) are expiring soon`,
-    itemLine: (name, expiryDate) => `${name} (${expiryDate})`,
+    title: (count, hasUrgent) =>
+      hasUrgent
+        ? `${count} item(s) are expiring soon`
+        : `${count} item(s) are approaching their best-before (quality) date`,
+    itemLine: (name, expiryDate, expiryType) =>
+      expiryType === "best_before"
+        ? `${name} (${expiryDate}, best-before)`
+        : expiryType === "use_by"
+          ? `${name} (${expiryDate}, use-by)`
+          : `${name} (${expiryDate})`,
     emailIntro: "Items expiring soon:",
   },
 };
@@ -119,7 +145,7 @@ Deno.serve(async (req: Request) => {
       // opened_remaining = 0（開封済み・空）の item は対象外とする（#445）。
       const { data: items } = await supabase
         .from("items")
-        .select("id, name, expiry_date")
+        .select("id, name, expiry_date, expiry_type")
         .eq("user_id", pref.user_id)
         .not("expiry_date", "is", null)
         .lte("expiry_date", thresholdStr)
@@ -151,10 +177,14 @@ Deno.serve(async (req: Request) => {
         if (!claimed || claimed.length === 0) return;
       }
 
-      const title = text.title(count);
+      // #714: 消費期限（use_by）または区別未設定（null, 既存アイテム互換）の item が
+      // 1件でもあれば、通知全体を従来通りの「緊急」文言・優先度にする。賞味期限
+      // （best_before）のみで構成される場合だけ穏やかな文言にする。
+      const hasUrgentItem = (items as ExpiringItem[]).some((i) => i.expiry_type !== "best_before");
+      const title = text.title(count, hasUrgentItem);
       const body = (items as ExpiringItem[])
         .slice(0, 3)
-        .map((i) => text.itemLine(i.name, i.expiry_date))
+        .map((i) => text.itemLine(i.name, i.expiry_date, i.expiry_type))
         .join(", ");
       const notificationUrl = buildNotificationTargetUrl(items as ExpiringItem[]);
 
@@ -206,7 +236,7 @@ Deno.serve(async (req: Request) => {
             from: resendFrom,
             to: pref.email_address,
             subject: title,
-            text: `${text.emailIntro}\n${(items as ExpiringItem[]).map((i) => `- ${i.name} (${i.expiry_date})`).join("\n")}`,
+            text: `${text.emailIntro}\n${(items as ExpiringItem[]).map((i) => `- ${text.itemLine(i.name, i.expiry_date, i.expiry_type)}`).join("\n")}`,
           }),
         });
         if (!res.ok) {

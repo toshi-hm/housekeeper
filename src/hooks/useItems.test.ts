@@ -202,6 +202,16 @@ describe("normalizeUpdateValues", () => {
     expect(result).toEqual({ opened_remaining: null });
   });
 
+  test("passes through expiry_type ('best_before'/'use_by') and clears to null when unset (#714)", () => {
+    expect(normalizeUpdateValues({ expiry_type: "best_before" })).toEqual({
+      expiry_type: "best_before",
+    });
+    expect(normalizeUpdateValues({ expiry_type: "use_by" })).toEqual({ expiry_type: "use_by" });
+    expect(normalizeUpdateValues({ expiry_type: null })).toEqual({ expiry_type: null });
+    expect(normalizeUpdateValues({ expiry_type: undefined })).toEqual({ expiry_type: null });
+    expect("expiry_type" in normalizeUpdateValues({ name: "no expiry type field" })).toBe(false);
+  });
+
   test("treats present undefined on nullable fields as clear (null)", () => {
     const result = normalizeUpdateValues({
       barcode: undefined,

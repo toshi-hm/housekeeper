@@ -130,6 +130,7 @@ const normalizeCreateValues = (values: ItemFormValues) => ({
       : null,
   purchase_date: values.purchase_date || null,
   expiry_date: values.expiry_date || null,
+  expiry_type: values.expiry_type ?? null,
   notes: values.notes || null,
   image_path: values.image_path || null,
   minimum_stock:
@@ -172,6 +173,9 @@ export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
 
   if (hasOwn(values, "purchase_date")) normalized.purchase_date = values.purchase_date || null;
   if (hasOwn(values, "expiry_date")) normalized.expiry_date = values.expiry_date || null;
+  if (hasOwn(values, "expiry_type")) {
+    normalized.expiry_type = values.expiry_type ?? null;
+  }
   if (hasOwn(values, "notes")) normalized.notes = values.notes || null;
   if (hasOwn(values, "image_path")) normalized.image_path = values.image_path || null;
   if (hasOwn(values, "minimum_stock")) {

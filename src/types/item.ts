@@ -38,6 +38,12 @@ export interface CustomUnit {
   created_at: string;
 }
 
+/** 「賞味期限」（best_before, 品質の目安 = 過ぎても食べられることが多い）と
+ *  「消費期限」（use_by, 安全性の目安 = 過ぎたら食べない方がよい）の区別 (#714)。
+ *  日本の食品表示の区分に対応する。 */
+export const EXPIRY_TYPES = ["best_before", "use_by"] as const;
+export type ExpiryType = (typeof EXPIRY_TYPES)[number];
+
 export interface Item {
   id: string;
   user_id: string;
@@ -51,6 +57,10 @@ export interface Item {
   opened_remaining?: number | null;
   purchase_date?: string | null;
   expiry_date?: string | null;
+  /** 「賞味期限」（品質の目安）か「消費期限」（安全性の目安）かの区別 (#714)。
+   *  null = 未設定・区別なし（既存アイテムは全て null のままで、これまで通りの
+   *  一律の期限扱いを維持する）。 */
+  expiry_type?: ExpiryType | null;
   notes?: string | null;
   image_path?: string | null;
   minimum_stock?: number | null;
@@ -83,6 +93,8 @@ export const itemFormSchema = z.object({
   opened_remaining: z.coerce.number().min(0).nullable().optional(),
   purchase_date: z.string().optional(),
   expiry_date: z.string().optional(),
+  /** 「賞味期限」/「消費期限」の区別。未選択 = null（区別なし、#714）。 */
+  expiry_type: z.enum(EXPIRY_TYPES).nullable().optional(),
   notes: z.string().optional(),
   image_path: z.string().optional(),
   minimum_stock: z.coerce.number().int().min(0).nullable().optional(),
@@ -219,6 +231,16 @@ export const getExpiryApprox = (expiryDate: string, now: Date = new Date()): Exp
  *  カスタム単位をマージして表示すること。 */
 export const CONTENT_UNITS = ["個", "枚", "本", "袋", "mL", "L", "g", "kg"] as const;
 
+/**
+ * `expiry_date` と警告日数から4状態（expired/expiring-soon/ok/unknown）を判定する。
+ *
+ * 日付のみに基づく判定であり、`expiry_type`（賞味期限/消費期限）による分岐は
+ * 含まない — この4状態は絞り込み・ソート・カレンダー表示など、区別を気にしない
+ * 既存の呼び出し元が多数あるため（#714 時点で維持すべき契約）。
+ * `expired`/`expiring-soon` を「賞味期限なら穏やかに、消費期限ならより強く」
+ * 表示し分けたい呼び出し元（`ExpiryBadge` など）は、この結果を
+ * {@link getExpirySeverity} に渡して表示用の重大度を求めること。
+ */
 export const getExpiryStatus = (
   expiryDate: string | null | undefined,
   warningDays = DEFAULT_EXPIRY_WARNING_DAYS,
@@ -233,6 +255,26 @@ export const getExpiryStatus = (
   if (diffDays < 0) return "expired";
   if (diffDays <= warningDays) return "expiring-soon";
   return "ok";
+};
+
+/** {@link getExpiryStatus} の4状態に `expiry_type` による重大度の強弱を加えた
+ *  表示用の値 (#714)。
+ *
+ * - `expired` + `use_by`（消費期限）または未設定 = `danger`（従来通りの赤/危険表示）
+ * - `expired` + `best_before`（賞味期限）= `caution`（品質の目安を過ぎただけで
+ *   安全性の問題ではないため、穏やかな表示に留める）
+ * - `expiring-soon` は区別の有無に関わらず `warning`
+ * - `ok` / `unknown` はそのまま
+ */
+export type ExpirySeverity = "danger" | "caution" | "warning" | "ok" | "unknown";
+
+export const getExpirySeverity = (
+  status: ExpiryStatus,
+  expiryType?: ExpiryType | null,
+): ExpirySeverity => {
+  if (status === "expired") return expiryType === "best_before" ? "caution" : "danger";
+  if (status === "expiring-soon") return "warning";
+  return status;
 };
 
 /**

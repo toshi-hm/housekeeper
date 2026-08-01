@@ -58,4 +58,41 @@ describe("ExpiryBadge", () => {
     });
     expect(c1.innerHTML).not.toEqual(c2.innerHTML);
   });
+
+  // --- expiry_type (#714) ---
+
+  it("past date with expiry_type unset shows the same wording/color as before (backward compatible)", () => {
+    const { getByText } = render(<ExpiryBadge expiryDate="2020-01-01" />, { wrapper });
+    expect(getByText(i18n.t("items:expiryStatus.expired"))).not.toBeNull();
+  });
+
+  it("past date with expiry_type='use_by' still reads as the urgent 'expired' state", () => {
+    const { getByText } = render(<ExpiryBadge expiryDate="2020-01-01" expiryType="use_by" />, {
+      wrapper,
+    });
+    expect(getByText(i18n.t("items:expiryStatus.expired"))).not.toBeNull();
+  });
+
+  it("past date with expiry_type='best_before' shows the softer 'expiredBestBefore' wording", () => {
+    const { getByText, queryByText } = render(
+      <ExpiryBadge expiryDate="2020-01-01" expiryType="best_before" />,
+      { wrapper },
+    );
+    expect(getByText(i18n.t("items:expiryStatus.expiredBestBefore"))).not.toBeNull();
+    expect(queryByText(i18n.t("items:expiryStatus.expired"))).toBeNull();
+  });
+
+  it("expiry_type does not affect non-expired statuses", () => {
+    const future = new Date();
+    future.setDate(future.getDate() + 30);
+    const { getByText } = render(
+      <ExpiryBadge
+        expiryDate={future.toISOString().slice(0, 10)}
+        expiryType="best_before"
+        warningDays={3}
+      />,
+      { wrapper },
+    );
+    expect(getByText(i18n.t("items:expiryStatus.ok"))).not.toBeNull();
+  });
 });

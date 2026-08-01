@@ -551,6 +551,13 @@ export const DashboardPage = () => {
                           >
                             {item.name}
                           </Link>
+                          {/* #714: 賞味期限切れは安全性の問題ではないため、消費期限切れ
+                              （または区別未設定）と見分けられるよう注記する */}
+                          {item.expiry_type === "best_before" && (
+                            <span className="ml-1 text-xs text-yellow-700">
+                              {t("urgentBannerBestBeforeNote")}
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>
