@@ -69,7 +69,15 @@ create table public.household_invites (
   expires_at timestamptz not null,
   redeemed_by uuid references auth.users(id),
   redeemed_at timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Defense-in-depth against a member using the raw INSERT policy below to
+  -- craft a degenerate invite (RLS is the real security boundary here, not
+  -- whatever code a future client hook happens to generate): the spec's own
+  -- example is an ~8-char shareable code with a ~24h expiry, so a generous
+  -- 6-char floor and 7-day ceiling never constrain legitimate use while
+  -- ruling out a single-char code or a years-long standing backdoor invite.
+  constraint household_invites_code_length check (char_length(code) >= 6),
+  constraint household_invites_expiry_window check (expires_at <= created_at + interval '7 days')
 );
 
 create index household_invites_household_id_idx on public.household_invites(household_id);
@@ -140,6 +148,11 @@ create policy "household_invites_member_insert"
   with check (
     household_id = (select private.current_household_id())
     and created_by = (select auth.uid())
+    -- Redemption must only ever happen via redeem_household_invite() below;
+    -- otherwise a member could insert a row that already looks redeemed
+    -- (fabricating a fake join record visible to the rest of the household).
+    and redeemed_by is null
+    and redeemed_at is null
   );
 
 revoke all on table public.household_invites from anon, authenticated;

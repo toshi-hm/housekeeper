@@ -17,7 +17,7 @@
 --           already-redeemed invite-code failure paths
 begin;
 
-select plan(21);
+select plan(24);
 
 insert into auth.users (id, email)
 values
@@ -74,6 +74,52 @@ values (
   'EXPIREDCODE1',
   '11111111-1111-1111-1111-111111111111',
   now() - interval '1 hour'
+);
+
+-- A member must not be able to bypass redeem_household_invite() and insert
+-- a row that already looks redeemed (fabricating a fake join record).
+select throws_ok(
+  $$insert into household_invites (household_id, code, created_by, expires_at, redeemed_by, redeemed_at)
+    values (
+      (select id from households where created_by = '11111111-1111-1111-1111-111111111111'),
+      'SPOOFEDCODE1',
+      '11111111-1111-1111-1111-111111111111',
+      now() + interval '1 day',
+      '22222222-2222-2222-2222-222222222222',
+      now()
+    )$$,
+  '42501',
+  'new row violates row-level security policy for table "household_invites"',
+  'a member cannot insert an invite that already looks redeemed'
+);
+
+-- A member must not be able to craft a standing backdoor invite with an
+-- absurdly long expiry (spec's own example is a ~24h window).
+select throws_ok(
+  $$insert into household_invites (household_id, code, created_by, expires_at)
+    values (
+      (select id from households where created_by = '11111111-1111-1111-1111-111111111111'),
+      'FOREVERCODE1',
+      '11111111-1111-1111-1111-111111111111',
+      now() + interval '100 years'
+    )$$,
+  '23514',
+  'new row for relation "household_invites" violates check constraint "household_invites_expiry_window"',
+  'a member cannot insert an invite with an expiry more than 7 days out'
+);
+
+-- A member must not be able to craft a degenerately weak (1-char) code.
+select throws_ok(
+  $$insert into household_invites (household_id, code, created_by, expires_at)
+    values (
+      (select id from households where created_by = '11111111-1111-1111-1111-111111111111'),
+      'a',
+      '11111111-1111-1111-1111-111111111111',
+      now() + interval '1 day'
+    )$$,
+  '23514',
+  'new row for relation "household_invites" violates check constraint "household_invites_code_length"',
+  'a member cannot insert an invite with a degenerately short code'
 );
 
 -- ===== user4: separate household, proves cross-household isolation =====
