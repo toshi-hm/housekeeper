@@ -17,6 +17,17 @@ import { OfflineError } from "@/lib/requireOnline";
 import { listAvailableTimezones } from "@/lib/timezone";
 import { useToast } from "@/lib/toast-context";
 
+/**
+ * notify_at の表示を "HH:00" に丸める。
+ * 配信は毎時0分実行のcronで時単位でしか判定されないため、
+ * 過去に分単位で保存された値が残っていても表示上は時単位に揃える (#708)
+ */
+const toHourOnly = (value: string): string => {
+  const hour = parseInt(value.split(":")[0] ?? "", 10);
+  if (isNaN(hour) || hour < 0 || hour > 23) return "08:00";
+  return `${hour.toString().padStart(2, "0")}:00`;
+};
+
 export const NotificationSettings = () => {
   const { t } = useTranslation("notifications");
   const { data: prefs } = useNotificationPreferences();
@@ -117,8 +128,16 @@ export const NotificationSettings = () => {
       toast(t("invalidNotifyAt"), "error");
       return;
     }
+    const hour = parseInt(val.split(":")[0] ?? "", 10);
+    if (isNaN(hour) || hour < 0 || hour > 23) {
+      toast(t("invalidNotifyAt"), "error");
+      return;
+    }
+    // 配信は毎時0分実行のcronで時単位でしか判定されないため、
+    // UIも時単位に丸めて実態と一致させる (#708)
+    const normalized = `${hour.toString().padStart(2, "0")}:00`;
     try {
-      await updatePrefs.mutateAsync({ notify_at: val });
+      await updatePrefs.mutateAsync({ notify_at: normalized });
     } catch (error) {
       if (!(error instanceof OfflineError)) {
         toast(t("common:unknownError"), "error");
@@ -232,9 +251,11 @@ export const NotificationSettings = () => {
           <Input
             id="notify_at"
             type="time"
-            defaultValue={prefs?.notify_at ?? "08:00"}
+            step={3600}
+            defaultValue={toHourOnly(prefs?.notify_at ?? "08:00")}
             onBlur={(e) => void handleNotifyAtBlur(e.target.value)}
           />
+          <p className="text-xs text-muted-foreground">{t("notifyAtHelp")}</p>
         </div>
         <div className="col-span-2 space-y-1">
           <Label htmlFor="timezone">{t("timezone")}</Label>

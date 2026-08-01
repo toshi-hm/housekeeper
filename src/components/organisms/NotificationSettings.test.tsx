@@ -32,6 +32,7 @@ describe("NotificationSettings", () => {
       push_enabled: boolean;
       email_enabled: boolean;
       email_address: string | null;
+      notify_at: string;
     }> = {},
   ) => {
     prefsSpy.mockReturnValue({
@@ -135,6 +136,37 @@ describe("NotificationSettings", () => {
     const { getByLabelText } = render(<NotificationSettings />, { wrapper });
     const notifyAtInput = getByLabelText(/通知時刻|Notification time/i);
     fireEvent.blur(notifyAtInput, { target: { value: "" } });
+
+    expect(toastMock).toHaveBeenCalledWith(expect.any(String), "error");
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("通知時刻の入力欄は分単位を選べないstep=3600で表示される (#708)", () => {
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const notifyAtInput = getByLabelText(/通知時刻|Notification time/i) as HTMLInputElement;
+    expect(notifyAtInput.step).toBe("3600");
+  });
+
+  it("通知時刻に分単位の値を入力してフォーカスアウトするとHH:00に丸めて保存される (#708)", () => {
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const notifyAtInput = getByLabelText(/通知時刻|Notification time/i);
+    fireEvent.blur(notifyAtInput, { target: { value: "08:37" } });
+
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(mutateAsync).toHaveBeenCalledWith({ notify_at: "08:00" });
+  });
+
+  it("既に分単位で保存されていた値も表示上はHH:00に丸められる (#708)", () => {
+    setPrefs({ notify_at: "09:45" });
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const notifyAtInput = getByLabelText(/通知時刻|Notification time/i) as HTMLInputElement;
+    expect(notifyAtInput.value).toBe("09:00");
+  });
+
+  it("通知時刻に不正な値を入力してフォーカスアウトするとエラートーストを表示し保存しない (#708)", () => {
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const notifyAtInput = getByLabelText(/通知時刻|Notification time/i);
+    fireEvent.blur(notifyAtInput, { target: { value: "not-a-time" } });
 
     expect(toastMock).toHaveBeenCalledWith(expect.any(String), "error");
     expect(mutateAsync).not.toHaveBeenCalled();

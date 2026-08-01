@@ -101,6 +101,7 @@ Service Worker は `vite-plugin-pwa` の `injectManifest` 戦略で書く（PWA 
 - Edge Function は `scheduled=true` のとき、各ユーザーの `notification_preferences.notify_at` の「時」と、
   そのユーザーの `notification_preferences.timezone`（#660、未設定時は既定の Asia/Tokyo）で解釈した現在時刻の
   「時」が一致する場合のみ送信する。これにより「朝7時」などユーザー指定時刻・タイムゾーンで配信できる。
+  実際の配信粒度は時単位のため、設定画面の時刻入力も時単位（分は `00` 固定）に制限している（#708）。
 - `notification_logs(user_id, sent_on)` の UNIQUE 制約 + `ignoreDuplicates` upsert で**1 ユーザー 1 日 1 通**に制限。
 - 手動呼び出し（クエリなし）は従来どおり全有効ユーザーへ即時送信（デバッグ用途）。
 - `X-Cron-Secret` ヘッダーによる呼び出し元認証（#444）を pg_net の呼び出しにも付与する。
