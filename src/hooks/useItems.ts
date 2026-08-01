@@ -389,8 +389,9 @@ export const findActiveItemByBarcode = async (barcode: string): Promise<Item | n
   return data ? (data as Item) : null;
 };
 
-/** カレンダー用: expiry_date を持つアクティブアイテムのみ返す。
- *  自動アーカイブ (#419) の対象走査にも流用する（deleted_at is null なアイテムだけを見れば十分）。 */
+/** カレンダー用: expiry_date を持つ、在庫が残っているアクティブアイテムのみ返す。
+ *  ダッシュボード（`_auth.index.tsx` の `hideEmpty`/期限切れ件数集計）と同じ
+ *  `units > 0` 基準に揃え、使い切り済みアイテムが期限切れ表示され続けないようにする (#707)。 */
 const fetchItemsWithExpiry = async (): Promise<Item[]> => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
@@ -401,6 +402,7 @@ const fetchItemsWithExpiry = async (): Promise<Item[]> => {
     .eq("user_id", userData.user.id)
     .is("deleted_at", null)
     .not("expiry_date", "is", null)
+    .gt("units", 0)
     .order("expiry_date", { ascending: true });
   if (error) throw error;
   return (data ?? []) as Item[];

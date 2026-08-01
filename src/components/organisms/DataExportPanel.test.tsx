@@ -16,6 +16,15 @@ import { DataExportPanel } from "./DataExportPanel";
 
 const toastMock = mock<(message: string, variant?: "success" | "error") => void>(() => {});
 
+/** 実行時点から n 日前の日付を YYYY-MM-DD で返す。履歴エクスポートの既定期間（30日）
+ *  フィルタは実時刻基準のため、テストのフィクスチャ日付を固定値にすると実行日によって
+ *  期間外に落ちて flaky になる（#716）。相対日付にすることで実行日に依存しないようにする。 */
+const daysAgo = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+};
+
 const wrapper = ({ children }: { children: ReactNode }) => {
   const stubToast: ToastContextValue = { toasts: [], toast: toastMock, dismiss: () => {} };
   return (
@@ -70,12 +79,12 @@ describe("DataExportPanel", () => {
           item_id: "item-1",
           delta_amount: 100,
           delta_unit: "mL",
-          occurred_at: "2026-07-10T00:00:00Z",
+          occurred_at: `${daysAgo(10)}T00:00:00Z`,
         },
       ],
     } as unknown as ReturnType<typeof useConsumptionLogsModule.useAllConsumptionLogs>);
     spyOn(useItemLotsModule, "useAllItemLots").mockReturnValue({
-      data: [{ item_id: "item-1", purchased_units: 1, purchase_date: "2026-07-01" }],
+      data: [{ item_id: "item-1", purchased_units: 1, purchase_date: daysAgo(20) }],
     } as unknown as ReturnType<typeof useItemLotsModule.useAllItemLots>);
     spyOn(useItemLotsModule, "useAllItemLotsFull").mockReturnValue({
       data: [

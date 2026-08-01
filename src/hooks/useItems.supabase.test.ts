@@ -29,6 +29,7 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     eq: chainMethod("eq"),
     is: chainMethod("is"),
     not: chainMethod("not"),
+    gt: chainMethod("gt"),
     or: chainMethod("or"),
     in: chainMethod("in"),
     limit: chainMethod("limit"),
@@ -70,6 +71,7 @@ const {
   escapeOrFilterValue,
   bulkConsumeItems,
   useBulkItemAction,
+  useItemsWithExpiry,
 } = await import("@/hooks/useItems");
 const { ToastContext } = await import("@/lib/toast-context");
 
@@ -121,6 +123,26 @@ describe("fetchItem", () => {
   test("該当行がない(ソフトデリート済み等)場合はエラーをthrowする", async () => {
     responseQueues.items = [{ data: null, error: { message: "no rows", code: "PGRST116" } }];
     await expect(fetchItem("item-1")).rejects.toBeTruthy();
+  });
+});
+
+describe("useItemsWithExpiry", () => {
+  test("units > 0 でフィルタし、使い切り済みアイテムをカレンダーの走査対象から除外する (#707)", async () => {
+    responseQueues.items = [{ data: [], error: null }];
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    const { result } = renderHook(() => useItemsWithExpiry(), { wrapper: makeWrapper(qc) });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const gtCall = callLog.find((c) => c.table === "items" && c.method === "gt");
+    expect(gtCall?.args).toEqual(["units", 0]);
+
+    // ダッシュボード側の hideEmpty / 期限切れ件数集計と同じ基準（units > 0 かつ
+    // deleted_at is null かつ expiry_date が設定済み）に揃っていることも確認する
+    const isCall = callLog.find((c) => c.table === "items" && c.method === "is");
+    expect(isCall?.args).toEqual(["deleted_at", null]);
+    const notCall = callLog.find((c) => c.table === "items" && c.method === "not");
+    expect(notCall?.args).toEqual(["expiry_date", "is", null]);
   });
 });
 
