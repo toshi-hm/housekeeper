@@ -204,4 +204,21 @@ describe("uploadItemImage", () => {
       false,
     );
   });
+
+  // #702: happy-dom has no createImageBitmap, so compressImageForUpload is a
+  // no-op here and the raw file reaches uploadItemImage unchanged — this
+  // exercises the post-compression size guard directly.
+  test("圧縮後も5MBを超える場合はアップロードせずエラーを投げる", async () => {
+    uploadMock.mockClear();
+    const oversized = new File([new Uint8Array(6 * 1024 * 1024)], "huge.jpg", {
+      type: "image/jpeg",
+    });
+    const queryClient = makeQueryClient();
+
+    await expect(
+      uploadItemImage({ itemId: "item-1", file: oversized, queryClient }),
+    ).rejects.toThrow();
+
+    expect(uploadMock).not.toHaveBeenCalled();
+  });
 });

@@ -27,6 +27,8 @@ export const downloadExternalImageAsFile = async (imageUrl: string): Promise<Fil
 
 const BUCKET = "item-images";
 const SIGNED_URL_TTL = 60 * 50; // 50 minutes
+/** Upload limit enforced after compression (mirrors the storage bucket's expectations). */
+const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 
 const getSignedUrl = async (path: string): Promise<string> => {
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
@@ -121,6 +123,14 @@ export const uploadItemImage = async ({
   // Resize to fit within MAX_EDGE_PX and re-encode as WebP before upload
   // (falls back to the original file untouched if that isn't possible).
   const uploadFile = await compressImageForUpload(file);
+  // #702: ImageUploader only sanity-checks the raw pick (up to 30MB) so large
+  // phone-camera photos reach compression instead of being rejected before
+  // they get a chance to shrink. Enforce the real upload limit here, after
+  // compression — this should only trip when compression couldn't reduce
+  // the file (e.g. decoding failed and the original itself exceeds 5MB).
+  if (uploadFile.size > MAX_UPLOAD_SIZE_BYTES) {
+    throw new Error("Image exceeds the maximum upload size even after compression");
+  }
 
   const rawExt = uploadFile.name.includes(".")
     ? uploadFile.name.split(".").pop()?.toLowerCase()
