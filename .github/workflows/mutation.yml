@@ -45,7 +45,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Restore incremental mutation cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: reports/stryker-incremental.json
           key: stryker-incremental-${{ github.run_id }}
