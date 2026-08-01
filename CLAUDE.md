@@ -46,6 +46,7 @@ Read the relevant spec file before implementing any feature.
 - Storage location photo map: docs/specs/features/storage-location-map.md
 - Shopping list: docs/specs/features/shopping-list.md
 - Consumption & purchase history: docs/specs/features/consumption-purchase.md
+- Weekly meal planner (planned): docs/specs/features/meal-plan.md
 - Notifications: docs/specs/features/notifications.md
 - PWA / Offline: docs/specs/features/pwa.md
 - i18n: docs/specs/features/i18n.md
