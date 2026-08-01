@@ -34,6 +34,14 @@ describe("ProductLookupResult (#655)", () => {
     expect(getByText(i18n.t("items:productLookupServerError"))).toBeTruthy();
   });
 
+  it("errorType=timeoutの場合は専用のタイムアウトメッセージを表示する（#709）", () => {
+    const { getByText } = render(
+      <ProductLookupResult isLoading={false} product={null} errorType="timeout" />,
+      { wrapper },
+    );
+    expect(getByText(i18n.t("items:productLookupTimeout"))).toBeTruthy();
+  });
+
   it("ローディング中はスピナー用テキストを表示する", () => {
     const { getByText } = render(<ProductLookupResult isLoading product={undefined} />, {
       wrapper,

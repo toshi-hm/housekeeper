@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useState } from "react";
 
 import { supabase } from "@/lib/supabase";
@@ -20,9 +21,9 @@ interface ItemLookupRow {
 }
 
 /** "not_found"（該当商品なし）は成功レスポンス（200 + product: null）として
- *  扱われるため、このフックがエラー状態として設定するのは network / server_error
- *  のみ。#655 */
-export type BarcodeLookupErrorType = "network" | "server_error";
+ *  扱われるため、このフックがエラー状態として設定するのは network / server_error /
+ *  timeout のみ。#655, #709 */
+export type BarcodeLookupErrorType = "network" | "server_error" | "timeout";
 
 export const useBarcodeLookup = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -75,6 +76,14 @@ export const useBarcodeLookup = () => {
         { body: { barcode } },
       );
       if (fnError) {
+        // #709: barcode-lookup returns a dedicated 504 { error: "timeout" }
+        // when the upstream Yahoo Shopping API call itself times out, so
+        // this is distinguished from a generic server_error before falling
+        // back to the message-based network/server_error split below.
+        if (fnError instanceof FunctionsHttpError && fnError.context.status === 504) {
+          setError("timeout");
+          return { product: null, source: null };
+        }
         // #655: barcode-lookup only ever returns a non-2xx response for
         // genuine server-side problems (invalid request, missing API
         // config, upstream failure) — a real "no such product" is always a
