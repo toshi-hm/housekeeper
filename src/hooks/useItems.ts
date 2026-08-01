@@ -426,7 +426,7 @@ export const applyItemToListCaches = (qc: QueryClient, item: Item) => {
 
     if (rawFilters === "with-expiry") {
       const next =
-        !item.deleted_at && item.expiry_date
+        !item.deleted_at && item.expiry_date && item.units > 0
           ? upsertItemInListCache(cachedItems, item, "expiry_date")
           : cachedItems.filter((cached) => cached.id !== item.id);
       qc.setQueryData(queryKey, next);

@@ -135,6 +135,29 @@ describe("applyItemToListCaches", () => {
     expect(qc.getQueryData<Item[]>(withExpiryQuery)).toEqual([created]);
   });
 
+  test("units=0（使い切り済み）のアイテムはwith-expiry一覧に追加しない (#707)", () => {
+    const qc = new QueryClient();
+    const withExpiryQuery = [...ITEMS_KEY, "with-expiry"];
+    qc.setQueryData(withExpiryQuery, []);
+
+    const created = makeItem({ id: "new-item", expiry_date: "2026-02-01", units: 0 });
+    applyItemToListCaches(qc, created);
+
+    expect(qc.getQueryData<Item[]>(withExpiryQuery)).toEqual([]);
+  });
+
+  test("消費でunitsが0になったアイテムはwith-expiry一覧から除去される (#707)", () => {
+    const qc = new QueryClient();
+    const withExpiryQuery = [...ITEMS_KEY, "with-expiry"];
+    const existing = makeItem({ id: "item-1", expiry_date: "2026-02-01", units: 1 });
+    qc.setQueryData(withExpiryQuery, [existing]);
+
+    const consumed = makeItem({ id: "item-1", expiry_date: "2026-02-01", units: 0 });
+    applyItemToListCaches(qc, consumed);
+
+    expect(qc.getQueryData<Item[]>(withExpiryQuery)).toEqual([]);
+  });
+
   test("フィルタ条件のないリストには常に挿入する (#435)", () => {
     const qc = new QueryClient();
     const listQuery = [...ITEMS_KEY, {}, "created_at"];
