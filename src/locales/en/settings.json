@@ -95,6 +95,7 @@
   "stocktakeAlertDaysHelp": "Warn on the dashboard when an item hasn't been verified for this many days",
   "stocktakeAlertEnabled": "Enable stocktake alerts",
   "storageLocationMap": "Storage Map",
+  "storageLocationMapLoadError": "Failed to load the storage map. Please try again later.",
   "storageLocations": "Storage Location Management",
   "tagName": "Tag name",
   "tags": "Tag Management",

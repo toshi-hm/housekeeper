@@ -9,16 +9,21 @@ import { useItems } from "@/hooks/useItems";
 import { useSignedLocationPhoto } from "@/hooks/useLocationPhoto";
 import { useStorageLocations } from "@/hooks/useMasterData";
 
-const LocationMapPage = () => {
+export const LocationMapPage = () => {
   const { locationId } = Route.useParams();
   const { t } = useTranslation("settings");
   const navigate = useNavigate();
-  const { data: locations = [], isLoading: isLoadingLocations } = useStorageLocations();
+  const {
+    data: locations = [],
+    isLoading: isLoadingLocations,
+    isError: isLocationsError,
+  } = useStorageLocations();
   const location = locations.find((l) => l.id === locationId);
-  const { data: items = [], isLoading: isLoadingItems } = useItems(
-    { storageLocationId: locationId },
-    "created_at",
-  );
+  const {
+    data: items = [],
+    isLoading: isLoadingItems,
+    isError: isItemsError,
+  } = useItems({ storageLocationId: locationId }, "created_at");
   const { data: photoUrl } = useSignedLocationPhoto(location?.photo_path);
 
   const pinnedItems = items
@@ -44,6 +49,10 @@ const LocationMapPage = () => {
       {isLoadingLocations || isLoadingItems ? (
         <div className="flex justify-center py-8">
           <Spinner />
+        </div>
+      ) : isLocationsError || isItemsError ? (
+        <div className="space-y-3 rounded-lg border border-destructive p-4 text-center text-destructive">
+          <p className="font-medium">{t("storageLocationMapLoadError")}</p>
         </div>
       ) : (
         <StorageLocationMap
