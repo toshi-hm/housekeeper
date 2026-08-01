@@ -659,8 +659,10 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 > （親 Issue: #64 / #159）。実装は本セクションの順序（データ → RLS → 移行 → UI → Alexa）で
 > 複数 PR に分割する。
 
-- [ ] migration: `households` / `household_members` / `household_invites` テーブル新設
-- [ ] `redeem_household_invite` RPC（招待コードによる参加をアトミックに処理）
+- [x] migration: `households` / `household_members` / `household_invites` テーブル新設
+      （`create_household` / `redeem_household_invite` RPC・`rls_household.test.sql` 込み。
+      既存テーブルへの `household_id` 追加や RLS 切り替えは未実施、以降の PR で対応）
+- [x] `redeem_household_invite` RPC（招待コードによる参加をアトミックに処理）
 - [ ] 共有対象テーブル（items, item_lots, categories, storage_locations, custom_units,
       consumption_logs, shopping_list_items, shopping_list_archive, shopping_list_templates,
       shopping_list_template_items, recipes, recipe_items, tags, items_to_tags）への
