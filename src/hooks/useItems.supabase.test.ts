@@ -8,6 +8,7 @@ import type { Item } from "@/types/item";
 interface SupabaseResponse {
   data: unknown;
   error: unknown;
+  count?: number | null;
 }
 
 let callLog: Array<{ table: string; method: string; args: unknown[] }> = [];
@@ -30,6 +31,7 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     is: chainMethod("is"),
     not: chainMethod("not"),
     gt: chainMethod("gt"),
+    gte: chainMethod("gte"),
     or: chainMethod("or"),
     in: chainMethod("in"),
     limit: chainMethod("limit"),
@@ -72,6 +74,7 @@ const {
   bulkConsumeItems,
   useBulkItemAction,
   useItemsWithExpiry,
+  countRecentExpiredWaste,
 } = await import("@/hooks/useItems");
 const { ToastContext } = await import("@/lib/toast-context");
 
@@ -339,5 +342,48 @@ describe("buildNameOrBarcodeSearchFilter", () => {
 
   test("ダブルクォートやバックスラッシュはエスケープされる", () => {
     expect(escapeOrFilterValue('a"b\\c')).toBe('a\\"b\\\\c');
+  });
+});
+
+describe("countRecentExpiredWaste (#735)", () => {
+  test("バーコードと名前の両方を渡すとバーコード一致 or 名前一致(大文字小文字区別なし)で問い合わせる", async () => {
+    responseQueues.items = [{ data: null, error: null, count: 3 }];
+
+    const count = await countRecentExpiredWaste({ name: "牛乳", barcode: "123456" });
+
+    expect(count).toBe(3);
+    const orCall = callLog.find((c) => c.table === "items" && c.method === "or");
+    expect(orCall?.args[0]).toBe('name.ilike."牛乳",barcode.eq."123456"');
+    const deletionReasonCall = callLog.find((c) => c.table === "items" && c.method === "eq");
+    expect(deletionReasonCall?.args).toEqual(["deletion_reason", "expired_waste"]);
+  });
+
+  test("バーコードのみの場合は名前条件を含めない", async () => {
+    responseQueues.items = [{ data: null, error: null, count: 1 }];
+
+    await countRecentExpiredWaste({ barcode: "123456" });
+
+    const orCall = callLog.find((c) => c.table === "items" && c.method === "or");
+    expect(orCall?.args[0]).toBe('barcode.eq."123456"');
+  });
+
+  test("名前・バーコードどちらも空なら問い合わせずに0を返す", async () => {
+    const count = await countRecentExpiredWaste({ name: "  ", barcode: null });
+
+    expect(count).toBe(0);
+    expect(callLog.filter((c) => c.table === "items")).toHaveLength(0);
+  });
+
+  test("countがnullの場合は0を返す", async () => {
+    responseQueues.items = [{ data: null, error: null, count: null }];
+
+    const count = await countRecentExpiredWaste({ name: "牛乳" });
+    expect(count).toBe(0);
+  });
+
+  test("エラーの場合はthrowする", async () => {
+    responseQueues.items = [{ data: null, error: { message: "boom" } }];
+
+    await expect(countRecentExpiredWaste({ name: "牛乳" })).rejects.toBeTruthy();
   });
 });

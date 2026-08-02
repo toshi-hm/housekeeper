@@ -12,7 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
-import { findActiveItemByBarcode, useCreateItem, useItem } from "@/hooks/useItems";
+import {
+  countRecentExpiredWaste,
+  findActiveItemByBarcode,
+  REPEAT_WASTE_ALERT_THRESHOLD,
+  useCreateItem,
+  useItem,
+} from "@/hooks/useItems";
 import { useStorageLocations } from "@/hooks/useMasterData";
 import { setItemTags, useCreateTag, useTags } from "@/hooks/useTags";
 import { useUserSettings } from "@/hooks/useUserSettings";
@@ -55,7 +61,22 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const { data: userSettings, isLoading: isSettingsLoading } = useUserSettings();
   const { data: locations = [] } = useStorageLocations();
 
+  // #735: 直近90日以内に同一商品を期限切れ廃棄していれば、購入量の見直しを促す
+  // トーストを表示する（バーコード一致 or 名前一致）。既存の在庫チェック等と
+  // 独立に判定してよい軽量な通知のため、失敗を握りつぶして warn するだけに留める。
+  const warnIfRepeatWaste = async (candidate: { name?: string; barcode?: string | null }) => {
+    try {
+      const count = await countRecentExpiredWaste(candidate);
+      if (count >= REPEAT_WASTE_ALERT_THRESHOLD) {
+        toast(t("repeatWasteWarning", { count }), "warning", { durationMs: 8000 });
+      }
+    } catch {
+      // 非致命: 警告が出せないだけで、アイテム追加自体には影響させない
+    }
+  };
+
   const handleBarcodeScanned = async (barcode: string, source: "db" | "api" | null) => {
+    void warnIfRepeatWaste({ barcode });
     if (source !== "db") {
       setExistingItem(null);
       return;
@@ -64,6 +85,10 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
     // 使い切り済み（在庫なし）のアイテムまでバナー表示すると誤ってスタックを
     // 迷わせるため、実在庫がある場合のみ「すでに在庫あり」として扱う (#559)。
     setExistingItem(found && isAlreadyInStock(found) ? found : null);
+  };
+
+  const handleNameBlur = (name: string) => {
+    void warnIfRepeatWaste({ name });
   };
 
   const existingItemLocationName = existingItem?.storage_location_id
@@ -211,6 +236,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         onBarcodeScanned={(barcode, source) => {
           void handleBarcodeScanned(barcode, source);
         }}
+        onNameBlur={handleNameBlur}
         submitLabel={existingItem ? t("stackSubmitLabel") : undefined}
         defaultValues={cloneDefaultValues}
         draftKey={cloneFrom ? undefined : "new-item"}

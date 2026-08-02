@@ -396,6 +396,40 @@ export const findActiveItemByBarcode = async (barcode: string): Promise<Item | n
   return data ? (data as Item) : null;
 };
 
+/** #735: リピート廃棄アラートの検知窓（直近この日数以内の expired_waste 削除を対象にする） */
+const RECENT_EXPIRED_WASTE_WINDOW_DAYS = 90;
+/** #735: この件数以上の直近 expired_waste 削除があれば警告表示の対象にする */
+export const REPEAT_WASTE_ALERT_THRESHOLD = 2;
+
+/**
+ * 直近 `RECENT_EXPIRED_WASTE_WINDOW_DAYS` 日以内に `deletion_reason = 'expired_waste'` として
+ * ソフトデリートされた、同一商品（バーコード一致 or 名前一致、大文字小文字は区別しない）の
+ * 件数を数える (#735)。呼び出し側は2件以上を「リピート廃棄」として警告表示の対象にする。
+ * バーコード・名前のどちらも空の場合は問い合わせを行わず 0 を返す。
+ */
+export const countRecentExpiredWaste = async (candidate: {
+  name?: string;
+  barcode?: string | null;
+}): Promise<number> => {
+  const trimmedName = candidate.name?.trim();
+  const conditions: string[] = [];
+  if (trimmedName) conditions.push(`name.ilike."${escapeOrFilterValue(trimmedName)}"`);
+  if (candidate.barcode) conditions.push(`barcode.eq."${escapeOrFilterValue(candidate.barcode)}"`);
+  if (conditions.length === 0) return 0;
+
+  const since = new Date(
+    Date.now() - RECENT_EXPIRED_WASTE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const { count, error } = await supabase
+    .from("items")
+    .select("id", { count: "exact", head: true })
+    .eq("deletion_reason", "expired_waste")
+    .gte("deleted_at", since)
+    .or(conditions.join(","));
+  if (error) throw error;
+  return count ?? 0;
+};
+
 /** カレンダー用: expiry_date を持つ、在庫が残っているアクティブアイテムのみ返す。
  *  ダッシュボード（`_auth.index.tsx` の `hideEmpty`/期限切れ件数集計）と同じ
  *  `units > 0` 基準に揃え、使い切り済みアイテムが期限切れ表示され続けないようにする (#707)。 */

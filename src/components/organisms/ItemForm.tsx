@@ -45,6 +45,8 @@ interface ItemFormProps {
   onPendingImageUrlChange?: (url: string | null) => void;
   /** Called after a barcode is scanned or manually looked up */
   onBarcodeScanned?: (barcode: string, source: "db" | "api" | null) => void;
+  /** Called when the name field loses focus with a non-empty value (#735) */
+  onNameBlur?: (name: string) => void;
   /** カテゴリ・保管場所の下に差し込む追加フィールド（タグ選択など） */
   extraFields?: ReactNode;
   /**
@@ -64,6 +66,7 @@ export const ItemForm = ({
   onPendingFileChange,
   onPendingImageUrlChange,
   onBarcodeScanned,
+  onNameBlur,
   extraFields,
   draftKey,
 }: ItemFormProps) => {
@@ -450,6 +453,9 @@ export const ItemForm = ({
                 id="name"
                 value={values.name}
                 onChange={(e) => set("name", e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value.trim()) onNameBlur?.(e.target.value);
+                }}
                 placeholder={t("namePlaceholder")}
                 aria-invalid={!!nameError}
                 aria-describedby={nameError ? "name-error" : undefined}
