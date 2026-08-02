@@ -621,9 +621,8 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [x] `createLot` / `updateLot` に `store_name` を追加
 - [x] 購入（ロット編集）フォームに店舗名入力 + サジェスト（`useStoreNameSuggestions`）
 - [x] 購入履歴画面（CSVエクスポート）に店舗名列を追加
-- [x] `useStorePriceComparison`（アイテム単位） + `useStorePriceComparisons`（統計ページ集計） +
-      統計ページの店舗別価格比較カード（`StorePriceComparisonCard`、2店舗以上のデータがある
-      アイテムのみ表示）
+- [x] `useStorePriceComparisons`（統計ページ集計）+ 統計ページの店舗別価格比較カード
+      （`StorePriceComparisonCard`、2店舗以上のデータがあるアイテムのみ表示）
 - [x] JSON バックアップ（v2, #693）の `ItemLotExport` に `store_name` を追加（後方互換）。
       `import_items_batch` RPC も対応
 - [x] テスト / CI 整備と PR CI グリーン化

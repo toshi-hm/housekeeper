@@ -122,7 +122,8 @@ create index item_lots_expiry_idx on item_lots(expiry_date);
   - 既存ロットは全て `NULL`（後方互換）。トリムした文字列として保持する（空文字は `NULL` に正規化）。
   - `useStoreNameSuggestions()` が自ユーザーの distinct 値をサジェストする。
   - `unit_price` と `store_name` が揃ったロットが同一アイテムで複数店舗ぶんあると、
-    `useStorePriceComparison(itemId)` が店舗別の直近単価一覧（安い順）を返す。
+    `useStorePriceComparisons()`（統計ページ用、全アイテム横断の集計）が店舗別の直近単価一覧
+    （安い順）を返す。
 - RLS は `item_lots.item_id` が呼び出しユーザー所有の `items` 行を指すことも `using` / `with check` 双方で検証する
   （テナント越えの参照を防止）。
 

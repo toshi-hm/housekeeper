@@ -268,7 +268,8 @@ end $$;
 - 既存 `createLot` / `updateLot`（`src/hooks/useItemLots.ts`）の引数に `store_name` を追加
 - 新規 `useStoreNameSuggestions()`: 自ユーザーの `item_lots.store_name` の distinct 値を返す
   軽量クエリ（フォームのサジェスト用）
-- 新規 `useStorePriceComparison(itemId)`: 指定アイテムの店舗別最新単価一覧を返す
+- 新規 `useStorePriceComparisons()`（`src/hooks/useStats.ts`）: 全アイテムを横断し、2店舗以上の
+  単価データがあるものだけを対象に店舗別最新単価一覧（安い順）を返す（統計ページ用）
 
 ### エクスポート/インポートへの影響
 

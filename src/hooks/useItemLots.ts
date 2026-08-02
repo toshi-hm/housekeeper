@@ -13,7 +13,6 @@ import {
   type ItemLot,
   roundFloat,
 } from "@/types/item";
-import type { StorePriceEntry } from "@/types/stats";
 
 export const LOTS_KEY = ["item-lots"] as const;
 
@@ -420,41 +419,6 @@ export const useStoreNameSuggestions = () =>
     queryKey: [...LOTS_KEY, "store-name-suggestions"],
     queryFn: fetchStoreNameSuggestions,
     staleTime: 5 * 60_000,
-  });
-
-/** 指定アイテムの店舗別最新単価一覧を安い順で返す（店舗名・単価が両方揃うロットのみ、#697）。 */
-const fetchStorePriceComparison = async (itemId: string): Promise<StorePriceEntry[]> => {
-  const { data, error } = await supabase
-    .from("item_lots")
-    .select("store_name, unit_price, purchase_date, created_at")
-    .eq("item_id", itemId)
-    .not("store_name", "is", null)
-    .not("unit_price", "is", null)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-
-  const latestByStore = new Map<string, StorePriceEntry>();
-  for (const row of (data ?? []) as {
-    store_name: string | null;
-    unit_price: number | null;
-    purchase_date: string | null;
-  }[]) {
-    if (!row.store_name || row.unit_price === null || latestByStore.has(row.store_name)) continue;
-    latestByStore.set(row.store_name, {
-      storeName: row.store_name,
-      unitPrice: row.unit_price,
-      purchaseDate: row.purchase_date,
-    });
-  }
-  return [...latestByStore.values()].sort((a, b) => a.unitPrice - b.unitPrice);
-};
-
-export const useStorePriceComparison = (itemId: string) =>
-  useQuery({
-    queryKey: [...LOTS_KEY, "store-price-comparison", itemId],
-    queryFn: () => fetchStorePriceComparison(itemId),
-    enabled: !!itemId,
-    staleTime: 30_000,
   });
 
 export const useConsumeLot = () => {

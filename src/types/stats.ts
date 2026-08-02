@@ -539,7 +539,7 @@ export interface StorePriceLotRow {
   created_at: string;
 }
 
-export interface StorePriceEntry {
+interface StorePriceEntry {
   storeName: string;
   /** 同一店舗で複数回購入している場合、最も新しい購入の単価。 */
   unitPrice: number;
