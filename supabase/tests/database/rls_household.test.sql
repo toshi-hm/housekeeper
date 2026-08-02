@@ -142,10 +142,13 @@ select is(
 
 -- A user who already belongs to a household is rejected with a distinct
 -- error from "invalid code" (spec §7), even for an otherwise-valid code.
-select throws_ok(
-  $$select public.redeem_household_invite('VALIDCODE1')$$,
-  'HK005',
-  'user already belongs to a household',
+-- redeem_household_invite() returns (household_id, error_code) rather than
+-- throwing (see 20260802000001_household_invite_rate_limit.sql: throwing
+-- here would roll back the rate-limit bookkeeping done earlier in the same
+-- call), so failure paths are asserted via results_eq instead of throws_ok.
+select results_eq(
+  $$select household_id, error_code from public.redeem_household_invite('VALIDCODE1')$$,
+  $$select null::uuid, 'HK005'::text$$,
   'a user who already belongs to a household cannot redeem an invite code'
 );
 
@@ -155,8 +158,13 @@ select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-
 
 select is((select count(*) from household_members)::int, 0, 'user2 (no household yet) sees no household_members rows before redeeming');
 
-select lives_ok(
-  $$select public.redeem_household_invite('VALIDCODE1')$$,
+-- (Checked via ok()/error_code only, not results_eq against households: that
+-- would re-query households under RLS, whose visibility for user2 depends on
+-- this very call having already run — an ordering footgun. Household id /
+-- membership are verified via the household_members/households checks below,
+-- which run as separate statements after this mutation has committed.)
+select ok(
+  (select error_code from public.redeem_household_invite('VALIDCODE1')) is null,
   'user2 can redeem a valid, unexpired, unused invite code'
 );
 
@@ -168,10 +176,9 @@ select is(
 
 select is((select count(*) from households)::int, 1, 'user2 can now SELECT household1 after joining it');
 
-select throws_ok(
-  $$select public.redeem_household_invite('EXPIREDCODE1')$$,
-  'HK005',
-  'user already belongs to a household',
+select results_eq(
+  $$select household_id, error_code from public.redeem_household_invite('EXPIREDCODE1')$$,
+  $$select null::uuid, 'HK005'::text$$,
   'user2 cannot redeem a second invite code now that they belong to household1'
 );
 
@@ -179,24 +186,21 @@ select throws_ok(
 
 select set_config('request.jwt.claims', json_build_object('sub', '33333333-3333-3333-3333-333333333333', 'role', 'authenticated')::text, true);
 
-select throws_ok(
-  $$select public.redeem_household_invite('VALIDCODE1')$$,
-  'HK006',
-  'invalid or expired invite code',
+select results_eq(
+  $$select household_id, error_code from public.redeem_household_invite('VALIDCODE1')$$,
+  $$select null::uuid, 'HK006'::text$$,
   'a second redemption attempt of an already-redeemed code fails (no double-redeem)'
 );
 
-select throws_ok(
-  $$select public.redeem_household_invite('EXPIREDCODE1')$$,
-  'HK006',
-  'invalid or expired invite code',
+select results_eq(
+  $$select household_id, error_code from public.redeem_household_invite('EXPIREDCODE1')$$,
+  $$select null::uuid, 'HK006'::text$$,
   'redeeming an expired invite code fails'
 );
 
-select throws_ok(
-  $$select public.redeem_household_invite('NONEXISTENT')$$,
-  'HK006',
-  'invalid or expired invite code',
+select results_eq(
+  $$select household_id, error_code from public.redeem_household_invite('NONEXISTENT')$$,
+  $$select null::uuid, 'HK006'::text$$,
   'redeeming a nonexistent invite code fails'
 );
 
