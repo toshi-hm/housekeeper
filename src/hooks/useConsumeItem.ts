@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { consumeLot as consumeLotFn, LOTS_KEY, restoreLotConsumption } from "@/hooks/useItemLots";
+import { maybeAutoReorder } from "@/lib/autoReorder";
 import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -117,6 +118,11 @@ export const consumeItem = async ({
       openedRemainingBefore: item.opened_remaining ?? null,
       logId: (logData as { id: string } | null)?.id ?? null,
     };
+
+    // consumeLotFn (the other branch) already calls this internally; this
+    // fallback path bypasses consumeLotFn entirely, so it must call it too
+    // or auto_reorder never fires for lot-less items (#733).
+    await maybeAutoReorder(item.id);
   }
 
   const { data: updated, error } = await supabase

@@ -171,6 +171,34 @@ describe("consumeItem", () => {
     const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
     expect(logInsert?.args[0]).toMatchObject({ note: "贈り物" });
   });
+
+  test("ロットが存在しない場合でもmaybeAutoReorderが呼ばれ、閾値以下なら買い物リストへ自動追加する (#733)", async () => {
+    responseQueues.item_lots = [{ data: [], error: null }];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+    responseQueues.items = [
+      { data: null, error: null }, // items.update
+      {
+        data: {
+          id: "item-1",
+          user_id: "user-1",
+          name: "Test Item",
+          units: 0,
+          auto_reorder: true,
+          reorder_threshold: 1,
+        },
+        error: null,
+      }, // maybeAutoReorder's own items select
+      { data: makeItem({ units: 0 }), error: null }, // final re-select in consumeItem
+    ];
+    responseQueues.shopping_list_items = [{ data: null, error: null }];
+
+    await consumeItem({ item: makeItem({ units: 1 }), deltaAmount: 1 });
+
+    const shoppingInsert = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "insert",
+    );
+    expect(shoppingInsert?.args[0]).toMatchObject({ linked_item_id: "item-1", auto_added: true });
+  });
 });
 
 describe("undoConsumeItem", () => {
