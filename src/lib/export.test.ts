@@ -161,6 +161,7 @@ describe("itemsToJSON", () => {
         unit_price: null,
         purchase_date: item.purchase_date,
         expiry_date: item.expiry_date,
+        store_name: null,
       },
     ]);
   });
@@ -311,6 +312,7 @@ describe("buildConsumptionHistoryRows", () => {
         amount: 300,
         unit: "mL",
         notes: "毎朝飲む",
+        storeName: "",
       },
     ]);
   });
@@ -336,7 +338,14 @@ describe("buildConsumptionHistoryRows", () => {
 describe("buildPurchaseHistoryRows", () => {
   test("maps lots using the immutable purchased quantity", () => {
     const rows = buildPurchaseHistoryRows(
-      [{ item_id: "item-1", purchased_units: 3, purchase_date: "2026-07-05" }],
+      [
+        {
+          item_id: "item-1",
+          purchased_units: 3,
+          purchase_date: "2026-07-05",
+          store_name: "○○スーパー",
+        },
+      ],
       new Map([["item-1", { name: "卵", category_id: "cat-2", content_unit: "個" }]]),
       new Map([["cat-2", "食品"]]),
     );
@@ -349,13 +358,23 @@ describe("buildPurchaseHistoryRows", () => {
         amount: 3,
         unit: "個",
         notes: "",
+        storeName: "○○スーパー",
       },
     ]);
   });
 
+  test("store_name が null のとき空文字にする", () => {
+    const rows = buildPurchaseHistoryRows(
+      [{ item_id: "item-1", purchased_units: 1, purchase_date: "2026-07-05", store_name: null }],
+      new Map(),
+      new Map(),
+    );
+    expect(rows[0]?.storeName).toBe("");
+  });
+
   test("excludes lots without a purchase_date", () => {
     const rows = buildPurchaseHistoryRows(
-      [{ item_id: "item-1", purchased_units: 1, purchase_date: null }],
+      [{ item_id: "item-1", purchased_units: 1, purchase_date: null, store_name: null }],
       new Map(),
       new Map(),
     );
@@ -390,6 +409,7 @@ describe("filterHistoryRowsByPeriod", () => {
       amount: 1,
       unit: "個",
       notes: "",
+      storeName: "",
     },
     {
       type: "consumption",
@@ -399,6 +419,7 @@ describe("filterHistoryRowsByPeriod", () => {
       amount: 1,
       unit: "個",
       notes: "",
+      storeName: "",
     },
     {
       type: "purchase",
@@ -408,6 +429,7 @@ describe("filterHistoryRowsByPeriod", () => {
       amount: 1,
       unit: "個",
       notes: "",
+      storeName: "",
     },
   ];
 
@@ -445,6 +467,7 @@ describe("historyRowsToCSV", () => {
         amount: 1,
         unit: "個",
         notes: "",
+        storeName: "",
       },
       {
         type: "purchase",
@@ -454,6 +477,7 @@ describe("historyRowsToCSV", () => {
         amount: 1,
         unit: "個",
         notes: "",
+        storeName: "",
       },
     ];
     const csv = historyRowsToCSV(rows);
@@ -472,6 +496,7 @@ describe("historyRowsToCSV", () => {
         amount: 1,
         unit: "個",
         notes: "",
+        storeName: "",
       },
       {
         type: "purchase",
@@ -481,6 +506,7 @@ describe("historyRowsToCSV", () => {
         amount: 1,
         unit: "個",
         notes: "",
+        storeName: "",
       },
     ];
     const csv = historyRowsToCSV(rows);

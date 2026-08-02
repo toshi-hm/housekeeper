@@ -6,6 +6,7 @@ import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
 import * as useCustomUnitsModule from "@/hooks/useCustomUnits";
+import * as useItemLotsModule from "@/hooks/useItemLots";
 import * as useMasterDataModule from "@/hooks/useMasterData";
 import i18n from "@/lib/i18n";
 import { loadItemFormDraft, saveItemFormDraft } from "@/lib/itemFormDraft";
@@ -40,12 +41,17 @@ describe("ItemForm — aria-describedby / aria-invalid (#621)", () => {
       data: [],
       isLoading: false,
     } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
   });
 
   afterEach(() => {
     spyOn(useMasterDataModule, "useCategories").mockRestore();
     spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
     spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
   });
 
   it("名前が未入力で送信するとaria-invalid/aria-describedbyがエラー文言のidを指す", () => {
@@ -112,12 +118,17 @@ describe("ItemForm — 期限種別セレクタ (#714)", () => {
       data: [],
       isLoading: false,
     } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
   });
 
   afterEach(() => {
     spyOn(useMasterDataModule, "useCategories").mockRestore();
     spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
     spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
   });
 
   it("デフォルトでは未設定が選択されている", () => {
@@ -159,6 +170,86 @@ describe("ItemForm — 期限種別セレクタ (#714)", () => {
   });
 });
 
+describe("ItemForm — 店舗名 (#697)", () => {
+  beforeEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: ["○○スーパー", "△△マート"],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+  });
+
+  afterEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockRestore();
+    spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
+  });
+
+  it("入力した店舗名がonSubmitに渡る", async () => {
+    const user = userEvent.setup();
+    const onSubmit = spyOn({ onSubmit: () => {} }, "onSubmit");
+    const { container } = render(
+      <ItemForm onSubmit={onSubmit} defaultValues={{ name: "テスト", units: 1 }} />,
+      { wrapper },
+    );
+
+    const storeNameInput = container.querySelector("#store_name") as HTMLInputElement;
+    await user.type(storeNameInput, "○○スーパー");
+
+    const form = container.querySelector("form")!;
+    fireEvent.submit(form);
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ store_name: "○○スーパー" }));
+  });
+
+  it("空欄で送信するとstore_nameはnullになる", () => {
+    const onSubmit = spyOn({ onSubmit: () => {} }, "onSubmit");
+    const { container } = render(
+      <ItemForm onSubmit={onSubmit} defaultValues={{ name: "テスト", units: 1 }} />,
+      { wrapper },
+    );
+
+    const form = container.querySelector("form")!;
+    fireEvent.submit(form);
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ store_name: null }));
+  });
+
+  it("useStoreNameSuggestionsの候補がdatalistのoptionとして表示される", () => {
+    const { container } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "テスト", units: 1 }} />,
+      { wrapper },
+    );
+    const datalist = container.querySelector("#store-name-suggestions") as HTMLDataListElement;
+    const optionValues = [...datalist.querySelectorAll("option")].map((o) => o.value);
+    expect(optionValues).toEqual(["○○スーパー", "△△マート"]);
+  });
+
+  it("既存アイテム編集時はdefaultValues.store_nameが反映される", () => {
+    const { container } = render(
+      <ItemForm
+        onSubmit={() => {}}
+        defaultValues={{ name: "テスト", units: 1, store_name: "△△マート" }}
+      />,
+      { wrapper },
+    );
+    const storeNameInput = container.querySelector("#store_name") as HTMLInputElement;
+    expect(storeNameInput.value).toBe("△△マート");
+  });
+});
+
 describe("ItemForm — 下書き保存/復元 (#672)", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -174,6 +265,10 @@ describe("ItemForm — 下書き保存/復元 (#672)", () => {
       data: [],
       isLoading: false,
     } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
   });
 
   afterEach(() => {
@@ -181,6 +276,7 @@ describe("ItemForm — 下書き保存/復元 (#672)", () => {
     spyOn(useMasterDataModule, "useCategories").mockRestore();
     spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
     spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
   });
 
   it("draftKey未指定の場合は下書きバナーが表示されない", () => {

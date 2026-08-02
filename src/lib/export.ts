@@ -85,6 +85,8 @@ export interface ItemLotExport {
   unit_price: number | null;
   purchase_date: string | null;
   expiry_date: string | null;
+  /** 購入先の店舗名。null = 未設定（#697、後方互換: 追加前のv2バックアップは常に null）。 */
+  store_name: string | null;
 }
 
 interface ItemExportV2 {
@@ -138,6 +140,7 @@ export const itemsToJSON = (
           unit_price: null,
           purchase_date: item.purchase_date ?? null,
           expiry_date: item.expiry_date ?? null,
+          store_name: null,
         },
       ],
     })),
@@ -154,6 +157,8 @@ const importLotSchema = z.object({
   unit_price: z.number().int().min(0).nullable().optional(),
   purchase_date: z.string().nullable().optional(),
   expiry_date: z.string().nullable().optional(),
+  /** #697より前のv2バックアップには存在しないため任意。無ければ null として扱う。 */
+  store_name: z.string().nullable().optional(),
 });
 
 type ImportLotInput = z.infer<typeof importLotSchema>;
@@ -296,6 +301,8 @@ export interface HistoryExportRow {
   amount: number;
   unit: string;
   notes: string;
+  /** 購入先の店舗名。消費行では常に空文字（#697）。 */
+  storeName: string;
 }
 
 export interface ExportConsumptionLogInput {
@@ -309,6 +316,7 @@ export interface ExportPurchaseLotInput {
   item_id: string;
   purchased_units: number;
   purchase_date: string | null;
+  store_name: string | null;
 }
 
 export interface ExportItemLookup {
@@ -339,6 +347,7 @@ export const buildConsumptionHistoryRows = (
       amount: log.delta_amount,
       unit: log.delta_unit,
       notes: item?.notes ?? "",
+      storeName: "",
     };
   });
 
@@ -360,6 +369,7 @@ export const buildPurchaseHistoryRows = (
         amount: lot.purchased_units,
         unit: item?.content_unit ?? "",
         notes: item?.notes ?? "",
+        storeName: lot.store_name ?? "",
       };
     });
 
@@ -400,6 +410,7 @@ export const DEFAULT_HISTORY_CSV_HEADER = [
   "数量",
   "単位",
   "メモ",
+  "店舗名",
 ] as const;
 
 const DEFAULT_HISTORY_TYPE_LABELS: Record<HistoryExportType, string> = {
@@ -421,6 +432,7 @@ export const historyRowsToCSV = (
     row.amount,
     row.unit,
     row.notes,
+    row.storeName,
   ]);
   return buildCsv(header, csvRows);
 };

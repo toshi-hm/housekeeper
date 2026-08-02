@@ -11,11 +11,13 @@ import {
   computeMonthlyConsumption,
   computeMonthlySpending,
   computeMonthlyWasteStats,
+  computeStorePriceComparisons,
   type ItemConsumptionLogEntry,
   type LotValueRow,
   type RawLog,
   type RawWasteItem,
   type SpendingLotRow,
+  type StorePriceLotRow,
 } from "../../src/types/stats";
 
 // helpers
@@ -755,5 +757,75 @@ describe("computeMonthlyWasteStats", () => {
     const result = computeMonthlyWasteStats(items, { a: "A", b: "B" }, 1, fixedNow);
     expect(result[0]?.byCategory[0]?.categoryId).toBe("b");
     expect(result[0]?.byCategory[1]?.categoryId).toBe("a");
+  });
+});
+
+// --- computeStorePriceComparisons (#697) ---
+
+describe("computeStorePriceComparisons", () => {
+  const lot = (
+    item_id: string,
+    store_name: string | null,
+    unit_price: number | null,
+    created_at: string,
+    purchase_date: string | null = created_at.slice(0, 10),
+  ): StorePriceLotRow => ({ item_id, store_name, unit_price, purchase_date, created_at });
+
+  test("店舗名・単価が両方揃っているロットが2店舗以上あるアイテムだけを返す", () => {
+    const lots: StorePriceLotRow[] = [
+      lot("item-1", "A店", 100, "2026-07-01T00:00:00Z"),
+      lot("item-1", "B店", 120, "2026-07-05T00:00:00Z"),
+      // item-2 は1店舗しかデータが無いので除外される
+      lot("item-2", "A店", 200, "2026-07-01T00:00:00Z"),
+    ];
+    const result = computeStorePriceComparisons(lots, { "item-1": "牛乳", "item-2": "卵" });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.itemId).toBe("item-1");
+    expect(result[0]?.itemName).toBe("牛乳");
+  });
+
+  test("店舗別の単価を安い順に並べる", () => {
+    const lots: StorePriceLotRow[] = [
+      lot("item-1", "高い店", 300, "2026-07-01T00:00:00Z"),
+      lot("item-1", "安い店", 100, "2026-07-02T00:00:00Z"),
+      lot("item-1", "中間の店", 200, "2026-07-03T00:00:00Z"),
+    ];
+    const result = computeStorePriceComparisons(lots, { "item-1": "牛乳" });
+    expect(result[0]?.stores.map((s) => s.storeName)).toEqual(["安い店", "中間の店", "高い店"]);
+  });
+
+  test("同一店舗で複数ロットがある場合は created_at が最も新しい単価を採用する", () => {
+    const lots: StorePriceLotRow[] = [
+      lot("item-1", "A店", 100, "2026-07-01T00:00:00Z"),
+      lot("item-1", "A店", 150, "2026-07-10T00:00:00Z"), // より新しい購入
+      lot("item-1", "B店", 120, "2026-07-05T00:00:00Z"),
+    ];
+    const result = computeStorePriceComparisons(lots, { "item-1": "牛乳" });
+    const aStore = result[0]?.stores.find((s) => s.storeName === "A店");
+    expect(aStore?.unitPrice).toBe(150);
+  });
+
+  test("store_name か unit_price のどちらかが欠けているロットは無視する", () => {
+    const lots: StorePriceLotRow[] = [
+      lot("item-1", "A店", 100, "2026-07-01T00:00:00Z"),
+      lot("item-1", null, 120, "2026-07-02T00:00:00Z"),
+      lot("item-1", "B店", null, "2026-07-03T00:00:00Z"),
+    ];
+    const result = computeStorePriceComparisons(lots, { "item-1": "牛乳" });
+    // 有効な店舗が1件しか残らないため、比較対象として成立せず除外される
+    expect(result).toHaveLength(0);
+  });
+
+  test("アイテム名が見つからない場合は空文字にフォールバックする", () => {
+    const lots: StorePriceLotRow[] = [
+      lot("item-1", "A店", 100, "2026-07-01T00:00:00Z"),
+      lot("item-1", "B店", 120, "2026-07-02T00:00:00Z"),
+    ];
+    const result = computeStorePriceComparisons(lots, {});
+    expect(result[0]?.itemName).toBe("");
+  });
+
+  test("データが無ければ空配列を返す", () => {
+    expect(computeStorePriceComparisons([], {})).toEqual([]);
   });
 });

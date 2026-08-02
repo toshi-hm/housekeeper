@@ -16,6 +16,11 @@
   "last6Months": "直近6ヶ月",
   "noData": "データがありません",
   "spendingTrend": "月別支出",
+  "storeNameLabel": "店舗名",
+  "storePriceCheapest": "最安",
+  "storePriceComparison": "店舗別価格比較",
+  "storePriceComparisonSubtitle": "同じ商品を複数店舗で購入した記録があるものだけ表示します",
+  "storePriceUnitLabel": "単価",
   "title": "統計",
   "trend": {
     "accelerating": "加速中",

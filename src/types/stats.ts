@@ -528,3 +528,69 @@ export const computeMonthlyWasteStats = (
 
   return result;
 };
+
+// --- 店舗別価格比較（#697） ---
+
+export interface StorePriceLotRow {
+  item_id: string;
+  store_name: string | null;
+  unit_price: number | null;
+  purchase_date: string | null;
+  created_at: string;
+}
+
+interface StorePriceEntry {
+  storeName: string;
+  /** 同一店舗で複数回購入している場合、最も新しい購入の単価。 */
+  unitPrice: number;
+  purchaseDate: string | null;
+}
+
+export interface StorePriceComparison {
+  itemId: string;
+  itemName: string;
+  /** 単価が安い順。 */
+  stores: StorePriceEntry[];
+}
+
+/**
+ * ロット群から、店舗名 × 単価が両方記録されているものだけを対象に、アイテムごとの
+ * 店舗別直近単価一覧（安い順）を組み立てる。同一店舗で複数ロットがある場合は
+ * `created_at` が最も新しいものを採用する。2店舗以上のデータが無いアイテムは
+ * 比較の意味が無いため結果から除外する（#697 spec: 「複数店舗の unit_price が
+ * 記録されている場合のみ表示」）。
+ */
+export const computeStorePriceComparisons = (
+  lots: StorePriceLotRow[],
+  itemNameMap: Record<string, string>,
+): StorePriceComparison[] => {
+  const byItem = new Map<string, Map<string, StorePriceEntry & { createdAt: string }>>();
+
+  for (const lot of lots) {
+    if (!lot.store_name || lot.unit_price === null) continue;
+    let byStore = byItem.get(lot.item_id);
+    if (!byStore) {
+      byStore = new Map();
+      byItem.set(lot.item_id, byStore);
+    }
+    const existing = byStore.get(lot.store_name);
+    if (existing && existing.createdAt >= lot.created_at) continue;
+    byStore.set(lot.store_name, {
+      storeName: lot.store_name,
+      unitPrice: lot.unit_price,
+      purchaseDate: lot.purchase_date,
+      createdAt: lot.created_at,
+    });
+  }
+
+  const result: StorePriceComparison[] = [];
+  for (const [itemId, byStore] of byItem) {
+    if (byStore.size < 2) continue;
+    const stores = [...byStore.values()]
+      .sort((a, b) => a.unitPrice - b.unitPrice)
+      .map(({ storeName, unitPrice, purchaseDate }) => ({ storeName, unitPrice, purchaseDate }));
+    result.push({ itemId, itemName: itemNameMap[itemId] ?? "", stores });
+  }
+
+  return result.sort((a, b) => a.itemName.localeCompare(b.itemName));
+};

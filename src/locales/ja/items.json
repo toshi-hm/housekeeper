@@ -220,6 +220,8 @@
   "stocktakeBannerDetails": "対象の商品を表示",
   "storageLocation": "保管場所",
   "storageLocationPlaceholder": "保管場所を選択",
+  "storeName": "店舗名",
+  "storeNamePlaceholder": "例: ○○スーパー",
   "tagPlaceholder": "新しいタグ名",
   "tags": "タグ",
   "tagsEmpty": "タグが選択されていません",

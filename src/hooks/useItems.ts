@@ -230,6 +230,7 @@ export const tryStackToActiveItem = async (
     unit_price: values.unit_price ?? null,
     purchase_date: values.purchase_date || null,
     expiry_date: values.expiry_date || null,
+    store_name: values.store_name ?? null,
   });
   await syncItemAggregate(item.id);
 
@@ -280,6 +281,7 @@ const tryReviveItem = async (
     unit_price: values.unit_price ?? null,
     purchase_date: values.purchase_date || null,
     expiry_date: values.expiry_date || null,
+    store_name: values.store_name ?? null,
   });
   await syncItemAggregate(item.id);
 
@@ -324,6 +326,7 @@ export const createItem = async ({
     unit_price: values.unit_price ?? null,
     purchase_date: values.purchase_date || null,
     expiry_date: values.expiry_date || null,
+    store_name: values.store_name ?? null,
   });
 
   return item;

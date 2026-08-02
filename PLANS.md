@@ -617,13 +617,15 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 設計: `docs/specs/features/consumption-purchase.md`「購入先（店舗）記録と店舗別価格比較」節（親 Issue: #697）
 
-- [ ] migration: `item_lots.store_name text null` 追加
-- [ ] `createLot` / `updateLot` に `store_name` を追加
-- [ ] 購入（ロット編集）フォームに店舗名入力 + サジェスト（`useStoreNameSuggestions`）
-- [ ] 購入履歴画面に店舗名列を追加
-- [ ] `useStorePriceComparison` + 統計ページの店舗別価格比較カード
-- [ ] JSON バックアップ（v2, #693）の `ItemLotExport` に `store_name` を追加（後方互換）
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [x] migration: `item_lots.store_name text null` 追加
+- [x] `createLot` / `updateLot` に `store_name` を追加
+- [x] 購入（ロット編集）フォームに店舗名入力 + サジェスト（`useStoreNameSuggestions`）
+- [x] 購入履歴画面（CSVエクスポート）に店舗名列を追加
+- [x] `useStorePriceComparisons`（統計ページ集計）+ 統計ページの店舗別価格比較カード
+      （`StorePriceComparisonCard`、2店舗以上のデータがあるアイテムのみ表示）
+- [x] JSON バックアップ（v2, #693）の `ItemLotExport` に `store_name` を追加（後方互換）。
+      `import_items_batch` RPC も対応
+- [x] テスト / CI 整備と PR CI グリーン化
 
 ### v1.7 — レシート一括登録（Gemini Vision）
 

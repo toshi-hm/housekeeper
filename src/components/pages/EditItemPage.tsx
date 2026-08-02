@@ -70,6 +70,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
         "unit_price",
         "purchase_date",
         "expiry_date",
+        "store_name",
       ] as const;
       const itemLevelValues: Partial<ItemFormValues> = { ...values };
       if (selectedLot) {
@@ -93,6 +94,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
               unit_price: values.unit_price ?? null,
               purchase_date: values.purchase_date ?? null,
               expiry_date: values.expiry_date ?? null,
+              store_name: values.store_name ?? null,
             },
           });
         } catch {
@@ -210,6 +212,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           content_unit: item.content_unit,
           opened_remaining: selectedLot?.opened_remaining ?? item.opened_remaining,
           unit_price: selectedLot?.unit_price ?? null,
+          store_name: selectedLot?.store_name ?? null,
           purchase_date: selectedLot?.purchase_date ?? item.purchase_date ?? undefined,
           expiry_date: selectedLot?.expiry_date ?? item.expiry_date ?? undefined,
           notes: item.notes ?? undefined,

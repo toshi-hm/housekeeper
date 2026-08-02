@@ -237,6 +237,8 @@
   "stocktakeBannerDetails": "Show unverified items",
   "storageLocation": "Storage Location",
   "storageLocationPlaceholder": "Select location",
+  "storeName": "Store name",
+  "storeNamePlaceholder": "e.g. Acme Supermarket",
   "tagPlaceholder": "New tag name",
   "tags": "Tags",
   "tagsEmpty": "No tags selected",
