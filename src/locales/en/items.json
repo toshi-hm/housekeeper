@@ -207,6 +207,8 @@
   "reorderThreshold": "Auto-add threshold",
   "reorderThresholdHelp": "Add to the shopping list once units drop to or below this number (leave blank to trigger at 0)",
   "reorderThresholdInvalid": "Enter 0 or more",
+  "repeatWasteWarning_one": "You've thrown this item away as expired {{count}} time recently. Consider buying less, or extending the expiry warning threshold.",
+  "repeatWasteWarning_other": "You've thrown this item away as expired {{count}} times recently. Consider buying less, or extending the expiry warning threshold.",
   "restockSuccess": "Added to shopping list",
   "scanBarcode": "Scan Barcode",
   "scannerCameraAccessDenied": "Camera access denied",

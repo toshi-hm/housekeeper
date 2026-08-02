@@ -191,6 +191,7 @@
   "reorderThreshold": "自動追加のしきい値",
   "reorderThresholdHelp": "この数量以下になったら買い物リストへ自動追加します（未入力の場合は在庫0で追加）",
   "reorderThresholdInvalid": "0以上の数を入力してください",
+  "repeatWasteWarning_other": "この商品は過去{{count}}回、期限切れで廃棄しています。購入量を減らすか、通知の閾値日数を長くしませんか。",
   "restockSuccess": "買い物リストに追加しました",
   "scanBarcode": "バーコードをスキャン",
   "scannerCameraAccessDenied": "カメラへのアクセスが拒否されました",
