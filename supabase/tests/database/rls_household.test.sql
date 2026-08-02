@@ -143,7 +143,7 @@ select is(
 -- A user who already belongs to a household is rejected with a distinct
 -- error from "invalid code" (spec §7), even for an otherwise-valid code.
 -- redeem_household_invite() returns (household_id, error_code) rather than
--- throwing (see 20260802000001_household_invite_rate_limit.sql: throwing
+-- throwing (see 20260802000002_household_invite_rate_limit.sql: throwing
 -- here would roll back the rate-limit bookkeeping done earlier in the same
 -- call), so failure paths are asserted via results_eq instead of throws_ok.
 select results_eq(
