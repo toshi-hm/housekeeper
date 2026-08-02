@@ -397,7 +397,7 @@ export const findActiveItemByBarcode = async (barcode: string): Promise<Item | n
 };
 
 /** #735: リピート廃棄アラートの検知窓（直近この日数以内の expired_waste 削除を対象にする） */
-export const RECENT_EXPIRED_WASTE_WINDOW_DAYS = 90;
+const RECENT_EXPIRED_WASTE_WINDOW_DAYS = 90;
 /** #735: この件数以上の直近 expired_waste 削除があれば警告表示の対象にする */
 export const REPEAT_WASTE_ALERT_THRESHOLD = 2;
 
