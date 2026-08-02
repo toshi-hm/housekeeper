@@ -2,7 +2,7 @@
 -- enforced inside redeem_household_invite() (#734).
 --
 -- redeem_household_invite() returns (household_id, error_code) rather than
--- throwing (see 20260802000001_household_invite_rate_limit.sql for why:
+-- throwing (see 20260802000002_household_invite_rate_limit.sql for why:
 -- throwing would roll back the rate-limit bookkeeping done earlier in the
 -- same call), so outcomes are asserted via results_eq.
 --
