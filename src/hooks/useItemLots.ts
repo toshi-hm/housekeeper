@@ -13,8 +13,16 @@ import {
   type ItemLot,
   roundFloat,
 } from "@/types/item";
+import type { StorePriceEntry } from "@/types/stats";
 
 export const LOTS_KEY = ["item-lots"] as const;
+
+/** 店舗名をトリムし、空文字は未設定（null）として正規化する（#697）。 */
+const normalizeStoreName = (storeName: string | null | undefined): string | null => {
+  if (storeName === null || storeName === undefined) return null;
+  const trimmed = storeName.trim();
+  return trimmed === "" ? null : trimmed;
+};
 
 const fetchLots = async (itemId: string): Promise<ItemLot[]> => {
   const { data, error } = await supabase
@@ -35,6 +43,7 @@ export const createLot = async (
     unit_price?: number | null;
     purchase_date?: string | null;
     expiry_date?: string | null;
+    store_name?: string | null;
   },
 ): Promise<ItemLot> => {
   const { data, error } = await supabase
@@ -47,6 +56,7 @@ export const createLot = async (
       unit_price: lot.unit_price ?? null,
       purchase_date: lot.purchase_date ?? null,
       expiry_date: lot.expiry_date ?? null,
+      store_name: normalizeStoreName(lot.store_name),
     })
     .select()
     .single();
@@ -62,6 +72,7 @@ const updateLot = async (
     unit_price?: number | null;
     purchase_date?: string | null;
     expiry_date?: string | null;
+    store_name?: string | null;
   },
 ): Promise<ItemLot> => {
   requireOnline();
@@ -73,6 +84,10 @@ const updateLot = async (
       unit_price: values.unit_price,
       purchase_date: values.purchase_date,
       expiry_date: values.expiry_date,
+      // undefined must stay undefined (dropped from the PostgREST payload) so
+      // callers that omit store_name don't unintentionally wipe it out.
+      store_name:
+        values.store_name === undefined ? undefined : normalizeStoreName(values.store_name),
       updated_at: new Date().toISOString(),
     })
     .eq("id", lotId)
@@ -296,6 +311,7 @@ interface PurchaseLotForExport {
   item_id: string;
   purchased_units: number;
   purchase_date: string | null;
+  store_name: string | null;
 }
 
 const fetchAllLots = async (): Promise<PurchaseLotForExport[]> => {
@@ -308,7 +324,7 @@ const fetchAllLots = async (): Promise<PurchaseLotForExport[]> => {
   return fetchAllPages(async (from, to) => {
     const { data, error } = await supabase
       .from("item_lots")
-      .select("item_id, purchased_units, purchase_date")
+      .select("item_id, purchased_units, purchase_date, store_name")
       .eq("user_id", userData.user.id)
       .order("purchase_date", { ascending: false })
       .order("id", { ascending: true })
@@ -335,6 +351,7 @@ interface FullLotForExport {
   unit_price: number | null;
   purchase_date: string | null;
   expiry_date: string | null;
+  store_name: string | null;
 }
 
 const fetchAllLotsFull = async (): Promise<FullLotForExport[]> => {
@@ -345,7 +362,9 @@ const fetchAllLotsFull = async (): Promise<FullLotForExport[]> => {
   return fetchAllPages(async (from, to) => {
     const { data, error } = await supabase
       .from("item_lots")
-      .select("item_id, units, opened_remaining, unit_price, purchase_date, expiry_date, id")
+      .select(
+        "item_id, units, opened_remaining, unit_price, purchase_date, expiry_date, store_name, id",
+      )
       .eq("user_id", userData.user.id)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
@@ -366,6 +385,74 @@ export const useItemLots = (itemId: string) =>
   useQuery({
     queryKey: [...LOTS_KEY, itemId],
     queryFn: () => fetchLots(itemId),
+    enabled: !!itemId,
+    staleTime: 30_000,
+  });
+
+/** 直近使用した店舗名（自ユーザー分、distinct・最新順・最大10件）をサジェストする（#697）。 */
+const fetchStoreNameSuggestions = async (): Promise<string[]> => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("item_lots")
+    .select("store_name")
+    .eq("user_id", userData.user.id)
+    .not("store_name", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+
+  const seen = new Set<string>();
+  const suggestions: string[] = [];
+  for (const row of (data ?? []) as { store_name: string | null }[]) {
+    const name = row.store_name;
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    suggestions.push(name);
+    if (suggestions.length >= 10) break;
+  }
+  return suggestions;
+};
+
+export const useStoreNameSuggestions = () =>
+  useQuery({
+    queryKey: [...LOTS_KEY, "store-name-suggestions"],
+    queryFn: fetchStoreNameSuggestions,
+    staleTime: 5 * 60_000,
+  });
+
+/** 指定アイテムの店舗別最新単価一覧を安い順で返す（店舗名・単価が両方揃うロットのみ、#697）。 */
+const fetchStorePriceComparison = async (itemId: string): Promise<StorePriceEntry[]> => {
+  const { data, error } = await supabase
+    .from("item_lots")
+    .select("store_name, unit_price, purchase_date, created_at")
+    .eq("item_id", itemId)
+    .not("store_name", "is", null)
+    .not("unit_price", "is", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const latestByStore = new Map<string, StorePriceEntry>();
+  for (const row of (data ?? []) as {
+    store_name: string | null;
+    unit_price: number | null;
+    purchase_date: string | null;
+  }[]) {
+    if (!row.store_name || row.unit_price === null || latestByStore.has(row.store_name)) continue;
+    latestByStore.set(row.store_name, {
+      storeName: row.store_name,
+      unitPrice: row.unit_price,
+      purchaseDate: row.purchase_date,
+    });
+  }
+  return [...latestByStore.values()].sort((a, b) => a.unitPrice - b.unitPrice);
+};
+
+export const useStorePriceComparison = (itemId: string) =>
+  useQuery({
+    queryKey: [...LOTS_KEY, "store-price-comparison", itemId],
+    queryFn: () => fetchStorePriceComparison(itemId),
     enabled: !!itemId,
     staleTime: 30_000,
   });
@@ -414,6 +501,7 @@ export const useUpdateLot = () => {
         unit_price?: number | null;
         purchase_date?: string | null;
         expiry_date?: string | null;
+        store_name?: string | null;
       };
     }) => {
       const updated = await updateLot(lotId, values);

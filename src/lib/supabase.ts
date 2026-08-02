@@ -368,6 +368,7 @@ export interface Database {
           unit_price: number | null;
           purchase_date: string | null;
           expiry_date: string | null;
+          store_name: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -381,6 +382,7 @@ export interface Database {
           unit_price?: number | null;
           purchase_date?: string | null;
           expiry_date?: string | null;
+          store_name?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -394,6 +396,7 @@ export interface Database {
           unit_price?: number | null;
           purchase_date?: string | null;
           expiry_date?: string | null;
+          store_name?: string | null;
           updated_at?: string;
         };
         Relationships: [

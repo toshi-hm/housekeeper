@@ -100,6 +100,8 @@ export const itemFormSchema = z.object({
   minimum_stock: z.coerce.number().int().min(0).nullable().optional(),
   /** 1点あたりの購入単価（円）。任意入力、未設定 = null。 */
   unit_price: z.coerce.number().int().min(0).nullable().optional(),
+  /** 購入先の店舗名。任意入力、未設定 = null（#697）。 */
+  store_name: z.string().nullable().optional(),
   auto_reorder: z.boolean().default(false),
   reorder_threshold: z.coerce.number().int().min(0).nullable().optional(),
   pin_x: z.coerce.number().min(0).max(1).nullable().optional(),
@@ -116,6 +118,8 @@ export const itemLotSchema = z.object({
   unit_price: z.number().int().min(0).nullable().optional(),
   purchase_date: z.string().nullable().optional(),
   expiry_date: z.string().nullable().optional(),
+  /** 購入先の店舗名。null = 未設定（後方互換, #697）。 */
+  store_name: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });

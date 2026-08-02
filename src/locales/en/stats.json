@@ -16,6 +16,11 @@
   "last6Months": "Last 6 months",
   "noData": "No data available",
   "spendingTrend": "Monthly Spending",
+  "storeNameLabel": "Store",
+  "storePriceCheapest": "Cheapest",
+  "storePriceComparison": "Store Price Comparison",
+  "storePriceComparisonSubtitle": "Only items purchased at more than one store are shown",
+  "storePriceUnitLabel": "Unit price",
   "title": "Stats",
   "trend": {
     "accelerating": "Accelerating",

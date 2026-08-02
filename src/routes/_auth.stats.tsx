@@ -8,6 +8,7 @@ import { ConsumptionChart } from "@/components/organisms/ConsumptionChart";
 import { ConsumptionSpeedRanking } from "@/components/organisms/ConsumptionSpeedRanking";
 import { ExpiryChart } from "@/components/organisms/ExpiryChart";
 import { SpendingChart } from "@/components/organisms/SpendingChart";
+import { StorePriceComparisonCard } from "@/components/organisms/StorePriceComparisonCard";
 import { WasteStatsChart } from "@/components/organisms/WasteStatsChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -17,6 +18,7 @@ import {
   useExpiryDistribution,
   useMonthlyConsumption,
   useMonthlySpending,
+  useStorePriceComparisons,
   useWasteStats,
 } from "@/hooks/useStats";
 import { useUserSettings } from "@/hooks/useUserSettings";
@@ -93,6 +95,11 @@ const StatsPage = () => {
     isLoading: spendingLoading,
     isError: spendingError,
   } = useMonthlySpending(6);
+  const {
+    data: storePriceData,
+    isLoading: storePriceLoading,
+    isError: storePriceError,
+  } = useStorePriceComparisons();
 
   return (
     <div className="space-y-4">
@@ -156,6 +163,18 @@ const StatsPage = () => {
       >
         <WasteStatsChart data={wasteData} />
       </ChartCard>
+
+      {/* #697: 複数店舗の価格データが無いユーザーには場所を取らないよう、カードごと出し分ける */}
+      {(storePriceLoading || storePriceError || storePriceData.length > 0) && (
+        <ChartCard
+          title={t("storePriceComparison")}
+          subtitle={t("storePriceComparisonSubtitle")}
+          isLoading={storePriceLoading}
+          isError={storePriceError}
+        >
+          <StorePriceComparisonCard comparisons={storePriceData} />
+        </ChartCard>
+      )}
     </div>
   );
 };

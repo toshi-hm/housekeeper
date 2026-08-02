@@ -467,6 +467,7 @@ describe("createLot", () => {
       unit_price: null,
       purchase_date: null,
       expiry_date: null,
+      store_name: null,
     });
     expect(result.id).toBe("lot-new");
   });

@@ -33,7 +33,18 @@ describe("lotValuesFromForm", () => {
       opened_remaining: 150,
       purchase_date: "2026-06-01",
       expiry_date: "2026-12-31",
+      store_name: null,
     });
+  });
+
+  test("store_name を維持する", () => {
+    const values = makeFormValues({ store_name: "○○スーパー" });
+    expect(lotValuesFromForm(values).store_name).toBe("○○スーパー");
+  });
+
+  test("store_name が未指定のとき null になる", () => {
+    const values = makeFormValues({});
+    expect(lotValuesFromForm(values).store_name).toBeNull();
   });
 
   test("units が undefined のとき 1 にフォールバックする", () => {

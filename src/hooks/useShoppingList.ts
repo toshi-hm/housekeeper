@@ -214,6 +214,7 @@ export const lotValuesFromForm = (itemValues: ItemFormValues) => ({
   opened_remaining: itemValues.opened_remaining ?? null,
   purchase_date: itemValues.purchase_date || null,
   expiry_date: itemValues.expiry_date || null,
+  store_name: itemValues.store_name ?? null,
 });
 
 /** Atomically move every purchased row into immutable purchase history. */

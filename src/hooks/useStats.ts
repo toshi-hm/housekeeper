@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useAllConsumptionLogs } from "@/hooks/useConsumptionLogs";
 import { LOTS_KEY } from "@/hooks/useItemLots";
-import { useItems } from "@/hooks/useItems";
+import { useItems, useItemsForExport } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
 import { supabase } from "@/lib/supabase";
 import { fetchAllPages } from "@/lib/supabasePagination";
@@ -16,10 +16,12 @@ import {
   computeMonthlyConsumption,
   computeMonthlySpending,
   computeMonthlyWasteStats,
+  computeStorePriceComparisons,
   DEFAULT_FORECAST_LOOKBACK_DAYS,
   type LotValueRow,
   type RawWasteItem,
   type SpendingLotRow,
+  type StorePriceLotRow,
 } from "@/types/stats";
 
 export const useCategoryStats = () => {
@@ -207,6 +209,47 @@ const useAllWasteItems = () =>
     queryFn: fetchAllWasteItems,
     staleTime: 0,
   });
+
+const fetchAllLotsForStorePrice = async (): Promise<StorePriceLotRow[]> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // #663と同じ理由でページングする（PostgRESTのデフォルト行数上限対策）。
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("item_lots")
+      .select("item_id, store_name, unit_price, purchase_date, created_at")
+      .eq("user_id", user.id)
+      .not("store_name", "is", null)
+      .not("unit_price", "is", null)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as StorePriceLotRow[];
+  });
+};
+
+/** 統計ページ用: 複数店舗の単価が記録されているアイテムの店舗別価格比較一覧（#697）。 */
+export const useStorePriceComparisons = () => {
+  const {
+    data: lots = [],
+    isLoading: lotsLoading,
+    isError: lotsError,
+  } = useQuery<StorePriceLotRow[]>({
+    queryKey: [...LOTS_KEY, "store-price-comparisons-all"],
+    queryFn: fetchAllLotsForStorePrice,
+    staleTime: 30_000,
+  });
+  const { data: items = [], isLoading: itemsLoading, isError: itemsError } = useItemsForExport();
+  const itemNameMap = Object.fromEntries(items.map((i) => [i.id, i.name]));
+  return {
+    data: computeStorePriceComparisons(lots, itemNameMap),
+    isLoading: lotsLoading || itemsLoading,
+    isError: lotsError || itemsError,
+  };
+};
 
 export const useWasteStats = (months = 6) => {
   const { data: items = [], isLoading: itemsLoading, isError: itemsError } = useAllWasteItems();

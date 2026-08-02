@@ -137,6 +137,7 @@ export interface Database {
           unit_price: number | null;
           purchase_date: string | null;
           purchased_units: number;
+          store_name: string | null;
           units: number;
           updated_at: string;
           user_id: string;
@@ -150,6 +151,7 @@ export interface Database {
           unit_price?: number | null;
           purchase_date?: string | null;
           purchased_units?: number;
+          store_name?: string | null;
           units?: number;
           updated_at?: string;
           user_id: string;
@@ -163,6 +165,7 @@ export interface Database {
           unit_price?: number | null;
           purchase_date?: string | null;
           purchased_units?: number;
+          store_name?: string | null;
           units?: number;
           updated_at?: string;
           user_id?: string;

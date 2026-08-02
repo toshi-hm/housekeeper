@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { type ProductInfo, useBarcodeLookup } from "@/hooks/useBarcodeLookup";
 import { useCreateCustomUnit, useCustomUnits, useDeleteCustomUnit } from "@/hooks/useCustomUnits";
 import { useSignedItemImage } from "@/hooks/useItemImage";
+import { useStoreNameSuggestions } from "@/hooks/useItemLots";
 import { useSignedLocationPhoto } from "@/hooks/useLocationPhoto";
 import {
   checkCategoryUsage,
@@ -73,6 +74,7 @@ export const ItemForm = ({
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
   const { data: customUnits = [] } = useCustomUnits();
+  const { data: storeNameSuggestions = [] } = useStoreNameSuggestions();
   const { lookup, isLoading: isLookingUp, error: lookupError } = useBarcodeLookup();
   const { mutateAsync: addCategory } = useCreateCategory();
   const { mutateAsync: addLocation } = useCreateStorageLocation();
@@ -97,6 +99,7 @@ export const ItemForm = ({
     image_path: defaultValues?.image_path ?? "",
     minimum_stock: defaultValues?.minimum_stock ?? null,
     unit_price: defaultValues?.unit_price ?? null,
+    store_name: defaultValues?.store_name ?? null,
     auto_reorder: defaultValues?.auto_reorder ?? false,
     reorder_threshold: defaultValues?.reorder_threshold ?? null,
     pin_x: defaultValues?.pin_x ?? null,
@@ -738,6 +741,24 @@ export const ItemForm = ({
               {unitPriceError}
             </p>
           )}
+        </div>
+
+        {/* Store name */}
+        <div className="space-y-2">
+          <Label htmlFor="store_name">{t("storeName")}</Label>
+          <Input
+            id="store_name"
+            type="text"
+            list="store-name-suggestions"
+            value={values.store_name ?? ""}
+            placeholder={t("storeNamePlaceholder")}
+            onChange={(e) => set("store_name", e.target.value === "" ? null : e.target.value)}
+          />
+          <datalist id="store-name-suggestions">
+            {storeNameSuggestions.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
         </div>
 
         {/* Auto reorder */}
