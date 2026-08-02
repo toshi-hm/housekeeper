@@ -25,12 +25,14 @@ describe("lotValuesFromForm", () => {
     const values = makeFormValues({
       units: 3,
       opened_remaining: 150,
+      unit_price: 298,
       purchase_date: "2026-06-01",
       expiry_date: "2026-12-31",
     });
     expect(lotValuesFromForm(values)).toEqual({
       units: 3,
       opened_remaining: 150,
+      unit_price: 298,
       purchase_date: "2026-06-01",
       expiry_date: "2026-12-31",
       store_name: null,
@@ -45,6 +47,11 @@ describe("lotValuesFromForm", () => {
   test("store_name が未指定のとき null になる", () => {
     const values = makeFormValues({});
     expect(lotValuesFromForm(values).store_name).toBeNull();
+  });
+
+  test("unit_price が未指定のとき null になる (#732)", () => {
+    const values = makeFormValues({ unit_price: undefined });
+    expect(lotValuesFromForm(values).unit_price).toBeNull();
   });
 
   test("units が undefined のとき 1 にフォールバックする", () => {

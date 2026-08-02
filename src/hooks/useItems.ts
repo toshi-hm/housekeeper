@@ -116,7 +116,7 @@ export const fetchItem = async (id: string): Promise<Item> => {
   return data as Item;
 };
 
-const normalizeCreateValues = (values: ItemFormValues) => ({
+export const normalizeCreateValues = (values: ItemFormValues) => ({
   name: values.name,
   barcode: values.barcode || null,
   category_id: values.category_id || null,
