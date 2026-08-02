@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { normalizeCreateValues } from "@/hooks/useItems";
 import { PURCHASE_HISTORY_KEY } from "@/hooks/usePurchaseHistory";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
@@ -212,6 +213,7 @@ const markShoppingItemPurchased = async (shoppingItemId: string, itemId: string)
 export const lotValuesFromForm = (itemValues: ItemFormValues) => ({
   units: itemValues.units ?? 1,
   opened_remaining: itemValues.opened_remaining ?? null,
+  unit_price: itemValues.unit_price ?? null,
   purchase_date: itemValues.purchase_date || null,
   expiry_date: itemValues.expiry_date || null,
   store_name: itemValues.store_name ?? null,
@@ -381,24 +383,15 @@ export const purchaseShoppingItem = async ({
     if (reserveError) throw reserveError;
   }
 
+  // #732: reuse the same field list as the normal creation path
+  // (useItems.ts's createItem) so expiry_type / minimum_stock / auto_reorder /
+  // reorder_threshold / pin position etc. aren't silently dropped just
+  // because the item happened to be created via the shopping list purchase
+  // flow instead of NewItemPage.
   const { data: newItem, error: itemError } = await supabase
     .from("items")
     .upsert(
-      {
-        id: newItemId,
-        user_id: user.id,
-        name: itemValues.name,
-        barcode: itemValues.barcode ?? null,
-        category_id: itemValues.category_id ?? null,
-        storage_location_id: itemValues.storage_location_id ?? null,
-        units: itemValues.units,
-        content_amount: itemValues.content_amount,
-        content_unit: itemValues.content_unit,
-        opened_remaining: itemValues.opened_remaining ?? null,
-        purchase_date: itemValues.purchase_date ?? null,
-        expiry_date: itemValues.expiry_date ?? null,
-        notes: itemValues.notes ?? null,
-      },
+      { ...normalizeCreateValues(itemValues), id: newItemId, user_id: user.id },
       { onConflict: "id" },
     )
     .select()

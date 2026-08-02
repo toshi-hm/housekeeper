@@ -27,6 +27,7 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     is: chainMethod("is"),
     not: chainMethod("not"),
     limit: chainMethod("limit"),
+    insert: chainMethod("insert"),
     update: chainMethod("update"),
     upsert: chainMethod("upsert"),
     single: () => {
@@ -55,11 +56,15 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-// requireOnline() は navigator.onLine を見るため、テスト環境ではオンライン扱いにしておく
+// requireOnline() は navigator.onLine を見るため、テスト環境ではオンライン扱いにしておく。
+// ConcurrentUpdateError も useItemLots.ts (createLot/syncItemAggregate) が同モジュールから
+// importするため、ここでスタブしておかないと新規アイテム作成のハッピーパスに到達した際に
+// モジュール解決エラーになる (#732 の回帰テストで到達するまで気づいていなかった)。
 mock.module("@/lib/requireOnline", () => ({
   OfflineError: class OfflineError extends Error {
     readonly isOffline = true;
   },
+  ConcurrentUpdateError: class ConcurrentUpdateError extends Error {},
   requireOnline: () => undefined,
 }));
 
@@ -152,6 +157,51 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
     );
     // select は existingLots検索の1回のみ (createLotのinsert→singleは呼ばれない)
     expect(lotInserts.filter((c) => c.method === "single")).toHaveLength(0);
+  });
+
+  test("新規アイテム作成時、expiry_type/minimum_stock/auto_reorder/reorder_threshold/pin位置がitemsのupsertに含まれる (#732)", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: null }, error: null }, // shoppingRowForLink
+      { data: { created_item_id: null }, error: null }, // shoppingRow
+      { data: null, error: null }, // reserve created_item_id update
+      { data: null, error: null }, // markShoppingItemPurchased
+    ];
+    responseQueues.items = [
+      { data: { id: "new-item-1" }, error: null }, // upsert新規アイテム
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+    responseQueues.item_lots = [
+      { data: [], error: null }, // existingLots検索(空 → createLotを実行)
+      { data: { id: "lot-1" }, error: null }, // createLot insert
+      { data: [], error: null }, // syncItemAggregateのロット取得
+    ];
+
+    await purchaseShoppingItem({
+      shoppingItemId: "shopping-1",
+      itemValues: makeFormValues({
+        expiry_type: "best_before",
+        unit_price: 298,
+        minimum_stock: 2,
+        auto_reorder: true,
+        reorder_threshold: 1,
+        pin_x: 0.3,
+        pin_y: 0.7,
+      }),
+    });
+
+    const itemsUpsert = callLog.find((c) => c.table === "items" && c.method === "upsert");
+    expect(itemsUpsert?.args[0]).toMatchObject({
+      expiry_type: "best_before",
+      minimum_stock: 2,
+      auto_reorder: true,
+      reorder_threshold: 1,
+      pin_x: 0.3,
+      pin_y: 0.7,
+    });
+
+    const lotInsert = callLog.find((c) => c.table === "item_lots" && c.method === "insert");
+    expect(lotInsert?.args[0]).toMatchObject({ unit_price: 298 });
   });
 });
 
