@@ -17,3 +17,13 @@ export const User: Story = {
 export const Assistant: Story = {
   args: { role: "assistant", text: "牛乳は冷蔵庫に2本（1000mL）あります。賞味期限は7月10日です。" },
 };
+
+export const Error: Story = {
+  args: {
+    role: "assistant",
+    text: "うまく回答できませんでした。しばらくしてからもう一度お試しください。",
+    isError: true,
+    retryLabel: "再試行",
+    onRetry: () => {},
+  },
+};

@@ -65,4 +65,32 @@ describe("InventoryChatPanel", () => {
     // consecutive `user` turns and reject the request.
     expect(secondCallArgs.body.history).toEqual([]);
   });
+
+  test("エラー応答の再試行ボタンをクリックすると同じ質問を打ち直さず再送信する (#748)", async () => {
+    const user = userEvent.setup();
+    invokeMock
+      .mockImplementationOnce(() => Promise.reject(new Error("network error")))
+      .mockImplementationOnce(() =>
+        Promise.resolve({ data: { reply: "牛乳は2本あります", items: [] }, error: null }),
+      );
+
+    const { getByLabelText, getByText, getByRole } = render(
+      <InventoryChatPanel open onClose={() => {}} />,
+      { wrapper },
+    );
+
+    const input = getByLabelText(i18n.t("chat:inputLabel"));
+    await user.type(input, "牛乳ある？");
+    await user.click(getByLabelText(i18n.t("chat:send")));
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getByText(i18n.t("chat:error"))).toBeTruthy());
+
+    await user.click(getByRole("button", { name: i18n.t("chat:retry") }));
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledTimes(2));
+    const retryCallArgs = invokeMock.mock.calls[1]?.[1] as { body: { message: string } };
+    expect(retryCallArgs.body.message).toBe("牛乳ある？");
+    await waitFor(() => expect(getByText("牛乳は2本あります")).toBeTruthy());
+  });
 });
