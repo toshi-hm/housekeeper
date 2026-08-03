@@ -80,6 +80,7 @@
   "consumptionPaceEstimatedWeeks": "Est. remaining: ~{{weeks}} weeks",
   "consumptionPaceInsufficientData": "Not enough history to estimate consumption pace",
   "contentAmount": "Amount per unit",
+  "contentAmountLockedHint": "Can't be changed because lots (purchases) already exist for this item. If the package size changed, add it as a new item instead.",
   "contentAmountRequired": "Enter a value greater than 0",
   "contentUnit": "Unit",
   "createSuccess": "Item added",

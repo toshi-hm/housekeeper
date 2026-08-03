@@ -70,6 +70,7 @@
   "consumptionPaceEstimatedWeeks": "推定残り: 約{{weeks}}週",
   "consumptionPaceInsufficientData": "履歴が少なく、消費ペースを計算できません",
   "contentAmount": "内包量",
+  "contentAmountLockedHint": "既にロット（購入分）が登録されているため変更できません。パッケージサイズが変わった場合は新しいアイテムとして登録してください。",
   "contentAmountRequired": "0より大きい数値を入力してください",
   "contentUnit": "単位",
   "createSuccess": "在庫を追加しました",

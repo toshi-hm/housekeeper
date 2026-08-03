@@ -231,6 +231,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
         onPendingImageUrlChange={(url) => {
           pendingImageUrlRef.current = url;
         }}
+        disableContentAmount={lots.length > 0}
         extraFields={
           <div className="space-y-2">
             <Label>{t("tags")}</Label>
