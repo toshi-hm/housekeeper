@@ -54,12 +54,13 @@ export const subscribePush = async (): Promise<void> => {
   });
 
   const json = subscription.toJSON();
-  await supabase.functions.invoke("subscribe-push", {
+  const { error } = await supabase.functions.invoke("subscribe-push", {
     body: {
       endpoint: json.endpoint,
       keys: { p256dh: json.keys?.p256dh ?? "", auth: json.keys?.auth ?? "" },
     },
   });
+  if (error) throw error;
 };
 
 export const unsubscribePush = async (): Promise<void> => {
@@ -68,9 +69,10 @@ export const unsubscribePush = async (): Promise<void> => {
   const subscription = await registration.pushManager.getSubscription();
   if (!subscription) return;
 
-  await supabase.functions.invoke("subscribe-push", {
+  const { error } = await supabase.functions.invoke("subscribe-push", {
     body: { action: "unsubscribe", endpoint: subscription.endpoint },
   });
+  if (error) throw error;
   await subscription.unsubscribe();
 };
 
