@@ -61,8 +61,15 @@ const fromMock = mock((table: string) => {
 
 const getUserMock = mock(() => Promise.resolve({ data: { user: { id: "user-1" } }, error: null }));
 
+const rpcMock = mock((name: string, args?: unknown) => {
+  callLog.push({ table: `rpc:${name}`, method: "rpc", args: [args] });
+  const queue = responseQueues[`rpc:${name}`];
+  const response = queue && queue.length > 0 ? queue.shift()! : defaultResponse;
+  return Promise.resolve(response);
+});
+
 mock.module("@/lib/supabase", () => ({
-  supabase: { from: fromMock, auth: { getUser: getUserMock } },
+  supabase: { from: fromMock, auth: { getUser: getUserMock }, rpc: rpcMock },
 }));
 
 const {
@@ -174,60 +181,33 @@ describe("tryStackToActiveItem", () => {
 });
 
 describe("bulkConsumeItems", () => {
-  test("削除対象ロットごとにconsumption_logsへ記録してから削除する (#541)", async () => {
-    responseQueues.item_lots = [
-      {
-        data: [
-          { id: "lot-1", item_id: "item-1", units: 2, opened_remaining: null },
-          { id: "lot-2", item_id: "item-2", units: 1, opened_remaining: 0.5 },
-        ],
-        error: null,
-      },
-    ];
-    responseQueues.items = [
-      {
-        data: [
-          { id: "item-1", content_amount: 1, content_unit: "個" },
-          { id: "item-2", content_amount: 1, content_unit: "本" },
-        ],
-        error: null,
-      },
-    ];
+  test("consumption_logs記録・ロット削除・在庫リセットを単一トランザクションのRPCに委譲する (#743)", async () => {
+    responseQueues["rpc:bulk_consume_items"] = [{ data: null, error: null }];
 
     await bulkConsumeItems(["item-1", "item-2"]);
 
-    const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
-    expect(logInsert).toBeTruthy();
-    const rows = logInsert?.args[0] as Array<Record<string, unknown>>;
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ item_id: "item-1", delta_amount: 2, units_before: 2 });
-    expect(rows[1]).toMatchObject({ item_id: "item-2", delta_amount: 0.5, units_before: 1 });
+    const rpcCall = callLog.find((c) => c.table === "rpc:bulk_consume_items");
+    expect(rpcCall?.args[0]).toEqual({ p_item_ids: ["item-1", "item-2"] });
 
-    const lotDelete = callLog.find((c) => c.table === "item_lots" && c.method === "delete");
-    expect(lotDelete).toBeTruthy();
+    // ロット/在庫の読み書きはすべてRPC内のトランザクションで完結し、クライアント側の
+    // 個別 delete/update 呼び出しは発生しない（#743: 途中失敗時の不整合を防止）。
+    expect(callLog.find((c) => c.table === "item_lots" && c.method === "delete")).toBeUndefined();
+    expect(callLog.find((c) => c.table === "items" && c.method === "update")).toBeUndefined();
   });
 
-  test("在庫が既に0のロットはログを作らない", async () => {
-    responseQueues.item_lots = [
-      { data: [{ id: "lot-1", item_id: "item-1", units: 0, opened_remaining: null }], error: null },
-    ];
-    responseQueues.items = [
-      { data: [{ id: "item-1", content_amount: 1, content_unit: "個" }], error: null },
-    ];
+  test("RPCがエラーを返した場合はthrowする", async () => {
+    responseQueues["rpc:bulk_consume_items"] = [{ data: null, error: { message: "boom" } }];
+    await expect(bulkConsumeItems(["item-1"])).rejects.toBeTruthy();
+  });
 
-    await bulkConsumeItems(["item-1"]);
-
-    const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
-    expect(logInsert).toBeUndefined();
+  test("空配列の場合はRPCを呼ばない", async () => {
+    await bulkConsumeItems([]);
+    expect(callLog.find((c) => c.table === "rpc:bulk_consume_items")).toBeUndefined();
   });
 
   test("全消費後、auto_reorder が有効なアイテムは shopping_list_items へ自動追加する (#353)", async () => {
-    responseQueues.item_lots = [
-      { data: [{ id: "lot-1", item_id: "item-1", units: 2, opened_remaining: null }], error: null },
-    ];
+    responseQueues["rpc:bulk_consume_items"] = [{ data: null, error: null }];
     responseQueues.items = [
-      { data: [{ id: "item-1", content_amount: 1, content_unit: "個" }], error: null }, // bulk read
-      { data: null, error: null }, // items update (units=0)
       // maybeAutoReorder read
       {
         data: {
@@ -241,7 +221,6 @@ describe("bulkConsumeItems", () => {
         error: null,
       },
     ];
-    responseQueues.consumption_logs = [{ data: null, error: null }];
     responseQueues.shopping_list_items = [
       { data: null, error: null }, // dedup check
       { data: null, error: null }, // insert
