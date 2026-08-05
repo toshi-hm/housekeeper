@@ -87,3 +87,11 @@ you add a new spec:
   directly makes Playwright's actionability check spin until timeout even
   though a real click at that point does land on (and navigate via) the
   overlay.
+- **`supabase.rpc(...)` calls aren't handled generically.** The mock's
+  `**/rest/v1/**` route treats any path as a table, so an unhandled
+  `rest/v1/rpc/<fn>` POST silently "succeeds" (inserts into a bogus `rpc/<fn>`
+  store entry) without applying the function's real effects. A spec that
+  exercises a hook backed by a Postgres RPC (e.g. `bulk_consume_items`, #743)
+  needs an explicit `table === "rpc/<fn>"` case added to
+  `fixtures/supabaseMock.ts` that mirrors the migration's SQL against the
+  in-memory store — see the `bulk_consume_items` case for the pattern.

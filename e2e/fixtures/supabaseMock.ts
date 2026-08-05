@@ -10,6 +10,11 @@ import type { Page, Route } from "@playwright/test";
  * supports the small subset of query syntax the app actually generates
  * (`eq.`, `is.`, `not.is.`, `ilike.`/`or=`, `order=`, `limit=`, upsert via
  * `on_conflict`, and `Prefer: count=exact` HEAD requests for usage counts).
+ * `supabase.rpc(...)` calls hit `rest/v1/rpc/<fn>`, which this mock has no
+ * generic handling for (a bare RPC POST would just insert a bogus row into a
+ * fake `rpc/<fn>` "table" and report success without applying any of the
+ * function's real effects, #743) — RPCs the app depends on for E2E-visible
+ * side effects need an explicit case below.
  * See e2e/README.md for the tradeoffs.
  */
 
@@ -264,6 +269,55 @@ export const installSupabaseMock = async (page: Page): Promise<Store> => {
     const request = route.request();
     const url = new URL(request.url());
     const table = url.pathname.replace(/^.*\/rest\/v1\//, "");
+
+    if (table === "rpc/bulk_consume_items") {
+      // Mirrors supabase/migrations/20260805000002_atomic_bulk_consume_items.sql
+      // (#743): consumption_logs insert + item_lots delete + items reset, all
+      // applied to the in-memory store as if it ran in one transaction.
+      const body = (request.postDataJSON() as { p_item_ids?: string[] }) ?? {};
+      const ids = new Set(body.p_item_ids ?? []);
+      const itemsStore = (store.items ??= []);
+      const lotsStore = (store.item_lots ??= []);
+      const logsStore = (store.consumption_logs ??= []);
+
+      for (const lot of lotsStore) {
+        if (!ids.has(String(lot.item_id))) continue;
+        const item = itemsStore.find((i) => i.id === lot.item_id);
+        const contentAmount = (item?.content_amount as number | undefined) ?? 1;
+        const units = (lot.units as number | undefined) ?? 0;
+        const openedRemaining = (lot.opened_remaining as number | null | undefined) ?? null;
+        const deltaAmount =
+          openedRemaining !== null
+            ? Math.max(0, units - 1) * contentAmount + openedRemaining
+            : units * contentAmount;
+        if (deltaAmount <= 0) continue;
+        logsStore.push({
+          id: uuid(),
+          user_id: FAKE_USER_ID,
+          item_id: lot.item_id,
+          delta_amount: deltaAmount,
+          delta_unit: (item?.content_unit as string | undefined) ?? "個",
+          units_before: units,
+          units_after: 0,
+          opened_remaining_before: openedRemaining,
+          opened_remaining_after: null,
+          occurred_at: nowIso(),
+        });
+      }
+
+      store.item_lots = lotsStore.filter((lot) => !ids.has(String(lot.item_id)));
+      for (const item of itemsStore) {
+        if (!ids.has(String(item.id))) continue;
+        item.units = 0;
+        item.opened_remaining = null;
+        item.expiry_date = null;
+        item.updated_at = nowIso();
+      }
+
+      await route.fulfill({ status: 204, body: "" });
+      return;
+    }
+
     if (!(table in store)) store[table] = [];
     const rows = store[table]!;
     const method = request.method();
