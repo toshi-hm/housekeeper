@@ -134,7 +134,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
           : t(chatErrorMessageKey[await classifyChatError(err)]);
       setMessages((prev) => [
         ...markMessageFailed(prev, userMessage.id),
-        { id: createId(), role: "assistant", text: errorText, isError: true },
+        { id: createId(), role: "assistant", text: errorText, isError: true, retryText: text },
       ]);
     }
   };
@@ -183,7 +183,12 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+        <div
+          ref={scrollRef}
+          className="flex-1 space-y-3 overflow-y-auto p-4"
+          aria-live="polite"
+          aria-atomic="false"
+        >
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-4 text-center text-muted-foreground">
               <Bot className="h-10 w-10 text-primary/60" />
@@ -206,7 +211,19 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
           ) : (
             messages.map((m) => (
               <div key={m.id} className="space-y-1.5">
-                <ChatBubble role={m.role} text={m.text} />
+                <ChatBubble
+                  role={m.role}
+                  text={m.text}
+                  isError={m.isError}
+                  retryLabel={t("retry")}
+                  onRetry={
+                    m.isError && m.retryText
+                      ? () => {
+                          void handleSend(m.retryText as string);
+                        }
+                      : undefined
+                  }
+                />
                 {m.items && m.items.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pl-1">
                     {m.items.map((item) => (
@@ -224,7 +241,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
             ))
           )}
           {isLoading && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
               <Spinner className="h-4 w-4" />
               {t("thinking")}
             </div>

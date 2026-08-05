@@ -133,7 +133,6 @@ export const ShoppingTemplatesPanel = ({
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8"
                     aria-label={t("templateEdit")}
                     onClick={() => openEdit(template)}
                   >
@@ -142,7 +141,7 @@ export const ShoppingTemplatesPanel = ({
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    className="text-destructive hover:text-destructive"
                     aria-label={t("templateDelete")}
                     onClick={() => setDeleteTargetId(template.id)}
                   >
@@ -188,7 +187,7 @@ export const ShoppingTemplatesPanel = ({
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-9 w-9 shrink-0"
+                  className="shrink-0"
                   aria-label={t("templateRemoveRow")}
                   onClick={() => setRows((prev) => prev.filter((_, i) => i !== index))}
                   disabled={rows.length === 1}

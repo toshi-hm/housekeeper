@@ -250,6 +250,81 @@ describe("ItemForm — 店舗名 (#697)", () => {
   });
 });
 
+describe("ItemForm — 内包量ロック (#742)", () => {
+  beforeEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+  });
+
+  afterEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockRestore();
+    spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
+  });
+
+  it("disableContentAmount=trueの場合、内包量inputがdisabledになりヒント文言が表示される", () => {
+    const { container, getByText } = render(
+      <ItemForm
+        onSubmit={() => {}}
+        defaultValues={{ name: "テスト", units: 1, content_amount: 1000 }}
+        disableContentAmount
+      />,
+      { wrapper },
+    );
+
+    const contentAmountInput = container.querySelector("#content_amount") as HTMLInputElement;
+    expect(contentAmountInput.disabled).toBe(true);
+    expect(contentAmountInput.getAttribute("aria-describedby")).toBe("content-amount-locked-hint");
+    expect(getByText(i18n.t("items:contentAmountLockedHint"))).toBeTruthy();
+  });
+
+  it("disableContentAmountを渡さない場合は編集可能で、ヒント文言も表示されない", () => {
+    const { container, queryByText } = render(
+      <ItemForm
+        onSubmit={() => {}}
+        defaultValues={{ name: "テスト", units: 1, content_amount: 1000 }}
+      />,
+      { wrapper },
+    );
+
+    const contentAmountInput = container.querySelector("#content_amount") as HTMLInputElement;
+    expect(contentAmountInput.disabled).toBe(false);
+    expect(queryByText(i18n.t("items:contentAmountLockedHint"))).toBeNull();
+  });
+
+  it("disabled中でも既存のcontent_amountの値はonSubmitにそのまま渡る", () => {
+    const onSubmit = spyOn({ onSubmit: () => {} }, "onSubmit");
+    const { container } = render(
+      <ItemForm
+        onSubmit={onSubmit}
+        defaultValues={{ name: "テスト", units: 1, content_amount: 1000 }}
+        disableContentAmount
+      />,
+      { wrapper },
+    );
+
+    const form = container.querySelector("form")!;
+    fireEvent.submit(form);
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ content_amount: 1000 }));
+  });
+});
+
 describe("ItemForm — 下書き保存/復元 (#672)", () => {
   beforeEach(() => {
     localStorage.clear();

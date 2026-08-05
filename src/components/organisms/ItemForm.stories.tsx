@@ -86,3 +86,16 @@ export const AutoReorderEnabled: Story = {
     },
   },
 };
+
+/** ロットが既に存在するアイテムの編集時: 内包量は変更不可（#742） */
+export const ContentAmountLocked: Story = {
+  args: {
+    defaultValues: {
+      name: "牛乳",
+      units: 2,
+      content_amount: 1000,
+      content_unit: "mL",
+    },
+    disableContentAmount: true,
+  },
+};

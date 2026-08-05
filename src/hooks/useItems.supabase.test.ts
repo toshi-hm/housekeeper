@@ -71,6 +71,7 @@ const {
   createItem,
   buildNameOrBarcodeSearchFilter,
   escapeOrFilterValue,
+  escapeIlikeWildcards,
   bulkConsumeItems,
   useBulkItemAction,
   useItemsWithExpiry,
@@ -345,6 +346,16 @@ describe("buildNameOrBarcodeSearchFilter", () => {
   });
 });
 
+describe("escapeIlikeWildcards", () => {
+  test("%, _, \\ をILIKEのリテラル文字としてエスケープする", () => {
+    expect(escapeIlikeWildcards("A%B_C\\D")).toBe("A\\%B\\_C\\\\D");
+  });
+
+  test("ワイルドカードを含まない文字列はそのまま", () => {
+    expect(escapeIlikeWildcards("牛乳")).toBe("牛乳");
+  });
+});
+
 describe("countRecentExpiredWaste (#735)", () => {
   test("バーコードと名前の両方を渡すとバーコード一致 or 名前一致(大文字小文字区別なし)で問い合わせる", async () => {
     responseQueues.items = [{ data: null, error: null, count: 3 }];
@@ -372,6 +383,19 @@ describe("countRecentExpiredWaste (#735)", () => {
 
     expect(count).toBe(0);
     expect(callLog.filter((c) => c.table === "items")).toHaveLength(0);
+  });
+
+  test("名前に %/_ を含む場合はILIKEワイルドカードとして解釈されないようエスケープする (#745)", async () => {
+    responseQueues.items = [{ data: null, error: null, count: 0 }];
+
+    await countRecentExpiredWaste({ name: "A%B_C" });
+
+    const orCall = callLog.find((c) => c.table === "items" && c.method === "or");
+    // escapeIlikeWildcards escapes %/_ with a single backslash for the ILIKE
+    // pattern language, and escapeOrFilterValue then escapes that backslash
+    // again for the .or() filter-value quoting — so the wire value carries a
+    // doubled backslash before each escaped wildcard character.
+    expect(orCall?.args[0]).toBe('name.ilike."A\\\\%B\\\\_C"');
   });
 
   test("countがnullの場合は0を返す", async () => {

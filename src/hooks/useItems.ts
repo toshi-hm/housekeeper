@@ -62,6 +62,15 @@ export const buildNameOrBarcodeSearchFilter = (search: string): string => {
   return `name.ilike."%${escaped}%",barcode.ilike."%${escaped}%"`;
 };
 
+/**
+ * ILIKE パターン言語のワイルドカード（`%` `_`）と、そのエスケープ文字自身（`\`）を
+ * リテラル文字として扱えるようにエスケープする。ワイルドカードで囲まない
+ * 完全一致（大文字小文字無視）用途向け。`escapeOrFilterValue` と組み合わせて使う
+ * （先にこちらを適用してから `escapeOrFilterValue` で `.or()` フィルタ値としてエスケープする）。
+ */
+export const escapeIlikeWildcards = (value: string) =>
+  value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+
 export const fetchItems = async (
   filters: ItemFilters = {},
   sort: ItemSortKey = "created_at",
@@ -413,7 +422,8 @@ export const countRecentExpiredWaste = async (candidate: {
 }): Promise<number> => {
   const trimmedName = candidate.name?.trim();
   const conditions: string[] = [];
-  if (trimmedName) conditions.push(`name.ilike."${escapeOrFilterValue(trimmedName)}"`);
+  if (trimmedName)
+    conditions.push(`name.ilike."${escapeOrFilterValue(escapeIlikeWildcards(trimmedName))}"`);
   if (candidate.barcode) conditions.push(`barcode.eq."${escapeOrFilterValue(candidate.barcode)}"`);
   if (conditions.length === 0) return 0;
 

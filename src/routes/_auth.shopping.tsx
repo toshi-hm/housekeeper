@@ -459,6 +459,8 @@ const ShoppingPage = () => {
             size="sm"
             variant={showTemplates ? "default" : "outline"}
             onClick={() => setShowTemplates((v) => !v)}
+            aria-expanded={showTemplates}
+            aria-controls="shopping-templates-panel"
           >
             <LayoutList className="mr-1 h-4 w-4" />
             {t("templates")}
@@ -472,7 +474,12 @@ const ShoppingPage = () => {
             <ScanLine className="mr-1 h-4 w-4" />
             {t("scanAdd")}
           </Button>
-          <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
+          <Button
+            size="sm"
+            onClick={() => setShowAdd((v) => !v)}
+            aria-expanded={showAdd}
+            aria-controls="shopping-add-form"
+          >
             <Plus className="mr-1 h-4 w-4" />
             {t("addItem")}
           </Button>
@@ -480,19 +487,21 @@ const ShoppingPage = () => {
       </div>
 
       {showTemplates && (
-        <ShoppingTemplatesPanel
-          templates={templates}
-          onApply={(template) => {
-            void handleApplyTemplate(template);
-          }}
-          onSave={handleSaveTemplate}
-          onDelete={(id) => {
-            void handleDeleteTemplate(id);
-          }}
-          isSaving={saveTemplate.isPending}
-          isDeleting={deleteTemplate.isPending}
-          applyingId={applyingTemplateId}
-        />
+        <div id="shopping-templates-panel">
+          <ShoppingTemplatesPanel
+            templates={templates}
+            onApply={(template) => {
+              void handleApplyTemplate(template);
+            }}
+            onSave={handleSaveTemplate}
+            onDelete={(id) => {
+              void handleDeleteTemplate(id);
+            }}
+            isSaving={saveTemplate.isPending}
+            isDeleting={deleteTemplate.isPending}
+            applyingId={applyingTemplateId}
+          />
+        </div>
       )}
 
       {showScanner && (
@@ -518,7 +527,7 @@ const ShoppingPage = () => {
 
       {/* Add form */}
       {showAdd && (
-        <div className="space-y-3 rounded-lg border p-4">
+        <div id="shopping-add-form" className="space-y-3 rounded-lg border p-4">
           <div className="space-y-1">
             <Label htmlFor="add-name">{t("itemName")}</Label>
             <div className="flex gap-2">

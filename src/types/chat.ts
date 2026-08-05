@@ -30,6 +30,8 @@ export interface ChatMessage {
   text: string;
   items?: ChatMatchedItem[];
   isError?: boolean;
+  /** isError時のみ設定。再試行時に再送信する元の質問文。 */
+  retryText?: string;
 }
 
 // History turn sent to the Edge Function (Gemini roles: user / model).

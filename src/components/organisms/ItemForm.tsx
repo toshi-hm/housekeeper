@@ -50,6 +50,13 @@ interface ItemFormProps {
   /** カテゴリ・保管場所の下に差し込む追加フィールド（タグ選択など） */
   extraFields?: ReactNode;
   /**
+   * #742: ロットが既に存在するアイテムを編集する場合に true を渡すと、
+   * content_amount（内包量）の変更を禁止する。ロットは購入時点の
+   * content_amount を基準に残量を計算するため、編集後に値を変えると
+   * 既存ロットの解釈が変わり実在庫とズレてしまうため。
+   */
+  disableContentAmount?: boolean;
+  /**
    * #672: 指定すると入力中の値をlocalStorageに下書き保存し、次回マウント時に
    * 復元/破棄を選べるようにする（ネットワーク失敗・タブ誤操作等からの救済、
    * PLANS.md §7.4）。省略時は下書き機能自体が無効（例: 既存アイテムの編集画面は
@@ -68,6 +75,7 @@ export const ItemForm = ({
   onBarcodeScanned,
   onNameBlur,
   extraFields,
+  disableContentAmount = false,
   draftKey,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
@@ -588,12 +596,24 @@ export const ItemForm = ({
                 const num = parseFloat(raw);
                 if (!isNaN(num) && num > 0) set("content_amount", num);
               }}
+              disabled={disableContentAmount}
               aria-invalid={!!contentAmountError}
-              aria-describedby={contentAmountError ? "content-amount-error" : undefined}
+              aria-describedby={
+                contentAmountError
+                  ? "content-amount-error"
+                  : disableContentAmount
+                    ? "content-amount-locked-hint"
+                    : undefined
+              }
             />
             {contentAmountError && (
               <p id="content-amount-error" className="text-sm text-destructive">
                 {contentAmountError}
+              </p>
+            )}
+            {!contentAmountError && disableContentAmount && (
+              <p id="content-amount-locked-hint" className="text-sm text-muted-foreground">
+                {t("contentAmountLockedHint")}
               </p>
             )}
           </div>
