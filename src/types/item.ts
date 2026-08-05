@@ -41,7 +41,7 @@ export interface CustomUnit {
 /** 「賞味期限」（best_before, 品質の目安 = 過ぎても食べられることが多い）と
  *  「消費期限」（use_by, 安全性の目安 = 過ぎたら食べない方がよい）の区別 (#714)。
  *  日本の食品表示の区分に対応する。 */
-const EXPIRY_TYPES = ["best_before", "use_by"] as const;
+export const EXPIRY_TYPES = ["best_before", "use_by"] as const;
 export type ExpiryType = (typeof EXPIRY_TYPES)[number];
 
 export interface Item {

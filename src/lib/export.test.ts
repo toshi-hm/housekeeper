@@ -211,6 +211,7 @@ describe("jsonToItems", () => {
         barcode: item.barcode,
         content_amount: item.content_amount,
         content_unit: item.content_unit,
+        expiry_type: null,
         notes: item.notes,
         minimum_stock: item.minimum_stock,
         auto_reorder: false,
@@ -218,6 +219,13 @@ describe("jsonToItems", () => {
         lots: lots.get(item.id),
       },
     ]);
+  });
+
+  test("round-trips expiry_type (#746)", () => {
+    const item = makeItem({ expiry_type: "best_before" });
+    const json = itemsToJSON([item], new Map());
+    const result = jsonToItems(json);
+    expect(result[0]?.expiry_type).toBe("best_before");
   });
 
   test("reads an old v1 (aggregate-only) backup, synthesizing a single lot", () => {
@@ -246,6 +254,7 @@ describe("jsonToItems", () => {
         barcode: "123",
         content_amount: 1000,
         content_unit: "mL",
+        expiry_type: undefined,
         notes: null,
         minimum_stock: null,
         auto_reorder: undefined,

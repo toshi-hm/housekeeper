@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import type { Category, Item, StorageLocation } from "@/types/item";
+import {
+  type Category,
+  EXPIRY_TYPES,
+  type ExpiryType,
+  type Item,
+  type StorageLocation,
+} from "@/types/item";
 
 /**
  * データエクスポート機能（#66 / #358 / #381）の純粋関数群。
@@ -94,6 +100,8 @@ interface ItemExportV2 {
   barcode: string | null;
   content_amount: number;
   content_unit: string;
+  /** 「賞味期限」/「消費期限」の区別（#714）。null = 未設定・区別なし（#746、後方互換: 追加前のv2バックアップは常に null）。 */
+  expiry_type: ExpiryType | null;
   notes: string | null;
   minimum_stock: number | null;
   auto_reorder: boolean;
@@ -127,6 +135,7 @@ export const itemsToJSON = (
       barcode: item.barcode ?? null,
       content_amount: item.content_amount,
       content_unit: item.content_unit,
+      expiry_type: item.expiry_type ?? null,
       notes: item.notes ?? null,
       minimum_stock: item.minimum_stock ?? null,
       auto_reorder: item.auto_reorder ?? false,
@@ -175,6 +184,8 @@ const importItemBaseSchema = z.object({
   barcode: z.string().nullable().optional(),
   content_amount: z.number().positive(),
   content_unit: z.string().min(1),
+  /** #714より前のバックアップには存在しないため任意。無ければ null（区別なし）として扱う（#746）。 */
+  expiry_type: z.enum(EXPIRY_TYPES).nullable().optional(),
   notes: z.string().nullable().optional(),
   minimum_stock: z.number().int().min(0).nullable().optional(),
   auto_reorder: z.boolean().optional(),
@@ -201,6 +212,7 @@ export interface ImportItemInput {
   barcode?: string | null;
   content_amount: number;
   content_unit: string;
+  expiry_type?: ExpiryType | null;
   notes?: string | null;
   minimum_stock?: number | null;
   auto_reorder?: boolean;
@@ -236,6 +248,7 @@ const normalizeV2Item = (item: z.infer<typeof importItemV2Schema>): ImportItemIn
   barcode: item.barcode,
   content_amount: item.content_amount,
   content_unit: item.content_unit,
+  expiry_type: item.expiry_type,
   notes: item.notes,
   minimum_stock: item.minimum_stock,
   auto_reorder: item.auto_reorder,
@@ -248,6 +261,7 @@ const normalizeV1Item = (item: z.infer<typeof importItemV1Schema>): ImportItemIn
   barcode: item.barcode,
   content_amount: item.content_amount,
   content_unit: item.content_unit,
+  expiry_type: item.expiry_type,
   notes: item.notes,
   minimum_stock: item.minimum_stock,
   auto_reorder: item.auto_reorder,

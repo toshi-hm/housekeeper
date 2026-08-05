@@ -197,28 +197,37 @@ Deno.serve(async (req: Request) => {
         if (vapidPublicKey && vapidPrivateKey && vapidSubject) {
           webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
-          const { data: subs } = await supabase
+          const { data: subs, error: subsError } = await supabase
             .from("push_subscriptions")
             .select("id, endpoint, p256dh, auth")
             .eq("user_id", pref.user_id);
 
-          await Promise.allSettled(
-            (subs as PushSubscription[]).map(async (sub) => {
-              try {
-                await webpush.sendNotification(
-                  { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-                  JSON.stringify({ title, body, data: { url: notificationUrl } }),
-                );
-              } catch (err: unknown) {
-                const status = (err as { statusCode?: number }).statusCode;
-                if (status === 410 || status === 404) {
-                  // Subscription expired — remove it
-                  await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+          if (subsError) {
+            // #760: don't let a transient push_subscriptions read failure
+            // throw here — the notification_logs slot for today is already
+            // claimed (see the upsert above), so an uncaught error would
+            // skip the email fallback below and leave the user with zero
+            // notifications for the day with no retry until tomorrow.
+            console.error("Failed to fetch push_subscriptions:", subsError);
+          } else {
+            await Promise.allSettled(
+              (subs as PushSubscription[]).map(async (sub) => {
+                try {
+                  await webpush.sendNotification(
+                    { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                    JSON.stringify({ title, body, data: { url: notificationUrl } }),
+                  );
+                } catch (err: unknown) {
+                  const status = (err as { statusCode?: number }).statusCode;
+                  if (status === 410 || status === 404) {
+                    // Subscription expired — remove it
+                    await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+                  }
+                  console.error("Push failed:", err);
                 }
-                console.error("Push failed:", err);
-              }
-            }),
-          );
+              }),
+            );
+          }
         } else {
           console.warn("VAPID secrets not configured, skipping push for user", pref.user_id);
         }
