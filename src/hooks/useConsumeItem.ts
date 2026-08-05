@@ -21,6 +21,8 @@ export type ConsumeItemUndo =
       lotId: string;
       unitsBefore: number;
       openedRemainingBefore: number | null;
+      unitsAfter: number;
+      openedRemainingAfter: number | null;
       logId: string | null;
     }
   | {
@@ -71,6 +73,8 @@ export const consumeItem = async ({
       lotId: targetLot.id,
       unitsBefore: targetLot.units,
       openedRemainingBefore: targetLot.opened_remaining ?? null,
+      unitsAfter: lotResult.units,
+      openedRemainingAfter: lotResult.opened_remaining ?? null,
       logId: lotResult._logId ?? null,
     };
   } else {
@@ -142,6 +146,8 @@ export const undoConsumeItem = async (undo: ConsumeItemUndo): Promise<void> => {
       itemId: undo.itemId,
       unitsBefore: undo.unitsBefore,
       openedRemainingBefore: undo.openedRemainingBefore,
+      unitsAfter: undo.unitsAfter,
+      openedRemainingAfter: undo.openedRemainingAfter,
       logId: undo.logId,
     });
     return;
