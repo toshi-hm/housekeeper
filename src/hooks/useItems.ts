@@ -9,13 +9,11 @@ import { supabase } from "@/lib/supabase";
 import { fetchAllPages } from "@/lib/supabasePagination";
 import { useToast } from "@/lib/toast-context";
 import {
-  getLotRemainingAmount,
   type Item,
   type ItemDeletionReason,
   type ItemFilters,
   type ItemFormValues,
   type ItemSortKey,
-  roundFloat,
 } from "@/types/item";
 
 export type { ItemFilters, ItemSortKey };
@@ -718,69 +716,13 @@ const bulkSoftDeleteItems = async (ids: string[], reason?: ItemDeletionReason): 
 };
 
 /** 複数アイテムを全消費（units=0）にする。ロットを削除して在庫を 0 にリセットする。
- *  削除対象ロットごとに consumption_logs へ記録してから削除する（#541）。 */
+ *  consumption_logs への記録・ロット削除・在庫リセットは単一トランザクションの
+ *  RPC（`bulk_consume_items`）にまとめており、途中失敗時も不整合を残さない（#743）。 */
 export const bulkConsumeItems = async (ids: string[]): Promise<void> => {
   requireOnline();
   if (ids.length === 0) return;
 
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) throw new Error("Not authenticated");
-
-  const [{ data: lots, error: lotsFetchError }, { data: itemsRows, error: itemsFetchError }] =
-    await Promise.all([
-      supabase.from("item_lots").select("id, item_id, units, opened_remaining").in("item_id", ids),
-      supabase.from("items").select("id, content_amount, content_unit").in("id", ids),
-    ]);
-  if (lotsFetchError) throw lotsFetchError;
-  if (itemsFetchError) throw itemsFetchError;
-
-  const itemMap = new Map(
-    (itemsRows ?? []).map((i) => [
-      i.id as string,
-      i as { content_amount: number; content_unit: string },
-    ]),
-  );
-
-  const logRows = (lots ?? [])
-    .map((lot) => {
-      const units = lot.units as number;
-      const openedRemaining = lot.opened_remaining as number | null;
-      const item = itemMap.get(lot.item_id as string);
-      const contentAmount = item?.content_amount ?? 1;
-      const deltaAmount = roundFloat(getLotRemainingAmount(units, contentAmount, openedRemaining));
-      return {
-        user_id: userData.user.id,
-        item_id: lot.item_id,
-        delta_amount: deltaAmount,
-        delta_unit: item?.content_unit ?? "個",
-        units_before: units,
-        units_after: 0,
-        opened_remaining_before: openedRemaining,
-        opened_remaining_after: null,
-      };
-    })
-    .filter((row) => row.delta_amount > 0);
-
-  if (logRows.length > 0) {
-    const { error: logError } = await supabase.from("consumption_logs").insert(logRows);
-    if (logError) {
-      // Non-fatal: stock is still reset below. Log for debugging (#441).
-      // oxlint-disable-next-line no-console
-      console.warn("bulkConsumeItems: consumption_logs insert failed", logError);
-    }
-  }
-
-  const { error: lotError } = await supabase.from("item_lots").delete().in("item_id", ids);
-  if (lotError) throw lotError;
-  const { error } = await supabase
-    .from("items")
-    .update({
-      units: 0,
-      opened_remaining: null,
-      expiry_date: null,
-      updated_at: new Date().toISOString(),
-    })
-    .in("id", ids);
+  const { error } = await supabase.rpc("bulk_consume_items", { p_item_ids: ids });
   if (error) throw error;
 
   // 全消費（units=0）後、auto_reorder が有効なアイテムは買い物リストへ自動追加する (#353)。

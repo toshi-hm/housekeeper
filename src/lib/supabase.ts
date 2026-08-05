@@ -694,6 +694,12 @@ export interface Database {
         };
         Returns: Array<{ item_id: string; action: "created" | "updated" | "skipped" }>;
       };
+      // #743: atomic bulk consume (log insert + lot delete + item reset) — see
+      // supabase/migrations/20260805000002_atomic_bulk_consume_items.sql
+      bulk_consume_items: {
+        Args: { p_item_ids: string[] };
+        Returns: void;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
