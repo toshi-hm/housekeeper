@@ -73,6 +73,36 @@ describe("checkRecipeStock", () => {
     expect(result.shortages[0]?.item_id).toBe("item-2");
   });
 
+  test("同一アイテムが複数行にまたがる場合、必要量を合算してから在庫と比較する (#765)", () => {
+    // 在庫1個のアイテムを2行に分けて各1個ずつ要求すると、行ごとの独立判定なら
+    // どちらも「1個必要・1個ある→OK」に見えてしまうが、合計では2個必要で不足している。
+    const items = { "item-1": makeItem({ units: 1, content_amount: 1, opened_remaining: null }) };
+    const result = checkRecipeStock(
+      [
+        { item_id: "item-1", amount: 1 },
+        { item_id: "item-1", amount: 1 },
+      ],
+      items,
+    );
+    expect(result.ok).toBe(false);
+    expect(result.shortages).toEqual([
+      { item_id: "item-1", item_name: "コーヒー豆", required: 2, available: 1, unit: "g" },
+    ]);
+  });
+
+  test("同一アイテムが複数行でも合算した在庫が足りていればokになる", () => {
+    const items = { "item-1": makeItem({ units: 3, content_amount: 1, opened_remaining: null }) };
+    const result = checkRecipeStock(
+      [
+        { item_id: "item-1", amount: 1 },
+        { item_id: "item-1", amount: 2 },
+      ],
+      items,
+    );
+    expect(result.ok).toBe(true);
+    expect(result.shortages).toEqual([]);
+  });
+
   describe("fefoLotByItemId (multi-lot items, #393)", () => {
     // executeRecipe only ever consumes from a single lot (the FEFO one), so
     // the pre-check must be based on that lot's remaining amount, not the
