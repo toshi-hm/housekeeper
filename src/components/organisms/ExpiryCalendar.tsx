@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { ColorDot } from "@/components/atoms/ColorDot";
 import { Button } from "@/components/ui/button";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { type Category, type ExpiryStatus, getExpiryStatus, type Item } from "@/types/item";
 
 interface ExpiryCalendarProps {
@@ -55,6 +56,11 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
   const [pickerYear, setPickerYear] = useState(today.getFullYear());
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const closeDatePopup = () => setSelectedDateKey(null);
+  const datePopupRef = useDialogA11y<HTMLDivElement>({
+    open: selectedDateKey !== null,
+    onClose: closeDatePopup,
+  });
 
   const monthLabels = Array.from({ length: 12 }, (_, i) =>
     new Date(2000, i, 1).toLocaleDateString(i18n.language, { month: "short" }),
@@ -276,13 +282,22 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
           <button
             type="button"
             className="absolute inset-0"
-            onClick={() => setSelectedDateKey(null)}
+            onClick={closeDatePopup}
             aria-label={labels.close}
           />
-          <div className="relative z-10 max-h-[70vh] w-full max-w-md overflow-y-auto rounded-xl bg-background p-4 shadow-xl">
+          <div
+            ref={datePopupRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="expiry-calendar-date-popup-title"
+            tabIndex={-1}
+            className="relative z-10 max-h-[70vh] w-full max-w-md overflow-y-auto rounded-xl bg-background p-4 shadow-xl"
+          >
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">{labels.expiryItemsOnDate(selectedDateKey)}</h3>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedDateKey(null)}>
+              <h3 id="expiry-calendar-date-popup-title" className="text-sm font-semibold">
+                {labels.expiryItemsOnDate(selectedDateKey)}
+              </h3>
+              <Button variant="ghost" size="sm" onClick={closeDatePopup}>
                 {labels.close}
               </Button>
             </div>
