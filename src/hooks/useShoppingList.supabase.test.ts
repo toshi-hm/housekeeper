@@ -205,6 +205,65 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
   });
 });
 
+describe("upsertShoppingItem (#766: 同名の同時追加による重複行の防止)", () => {
+  test("client側の重複チェック後にDB側でユニーク制約違反(23505)が起きた場合、既存行への統合にリトライする", async () => {
+    responseQueues.shopping_list_items = [
+      { data: [], error: null }, // 1回目のplannedRows検索: この時点では重複なし(競合相手がまだcommitしていない)
+      {
+        data: null,
+        error: { code: "23505", message: "duplicate key value violates unique constraint" },
+      }, // 最終upsert: 競合相手が先にinsertし、DB制約違反
+      {
+        data: [
+          {
+            id: "row-existing",
+            user_id: "user-1",
+            name: "牛乳",
+            desired_units: 1,
+            note: null,
+            linked_item_id: null,
+            status: "planned",
+            purchased_at: null,
+            created_item_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+        error: null,
+      }, // リトライ後のplannedRows検索: 競合相手の行が見えるようになっている
+      { data: { id: "row-existing", desired_units: 2 }, error: null }, // 統合のupdate
+    ];
+
+    const result = await upsertShoppingItem({ name: "牛乳", desired_units: 1 });
+
+    expect(result).toMatchObject({ id: "row-existing", desired_units: 2 });
+    const updateCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "update",
+    );
+    expect(updateCall?.args[0]).toMatchObject({ desired_units: 2 });
+  });
+
+  test("23505以外のエラーはリトライせずそのままthrowする", async () => {
+    responseQueues.shopping_list_items = [
+      { data: [], error: null }, // plannedRows検索: 重複なし
+      { data: null, error: { code: "42501", message: "permission denied" } }, // 最終upsert: 無関係なエラー
+    ];
+
+    await expect(upsertShoppingItem({ name: "牛乳" })).rejects.toBeTruthy();
+
+    // リトライ(2回目のplannedRows検索)は行われていないはず(plannedRows検索は
+    // status="planned" の eq() を伴うのが目印。upsert 自体の select() と区別する)
+    const plannedSearches = callLog.filter(
+      (c) =>
+        c.table === "shopping_list_items" &&
+        c.method === "eq" &&
+        c.args[0] === "status" &&
+        c.args[1] === "planned",
+    );
+    expect(plannedSearches).toHaveLength(1);
+  });
+});
+
 describe("upsertShoppingItem (#619: インライン編集での linked_item_id 消失の防止)", () => {
   test("編集時に linked_item_id を渡さない場合、既存行の値を取得して保持する", async () => {
     responseQueues.shopping_list_items = [

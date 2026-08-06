@@ -56,6 +56,39 @@ export const findDuplicatePlannedItem = (
   );
 };
 
+/**
+ * 新規追加時の重複防止チェック: 同一 linked_item_id、または同名（前後空白を無視し
+ * 大文字小文字を区別しない）の planned 行が既にあれば、新規作成せず desired_units を
+ * インクリメントして統合する (#522, #447)。見つからなければ null。
+ */
+const mergeIntoDuplicatePlannedItem = async (
+  userId: string,
+  input: UpsertShoppingItemInput,
+): Promise<ShoppingItem | null> => {
+  const { data: plannedRows, error: plannedError } = await supabase
+    .from("shopping_list_items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "planned");
+  if (plannedError) throw new Error(plannedError.message);
+
+  const duplicate = findDuplicatePlannedItem((plannedRows ?? []) as ShoppingItem[], input);
+  if (!duplicate) return null;
+
+  const { data, error } = await supabase
+    .from("shopping_list_items")
+    .update({
+      desired_units: duplicate.desired_units + (input.desired_units ?? 1),
+      note: input.note ?? duplicate.note,
+      linked_item_id: duplicate.linked_item_id ?? input.linked_item_id ?? null,
+    })
+    .eq("id", duplicate.id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+};
+
 /** `useUpsertShoppingItem` の実処理。単体テストのため素の関数として切り出している。 */
 export const upsertShoppingItem = async (input: UpsertShoppingItemInput) => {
   requireOnline();
@@ -64,33 +97,9 @@ export const upsertShoppingItem = async (input: UpsertShoppingItemInput) => {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  // 新規追加時のみ重複防止チェック: 同一 linked_item_id、または同名（前後空白を無視し
-  // 大文字小文字を区別しない）の planned 行が既にあれば新規作成せず desired_units を
-  // インクリメントして統合する (#522, #447)
   if (!input.id) {
-    const { data: plannedRows, error: plannedError } = await supabase
-      .from("shopping_list_items")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("status", "planned");
-    if (plannedError) throw new Error(plannedError.message);
-
-    const duplicate = findDuplicatePlannedItem((plannedRows ?? []) as ShoppingItem[], input);
-
-    if (duplicate) {
-      const { data, error } = await supabase
-        .from("shopping_list_items")
-        .update({
-          desired_units: duplicate.desired_units + (input.desired_units ?? 1),
-          note: input.note ?? duplicate.note,
-          linked_item_id: duplicate.linked_item_id ?? input.linked_item_id ?? null,
-        })
-        .eq("id", duplicate.id)
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return data;
-    }
+    const merged = await mergeIntoDuplicatePlannedItem(user.id, input);
+    if (merged) return merged;
   }
 
   // 既存行の編集時、呼び出し元が linked_item_id を渡さない（undefined）ケースが
@@ -123,7 +132,19 @@ export const upsertShoppingItem = async (input: UpsertShoppingItemInput) => {
     )
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    // #766: a concurrent request may have inserted/matched a same-name (or
+    // same linked_item_id) planned row between our client-side check above
+    // and this insert, tripping the DB-level unique constraint
+    // (shopping_planned_name_unique / shopping_planned_linked_item_unique).
+    // Retry the merge now that the conflicting row actually exists, instead
+    // of surfacing a raw constraint-violation error to the user.
+    if (!input.id && error.code === "23505") {
+      const merged = await mergeIntoDuplicatePlannedItem(user.id, input);
+      if (merged) return merged;
+    }
+    throw new Error(error.message);
+  }
   return data;
 };
 
