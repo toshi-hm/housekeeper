@@ -106,7 +106,7 @@ export const RecipeForm = ({
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-9 w-9 shrink-0"
+                  className="shrink-0"
                   aria-label={t("recipeRemoveRow")}
                   onClick={() => setRows((prev) => prev.filter((_, i) => i !== index))}
                   disabled={rows.length === 1}
