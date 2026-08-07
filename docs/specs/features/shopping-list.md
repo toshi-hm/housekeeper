@@ -65,6 +65,13 @@
 グループ化して表示する。各行の「再購入」ボタンは `useUpsertShoppingItem()` を呼び出し、
 既存の planned 行との重複統合ロジック（`findDuplicatePlannedItem`）をそのまま利用する。
 
+`linked_item_id` を伴わない自由入力の重複統合は、`upsertShoppingItem` のクライアント側チェック
+（`findDuplicatePlannedItem`）に加えて `(user_id, lower(trim(name)))` の部分一意index
+（`planned` かつ `linked_item_id is null` の行のみ対象、#766）でDB側もバックストップする。
+複数端末からのほぼ同時追加でクライアント側チェックをすり抜けた場合、最終的な insert が一意制約
+違反（23505）になり、その場合は競合相手の行を再取得して統合をリトライする（`linked_item_id`
+一致の場合の既存の一意制約 `shopping_planned_linked_item_unique` も同じリトライで守られる）。
+
 ### 定期購入の自動追加（#353）
 
 - `items.auto_reorder`（boolean, default false）と `items.reorder_threshold`（int, nullable）で制御する
