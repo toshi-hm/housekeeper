@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterAll, beforeEach, describe, expect, it } from "bun:test";
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
@@ -13,6 +13,13 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe("Spinner", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("ja");
+  });
+
+  // bun test preloads src/test/setup.ts once and runs every test file in the
+  // same process, so this describe block's "ja" switch otherwise leaks into
+  // whichever file runs next (see #772).
+  afterAll(async () => {
+    await i18n.changeLanguage("en");
   });
 
   it("renders with default aria-label from locale", () => {

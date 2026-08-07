@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, describe, expect, it } from "bun:test";
 import { createElement, type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
@@ -67,6 +67,13 @@ afterEach(async () => {
   await act(async () => {
     await i18n.changeLanguage("ja");
   });
+});
+
+// bun test preloads src/test/setup.ts once and runs every test file in the
+// same process, so leaving the shared `i18n` singleton on "ja" here leaks
+// into whichever file runs next (see #772).
+afterAll(async () => {
+  await i18n.changeLanguage("en");
 });
 
 describe("isSpeechInputSupported", () => {
