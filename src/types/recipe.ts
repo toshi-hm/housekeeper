@@ -66,6 +66,12 @@ export type RecipeFefoLot = Pick<ItemLot, "units" | "opened_remaining">;
  * 判定した直後に実消費が insufficientStock で失敗する不整合が起きる。
  * ロットが1件も無いアイテム（`consumeItem` の no-lots フォールバック経路）は
  * 従来通り集計在庫で判定する。
+ *
+ * 同一 item_id が複数行にまたがる場合は、行ごとに独立して判定するのではなく
+ * 必要量を合算してから在庫と比較する（#765）。行ごとの独立判定だと、各行が
+ * 同じ在庫スナップショットに対して個別に「足りている」と判定してしまい、
+ * 合計では不足していても事前チェックをすり抜ける（実行時は `executeRecipe` が
+ * 順番に `consumeItem` を呼ぶため、1行目消費後に在庫が尽きて2行目以降が失敗する）。
  */
 export const checkRecipeStock = (
   recipeItems: Pick<RecipeItem, "item_id" | "amount">[],
@@ -74,9 +80,17 @@ export const checkRecipeStock = (
 ): RecipeStockCheckResult => {
   const shortages: RecipeShortage[] = [];
 
+  const requiredByItemId = new Map<string, number>();
   for (const recipeItem of recipeItems) {
-    const item = itemsById[recipeItem.item_id];
-    const fefoLot = fefoLotByItemId[recipeItem.item_id];
+    requiredByItemId.set(
+      recipeItem.item_id,
+      (requiredByItemId.get(recipeItem.item_id) ?? 0) + recipeItem.amount,
+    );
+  }
+
+  for (const [itemId, required] of requiredByItemId) {
+    const item = itemsById[itemId];
+    const fefoLot = fefoLotByItemId[itemId];
     const available = !item
       ? 0
       : fefoLot
@@ -87,11 +101,11 @@ export const checkRecipeStock = (
           )
         : getLotRemainingAmount(item.units, item.content_amount, item.opened_remaining ?? null);
 
-    if (available < recipeItem.amount) {
+    if (available < required) {
       shortages.push({
-        item_id: recipeItem.item_id,
-        item_name: item?.name ?? recipeItem.item_id,
-        required: recipeItem.amount,
+        item_id: itemId,
+        item_name: item?.name ?? itemId,
+        required,
         available,
         unit: item?.content_unit ?? "",
       });
