@@ -1,6 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
 import React from "react";
 import { I18nextProvider } from "react-i18next";
 
@@ -118,6 +128,13 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     await i18n.changeLanguage("ja");
   });
 
+  // bun test preloads src/test/setup.ts once and runs every test file in the
+  // same process, so leaving the shared `i18n` singleton on "ja" here leaks
+  // into whichever file runs next (see #772).
+  afterAll(async () => {
+    await i18n.changeLanguage("en");
+  });
+
   beforeEach(() => {
     settingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
       data: { expiry_warning_days: 3, language: "ja" },
@@ -230,6 +247,13 @@ describe("SettingsPage - default unit", () => {
 
   beforeAll(async () => {
     await i18n.changeLanguage("ja");
+  });
+
+  // bun test preloads src/test/setup.ts once and runs every test file in the
+  // same process, so leaving the shared `i18n` singleton on "ja" here leaks
+  // into whichever file runs next (see #772).
+  afterAll(async () => {
+    await i18n.changeLanguage("en");
   });
 
   beforeEach(() => {

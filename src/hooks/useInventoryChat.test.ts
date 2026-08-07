@@ -54,6 +54,10 @@ describe("useInventoryChat", () => {
     });
 
     unmount();
-    await i18n.changeLanguage("ja");
+    // Restore the pristine detected test-environment language ("en") so this
+    // file doesn't leak "ja" into whichever file bun test runs next, since
+    // src/test/setup.ts preloads once and shares the `i18n` singleton across
+    // the whole process (see #772).
+    await i18n.changeLanguage("en");
   });
 });
