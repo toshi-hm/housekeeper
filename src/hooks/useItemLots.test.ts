@@ -339,7 +339,7 @@ describe("restoreLotConsumption", () => {
 
   test("ロットのunits/opened_remainingを消費前の値に戻し、対応するconsumption_logsを削除する", async () => {
     responseQueues.item_lots = [
-      { data: null, error: null }, // item_lots update
+      { data: { id: "lot-1", units: 3, opened_remaining: null }, error: null }, // conditional update
       { data: [{ units: 3, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate read
     ];
     responseQueues.items = [
@@ -352,15 +352,23 @@ describe("restoreLotConsumption", () => {
       itemId: "item-1",
       unitsBefore: 3,
       openedRemainingBefore: null,
+      unitsAfter: 0,
+      openedRemainingAfter: null,
       logId: "log-1",
     });
 
     const lotUpdateCall = callLog.find((c) => c.table === "item_lots" && c.method === "update");
     expect(lotUpdateCall?.args[0]).toMatchObject({ units: 3, opened_remaining: null });
-    const lotEqCall = callLog.find(
-      (c) => c.table === "item_lots" && c.method === "eq" && c.args[0] === "id",
-    );
-    expect(lotEqCall?.args).toEqual(["id", "lot-1"]);
+    const lotEqCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "eq");
+    expect(lotEqCalls).toContainEqual({ table: "item_lots", method: "eq", args: ["id", "lot-1"] });
+    // #762: undoは消費直後の状態(unitsAfter/openedRemainingAfter)と一致する行だけを対象にする。
+    expect(lotEqCalls).toContainEqual({ table: "item_lots", method: "eq", args: ["units", 0] });
+    const lotIsCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "is");
+    expect(lotIsCalls).toContainEqual({
+      table: "item_lots",
+      method: "is",
+      args: ["opened_remaining", null],
+    });
 
     const logDeleteCall = callLog.find(
       (c) => c.table === "consumption_logs" && c.method === "delete",
@@ -378,7 +386,7 @@ describe("restoreLotConsumption", () => {
 
   test("開封中ロットのopened_remainingも消費前の値へ復元する", async () => {
     responseQueues.item_lots = [
-      { data: null, error: null },
+      { data: { id: "lot-1", units: 2, opened_remaining: 0.2 }, error: null },
       { data: [{ units: 2, expiry_date: null, opened_remaining: 0.5 }], error: null },
     ];
     responseQueues.items = [
@@ -391,16 +399,24 @@ describe("restoreLotConsumption", () => {
       itemId: "item-1",
       unitsBefore: 2,
       openedRemainingBefore: 0.5,
+      unitsAfter: 2,
+      openedRemainingAfter: 0.2,
       logId: "log-1",
     });
 
     const lotUpdateCall = callLog.find((c) => c.table === "item_lots" && c.method === "update");
     expect(lotUpdateCall?.args[0]).toMatchObject({ units: 2, opened_remaining: 0.5 });
+    const lotEqCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "eq");
+    expect(lotEqCalls).toContainEqual({
+      table: "item_lots",
+      method: "eq",
+      args: ["opened_remaining", 0.2],
+    });
   });
 
   test("logIdがnullの場合はconsumption_logsのdeleteを呼ばない", async () => {
     responseQueues.item_lots = [
-      { data: null, error: null },
+      { data: { id: "lot-1", units: 1, opened_remaining: null }, error: null },
       { data: [{ units: 1, expiry_date: null, opened_remaining: null }], error: null },
     ];
     responseQueues.items = [
@@ -413,6 +429,8 @@ describe("restoreLotConsumption", () => {
       itemId: "item-1",
       unitsBefore: 1,
       openedRemainingBefore: null,
+      unitsAfter: 0,
+      openedRemainingAfter: null,
       logId: null,
     });
 
@@ -428,9 +446,32 @@ describe("restoreLotConsumption", () => {
         itemId: "item-1",
         unitsBefore: 1,
         openedRemainingBefore: null,
+        unitsAfter: 0,
+        openedRemainingAfter: null,
         logId: "log-1",
       }),
     ).rejects.toMatchObject({ message: "update failed" });
+
+    expect(callLog.some((c) => c.table === "consumption_logs")).toBe(false);
+    expect(callLog.some((c) => c.table === "items")).toBe(false);
+  });
+
+  test("ロットが消費直後の状態(unitsAfter/openedRemainingAfter)と一致しない場合は ConcurrentUpdateError を投げる (#762)", async () => {
+    // 他のリクエストが既にロットを変更しているため、条件付きupdateが0行にマッチし
+    // data が返らない。
+    responseQueues.item_lots = [{ data: null, error: null }];
+
+    await expect(
+      restoreLotConsumption({
+        lotId: "lot-1",
+        itemId: "item-1",
+        unitsBefore: 3,
+        openedRemainingBefore: null,
+        unitsAfter: 0,
+        openedRemainingAfter: null,
+        logId: "log-1",
+      }),
+    ).rejects.toBeInstanceOf(ConcurrentUpdateError);
 
     expect(callLog.some((c) => c.table === "consumption_logs")).toBe(false);
     expect(callLog.some((c) => c.table === "items")).toBe(false);

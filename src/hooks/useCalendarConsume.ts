@@ -38,6 +38,11 @@ export const useCalendarConsume = () => {
           itemId: pending.itemId,
           unitsBefore: pending.units,
           openedRemainingBefore: pending.openedRemaining,
+          // `check()` below always zeroes the lot out unconditionally
+          // (units: 0, opened_remaining: null), so that's what the lot is
+          // still expected to look like when undo runs.
+          unitsAfter: 0,
+          openedRemainingAfter: null,
           logId: pending.logId,
         });
         await invalidateCalendarQueries(qc, pending.itemId);

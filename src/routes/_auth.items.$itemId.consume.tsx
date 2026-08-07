@@ -48,6 +48,8 @@ interface ConsumeLotUndoPayload {
   itemId: string;
   unitsBefore: number;
   openedRemainingBefore: number | null;
+  unitsAfter: number;
+  openedRemainingAfter: number | null;
   logId: string | null;
 }
 
@@ -80,6 +82,8 @@ export const ItemConsumePage = () => {
           itemId: payload.itemId,
           unitsBefore: payload.unitsBefore,
           openedRemainingBefore: payload.openedRemainingBefore,
+          unitsAfter: payload.unitsAfter,
+          openedRemainingAfter: payload.openedRemainingAfter,
           logId: payload.logId,
         });
         await Promise.all([
@@ -203,6 +207,8 @@ export const ItemConsumePage = () => {
         itemId: item.id,
         unitsBefore: selectedLot.units,
         openedRemainingBefore: selectedLot.opened_remaining ?? null,
+        unitsAfter: result.units,
+        openedRemainingAfter: result.opened_remaining ?? null,
         logId: result._logId ?? null,
       });
       void navigate({ to: "/items/$itemId", params: { itemId } });
@@ -226,6 +232,8 @@ export const ItemConsumePage = () => {
         itemId: item.id,
         unitsBefore: selectedLot.units,
         openedRemainingBefore: selectedLot.opened_remaining ?? null,
+        unitsAfter: result.units,
+        openedRemainingAfter: result.opened_remaining ?? null,
         logId: result._logId ?? null,
       });
       void navigate({ to: "/items/$itemId", params: { itemId } });

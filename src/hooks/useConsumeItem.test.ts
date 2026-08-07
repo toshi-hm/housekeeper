@@ -207,7 +207,7 @@ describe("undoConsumeItem", () => {
 
   test("kind: 'lot' の場合はrestoreLotConsumption経由でロットとconsumption_logsを復元する", async () => {
     responseQueues.item_lots = [
-      { data: null, error: null }, // item_lots update (restore)
+      { data: { id: "lot-1", units: 1, opened_remaining: null }, error: null }, // conditional update (restore)
       { data: [{ units: 2, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate read
     ];
     responseQueues.items = [
@@ -221,6 +221,8 @@ describe("undoConsumeItem", () => {
       lotId: "lot-1",
       unitsBefore: 2,
       openedRemainingBefore: null,
+      unitsAfter: 1,
+      openedRemainingAfter: null,
       logId: "log-1",
     });
 

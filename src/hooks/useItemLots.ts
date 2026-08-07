@@ -264,6 +264,11 @@ export interface RestoreLotConsumptionParams {
   itemId: string;
   unitsBefore: number;
   openedRemainingBefore: number | null;
+  /** ロットが消費直後（undo対象の書き込み直後）に持っているはずの units。
+   *  undo実行時にこの値と一致する行だけを対象にrestoreする（#762）。 */
+  unitsAfter: number;
+  /** 上記と同様、消費直後の opened_remaining。 */
+  openedRemainingAfter: number | null;
   /** consumption_logs row id to delete, or null when none was recorded. */
   logId: string | null;
 }
@@ -277,24 +282,41 @@ export interface RestoreLotConsumptionParams {
  * Shared by every "undo consume" flow (calendar, item consume page,
  * dashboard quick-consume) via `useUndoableAction` so the restore logic
  * lives in exactly one place (#478).
+ *
+ * Optimistic concurrency: only restores if the lot still has the exact
+ * units/opened_remaining the original consumption left it with. If another
+ * request already changed the lot in the meantime (another device, a second
+ * consumption, ...), no row matches and we surface a conflict instead of
+ * silently overwriting that other write with the stale pre-consumption
+ * snapshot (lost update, same class of bug as #432 — see #762).
  */
 export const restoreLotConsumption = async ({
   lotId,
   itemId,
   unitsBefore,
   openedRemainingBefore,
+  unitsAfter,
+  openedRemainingAfter,
   logId,
 }: RestoreLotConsumptionParams): Promise<void> => {
   requireOnline();
-  const { error } = await supabase
+  let query = supabase
     .from("item_lots")
     .update({
       units: unitsBefore,
       opened_remaining: openedRemainingBefore,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", lotId);
+    .eq("id", lotId)
+    .eq("units", unitsAfter);
+  query =
+    openedRemainingAfter === null
+      ? query.is("opened_remaining", null)
+      : query.eq("opened_remaining", openedRemainingAfter);
+
+  const { data, error } = await query.select().maybeSingle();
   if (error) throw error;
+  if (!data) throw new ConcurrentUpdateError();
 
   if (logId) {
     await supabase.from("consumption_logs").delete().eq("id", logId);

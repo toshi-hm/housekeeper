@@ -292,3 +292,94 @@ describe("useCalendarConsume.check", () => {
     expect(result.current.pendingRemovalList).toEqual([]);
   });
 });
+
+describe("useCalendarConsume.undo", () => {
+  // #762: check() が行うゼロ化(units:0, opened_remaining:null)からの復元は、
+  // ロットがまだその状態のままであることを条件にした楽観的排他制御付きupdateで
+  // 行われる。
+  test("undo(lotId)は消費直後の状態(units:0, opened_remaining:null)と一致する行だけを復元対象にする", async () => {
+    const targetLot = {
+      id: "lot-1",
+      units: 2,
+      opened_remaining: 0.3,
+      expiry_date: todayStr,
+    };
+    responseQueues.item_lots = [
+      { data: [targetLot], error: null }, // FEFO select (check)
+      { data: { id: "lot-1" }, error: null }, // conditional zero-out update (check)
+      { data: [{ units: 0, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate read (check)
+      { data: { id: "lot-1", units: 0, opened_remaining: null }, error: null }, // conditional restore update (undo)
+      { data: [{ units: 2, expiry_date: null, opened_remaining: 0.3 }], error: null }, // syncItemAggregate read (undo)
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate (check)
+      { data: null, error: null }, // syncItemAggregate update (check)
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate (undo)
+      { data: null, error: null }, // syncItemAggregate update (undo)
+    ];
+    responseQueues.consumption_logs = [{ data: { id: "log-1" }, error: null }]; // insert (check)
+
+    const { result } = renderHook(() => useCalendarConsume(), { wrapper: makeWrapper() });
+
+    await act(async () => {
+      await result.current.check(makeItem({ units: 2 }));
+    });
+    await waitFor(() => expect(result.current.pendingRemovalList).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.undo("lot-1");
+    });
+
+    const lotEqCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "eq");
+    expect(lotEqCalls).toContainEqual({ table: "item_lots", method: "eq", args: ["units", 0] });
+    const lotIsCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "is");
+    expect(lotIsCalls).toContainEqual({
+      table: "item_lots",
+      method: "is",
+      args: ["opened_remaining", null],
+    });
+
+    const lotUpdateCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "update");
+    expect(lotUpdateCalls[1]?.args[0]).toMatchObject({ units: 2, opened_remaining: 0.3 });
+
+    const logDeleteCall = callLog.find(
+      (c) => c.table === "consumption_logs" && c.method === "delete",
+    );
+    expect(logDeleteCall).toBeDefined();
+  });
+
+  test("復元対象のロットが既に変化している場合はConcurrentUpdateErrorとなりロットを上書きしない", async () => {
+    const targetLot = {
+      id: "lot-1",
+      units: 1,
+      opened_remaining: null,
+      expiry_date: todayStr,
+    };
+    responseQueues.item_lots = [
+      { data: [targetLot], error: null }, // FEFO select (check)
+      { data: { id: "lot-1" }, error: null }, // conditional zero-out update (check)
+      { data: [{ units: 0, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate read (check)
+      { data: null, error: null }, // conditional restore update (undo) — 0行ヒット
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: null, error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: { id: "log-1" }, error: null }];
+
+    const { result } = renderHook(() => useCalendarConsume(), { wrapper: makeWrapper() });
+
+    await act(async () => {
+      await result.current.check(makeItem({ units: 1 }));
+    });
+    await waitFor(() => expect(result.current.pendingRemovalList).toHaveLength(1));
+
+    await act(async () => {
+      await expect(result.current.undo("lot-1")).rejects.toBeInstanceOf(ConcurrentUpdateError);
+    });
+
+    expect(callLog.some((c) => c.table === "consumption_logs" && c.method === "delete")).toBe(
+      false,
+    );
+  });
+});
