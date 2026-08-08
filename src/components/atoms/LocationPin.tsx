@@ -17,7 +17,14 @@ export const LocationPin = ({ x, y, label, onClick, variant = "default" }: Locat
   return (
     <button
       type="button"
-      className="absolute -translate-x-1/2 -translate-y-full disabled:cursor-default"
+      // 可視サイズ（24〜28px）はそのまま、ヒットスロップで実質的な当たり判定を
+      // 40px以上に広げる。ItemCardのクイックアクションボタンと同じパターン（#779）。
+      // disabled（参考表示・onClickなし）のピンにはヒットスロップを付けない:
+      // disabledなbuttonはclickイベント自体が発火せず親へバブリングもしないため、
+      // ヒットスロップ分だけ「タップしても何も起きない」無音の死角が広がってしまう
+      // （LocationPinPickerは写真コンテナ側のonClickでピン配置を行うため、参考
+      // ピンの直上をタップされると配置操作ごと無効化されてしまう）。
+      className="absolute -translate-x-1/2 -translate-y-full after:absolute after:-inset-2 after:content-[''] disabled:cursor-default disabled:after:hidden"
       style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
       onClick={onClick}
       // onClickが無いピン（他アイテムの参考表示など）は非インタラクティブとして
