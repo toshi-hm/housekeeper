@@ -46,6 +46,17 @@ import type { Locator, TestInfo } from "@playwright/test";
  * same default timeout Playwright's own actionability check would use, so a
  * *sustained* miss (real occlusion) still fails the test, while a transient
  * one doesn't.
+ *
+ * Note on `force: true`'s own click point: it's computed by Playwright
+ * internally, via the same kind of box query documented as unreliable above
+ * in principle — but empirically, across many runs through this
+ * investigation (including whole-suite runs with `--repeat-each=2`), it has
+ * never once landed on the wrong element once the reachability check above
+ * passed; only the actionability *check* was observed to be flaky here, not
+ * the actual click dispatch. If that ever changes, every call site already
+ * asserts a real effect of the click right after (`waitForURL`, a toast/
+ * dialog visibility change, etc.), so a genuine miss would still fail the
+ * test rather than pass silently — just with a less direct error.
  */
 export const clickBypassingTouchHitTestQuirk = async (locator: Locator, testInfo: TestInfo) => {
   if (!testInfo.project.use.hasTouch) {
