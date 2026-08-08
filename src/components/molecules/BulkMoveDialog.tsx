@@ -37,12 +37,21 @@ export const BulkMoveDialog = ({
   onClose,
 }: BulkMoveDialogProps) => {
   const [value, setValue] = useState("");
+  const [prevOpen, setPrevOpen] = useState(open);
   const titleId = useId();
   const containerRef = useDialogA11y<HTMLDivElement>({
     open,
     onClose,
     disableClose: isSubmitting,
   });
+
+  // ダイアログが開くたびに前回の選択値をリセットする（#773: リセットしないと、
+  // キャンセル後に再度開いた際に前回選択が残ったまま「保存」を押せてしまい、
+  // 意図しない対象への一括移動につながる）
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setValue("");
+  }
 
   if (!open) return null;
 
