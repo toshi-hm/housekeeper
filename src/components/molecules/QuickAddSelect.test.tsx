@@ -48,4 +48,34 @@ describe("QuickAddSelect deletion", () => {
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith("custom"));
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("deletes the focused option via the Delete key, without ever clicking the delete button (#774)", async () => {
+    const { getByRole, getAllByRole, onDelete } = renderSelect();
+    fireEvent.click(getByRole("button", { name: /Custom/i }));
+
+    const presetOption = getAllByRole("option", { name: /Preset/i })[0]!;
+    fireEvent.keyDown(presetOption, { key: "Delete" });
+
+    await waitFor(() => expect(onDelete).toHaveBeenCalledWith("preset"));
+  });
+
+  it("deletes the focused option via the Backspace key (Mac physical delete key) (#774)", async () => {
+    const { getByRole, getAllByRole, onDelete } = renderSelect();
+    fireEvent.click(getByRole("button", { name: /Custom/i }));
+
+    const customOption = getAllByRole("option", { name: /Custom/i })[0]!;
+    fireEvent.keyDown(customOption, { key: "Backspace" });
+
+    await waitFor(() => expect(onDelete).toHaveBeenCalledWith("custom"));
+  });
+
+  it("does not attempt to delete the clear/no-selection pseudo-option", () => {
+    const { getByRole, getByText, onDelete } = renderSelect();
+    fireEvent.click(getByRole("button", { name: /Custom/i }));
+
+    const clearOption = getByText(i18n.t("common:select"));
+    fireEvent.keyDown(clearOption, { key: "Delete" });
+
+    expect(onDelete).not.toHaveBeenCalled();
+  });
 });

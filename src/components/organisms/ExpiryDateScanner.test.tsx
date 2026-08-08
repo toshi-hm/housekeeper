@@ -8,6 +8,7 @@ import i18n from "@/lib/i18n";
 const stopMock = mock(() => undefined);
 let resolveDecode: ((controls: { stop: () => void }) => void) | null = null;
 let deferDecode = false;
+let videoInputDevices: MediaDeviceInfo[] = [];
 const decodeFromVideoDeviceMock = mock(() => {
   if (deferDecode) {
     return new Promise<{ stop: () => void }>((resolve) => {
@@ -19,7 +20,7 @@ const decodeFromVideoDeviceMock = mock(() => {
 
 mock.module("@zxing/browser", () => ({
   BrowserMultiFormatReader: class {
-    static listVideoInputDevices = mock(() => Promise.resolve([]));
+    static listVideoInputDevices = mock(() => Promise.resolve(videoInputDevices));
     decodeFromVideoDevice = decodeFromVideoDeviceMock;
   },
 }));
@@ -71,5 +72,30 @@ describe("ExpiryDateScanner", () => {
     });
 
     await waitFor(() => expect(queryByText("カメラを起動中...")).toBeNull());
+  });
+
+  test("カメラ切替・手動入力ボタンにaria-labelが設定される（#781）", async () => {
+    videoInputDevices = [
+      { deviceId: "cam-1", label: "Camera 1" } as MediaDeviceInfo,
+      { deviceId: "cam-2", label: "Camera 2" } as MediaDeviceInfo,
+    ];
+    const onConfirm = mock(() => undefined);
+    const onClose = mock(() => undefined);
+
+    const { getByRole } = await act(async () => {
+      return render(
+        <I18nextProvider i18n={i18n}>
+          <ExpiryDateScanner onConfirm={onConfirm} onClose={onClose} />
+        </I18nextProvider>,
+      );
+    });
+
+    await waitFor(() =>
+      expect(getByRole("button", { name: i18n.t("items:scannerSwitchCamera") })).toBeDefined(),
+    );
+    expect(getByRole("button", { name: i18n.t("items:scannerManualInput") })).toBeDefined();
+    expect(getByRole("button", { name: i18n.t("common:close") })).toBeDefined();
+
+    videoInputDevices = [];
   });
 });
