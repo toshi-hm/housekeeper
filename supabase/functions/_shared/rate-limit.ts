@@ -70,6 +70,44 @@ export const checkChatRateLimit = async (
   return { allowed: data.allowed, retryAfterSeconds: data.retry_after_seconds };
 };
 
+/**
+ * Per-user rate limit for the recipe-suggest Edge Function (#786), guarding
+ * the external Rakuten Recipe API's shared RECIPE_API_KEY against quota
+ * exhaustion / unexpected billing from a valid session/access token — the
+ * same concern checkChatRateLimit addresses for inventory-chat's Gemini
+ * calls.
+ *
+ * Backed by the `check_recipe_rate_limit` Postgres function, which derives
+ * the user from the caller's own JWT (auth.uid()) rather than trusting a
+ * client-supplied identifier, and atomically tracks a fixed-window request
+ * count per user in `recipe_rate_limits`. Intended to be called with the
+ * user-scoped (anon key + JWT / RLS) Supabase client that recipe-suggest
+ * already builds — no service-role key needed.
+ */
+export interface RecipeRateLimitResult {
+  allowed: boolean;
+  retryAfterSeconds: number;
+}
+
+const RECIPE_RATE_LIMIT_RETRY_SECONDS = 60;
+
+export const checkRecipeRateLimit = async (
+  supabase: SupabaseClient,
+): Promise<RecipeRateLimitResult> => {
+  const { data, error } = await supabase
+    .rpc("check_recipe_rate_limit")
+    .single<{ allowed: boolean; retry_after_seconds: number }>();
+
+  if (error || !data) {
+    // Fail closed: if the rate-limit check itself is broken, don't let the
+    // request bypass throttling entirely.
+    console.error("[recipe-suggest] rate limit check failed", error);
+    return { allowed: false, retryAfterSeconds: RECIPE_RATE_LIMIT_RETRY_SECONDS };
+  }
+
+  return { allowed: data.allowed, retryAfterSeconds: data.retry_after_seconds };
+};
+
 /** Constant-time string comparison to avoid leaking hash match info via timing. */
 export const timingSafeEqual = async (a: string, b: string): Promise<boolean> => {
   const { timingSafeEqual: nodeTimingSafeEqual } = await import("node:crypto");
