@@ -70,10 +70,11 @@ Read the relevant spec file before implementing any feature.
 
 ## Skills
 
-`.claude/skills/` に定期作業のスキルを同梱している。該当する依頼が来たら **対応する SKILL.md を読み込んでから** 作業すること。
+`skills/` に定期作業のスキルを同梱している。`.claude/skills/` と `.agents/skills/` は
+`skills/` へのディレクトリ symlink である。該当する依頼が来たら **対応する SKILL.md を読み込んでから** 作業すること。
 
-- 実体はカテゴリ別ディレクトリ（`project/` = このリポジトリ固有、`dev/` = 開発系汎用、`life/` = 生活系汎用）に置き、
-  `.claude/skills/` 直下には discovery 用のシンボリックリンクを置いている（スキル追加時はリンクも張ること）
+- 実体は `skills/` 配下のカテゴリ別ディレクトリ（`project/` = このリポジトリ固有、`dev/` = 開発系汎用、`life/` = 生活系汎用）に置き、
+  `skills/` 直下には discovery 用のシンボリックリンクを置いている（スキル追加時はリンクも張ること）
 - 各スキルは汎用コア（SKILL.md）+ プロジェクト設定（PROJECT.md、任意）の 2 層構造で、他リポジトリへコピーして再利用できる
 - 設計方針とカタログは `docs/skills/README.md` を参照
 
@@ -90,6 +91,7 @@ Read the relevant spec file before implementing any feature.
 | `perf-audit`        | dev     | パフォーマンス診断と改善（計測 → ボトルネック → 検証）        |
 | `dependency-update` | dev     | 依存ライブラリの安全な更新（段階的 + 検証）                   |
 | `git-workflow`      | dev     | コミット整理・メッセージ・PR 説明の作成                       |
+| `graphify`          | dev     | コードベース・ドキュメントを知識グラフ化し、構造を調査する    |
 | `recipe-from-stock` | life    | 在庫から献立・レシピ提案                                      |
 | `pantry-review`     | life    | 週次の在庫・期限・食品ロスレビュー                            |
 | `travel-planner`    | life    | 旅行・おでかけの行程・持ち物・予算プラン（完全汎用）          |
