@@ -4,21 +4,29 @@ import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { useTranslation } from "react-i18next";
 
+import { useSwUpdatePrompt } from "@/hooks/useSwUpdatePrompt";
+
 interface RouterContext {
   queryClient: QueryClient;
 }
 
-const RootLayout = () => (
-  <>
-    <Outlet />
-    {import.meta.env.DEV && (
-      <>
-        <TanStackRouterDevtools />
-        <ReactQueryDevtools />
-      </>
-    )}
-  </>
-);
+const RootLayout = () => {
+  // 認証状態によらず常時マウントされるルートで、新しいService Workerの
+  // 有効化を検知して再読み込みを促す(#785)
+  useSwUpdatePrompt();
+
+  return (
+    <>
+      <Outlet />
+      {import.meta.env.DEV && (
+        <>
+          <TanStackRouterDevtools />
+          <ReactQueryDevtools />
+        </>
+      )}
+    </>
+  );
+};
 
 export const NotFoundPage = () => {
   const { t } = useTranslation("common");

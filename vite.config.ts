@@ -111,7 +111,6 @@ export default defineConfig(({ mode }) => {
         ? []
         : [
             VitePWA({
-              registerType: "autoUpdate",
               strategies: "injectManifest",
               srcDir: "src",
               filename: "sw.ts",
@@ -122,6 +121,27 @@ export default defineConfig(({ mode }) => {
               injectManifest: {
                 rollupFormat: "iife",
               },
+              // #785: src/lib/pwa.ts already calls
+              // `navigator.serviceWorker.register("/sw.js")` itself (with its
+              // own deferred-skipWaiting/update-detection logic, see
+              // src/lib/swLifecycle.ts). Leaving `injectRegister` at the
+              // default ('auto') makes vite-plugin-pwa ALSO inject its own
+              // <script>, independently calling a bare `register()` on
+              // window "load" — a second, uncoordinated registration path
+              // racing the app's own, able to start the browser's update
+              // check before the app's own `watchForUpdate` has attached its
+              // listeners. Disable it; this app owns registration entirely.
+              //
+              // (`registerType` is deliberately omitted, not just left at
+              // its default: it only ever affects (a) that now-disabled
+              // auto-injected register script's own update strategy, or (b)
+              // a `workbox.skipWaiting`/`clientsClaim` shortcut that only
+              // applies to `strategies: "generateSW"`, not this project's
+              // `injectManifest`. With `injectRegister: false` it has zero
+              // effect either way — leaving it in place would misleadingly
+              // suggest it still controls update behavior, which is exactly
+              // the confusion #785 was filed over in the first place.)
+              injectRegister: false,
             }),
           ]),
     ],
