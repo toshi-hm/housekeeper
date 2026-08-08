@@ -79,12 +79,11 @@ export const ImageUploader = ({
           onDrop={handleDrop}
         >
           <img src={previewUrl} alt="" className="h-40 w-full rounded-lg object-cover" />
-          <div className="absolute right-2 top-2 flex gap-1">
+          <div className="absolute right-2 top-2 flex gap-2">
             <Button
               type="button"
               size="icon"
               variant="secondary"
-              className="h-8 w-8"
               onClick={() => inputRef.current?.click()}
               disabled={isUploading}
               aria-label={t("imageReplace")}
@@ -96,7 +95,6 @@ export const ImageUploader = ({
                 type="button"
                 size="icon"
                 variant="destructive"
-                className="h-8 w-8"
                 onClick={onDelete}
                 disabled={isUploading}
                 aria-label={tCommon("delete")}
