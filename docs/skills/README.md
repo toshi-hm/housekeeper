@@ -129,6 +129,7 @@ description: >-
 | `perf-audit`        | パフォーマンス診断と費用対効果順の改善（計測必須）            | 「遅いから調べて」「バンドル減らして」               |
 | `dependency-update` | 依存ライブラリの安全な段階的更新                              | 「依存を更新して」「脆弱性を直して」                 |
 | `git-workflow`      | 論理単位のコミット分割・メッセージ・PR 説明の作成             | 「コミット整理して」「PR の説明書いて」              |
+| `graphify`          | コードベース・ドキュメントを知識グラフ化して構造を調査        | 「コードベースを分析して」「関係を調べて」           |
 
 `systematic-debug` / `perf-audit` / `dependency-update` / `git-workflow` は完全汎用
 （PROJECT.md なし。プロジェクト規約は Step 0 の自動検出で解決する）。

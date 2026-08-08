@@ -91,6 +91,7 @@ Read the relevant spec file before implementing any feature.
 | `perf-audit`        | dev     | パフォーマンス診断と改善（計測 → ボトルネック → 検証）        |
 | `dependency-update` | dev     | 依存ライブラリの安全な更新（段階的 + 検証）                   |
 | `git-workflow`      | dev     | コミット整理・メッセージ・PR 説明の作成                       |
+| `graphify`          | dev     | コードベース・ドキュメントを知識グラフ化し、構造を調査する    |
 | `recipe-from-stock` | life    | 在庫から献立・レシピ提案                                      |
 | `pantry-review`     | life    | 週次の在庫・期限・食品ロスレビュー                            |
 | `travel-planner`    | life    | 旅行・おでかけの行程・持ち物・予算プラン（完全汎用）          |
