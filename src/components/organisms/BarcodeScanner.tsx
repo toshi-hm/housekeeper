@@ -181,6 +181,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
                 onClick={handleSwitchCamera}
                 className="text-white hover:bg-white/20"
                 title={t("scannerSwitchCamera")}
+                aria-label={t("scannerSwitchCamera")}
               >
                 <SwitchCamera className="h-5 w-5" />
               </Button>
@@ -191,6 +192,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
               onClick={() => setShowManual((v) => !v)}
               className="text-white hover:bg-white/20"
               title={t("scannerManualInput")}
+              aria-label={t("scannerManualInput")}
             >
               <Keyboard className="h-5 w-5" />
             </Button>
