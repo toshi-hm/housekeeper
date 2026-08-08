@@ -180,11 +180,22 @@ export const QuickAddSelect = ({
       closeDropdown();
     } else if (e.key === "Tab") {
       closeDropdown();
+    } else if ((e.key === "Delete" || e.key === "Backspace") && onDelete) {
+      // #774: the per-option delete (x) button is deliberately tabIndex={-1}
+      // (Tab should move between options, not stop twice per row), so it had
+      // no other path to keyboard focus. "Delete"/"Backspace" while an
+      // option is focused operates that option's delete button instead
+      // ("Backspace" covers the physical delete key on Mac keyboards, which
+      // reports as "Backspace" in KeyboardEvent.key).
+      const option = index >= optionIndexOffset ? allOptions[index] : undefined;
+      if (option) {
+        e.preventDefault();
+        void performDelete(option.value);
+      }
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, optionValue: string) => {
-    e.stopPropagation();
+  const performDelete = async (optionValue: string) => {
     if (!onDelete || deletingId) return;
     setDeletingId(optionValue);
     setDeleteError(null);
@@ -198,6 +209,11 @@ export const QuickAddSelect = ({
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleDelete = (e: React.MouseEvent, optionValue: string) => {
+    e.stopPropagation();
+    void performDelete(optionValue);
   };
 
   return (
