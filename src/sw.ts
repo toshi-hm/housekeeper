@@ -1,6 +1,10 @@
 import { ExpirationPlugin } from "workbox-expiration";
-import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
-import { registerRoute } from "workbox-routing";
+import {
+  cleanupOutdatedCaches,
+  createHandlerBoundToURL,
+  precacheAndRoute,
+} from "workbox-precaching";
+import { NavigationRoute, registerRoute } from "workbox-routing";
 import { NetworkFirst } from "workbox-strategies";
 
 import { resolveNotificationTargetUrl } from "@/lib/notificationTarget";
@@ -11,6 +15,23 @@ cleanupOutdatedCaches();
 
 // Precache the app shell (injected by vite-plugin-pwa)
 precacheAndRoute(self.__WB_MANIFEST);
+
+// #784: SPA navigation fallback. TanStack Router uses real browser history
+// (not hash routing), so a direct/offline navigation to e.g. "/items/xxx"
+// is a request for that exact URL, which has no precache entry of its own
+// (only the app shell's "/index.html" is precached). Without this route,
+// Workbox's precache handler doesn't match, the request falls through to
+// the network, and — offline — the browser renders its default offline
+// error page instead of the SPA shell (which would let TanStack Router
+// render the route client-side once JS boots).
+//
+// `NavigationRoute` only matches requests with `request.mode === "navigate"`
+// (top-level document loads), so this never intercepts same-origin asset
+// requests (JS/CSS/images) or API calls — and Supabase REST/Auth/Storage
+// calls (registered above/below) are cross-origin (`*.supabase.co`), so a
+// service worker scoped to this origin never even sees them as fetch events.
+// Nothing here can cause an API/auth request to be served stale HTML.
+registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html")));
 
 // Runtime cache: Supabase PostgREST GET requests with network-first.
 // StaleWhileRevalidate would serve cached (stale) data to the refetch that
