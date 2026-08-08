@@ -12,11 +12,12 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import { groupArchivedItemsByDate } from "@/lib/purchaseHistoryView";
 import { useToast } from "@/lib/toast-context";
 
-const PurchaseHistoryPage = () => {
+export const PurchaseHistoryPage = () => {
   const { t, i18n } = useTranslation("settings");
+  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { data: archivedItems = [], isLoading } = usePurchaseHistory();
+  const { data: archivedItems = [], isLoading, isError, refetch } = usePurchaseHistory();
   const upsert = useUpsertShoppingItem();
   const [restockingId, setRestockingId] = useState<string | null>(null);
 
@@ -65,6 +66,13 @@ const PurchaseHistoryPage = () => {
               <Skeleton className="h-8 w-16 rounded-md" />
             </div>
           ))}
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center gap-4 rounded-lg border border-destructive p-6 text-center text-destructive">
+          <p className="text-sm">{tc("unknownError")}</p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            {tc("retry")}
+          </Button>
         </div>
       ) : groups.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">{t("purchaseHistoryEmpty")}</p>
