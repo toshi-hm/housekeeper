@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { checkRecipeRateLimit } from "../_shared/rate-limit.ts";
 import { fetchRecipeSuggestions } from "./recipe.ts";
 import { sanitizeItemNames } from "./validation.ts";
 
@@ -9,10 +10,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const json = (body: unknown, status = 200): Response =>
+const json = (body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, ...extraHeaders, "Content-Type": "application/json" },
   });
 
 Deno.serve(async (req: Request) => {
@@ -37,6 +38,13 @@ Deno.serve(async (req: Request) => {
   } = await supabase.auth.getUser();
   if (authError || !user) {
     return json({ error: "Unauthorized" }, 401);
+  }
+
+  const rateLimit = await checkRecipeRateLimit(supabase);
+  if (!rateLimit.allowed) {
+    return json({ error: "rate_limited" }, 429, {
+      "Retry-After": String(rateLimit.retryAfterSeconds),
+    });
   }
 
   let body: { itemNames?: unknown };
