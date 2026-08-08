@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { clickBypassingTouchHitTestQuirk } from "./fixtures/mobileClick";
 import { installSupabaseMock, loginAsFakeUser } from "./fixtures/supabaseMock";
 
 /**
@@ -22,13 +23,15 @@ test.describe("PWA オフライン挙動", () => {
   test("オフライン中も一覧が表示され、変更操作はブロックされ、復帰後は再度操作できる", async ({
     page,
     context,
-  }) => {
+  }, testInfo) => {
     const itemName = `E2E Offline Item ${Date.now()}`;
 
     await page.getByRole("link", { name: "Add Item" }).first().click();
     await page.waitForURL(/\/items\/new$/);
     await page.locator("#name").fill(itemName);
-    await page.locator('button[type="submit"]').click();
+    // Save button sits at the bottom of a long form, near the sticky bottom
+    // nav on the mobile project — see fixtures/mobileClick.ts (#753).
+    await clickBypassingTouchHitTestQuirk(page.locator('button[type="submit"]'), testInfo);
     // The dashboard route always serializes its (default-valued) search params into
     // the URL, so match an optional trailing query string too (#658).
     await page.waitForURL(/\/(\?.*)?$/);

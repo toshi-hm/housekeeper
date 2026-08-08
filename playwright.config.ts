@@ -29,6 +29,19 @@ export default defineConfig({
         launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined },
       },
     },
+    {
+      // モバイル/タッチビューポート回帰用プロジェクト (#753)。
+      // CLAUDE.md / PLANS.md が明記する「モバイルファーストUI」「主要動線は
+      // ワンハンド操作」を、実際のターゲット形状（Pixel 7・タッチ入力）で
+      // 検証する。全specを2重に走らせるコストを避け、認証済みの主要導線
+      // （main-flow）とオフライン挙動（pwa-offline）の2specのみに絞る。
+      name: "mobile-chromium",
+      testMatch: ["main-flow.spec.ts", "pwa-offline.spec.ts"],
+      use: {
+        ...devices["Pixel 7"],
+        launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined },
+      },
+    },
   ],
   webServer: {
     command: `bunx vite --mode test --port ${PORT} --strictPort`,
