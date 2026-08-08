@@ -47,4 +47,27 @@ describe("TotpCodeInput", () => {
 
     expect((getByRole("textbox") as HTMLInputElement).disabled).toBe(true);
   });
+
+  it("forwards aria-describedby and aria-invalid when passed", () => {
+    const { getByRole } = render(
+      <TotpCodeInput
+        value=""
+        onChange={() => {}}
+        aria-describedby="mfaEnrollCode-error"
+        aria-invalid
+      />,
+    );
+
+    const input = getByRole("textbox");
+    expect(input.getAttribute("aria-describedby")).toBe("mfaEnrollCode-error");
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("omits aria-describedby and aria-invalid when not passed", () => {
+    const { getByRole } = render(<TotpCodeInput value="" onChange={() => {}} />);
+
+    const input = getByRole("textbox");
+    expect(input.hasAttribute("aria-describedby")).toBe(false);
+    expect(input.hasAttribute("aria-invalid")).toBe(false);
+  });
 });

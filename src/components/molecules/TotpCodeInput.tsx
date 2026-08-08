@@ -6,6 +6,8 @@ interface TotpCodeInputProps {
   onChange: (value: string) => void;
   autoFocus?: boolean;
   disabled?: boolean;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 }
 
 export const TotpCodeInput = ({
@@ -14,6 +16,8 @@ export const TotpCodeInput = ({
   onChange,
   autoFocus,
   disabled,
+  "aria-describedby": ariaDescribedby,
+  "aria-invalid": ariaInvalid,
 }: TotpCodeInputProps) => (
   <Input
     id={id}
@@ -27,6 +31,8 @@ export const TotpCodeInput = ({
     placeholder="123456"
     autoFocus={autoFocus}
     disabled={disabled}
+    aria-describedby={ariaDescribedby}
+    aria-invalid={ariaInvalid}
     className="text-center text-lg tracking-[0.5em]"
   />
 );
