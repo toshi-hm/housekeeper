@@ -1,8 +1,8 @@
 # Claude Code Skills — 設計方針・実装方針
 
-このリポジトリに同梱する Claude Code skills の設計記録。
-skills の実体は `.claude/skills/{project,dev,life}/<name>/` に置き、
-`.claude/skills/` 直下の discovery 用シンボリックリンクから参照する（§2 参照）。
+このリポジトリに同梱する Agent skills の設計記録。
+skills の実体はリポジトリ直下の `skills/{project,dev,life}/<name>/` に置く。
+`.claude/skills/` と `.agents/skills/` は `skills/` 全体を参照するディレクトリ symlink である。
 
 ## 1. 目的
 
@@ -19,7 +19,7 @@ skills の実体は `.claude/skills/{project,dev,life}/<name>/` に置き、
 実体はカテゴリ別ディレクトリに整理する。
 
 ```
-.claude/skills/
+skills/
   project/          # このリポジトリ固有（持ち出し非対象）
     issue-sync/
   dev/              # 開発系・汎用（PROJECT.md でこのリポジトリに適合）
@@ -33,6 +33,8 @@ skills の実体は `.claude/skills/{project,dev,life}/<name>/` に置き、
     travel-planner/
     ...
   <skill-name> -> dev/<skill-name>   # discovery 用シンボリックリンク（下記）
+.claude/skills -> ../skills  # Claude Code の discovery 入口
+.agents/skills -> ../skills  # Agent の discovery 入口
 docs/skills/
   README.md         # 本ドキュメント（設計方針 + カタログ）
 ```
@@ -46,11 +48,12 @@ Claude Code のスキル探索は **`.claude/skills/<skill-name>/SKILL.md`（直
 
 そこで本リポジトリでは:
 
-- **実体**はカテゴリ別ディレクトリ（`project/` `dev/` `life/`）に置く
-- **`.claude/skills/` 直下に各スキルへの相対シンボリックリンク**を置いて discovery を成立させる
+- **実体**は repo root の `skills/` 配下にカテゴリ別で置く
+- **`.claude/skills/` と `.agents/skills/` は `skills/` へのディレクトリ symlink**にする
+- **`skills/` 直下に各スキルへの相対シンボリックリンク**を置いて discovery を成立させる
 
-スキルを追加・移動したら、対応するシンボリックリンクの追加・張り替えを忘れないこと
-（`ln -s dev/<name> .claude/skills/<name>`）。
+スキルを追加・移動したら、`skills/` 配下の実体と discovery 用 symlink を更新すること
+（`ln -s dev/<name> skills/<name>`）。入口ディレクトリ側に個別 symlink を追加してはならない。
 なお symlink は Windows のチェックアウトで問題になりうる（このプロジェクトの開発環境では問題ない）。
 
 ### 2.1. SKILL.md（汎用コア）の規約
@@ -71,7 +74,7 @@ Claude Code のスキル探索は **`.claude/skills/<skill-name>/SKILL.md`（直
 
 ### 2.3. 他リポジトリへの持ち出し方
 
-1. 実体ディレクトリ（`.claude/skills/dev/<name>/` 等）を、移植先の
+1. 実体ディレクトリ（`skills/dev/<name>/` 等）を、移植先の
    `.claude/skills/<name>/` へ **直下に**コピーする（移植先で分類が不要ならフラット配置が最も単純）
 2. `PROJECT.md` を削除する（→ 自動検出モードで動く）か、移植先の値で書き直す
 3. 移植先の CLAUDE.md にスキル一覧を追記する（発動率が上がる）

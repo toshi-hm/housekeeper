@@ -70,10 +70,11 @@ Read the relevant spec file before implementing any feature.
 
 ## Skills
 
-`.claude/skills/` に定期作業のスキルを同梱している。該当する依頼が来たら **対応する SKILL.md を読み込んでから** 作業すること。
+`skills/` に定期作業のスキルを同梱している。`.claude/skills/` と `.agents/skills/` は
+`skills/` へのディレクトリ symlink である。該当する依頼が来たら **対応する SKILL.md を読み込んでから** 作業すること。
 
-- 実体はカテゴリ別ディレクトリ（`project/` = このリポジトリ固有、`dev/` = 開発系汎用、`life/` = 生活系汎用）に置き、
-  `.claude/skills/` 直下には discovery 用のシンボリックリンクを置いている（スキル追加時はリンクも張ること）
+- 実体は `skills/` 配下のカテゴリ別ディレクトリ（`project/` = このリポジトリ固有、`dev/` = 開発系汎用、`life/` = 生活系汎用）に置き、
+  `skills/` 直下には discovery 用のシンボリックリンクを置いている（スキル追加時はリンクも張ること）
 - 各スキルは汎用コア（SKILL.md）+ プロジェクト設定（PROJECT.md、任意）の 2 層構造で、他リポジトリへコピーして再利用できる
 - 設計方針とカタログは `docs/skills/README.md` を参照
 
