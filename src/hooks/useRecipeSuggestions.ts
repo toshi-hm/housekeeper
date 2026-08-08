@@ -31,7 +31,6 @@ const fetchRecipeSuggestions = async (itemNames: string[]): Promise<RecipeSugges
   // also covers the case where RECIPE_API_KEY isn't configured yet
   // (data?.reason === "missing_api_key"), which resolves to an empty list.
   if (error) {
-    console.error("[useRecipeSuggestions] recipe-suggest failed:", error);
     return [];
   }
   return data?.recipes ?? [];
