@@ -118,6 +118,37 @@ describe("SecuritySettings", () => {
     expect(verifyMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("announces an invalid code via role=alert and links it to the input via aria-describedby", async () => {
+    const user = userEvent.setup();
+    const { getByRole, findByLabelText } = render(<SecuritySettings />, { wrapper });
+    fireEvent.click(getByRole("button", { name: /有効化|Enable/i }));
+    await waitFor(() => expect(enrollMutateAsync).toHaveBeenCalled());
+
+    const codeInput = await findByLabelText(/認証コード|Verification code/i);
+    await user.type(codeInput, "123");
+    fireEvent.click(getByRole("button", { name: /確認して有効化|Verify/i }));
+
+    const alert = getByRole("alert");
+    expect(alert.id).not.toBe("");
+    expect(codeInput.getAttribute("aria-describedby")).toBe(alert.id);
+    expect(codeInput.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("surfaces a server verify error via role=alert linked to the input", async () => {
+    verifyMutateAsync.mockImplementationOnce(() => Promise.reject(new Error("Invalid TOTP code")));
+    const user = userEvent.setup();
+    const { getByRole, findByLabelText, findByRole } = render(<SecuritySettings />, { wrapper });
+    fireEvent.click(getByRole("button", { name: /有効化|Enable/i }));
+    await waitFor(() => expect(enrollMutateAsync).toHaveBeenCalled());
+
+    const codeInput = await findByLabelText(/認証コード|Verification code/i);
+    await user.type(codeInput, "123456");
+    fireEvent.click(getByRole("button", { name: /確認して有効化|Verify/i }));
+
+    const alert = await findByRole("alert");
+    expect(codeInput.getAttribute("aria-describedby")).toBe(alert.id);
+  });
+
   it("verifies a valid 6-digit code and returns to the idle state", async () => {
     const user = userEvent.setup();
     const { getByRole, findByLabelText } = render(<SecuritySettings />, { wrapper });
