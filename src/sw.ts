@@ -26,11 +26,13 @@ precacheAndRoute(self.__WB_MANIFEST);
 // render the route client-side once JS boots).
 //
 // `NavigationRoute` only matches requests with `request.mode === "navigate"`
-// (top-level document loads), so this never intercepts same-origin asset
-// requests (JS/CSS/images) or API calls — and Supabase REST/Auth/Storage
-// calls (registered above/below) are cross-origin (`*.supabase.co`), so a
-// service worker scoped to this origin never even sees them as fetch events.
-// Nothing here can cause an API/auth request to be served stale HTML.
+// (top-level document loads). Asset requests (JS/CSS/images) and API calls
+// use other request modes ("cors"/"same-origin"/"no-cors"), regardless of
+// origin — the Supabase REST route below, for instance, still gets its own
+// fetch events and is handled by its own NetworkFirst route, not this one.
+// So navigation fallback and API caching never compete for the same
+// request, and nothing here can cause an API/auth request to be served
+// stale HTML.
 registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html")));
 
 // Runtime cache: Supabase PostgREST GET requests with network-first.

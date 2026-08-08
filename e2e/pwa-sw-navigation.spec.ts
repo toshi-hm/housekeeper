@@ -61,8 +61,18 @@ test.describe("Service Worker ナビゲーションフォールバック (#784)"
     return waitForServer(PREVIEW_URL);
   });
 
-  test.afterAll(() => {
-    previewProcess?.kill();
+  test.afterAll(async () => {
+    if (!previewProcess) return;
+    const exited = new Promise<void>((resolve) => previewProcess?.once("exit", () => resolve()));
+    previewProcess.kill();
+    // Wait for the process (and its port) to actually be released before
+    // this hook resolves — CI retries the whole file on failure
+    // (playwright.config.ts's `retries: 1`), and the next `beforeAll` binds
+    // the same `--strictPort` port, so a `kill()` that returns before the
+    // OS has reclaimed the socket would make that retry fail with
+    // EADDRINUSE instead of re-running cleanly. Cap the wait so a process
+    // that ignores SIGTERM can't hang the test run indefinitely.
+    await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5_000))]);
   });
 
   test("オフライン時にプリキャッシュ外のURLへ直接遷移してもApp Shellにフォールバックする", async ({
@@ -80,6 +90,11 @@ test.describe("Service Worker ナビゲーションフォールバック (#784)"
         const registration = await navigator.serviceWorker.getRegistration();
         return registration?.active?.state === "activated";
       },
+      // `waitForFunction`'s 2nd positional param is `arg` (passed into the
+      // page function), not `options` — pass `undefined` explicitly so the
+      // timeout below actually lands as the 3rd (options) param instead of
+      // being silently ignored (falling back to Playwright's 30s default).
+      undefined,
       { timeout: 15_000 },
     );
 
