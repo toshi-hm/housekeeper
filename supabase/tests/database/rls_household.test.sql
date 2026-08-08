@@ -17,7 +17,7 @@
 --           already-redeemed invite-code failure paths
 begin;
 
-select plan(24);
+select plan(28);
 
 insert into auth.users (id, email)
 values
@@ -205,6 +205,44 @@ select results_eq(
 );
 
 select is((select count(*) from household_members)::int, 0, 'user3 never joined a household and still sees no household_members rows');
+
+-- ===== households.created_by ON DELETE CASCADE (#778) =====
+--
+-- households.created_by / household_invites.created_by originally had no
+-- ON DELETE clause on their auth.users(id) FK (defaulting to NO ACTION),
+-- unlike household_members.user_id in the same migration. That meant
+-- deleting the auth.users row of anyone who had ever created a household or
+-- issued an invite failed with a FK violation. Fixed by
+-- 20260808000001_household_created_by_cascade.sql, which re-adds both FKs
+-- with ON DELETE CASCADE.
+--
+-- Deleting a row from auth.users requires elevated privileges beyond what
+-- `authenticated` has, so this drops back to the session's own role (the
+-- superuser `supabase test db` connects as) for the delete itself.
+reset role;
+
+select lives_ok(
+  $$delete from auth.users where id = '11111111-1111-1111-1111-111111111111'$$,
+  'deleting the user who created household1 does not fail with a FK violation (households.created_by cascades)'
+);
+
+select is(
+  (select count(*) from households where name = 'Household One')::int,
+  0,
+  'household1 itself is cascaded away once its creator (households.created_by) is deleted'
+);
+
+select is(
+  (select count(*) from household_invites where code in ('VALIDCODE1', 'EXPIREDCODE1'))::int,
+  0,
+  'household1''s invites are cascaded away transitively (household_invites.household_id on delete cascade)'
+);
+
+select is(
+  (select count(*) from household_members where user_id = '22222222-2222-2222-2222-222222222222')::int,
+  0,
+  'household1''s membership rows, including user2 who was not the deleted user, are cascaded away too'
+);
 
 select * from finish();
 

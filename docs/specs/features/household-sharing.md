@@ -48,7 +48,7 @@ housekeeper は当初「単一ユーザー・セルフホスト」を前提に�
 create table households (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  created_by uuid not null references auth.users(id),
+  created_by uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -69,7 +69,7 @@ create table household_invites (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references households(id) on delete cascade,
   code text not null unique, -- 短い英数字コード（例: 8桁）。招待者が口頭/メッセージで共有する
-  created_by uuid not null references auth.users(id),
+  created_by uuid not null references auth.users(id) on delete cascade,
   expires_at timestamptz not null, -- 発行から一定時間（例: 24h）で失効
   redeemed_by uuid references auth.users(id),
   redeemed_at timestamptz,
