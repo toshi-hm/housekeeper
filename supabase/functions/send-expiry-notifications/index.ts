@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
+import { fetchAllPages } from "../_shared/pagination.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { zonedDateString, zonedNow } from "./date.ts";
 import { buildNotificationTargetUrl } from "./notificationUrl.ts";
@@ -109,24 +110,36 @@ Deno.serve(async (req: Request) => {
   // 手動呼び出し（クエリなし）では従来どおり全有効ユーザーへ即時送信する。
   const scheduled = new URL(req.url).searchParams.get("scheduled") === "true";
 
-  // Fetch all users with notifications enabled
-  const { data: prefs, error: prefsError } = await supabase
-    .from("notification_preferences")
-    .select(
-      "user_id, push_enabled, email_enabled, email_address, threshold_days, notify_at, timezone",
-    )
-    .or("push_enabled.eq.true,email_enabled.eq.true");
-
-  if (prefsError) {
-    console.error("Failed to fetch preferences:", prefsError);
-    return new Response(JSON.stringify({ error: prefsError.message }), {
+  // Fetch all users with notifications enabled.
+  // #787: mirrors the #669/#695 fix — a single unbounded select silently
+  // truncates once the number of opted-in users exceeds PostgREST's row cap
+  // (default 1000, see supabase/config.toml's `api.max_rows`), so page
+  // through with fetchAllPages instead.
+  let prefs: NotificationPreference[];
+  try {
+    prefs = await fetchAllPages(async (from, to) => {
+      const { data, error } = await supabase
+        .from("notification_preferences")
+        .select(
+          "user_id, push_enabled, email_enabled, email_address, threshold_days, notify_at, timezone",
+        )
+        .or("push_enabled.eq.true,email_enabled.eq.true")
+        .order("user_id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return (data ?? []) as NotificationPreference[];
+    });
+  } catch (error) {
+    console.error("Failed to fetch preferences:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   const results = await Promise.allSettled(
-    (prefs as NotificationPreference[]).map(async (pref) => {
+    prefs.map(async (pref) => {
       const timezone = pref.timezone ?? "Asia/Tokyo";
       const zoned = zonedNow(timezone);
 
@@ -143,18 +156,33 @@ Deno.serve(async (req: Request) => {
       // Fetch expiring/expired items for this user.
       // 下限(gte today)は設けない — 既に期限切れの item も対象に含める（#445）。
       // opened_remaining = 0（開封済み・空）の item は対象外とする（#445）。
-      const { data: items } = await supabase
-        .from("items")
-        .select("id, name, expiry_date, expiry_type")
-        .eq("user_id", pref.user_id)
-        .not("expiry_date", "is", null)
-        .lte("expiry_date", thresholdStr)
-        .gt("units", 0)
-        .or("opened_remaining.is.null,opened_remaining.neq.0");
+      // #787: mirrors the #669/#695 fix — page through with fetchAllPages so
+      // a user with more than PostgREST's row cap (default 1000) worth of
+      // expiring items isn't silently truncated.
+      let items: ExpiringItem[];
+      try {
+        items = await fetchAllPages(async (from, to) => {
+          const { data, error } = await supabase
+            .from("items")
+            .select("id, name, expiry_date, expiry_type")
+            .eq("user_id", pref.user_id)
+            .not("expiry_date", "is", null)
+            .lte("expiry_date", thresholdStr)
+            .gt("units", 0)
+            .or("opened_remaining.is.null,opened_remaining.neq.0")
+            .order("id", { ascending: true })
+            .range(from, to);
+          if (error) throw error;
+          return (data ?? []) as ExpiringItem[];
+        });
+      } catch (error) {
+        console.error("Failed to fetch items for user", pref.user_id, error);
+        return;
+      }
 
-      if (!items || items.length === 0) return;
+      if (items.length === 0) return;
 
-      const count = (items as ExpiringItem[]).length;
+      const count = items.length;
 
       const { data: userSettings } = await supabase
         .from("user_settings")
@@ -180,13 +208,13 @@ Deno.serve(async (req: Request) => {
       // #714: 消費期限（use_by）または区別未設定（null, 既存アイテム互換）の item が
       // 1件でもあれば、通知全体を従来通りの「緊急」文言・優先度にする。賞味期限
       // （best_before）のみで構成される場合だけ穏やかな文言にする。
-      const hasUrgentItem = (items as ExpiringItem[]).some((i) => i.expiry_type !== "best_before");
+      const hasUrgentItem = items.some((i) => i.expiry_type !== "best_before");
       const title = text.title(count, hasUrgentItem);
-      const body = (items as ExpiringItem[])
+      const body = items
         .slice(0, 3)
         .map((i) => text.itemLine(i.name, i.expiry_date, i.expiry_type))
         .join(", ");
-      const notificationUrl = buildNotificationTargetUrl(items as ExpiringItem[]);
+      const notificationUrl = buildNotificationTargetUrl(items);
 
       // Send push notifications
       if (pref.push_enabled) {
@@ -245,7 +273,7 @@ Deno.serve(async (req: Request) => {
             from: resendFrom,
             to: pref.email_address,
             subject: title,
-            text: `${text.emailIntro}\n${(items as ExpiringItem[]).map((i) => `- ${text.itemLine(i.name, i.expiry_date, i.expiry_type)}`).join("\n")}`,
+            text: `${text.emailIntro}\n${items.map((i) => `- ${text.itemLine(i.name, i.expiry_date, i.expiry_type)}`).join("\n")}`,
           }),
         });
         if (!res.ok) {
@@ -262,7 +290,7 @@ Deno.serve(async (req: Request) => {
 
   return new Response(
     JSON.stringify({
-      processed: (prefs as NotificationPreference[]).length,
+      processed: prefs.length,
       errors: errors.length,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
