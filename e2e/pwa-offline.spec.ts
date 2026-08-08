@@ -69,12 +69,29 @@ test.describe("PWA オフライン挙動", () => {
     await page.waitForURL(/\/consume(\?.*)?$/);
     await page.locator("#delta").fill("1");
     // exact:true avoids matching the sibling "Use all (1pcs)" button (#658).
-    await page.getByRole("button", { name: "Use", exact: true }).click();
-    await expect(page.getByText("Cannot perform this action while offline")).toBeVisible();
+    // This button sits at the bottom of the consume form, near the sticky
+    // bottom nav on the mobile project — see fixtures/mobileClick.ts (#753).
+    const useButton = page.getByRole("button", { name: "Use", exact: true });
+    await clickBypassingTouchHitTestQuirk(useButton, testInfo);
+    const offlineToast = page.getByText("Cannot perform this action while offline");
+    await expect(offlineToast).toBeVisible();
+    // The toast (src/lib/toast.tsx) renders `fixed bottom-20 ...`, right above
+    // the sticky bottom nav — on the mobile project it visually overlaps the
+    // "Use" button below it. toast.tsx pauses its auto-dismiss timer on
+    // hover/focus (#673, for keyboard/screen-reader users) and only resumes
+    // on a later mouseleave/blur that never comes here (the synthetic click
+    // below moves the pointer onto the button underneath and leaves it
+    // there), so waiting for the timer to elapse can hang indefinitely.
+    // Dismiss it explicitly instead, which is deterministic either way.
+    // role="alert" (not "status") since toast.tsx gives the "error" variant
+    // that role — scope to it in case an earlier "success" toast (role
+    // "status") is still on-screen too.
+    await page.getByRole("alert").getByRole("button", { name: "Close" }).click();
+    await expect(offlineToast).not.toBeVisible();
 
     // --- Back online ---
     await context.setOffline(false);
-    await page.getByRole("button", { name: "Use", exact: true }).click();
+    await clickBypassingTouchHitTestQuirk(useButton, testInfo);
     await page.waitForURL(/\/items\/[^/]+$/);
   });
 });

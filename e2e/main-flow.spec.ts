@@ -54,7 +54,12 @@ test.describe("メイン認証フロー（追加 → 消費 → 買い物リス�
     await page.waitForURL(/\/consume(\?.*)?$/);
     await page.locator("#delta").fill("1");
     // exact:true avoids matching the sibling "Use all (1pcs)" button (#658).
-    await page.getByRole("button", { name: "Use", exact: true }).click();
+    // This button sits at the bottom of the consume form, near the sticky
+    // bottom nav on the mobile project — see fixtures/mobileClick.ts (#753).
+    await clickBypassingTouchHitTestQuirk(
+      page.getByRole("button", { name: "Use", exact: true }),
+      testInfo,
+    );
     await page.waitForURL(/\/items\/[^/]+$/);
 
     // --- Shopping list ---

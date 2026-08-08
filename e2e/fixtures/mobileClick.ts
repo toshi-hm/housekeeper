@@ -1,3 +1,4 @@
+import { expect } from "@playwright/test";
 import type { Locator, TestInfo } from "@playwright/test";
 
 /**
@@ -36,6 +37,15 @@ import type { Locator, TestInfo } from "@playwright/test";
  * to dodge rounded corners) and asserts each point's hit-test result is the
  * target element itself (or a descendant, e.g. an inner `<span>`). Only once
  * that passes does it force-click.
+ *
+ * Unlike Playwright's own actionability check (which polls until its
+ * timeout), a single `evaluate()` sample is a one-shot read — a genuinely
+ * transient state at that exact instant (e.g. right after
+ * `scrollIntoViewIfNeeded()` settles) would hard-fail immediately instead of
+ * getting a chance to settle. `expect.poll` re-runs the sample against the
+ * same default timeout Playwright's own actionability check would use, so a
+ * *sustained* miss (real occlusion) still fails the test, while a transient
+ * one doesn't.
  */
 export const clickBypassingTouchHitTestQuirk = async (locator: Locator, testInfo: TestInfo) => {
   if (!testInfo.project.use.hasTouch) {
@@ -45,29 +55,32 @@ export const clickBypassingTouchHitTestQuirk = async (locator: Locator, testInfo
 
   await locator.scrollIntoViewIfNeeded();
 
-  const allReachable = await locator.evaluate((node) => {
-    const rect = node.getBoundingClientRect();
-    const inset = Math.min(4, rect.width / 4, rect.height / 4);
-    const points: Array<[number, number]> = [
-      [rect.x + rect.width / 2, rect.y + rect.height / 2], // center
-      [rect.x + inset, rect.y + inset], // top-left
-      [rect.x + rect.width - inset, rect.y + inset], // top-right
-      [rect.x + inset, rect.y + rect.height - inset], // bottom-left
-      [rect.x + rect.width - inset, rect.y + rect.height - inset], // bottom-right
-    ];
-    return points.every(([x, y]) => {
-      const hit = document.elementFromPoint(x, y);
-      return hit !== null && (hit === node || node.contains(hit));
+  const sampleReachability = () =>
+    locator.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      const inset = Math.min(4, rect.width / 4, rect.height / 4);
+      const points: Array<[number, number]> = [
+        [rect.x + rect.width / 2, rect.y + rect.height / 2], // center
+        [rect.x + inset, rect.y + inset], // top-left
+        [rect.x + rect.width - inset, rect.y + inset], // top-right
+        [rect.x + inset, rect.y + rect.height - inset], // bottom-left
+        [rect.x + rect.width - inset, rect.y + rect.height - inset], // bottom-right
+      ];
+      return points.every(([x, y]) => {
+        const hit = document.elementFromPoint(x, y);
+        return hit !== null && (hit === node || node.contains(hit));
+      });
     });
-  });
 
-  if (!allReachable) {
-    throw new Error(
-      "clickBypassingTouchHitTestQuirk: target is genuinely covered by another element " +
-        "at one or more sample points (real occlusion, not the known Playwright touch " +
-        "hit-test quirk) — refusing to force-click.",
-    );
-  }
+  await expect
+    .poll(sampleReachability, {
+      message:
+        "clickBypassingTouchHitTestQuirk: target stayed covered by another element at one " +
+        "or more sample points for the full poll window (real occlusion, not the known " +
+        "Playwright touch hit-test quirk) — refusing to force-click.",
+      timeout: 5000,
+    })
+    .toBe(true);
 
   await locator.click({ force: true });
 };
