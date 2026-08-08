@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { expectNoA11yViolations } from "./fixtures/a11y";
 import { installSupabaseMock, loginAsFakeUser } from "./fixtures/supabaseMock";
 
 /**
@@ -31,6 +32,14 @@ test.describe("一括操作フロー", () => {
     await page.getByRole("checkbox", { name: itemName }).click();
     await page.getByRole("button", { name: "Change location" }).click();
 
+    // --- BulkMoveDialog a11y checkpoint (#754) ---
+    // Real routed dialog-open state, not a `.stories.tsx` snapshot — see
+    // e2e/fixtures/a11y.ts for what this does and doesn't add over CI's
+    // existing Storybook a11y sweep.
+    const moveDialog = page.getByRole("dialog");
+    await expect(moveDialog).toBeVisible();
+    await expectNoA11yViolations(page, '[role="dialog"]');
+
     await page.getByRole("combobox", { name: "Change location" }).selectOption({ label: "Fridge" });
     await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
 
@@ -46,7 +55,16 @@ test.describe("一括操作フロー", () => {
     await page.getByRole("button", { name: "Select" }).click();
     await page.getByRole("checkbox", { name: itemName }).click();
     await page.getByRole("button", { name: "Mark as used up" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Mark as used up" }).click();
+
+    // --- ConfirmDialog a11y checkpoint (#754) ---
+    // ConfirmDialog is an `alertdialog` (see docs/specs/accessibility.md);
+    // checked here against the real DOM at the moment a user actually
+    // triggers it, not an isolated `.stories.tsx` snapshot.
+    const confirmDialog = page.getByRole("alertdialog");
+    await expect(confirmDialog).toBeVisible();
+    await expectNoA11yViolations(page, '[role="alertdialog"]');
+
+    await confirmDialog.getByRole("button", { name: "Mark as used up" }).click();
 
     // The dashboard hides empty-stock items by default, so a fully-consumed
     // item disappears from the list once selection mode exits.

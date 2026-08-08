@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { expectNoA11yViolations } from "./fixtures/a11y";
 import { installSupabaseMock, loginAsFakeUser } from "./fixtures/supabaseMock";
 
 /**
@@ -62,5 +63,18 @@ test.describe("メイン認証フロー（追加 → 消費 → 買い物リス�
     await page.getByRole("button", { name: "Add", exact: true }).last().click();
 
     await expect(page.getByText(shoppingItemName)).toBeVisible();
+
+    // --- Purchase dialog a11y checkpoint (#754) ---
+    // Opens PurchaseDialog (focus-trapped via useDialogA11y, see
+    // docs/specs/accessibility.md) via a real routed user interaction, then
+    // runs axe-core against the actual rendered DOM — CI's `_a11y.yml` only
+    // scans isolated `.stories.tsx` snapshots, so this is the only place a
+    // real dialog-open state is checked.
+    await page.getByRole("button", { name: "Add to Inventory" }).click();
+    const purchaseDialog = page.getByRole("dialog");
+    await expect(purchaseDialog).toBeVisible();
+    await expectNoA11yViolations(page, '[role="dialog"]');
+    await purchaseDialog.getByRole("button", { name: "Close" }).click();
+    await expect(purchaseDialog).not.toBeVisible();
   });
 });
