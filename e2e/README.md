@@ -43,6 +43,13 @@ Standing up a real seeded local Supabase stack (`supabase start` + migrations
   against a built+served `dist/` (so the SW registers) and control cache
   population explicitly; worth a follow-up if a real cache-strategy bug shows
   up that this level of test wouldn't catch.
+  - `pwa-sw-navigation.spec.ts` (#784) is that follow-up, but only for the
+    Workbox `NavigationRoute` app-shell fallback: it builds+serves a real
+    `dist/` with `vite preview` (so the Service Worker actually registers and
+    controls navigations) and asserts that a direct, offline navigation to a
+    URL with no precache entry of its own still loads the app shell. The rest
+    of this directory's specs — including `pwa-offline.spec.ts` — still run
+    against the dev server and don't exercise the installed Service Worker.
 
 If/when a seeded local Supabase stack becomes cheap enough for gated PRs (e.g.
 a prebuilt container image), swapping the fixture for the real thing should be
@@ -54,6 +61,8 @@ things specs depend on.
 - `auth.spec.ts` — unauthenticated login screen smoke tests.
 - `main-flow.spec.ts` — add item -> consume -> shopping list (#516).
 - `pwa-offline.spec.ts` — offline mutation guard + cached data visibility (#518).
+- `pwa-sw-navigation.spec.ts` — real Service Worker navigation fallback for
+  offline direct navigation to a non-precached route (#784).
 - `calendar.spec.ts` — expiry calendar check-off + undo (#658).
 - `recipes.spec.ts` — recipe creation and execution (consumption recording, #658).
 - `bulk-actions.spec.ts` — dashboard multi-select bulk move/consume/delete (#658).
