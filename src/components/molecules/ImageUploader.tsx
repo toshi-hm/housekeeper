@@ -1,5 +1,5 @@
 import { Camera, Trash2, Upload } from "lucide-react";
-import { type DragEvent, useRef, useState } from "react";
+import { type DragEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ export const ImageUploader = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
+  const errorId = useId();
 
   const validate = (file: File): string => {
     if (!ALLOWED_TYPES.includes(file.type)) return t("imageErrorType");
@@ -87,6 +88,7 @@ export const ImageUploader = ({
               onClick={() => inputRef.current?.click()}
               disabled={isUploading}
               aria-label={t("imageReplace")}
+              aria-describedby={error ? errorId : undefined}
             >
               <Upload className="h-4 w-4" />
             </Button>
@@ -129,6 +131,7 @@ export const ImageUploader = ({
               e.stopPropagation();
               inputRef.current?.click();
             }}
+            aria-describedby={error ? errorId : undefined}
           >
             <Camera className="mr-1 h-4 w-4" />
             {t("imageCapture")}
@@ -143,7 +146,11 @@ export const ImageUploader = ({
         className="hidden"
         onChange={handleInputChange}
       />
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 };

@@ -8,8 +8,17 @@ import { NavigationRoute, registerRoute } from "workbox-routing";
 import { NetworkFirst } from "workbox-strategies";
 
 import { resolveNotificationTargetUrl } from "@/lib/notificationTarget";
+import { registerSwAutoUpdateLifecycle } from "@/lib/swLifecycle";
 
 declare const self: ServiceWorkerGlobalScope;
+
+// #785: By default, a newly-installed worker sits idle in the browser's
+// standard "waiting" state until every tab from the old deploy closes — the
+// app never actually runs the new code while any old tab stays open, unless
+// something calls skipWaiting()/clients.claim(). See swLifecycle.ts for why
+// skipWaiting() is deliberately deferred behind an explicit message instead
+// of being called unconditionally on install.
+registerSwAutoUpdateLifecycle(self);
 
 cleanupOutdatedCaches();
 

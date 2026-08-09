@@ -43,7 +43,20 @@
   --muted-foreground: 215.4 16.3% 46.9%;
   --accent: 210 40% 96.1%;
   --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
+
+  /*
+   * Darkened from the shadcn/ui default (0 84.2% 60.2%, ~#ef4444): at that
+   * lightness, --destructive-foreground text on a --destructive background
+   * (e.g. ConfirmDialog's default destructive confirm button) only reaches
+   * a 3.59:1 contrast ratio, below WCAG AA's 4.5:1 for normal text. This
+   * real violation was invisible to the Storybook a11y CI sweep because
+   * `components-molecules-confirmdialog--default` is in
+   * `.storybook/a11y-baseline.ts`, but surfaced immediately once axe-core
+   * ran against the real, routed dialog in e2e/bulk-actions.spec.ts (#754).
+   * 42% lightness (~#c51111) restores a 5.78:1 ratio while staying in the
+   * same hue/saturation family.
+   */
+  --destructive: 0 84.2% 42%;
   --destructive-foreground: 210 40% 98%;
   --warning: 48 96% 89%;
   --warning-foreground: 32 95% 20%;

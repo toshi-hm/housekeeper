@@ -32,6 +32,10 @@ proposal — see that issue for the full multi-phase rollout plan.
   works. This doc does not duplicate that mechanics — it's the conventions
   reference for both the automated checks and the parts axe-core cannot
   check (focus trapping, keyboard nav, live regions, etc., see below).
+  As of [#754](https://github.com/toshi-hm/housekeeper/issues/754), a small
+  set of axe-core checks also run in `e2e/*.spec.ts` (`.github/workflows/e2e.yml`)
+  against real, routed, user-triggered dialog states — see "Known gaps"
+  below for what that does and doesn't add over the Storybook sweep.
 
 ## Conventions used in this codebase
 
@@ -117,16 +121,11 @@ internally so the effect only re-runs on `open` transitions, not on every
 render of a caller that passes a fresh closure each time.
 
 `BulkMoveDialog`, `QRCodeDialog`, `ScanToShoppingDialog`, `PurchaseDialog`,
-and the stacking-confirmation dialog in `NewItemPage.tsx` all use this hook.
+`ConfirmDialog` (`role="alertdialog"` + Escape handler), and the
+stacking-confirmation dialog in `NewItemPage.tsx` all use this hook.
 `InventoryChatPanel` predates the hook and has its own equivalent
 hand-rolled focus trap (the pattern `useDialogA11y` was extracted from). A
 future cleanup could migrate it onto `useDialogA11y` too.
-
-`ConfirmDialog` (`role="alertdialog"` + Escape handler) still has **no
-focus trap** — Tab can move focus to elements behind the overlay, and
-focus is not moved into the dialog on open or restored on close. It was
-out of scope for #631 (not listed among that issue's affected components)
-but is a good candidate to migrate onto `useDialogA11y` in a follow-up.
 
 New modal-style components should use `useDialogA11y` rather than
 reinventing this mechanism.
@@ -166,17 +165,42 @@ by hand. None of these are fixed by this PR — they're scoped out
 deliberately (see PR description) and are good candidates for follow-up
 issues:
 
-- **`ConfirmDialog` has no focus trap** (see "Focus trap / modal dialogs"
-  above). `PurchaseDialog`, `BulkMoveDialog`, and `ScanToShoppingDialog`
-  were fixed for [#631](https://github.com/toshi-hm/housekeeper/issues/631)
-  via `useDialogA11y`.
-- **CI a11y checks only cover what axe-core can detect statically.**
+- ~~`ConfirmDialog` has no focus trap~~ **Fixed.** `ConfirmDialog` now uses
+  `useDialogA11y` like the other dialogs listed in "Focus trap / modal
+  dialogs" above (`PurchaseDialog`, `BulkMoveDialog`, `ScanToShoppingDialog`,
+  fixed for [#631](https://github.com/toshi-hm/housekeeper/issues/631)); this
+  line was left stale after that fix landed and is corrected here as a
+  drive-by while updating this section for
+  [#754](https://github.com/toshi-hm/housekeeper/issues/754).
+- **CI a11y checks only cover what axe-core can detect statically — now
+  partially closed for E2E-reachable states ([#754](https://github.com/toshi-hm/housekeeper/issues/754)).**
   [#497](https://github.com/toshi-hm/housekeeper/issues/497) wired
   `@storybook/test-runner` + `axe-playwright` into CI (see above), but that
-  only catches the DOM-snapshot-detectable subset (contrast, aria
-  attributes, roles, labels). Focus order, keyboard-trap correctness, and
-  screen-reader announcement quality still require the manual walkthroughs
-  called out below.
+  only ran axe-core against isolated `.stories.tsx` snapshots — no real
+  routing, no real user-triggered dialog opens, no focus-trap state. As of
+  #754, `e2e/fixtures/a11y.ts`'s `expectNoA11yViolations()` runs the same
+  axe-core engine against the actual rendered DOM at three real,
+  routed-and-interacted checkpoints (`.github/workflows/e2e.yml`, gating
+  every PR): `PurchaseDialog` open (`e2e/main-flow.spec.ts`), `BulkMoveDialog`
+  open (`e2e/bulk-actions.spec.ts`), and `ConfirmDialog` open
+  (`e2e/bulk-actions.spec.ts`). This is still a small, hand-picked slice (3
+  dialogs across 2 specs), not a sweep of every route/state — most
+  interactive states are still only checked via the Storybook snapshot path
+  or not at all. Focus order, keyboard-trap _correctness_ (axe-core can see
+  that `role="dialog"`/`aria-modal` are present, not that Tab actually stays
+  inside the panel), and screen-reader announcement quality still require
+  the manual walkthroughs called out below.
+  Concretely, this immediately caught a real violation the Storybook sweep
+  had been missing: `ConfirmDialog`'s default (destructive) confirm button
+  failed WCAG AA color contrast (3.59:1 vs the required 4.5:1) — invisible
+  to CI because `components-molecules-confirmdialog--default` is listed in
+  `.storybook/a11y-baseline.ts` and so skipped there entirely. Fixed by
+  darkening `--destructive` in `src/index.css` (now ~5.78:1). The baseline
+  entries for `confirmdialog--default` and other stories sharing this
+  destructive-button styling were left as-is rather than pruned blind — per
+  `.storybook/a11y-baseline.ts`'s own doc comment, confirming a story is now
+  fully clean needs an actual `test-storybook` CI run, not a guess; a
+  good follow-up once #754 lands.
 - **The a11y CI baseline may still hide real violations.** Stories listed in
   `.storybook/a11y-baseline.ts` are skipped entirely rather than checked
   with a relaxed rule set, so any violation on those specific stories
@@ -207,6 +231,10 @@ issues:
 - Focus trap reference implementation: [#556](https://github.com/toshi-hm/housekeeper/issues/556) / [#577](https://github.com/toshi-hm/housekeeper/pull/577)
 - CI automation (axe-core via `@storybook/test-runner`): [#497](https://github.com/toshi-hm/housekeeper/issues/497),
   implemented in `.github/workflows/_a11y.yml` / `.storybook/test-runner.ts`
+- Routed E2E axe-core checkpoints (real dialogs, not story snapshots):
+  [#754](https://github.com/toshi-hm/housekeeper/issues/754), implemented in
+  `e2e/fixtures/a11y.ts` and used from `e2e/main-flow.spec.ts` /
+  `e2e/bulk-actions.spec.ts`
 - Inventory chat panel a11y requirements: `docs/specs/features/inventory-chat.md`
 - UI/UX review checklist (includes a11y-adjacent usage-context notes):
   `.claude/skills/dev/uiux-review/PROJECT.md`

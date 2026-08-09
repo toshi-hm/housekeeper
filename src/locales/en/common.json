@@ -21,6 +21,8 @@
   "navStats": "Stats",
   "notFound": "404 — Page not found",
   "offlineError": "Cannot perform this action while offline",
+  "pwaUpdateAvailable": "An update is available. Please reload.",
+  "pwaUpdateReload": "Reload",
   "required": "Required",
   "retry": "Retry",
   "save": "Save",

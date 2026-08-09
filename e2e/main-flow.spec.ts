@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { expectNoA11yViolations } from "./fixtures/a11y";
+import { clickBypassingTouchHitTestQuirk } from "./fixtures/mobileClick";
 import { installSupabaseMock, loginAsFakeUser } from "./fixtures/supabaseMock";
 
 /**
@@ -15,14 +17,16 @@ test.describe("メイン認証フロー（追加 → 消費 → 買い物リス�
     await loginAsFakeUser(page);
   });
 
-  test("アイテムを追加し、消費し、買い物リストに追加できる", async ({ page }) => {
+  test("アイテムを追加し、消費し、買い物リストに追加できる", async ({ page }, testInfo) => {
     const itemName = `E2E Test Item ${Date.now()}`;
 
     // --- Add item ---
     await page.getByRole("link", { name: "Add Item" }).first().click();
     await page.waitForURL(/\/items\/new$/);
     await page.locator("#name").fill(itemName);
-    await page.locator('button[type="submit"]').click();
+    // Save button sits at the bottom of a long form, near the sticky bottom
+    // nav on the mobile project — see fixtures/mobileClick.ts (#753).
+    await clickBypassingTouchHitTestQuirk(page.locator('button[type="submit"]'), testInfo);
 
     // Successful create navigates back to the dashboard where the new item is listed.
     // The dashboard route always serializes its (default-valued) search params into
@@ -57,10 +61,36 @@ test.describe("メイン認証フロー（追加 → 消費 → 買い物リス�
     await page.getByRole("link", { name: "Shopping" }).click();
     await page.waitForURL(/\/shopping$/);
     const shoppingItemName = `E2E Shopping Item ${Date.now()}`;
-    await page.getByRole("button", { name: "Add", exact: true }).first().click();
+    // See fixtures/mobileClick.ts (#753) — same touch hit-test quirk, this
+    // time against the sticky mobile header rather than the bottom nav.
+    await clickBypassingTouchHitTestQuirk(
+      page.getByRole("button", { name: "Add", exact: true }).first(),
+      testInfo,
+    );
     await page.locator("#add-name").fill(shoppingItemName);
-    await page.getByRole("button", { name: "Add", exact: true }).last().click();
+    await clickBypassingTouchHitTestQuirk(
+      page.getByRole("button", { name: "Add", exact: true }).last(),
+      testInfo,
+    );
 
     await expect(page.getByText(shoppingItemName)).toBeVisible();
+
+    // --- Purchase dialog a11y checkpoint (#754) ---
+    // Opens PurchaseDialog (focus-trapped via useDialogA11y, see
+    // docs/specs/accessibility.md) via a real routed user interaction, then
+    // runs axe-core against the actual rendered DOM — CI's `_a11y.yml` only
+    // scans isolated `.stories.tsx` snapshots, so this is the only place a
+    // real dialog-open state is checked.
+    await page.getByRole("button", { name: "Add to Inventory" }).click();
+    const purchaseDialog = page.getByRole("dialog");
+    await expect(purchaseDialog).toBeVisible();
+    await expectNoA11yViolations(page, '[role="dialog"]');
+    // See fixtures/mobileClick.ts (#753) — same touch hit-test quirk, this
+    // time against the dialog's own header/overlay.
+    await clickBypassingTouchHitTestQuirk(
+      purchaseDialog.getByRole("button", { name: "Close" }),
+      testInfo,
+    );
+    await expect(purchaseDialog).not.toBeVisible();
   });
 });

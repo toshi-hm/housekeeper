@@ -21,6 +21,8 @@
   "navStats": "統計",
   "notFound": "404 — ページが見つかりません",
   "offlineError": "オフラインのため操作できません",
+  "pwaUpdateAvailable": "更新があります。再読み込みしてください",
+  "pwaUpdateReload": "再読み込み",
   "required": "必須",
   "retry": "再試行",
   "save": "保存",

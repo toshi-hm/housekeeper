@@ -144,8 +144,19 @@ export const SecuritySettings = () => {
 
             <div className="space-y-1">
               <Label htmlFor="mfaEnrollCode">{t("codeLabel")}</Label>
-              <TotpCodeInput id="mfaEnrollCode" value={code} onChange={setCode} autoFocus />
-              {codeError && <p className="text-xs text-destructive">{codeError}</p>}
+              <TotpCodeInput
+                id="mfaEnrollCode"
+                value={code}
+                onChange={setCode}
+                autoFocus
+                aria-invalid={!!codeError}
+                aria-describedby={codeError ? "mfaEnrollCode-error" : undefined}
+              />
+              {codeError && (
+                <p id="mfaEnrollCode-error" role="alert" className="text-xs text-destructive">
+                  {codeError}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2">

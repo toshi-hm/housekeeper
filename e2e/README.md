@@ -67,6 +67,33 @@ things specs depend on.
 - `recipes.spec.ts` — recipe creation and execution (consumption recording, #658).
 - `bulk-actions.spec.ts` — dashboard multi-select bulk move/consume/delete (#658).
 
+## Projects: `chromium` (desktop) and `mobile-chromium` (#753)
+
+`playwright.config.ts` defines two projects. `chromium` (`devices["Desktop
+Chrome"]`) runs every spec above. `mobile-chromium` (`devices["Pixel 7"]`,
+touch input) additionally runs just `main-flow.spec.ts` and
+`pwa-offline.spec.ts` — scoped to those two rather than the full suite to
+avoid doubling CI runtime, per #753's proposal. This app is mobile-first
+(CLAUDE.md / PLANS.md), and the sticky bottom nav / mobile header only render
+below the `lg` breakpoint, so `chromium`'s desktop viewport never lays them
+out at all — `mobile-chromium` is the only project that can catch a real
+bottom-nav/header reachability regression.
+
+### Touch hit-test quirk (`e2e/fixtures/mobileClick.ts`, #753)
+
+On `mobile-chromium` only, Playwright's actionability "receives pointer
+events" check (and the `boundingBox()` it relies on) can be unreliable near
+sticky elements — it can report a target as covered by the sticky nav/header
+even when it demonstrably isn't (verified via a live, in-page
+`getBoundingClientRect()` + `document.elementFromPoint()`, and via a real
+`{ force: true }` click that lands correctly and completes the app's
+mutation). `clickBypassingTouchHitTestQuirk(locator, testInfo)` reimplements
+the reachability check that way instead of trusting Playwright's probe, and
+only then force-clicks — so a _genuine_ occlusion regression still fails the
+check (and the test), while the known false positive doesn't. Use it for any
+new `mobile-chromium`-covered click that ends up needing it; see the
+docstring in that file for the full investigation.
+
 ## Mock fixture gotchas (learned the hard way, #658)
 
 Fixing #664 above made every spec in this directory actually run in CI for the
