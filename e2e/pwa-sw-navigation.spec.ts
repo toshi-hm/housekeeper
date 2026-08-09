@@ -81,22 +81,22 @@ test.describe("Service Worker ナビゲーションフォールバック (#784)"
   }) => {
     await page.goto("/");
 
-    // Wait for the real Service Worker (src/sw.ts) to finish installing and
-    // activate. #785 (a sibling issue, out of scope here) will add
-    // skipWaiting/clients.claim() to speed this up; without it, activation
-    // still completes on its own, it just isn't instant.
-    await page.waitForFunction(
-      async () => {
-        const registration = await navigator.serviceWorker.getRegistration();
-        return registration?.active?.state === "activated";
-      },
-      // `waitForFunction`'s 2nd positional param is `arg` (passed into the
-      // page function), not `options` — pass `undefined` explicitly so the
-      // timeout below actually lands as the 3rd (options) param instead of
-      // being silently ignored (falling back to Playwright's 30s default).
-      undefined,
-      { timeout: 15_000 },
-    );
+    // Wait for the real Service Worker (src/sw.ts) to actually take control
+    // of *this* page, not just for `registration.active.state ===
+    // "activated"`. Those are different moments: `src/lib/swLifecycle.ts`
+    // (#785) calls `clients.claim()` inside the `activate` handler via
+    // `event.waitUntil(...)`, which resolves asynchronously — the
+    // registration can report `active.state === "activated"` a tick before
+    // `clients.claim()` has actually finished handing control of this page
+    // to the worker. Navigating offline in that gap means this page's
+    // client still has no controller, so the request falls through to the
+    // real (offline) network instead of the Service Worker's fetch handler
+    // — the exact failure this spec exists to catch, just self-inflicted by
+    // an early check. `navigator.serviceWorker.controller` is the
+    // authoritative signal that control has actually transferred.
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
+      timeout: 15_000,
+    });
 
     await context.setOffline(true);
 
