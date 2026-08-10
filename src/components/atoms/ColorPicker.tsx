@@ -28,7 +28,7 @@ export const ColorPicker = ({ value, onChange }: ColorPickerProps) => (
         aria-pressed={value === color}
         onClick={() => onChange(color)}
         className={cn(
-          "h-7 w-7 rounded-full border-2 border-transparent transition-transform hover:scale-110",
+          "relative h-7 w-7 rounded-full border-2 border-transparent transition-transform after:absolute after:-inset-2 after:content-[''] hover:scale-110",
           value === color && "ring-2 ring-ring ring-offset-2 ring-offset-background",
         )}
         style={{ backgroundColor: color }}

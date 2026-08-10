@@ -19,4 +19,11 @@ describe("ColorPicker", () => {
     const { getByLabelText } = render(<ColorPicker value={null} onChange={() => {}} />);
     expect(getByLabelText("#3b82f6").getAttribute("aria-pressed")).toBe("false");
   });
+
+  it("可視サイズ（28px）より広いヒットスロップを持つ（#806）", () => {
+    const { getByLabelText } = render(<ColorPicker value={null} onChange={() => {}} />);
+    const swatch = getByLabelText("#3b82f6");
+    expect(swatch.className).toContain("after:-inset-2");
+    expect(swatch.className).toContain("after:absolute");
+  });
 });

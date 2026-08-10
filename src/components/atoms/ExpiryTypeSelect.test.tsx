@@ -38,4 +38,14 @@ describe("ExpiryTypeSelect", () => {
     fireEvent.click(getByRole("button", { name: i18n.t("items:expiryTypeUnset") }));
     expect(onChange).toHaveBeenCalledWith(null);
   });
+
+  test("ボタンが最小40px（min-h-10）のタップターゲットを持つ（#806）", () => {
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <ExpiryTypeSelect value={null} onChange={() => {}} />
+      </I18nextProvider>,
+    );
+    const button = getByRole("button", { name: i18n.t("items:expiryTypeUnset") });
+    expect(button.className).toContain("min-h-10");
+  });
 });

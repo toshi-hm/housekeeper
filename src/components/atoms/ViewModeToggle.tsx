@@ -11,7 +11,7 @@ interface ViewModeToggleProps {
 
 const buttonClass = (active: boolean) =>
   cn(
-    "flex h-7 w-7 items-center justify-center rounded transition-colors",
+    "flex h-10 w-10 items-center justify-center rounded transition-colors",
     active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
   );
 

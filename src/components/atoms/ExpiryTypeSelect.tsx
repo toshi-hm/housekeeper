@@ -11,7 +11,7 @@ interface ExpiryTypeSelectProps {
 
 const buttonClass = (active: boolean) =>
   cn(
-    "flex-1 rounded px-2 py-1 text-xs font-medium transition-colors",
+    "flex min-h-10 flex-1 items-center justify-center rounded px-2 py-1 text-xs font-medium transition-colors",
     active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
   );
 
