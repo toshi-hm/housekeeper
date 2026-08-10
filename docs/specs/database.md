@@ -383,7 +383,11 @@ create policy "items_owner_all" on items for all
 ### user_id を持たない従属テーブルの例（recipe_items）
 
 `recipe_items` のように直接 `user_id` を持たないテーブルは、親テーブルへの
-`exists` join で所有権を判定する:
+`exists` join で所有権を判定する。加えて、`item_id` のような**他テーブルへの
+参照カラム**は FK 制約だけでは所有権を保証しない（FK は RLS より高い権限で
+解決されるため、他ユーザーの行を指す `item_id` を推測して挿入できてしまう）。
+参照先テーブルにも `exists` join で所有権を確認すること（#804、`item_lots`
+と同じ「ownership via join」パターン）:
 
 ```sql
 alter table recipe_items enable row level security;
@@ -393,11 +397,19 @@ create policy "recipe_items_owner_all" on recipe_items for all
       select 1 from recipes r
       where r.id = recipe_items.recipe_id and r.user_id = auth.uid()
     )
+    and exists (
+      select 1 from items i
+      where i.id = recipe_items.item_id and i.user_id = auth.uid()
+    )
   )
   with check (
     exists (
       select 1 from recipes r
       where r.id = recipe_items.recipe_id and r.user_id = auth.uid()
+    )
+    and exists (
+      select 1 from items i
+      where i.id = recipe_items.item_id and i.user_id = auth.uid()
     )
   );
 ```
