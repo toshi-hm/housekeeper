@@ -780,7 +780,7 @@ export const useBulkItemAction = () => {
       }
       return { action, count: ids.length };
     },
-    onSuccess: async () => {
+    onSuccess: async (_result, { action, ids }) => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" }),
         qc.invalidateQueries({ queryKey: LOTS_KEY, refetchType: "all" }),
@@ -790,6 +790,11 @@ export const useBulkItemAction = () => {
         // bulkConsumeItems は consumption_logs へも書き込むため、統計/エクスポート/
         // アイテム詳細の履歴タブが参照するキャッシュも更新する (#668)。
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+        // ["consumption-logs-all"] だけではアイテム詳細の履歴タブが読む
+        // ["consumption-logs", itemId] は更新されないため、個別にも invalidate する (#805)。
+        ...(action === "consume"
+          ? ids.map((itemId) => qc.invalidateQueries({ queryKey: ["consumption-logs", itemId] }))
+          : []),
       ]);
       toast(t("items:bulkActionSuccess"), "success");
     },
