@@ -36,6 +36,7 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     in: chainMethod("in"),
     limit: chainMethod("limit"),
     order: chainMethod("order"),
+    range: chainMethod("range"),
     insert: chainMethod("insert"),
     update: chainMethod("update"),
     delete: chainMethod("delete"),

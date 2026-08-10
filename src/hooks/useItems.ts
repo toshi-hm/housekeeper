@@ -445,16 +445,22 @@ const fetchItemsWithExpiry = async (): Promise<Item[]> => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
-  const { data, error } = await supabase
-    .from("items")
-    .select("*")
-    .eq("user_id", userData.user.id)
-    .is("deleted_at", null)
-    .not("expiry_date", "is", null)
-    .gt("units", 0)
-    .order("expiry_date", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as Item[];
+  // #622パターン: 1000件超のアイテムを持つユーザーで無言の切り捨てが起きないようページング。
+  // expiry_date は同値になり得るため id をタイブレーカーにして決定的な順序を保つ。
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", userData.user.id)
+      .is("deleted_at", null)
+      .not("expiry_date", "is", null)
+      .gt("units", 0)
+      .order("expiry_date", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Item[];
+  });
 };
 
 /**
@@ -602,12 +608,17 @@ const fetchItemsForExport = async (): Promise<ItemLookupForExport[]> => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
-  const { data, error } = await supabase
-    .from("items")
-    .select("id, name, category_id, notes, content_unit")
-    .eq("user_id", userData.user.id);
-  if (error) throw error;
-  return (data ?? []) as ItemLookupForExport[];
+  // #622パターン: 1000件超のアイテムを持つユーザーで無言の切り捨てが起きないようページング。
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("items")
+      .select("id, name, category_id, notes, content_unit")
+      .eq("user_id", userData.user.id)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as ItemLookupForExport[];
+  });
 };
 
 export const useItemsForExport = () =>
@@ -651,14 +662,21 @@ const fetchDeletedItems = async (): Promise<Item[]> => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
 
-  const { data, error } = await supabase
-    .from("items")
-    .select("*")
-    .eq("user_id", userData.user.id)
-    .not("deleted_at", "is", null)
-    .order("deleted_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as Item[];
+  // #622パターン: 1000件超のソフトデリート済みアイテムを持つユーザーで
+  // 無言の切り捨てが起きないようページング。deleted_at は同値になり得るため
+  // id をタイブレーカーにして決定的な順序を保つ。
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", userData.user.id)
+      .not("deleted_at", "is", null)
+      .order("deleted_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Item[];
+  });
 };
 
 export const useDeletedItems = () =>
