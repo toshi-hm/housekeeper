@@ -1,4 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { createElement, type ReactNode } from "react";
 
 interface SupabaseResponse {
   data: unknown;
@@ -15,6 +18,8 @@ const makeBuilder = () => {
     select: chainMethod(),
     eq: chainMethod(),
     is: chainMethod(),
+    not: chainMethod(),
+    gt: chainMethod(),
     or: chainMethod(),
     order: chainMethod(),
     range: (from: number, to: number) => {
@@ -33,7 +38,15 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { fetchItems } = await import("@/hooks/useItems");
+const { fetchItems, useItemsForExport, useItemsWithExpiry, useDeletedItems } =
+  await import("@/hooks/useItems");
+
+const makeWrapper = (qc: QueryClient) => {
+  return ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: qc }, children);
+};
+
+const newQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 describe("fetchItems pagination (#622)", () => {
   beforeEach(() => {
@@ -60,5 +73,65 @@ describe("fetchItems pagination (#622)", () => {
     const result = await fetchItems();
 
     expect(result.length).toBe(2);
+  });
+});
+
+describe("useItemsForExport pagination (#802)", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    responsesByRange = {};
+  });
+
+  test("1000件ちょうどのページが返ると次のページも取得し、結合した全件を返す", async () => {
+    const firstPage = Array.from({ length: 1000 }, (_, i) => ({ id: `item-${i}` }));
+    const secondPage = [{ id: "item-1000" }, { id: "item-1001" }];
+    responsesByRange = { "0-999": firstPage, "1000-1999": secondPage };
+
+    const { result } = renderHook(() => useItemsForExport(), {
+      wrapper: makeWrapper(newQueryClient()),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.length).toBe(1002);
+  });
+});
+
+describe("useItemsWithExpiry pagination (#802)", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    responsesByRange = {};
+  });
+
+  test("1000件ちょうどのページが返ると次のページも取得し、結合した全件を返す", async () => {
+    const firstPage = Array.from({ length: 1000 }, (_, i) => ({ id: `item-${i}` }));
+    const secondPage = [{ id: "item-1000" }];
+    responsesByRange = { "0-999": firstPage, "1000-1999": secondPage };
+
+    const { result } = renderHook(() => useItemsWithExpiry(), {
+      wrapper: makeWrapper(newQueryClient()),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.length).toBe(1001);
+  });
+});
+
+describe("useDeletedItems pagination (#802)", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    responsesByRange = {};
+  });
+
+  test("1000件ちょうどのページが返ると次のページも取得し、結合した全件を返す", async () => {
+    const firstPage = Array.from({ length: 1000 }, (_, i) => ({ id: `item-${i}` }));
+    const secondPage = [{ id: "item-1000" }];
+    responsesByRange = { "0-999": firstPage, "1000-1999": secondPage };
+
+    const { result } = renderHook(() => useDeletedItems(), {
+      wrapper: makeWrapper(newQueryClient()),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.length).toBe(1001);
   });
 });
