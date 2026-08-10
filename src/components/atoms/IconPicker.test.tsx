@@ -31,4 +31,11 @@ describe("IconPicker", () => {
     getByLabelText("Snowflake").click();
     expect(onChange).toHaveBeenCalledWith("Snowflake");
   });
+
+  it("可視サイズ（32px）より広いヒットスロップを持つ（#806）", () => {
+    const { getByLabelText } = render(<IconPicker value={null} onChange={() => {}} />);
+    const icon = getByLabelText("Refrigerator");
+    expect(icon.className).toContain("after:-inset-1");
+    expect(icon.className).toContain("after:absolute");
+  });
 });

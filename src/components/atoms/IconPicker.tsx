@@ -22,7 +22,7 @@ export const IconPicker = ({ value, onChange }: IconPickerProps) => (
           aria-pressed={selected}
           onClick={() => onChange(selected ? null : name)}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+            "relative flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground transition-colors after:absolute after:-inset-1 after:content-[''] hover:bg-accent hover:text-foreground",
             selected && "border-primary bg-primary/10 text-primary",
           )}
         >

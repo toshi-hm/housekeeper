@@ -29,7 +29,7 @@ export const TagBadge = ({ name, color, onRemove, removeLabel }: TagBadgeProps) 
         type="button"
         onClick={onRemove}
         aria-label={removeLabel ?? `remove ${name}`}
-        className="ml-0.5 rounded-full hover:bg-black/10"
+        className="relative ml-0.5 rounded-full p-1 after:absolute after:-inset-2 after:content-[''] hover:bg-black/10"
       >
         <X className="h-3 w-3" />
       </button>
