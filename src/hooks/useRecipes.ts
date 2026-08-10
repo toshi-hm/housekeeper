@@ -263,6 +263,11 @@ export const useExecuteRecipe = () => {
         qc.invalidateQueries({ queryKey: ["items"] }),
         qc.invalidateQueries({ queryKey: LOTS_KEY }),
         qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+        // アイテム詳細の消費履歴タブ（["consumption-logs", itemId]）は
+        // useConsumeItem/useConsumeLot等と同様に個別invalidateが必要 (#805)。
+        ...result.consumedItemIds.map((itemId) =>
+          qc.invalidateQueries({ queryKey: ["consumption-logs", itemId] }),
+        ),
         // 消費で auto_reorder がトリガーされ shopping_list_items に自動追加される
         // ことがあるため、買い物リストのキャッシュも更新する (#353, #662)。
         qc.invalidateQueries({ queryKey: ["shopping"] }),

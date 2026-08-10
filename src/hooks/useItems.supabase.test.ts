@@ -264,6 +264,48 @@ describe("useBulkItemAction", () => {
     );
     expect(invalidatedKeys).toContainEqual(["consumption-logs-all"]);
   });
+
+  test("consume成功時に消費したアイテムの詳細履歴タブ(consumption-logs)キャッシュも無効化する (#805)", async () => {
+    responseQueues.item_lots = [
+      { data: [{ id: "lot-1", item_id: "item-1", units: 2, opened_remaining: null }], error: null },
+    ];
+    responseQueues.items = [
+      { data: [{ id: "item-1", content_amount: 1, content_unit: "個" }], error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useBulkItemAction(), { wrapper: makeWrapper(qc) });
+    result.current.mutate({ action: "consume", ids: ["item-1"] });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["consumption-logs", "item-1"]);
+  });
+
+  test("consume以外のactionではconsumption-logsの個別キャッシュを無効化しない", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useBulkItemAction(), { wrapper: makeWrapper(qc) });
+    result.current.mutate({ action: "updateCategory", ids: ["item-1"], targetId: "cat-1" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).not.toContainEqual(["consumption-logs", "item-1"]);
+  });
 });
 
 describe("createItem", () => {

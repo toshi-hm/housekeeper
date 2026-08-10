@@ -298,4 +298,34 @@ describe("useExecuteRecipe", () => {
     );
     expect(invalidatedKeys).toContainEqual(["shopping"]);
   });
+
+  test("成功時に消費したアイテムの詳細履歴タブ(consumption-logs)キャッシュも無効化する (#805)", async () => {
+    const recipe = makeRecipe();
+    const itemsById = {
+      "item-1": makeItem({ id: "item-1", units: 3, content_amount: 1, opened_remaining: null }),
+    };
+    responseQueues.item_lots = [
+      { data: [], error: null }, // pre-check FEFO fetch
+      { data: [], error: null }, // item-1's consumeItem fetch
+    ];
+    responseQueues.items = [
+      { data: null, error: null },
+      { data: makeItem({ id: "item-1", units: 2 }), error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useExecuteRecipe(), { wrapper: makeWrapper(qc) });
+    result.current.mutate({ recipe, itemsById });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["consumption-logs", "item-1"]);
+  });
 });
