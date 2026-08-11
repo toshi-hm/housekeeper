@@ -4,9 +4,8 @@ import { describe, expect, mock, test } from "bun:test";
 import { createElement, type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
-const invokeMock = mock(
-  (): Promise<{ data: unknown; error: null }> =>
-    Promise.resolve({ data: { reply: "ok", items: [] }, error: null }),
+const invokeMock = mock((): Promise<{ data: unknown; error: null }> =>
+  Promise.resolve({ data: { reply: "ok", items: [] }, error: null }),
 );
 
 mock.module("@/lib/supabase", () => ({
