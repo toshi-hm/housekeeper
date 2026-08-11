@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-import { checkChatRateLimit, checkRecipeRateLimit } from "./rate-limit.ts";
+import { checkBarcodeRateLimit, checkChatRateLimit, checkRecipeRateLimit } from "./rate-limit.ts";
 
 type RpcResult = { data: { allowed: boolean; retry_after_seconds: number } | null; error: unknown };
 
@@ -107,5 +107,51 @@ Deno.test("checkRecipeRateLimit - calls the server-configured RPC without caller
   );
   await checkRecipeRateLimit(supabase);
   assert.strictEqual(capturedFn, "check_recipe_rate_limit");
+  assert.strictEqual(capturedParams, undefined);
+});
+
+// checkBarcodeRateLimit
+
+Deno.test("checkBarcodeRateLimit - returns allowed when the RPC reports under the limit", async () => {
+  const supabase = makeFakeClient({ data: { allowed: true, retry_after_seconds: 0 }, error: null });
+  const result = await checkBarcodeRateLimit(supabase);
+  assert.deepStrictEqual(result, { allowed: true, retryAfterSeconds: 0 });
+});
+
+Deno.test("checkBarcodeRateLimit - returns blocked with retry-after when over the limit", async () => {
+  const supabase = makeFakeClient({
+    data: { allowed: false, retry_after_seconds: 42 },
+    error: null,
+  });
+  const result = await checkBarcodeRateLimit(supabase);
+  assert.deepStrictEqual(result, { allowed: false, retryAfterSeconds: 42 });
+});
+
+Deno.test("checkBarcodeRateLimit - fails closed when the RPC returns an error", async () => {
+  const supabase = makeFakeClient({ data: null, error: new Error("boom") });
+  const result = await checkBarcodeRateLimit(supabase);
+  assert.strictEqual(result.allowed, false);
+  assert.strictEqual(result.retryAfterSeconds, 60);
+});
+
+Deno.test("checkBarcodeRateLimit - fails closed when the RPC returns no data", async () => {
+  const supabase = makeFakeClient({ data: null, error: null });
+  const result = await checkBarcodeRateLimit(supabase);
+  assert.strictEqual(result.allowed, false);
+  assert.strictEqual(result.retryAfterSeconds, 60);
+});
+
+Deno.test("checkBarcodeRateLimit - calls the server-configured RPC without caller-controlled limits", async () => {
+  let capturedFn: string | undefined;
+  let capturedParams: Record<string, unknown> | undefined;
+  const supabase = makeFakeClient(
+    { data: { allowed: true, retry_after_seconds: 0 }, error: null },
+    (fn, params) => {
+      capturedFn = fn;
+      capturedParams = params;
+    },
+  );
+  await checkBarcodeRateLimit(supabase);
+  assert.strictEqual(capturedFn, "check_barcode_rate_limit");
   assert.strictEqual(capturedParams, undefined);
 });

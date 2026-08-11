@@ -22,8 +22,8 @@ interface ItemLookupRow {
 
 /** "not_found"（該当商品なし）は成功レスポンス（200 + product: null）として
  *  扱われるため、このフックがエラー状態として設定するのは network / server_error /
- *  timeout のみ。#655, #709 */
-export type BarcodeLookupErrorType = "network" | "server_error" | "timeout";
+ *  timeout / rate_limited のみ。#655, #709, #803 */
+export type BarcodeLookupErrorType = "network" | "server_error" | "timeout" | "rate_limited";
 
 export const useBarcodeLookup = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -82,6 +82,14 @@ export const useBarcodeLookup = () => {
         // back to the message-based network/server_error split below.
         if (fnError instanceof FunctionsHttpError && fnError.context.status === 504) {
           setError("timeout");
+          return { product: null, source: null };
+        }
+        // #803: barcode-lookup returns 429 { error: "rate_limited" } once
+        // the caller's per-user request quota is exceeded, distinguished
+        // from a generic server_error so the UI can show an actionable
+        // "please wait" message instead.
+        if (fnError instanceof FunctionsHttpError && fnError.context.status === 429) {
+          setError("rate_limited");
           return { product: null, source: null };
         }
         // #655: barcode-lookup only ever returns a non-2xx response for

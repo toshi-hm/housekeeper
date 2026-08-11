@@ -30,6 +30,7 @@ export const ProductLookupResult = ({
       network: "common:offlineError",
       server_error: "items:productLookupServerError",
       timeout: "items:productLookupTimeout",
+      rate_limited: "items:productLookupRateLimited",
     } as const satisfies Record<BarcodeLookupErrorType, string>;
     const message = errorType ? t(errorMessageKey[errorType]) : t("items:productNotFound");
 

@@ -82,6 +82,16 @@ describe("useBarcodeLookup (#655)", () => {
     await waitFor(() => expect(result.current.error).toBe("timeout"));
   });
 
+  test("Edge Functionが429 (rate_limited) を返した場合はrate_limitedになる (#803)", async () => {
+    invokeResponse = { data: null, error: new FunctionsHttpError({ status: 429 }) };
+    const { result } = renderHook(() => useBarcodeLookup());
+
+    const lookupResult = await result.current.lookup("4901234567894");
+
+    expect(lookupResult).toEqual({ product: null, source: null });
+    await waitFor(() => expect(result.current.error).toBe("rate_limited"));
+  });
+
   test("商品が見つからない場合(200 + product:null)はerrorを設定しない", async () => {
     invokeResponse = { data: { product: null }, error: null };
     const { result } = renderHook(() => useBarcodeLookup());
