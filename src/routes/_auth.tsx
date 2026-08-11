@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Home,
   LogOut,
+  Map as MapIcon,
   Package,
   Plus,
   Settings,
@@ -22,8 +23,9 @@ import { supabase } from "@/lib/supabase";
 
 const NAV_ROUTES = [
   { to: "/" as const, icon: Home, labelKey: "navHome" as const },
-  { to: "/items/new" as const, icon: Plus, labelKey: "navAddItem" as const },
   { to: "/shopping" as const, icon: ShoppingCart, labelKey: "navShopping" as const },
+  { to: "/map" as const, icon: MapIcon, labelKey: "navMap" as const },
+  { to: "/items/new" as const, icon: Plus, labelKey: "navAddItem" as const },
   { to: "/stats" as const, icon: BarChart2, labelKey: "navStats" as const },
   { to: "/settings" as const, icon: Settings, labelKey: "navSettings" as const },
   { to: "/calendar" as const, icon: CalendarDays, labelKey: "navCalendar" as const },
@@ -140,9 +142,9 @@ const AuthLayout = () => {
         </div>
       </main>
 
-      {/* Mobile bottom navigation — 6 items (デスクトップサイドバーと同じ6ルート、#472), Add Item centered */}
+      {/* Mobile bottom navigation — Map is the third item from the left. */}
       <nav className="sticky bottom-0 border-t bg-background lg:hidden">
-        <div className="mx-auto flex max-w-2xl items-center justify-around px-4 py-2">
+        <div className="mx-auto flex max-w-2xl items-center justify-around gap-1 px-2 py-2">
           <Link
             to="/"
             className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
@@ -157,7 +159,13 @@ const AuthLayout = () => {
             <ShoppingCart className="h-5 w-5" />
             <span>{t("navShopping")}</span>
           </Link>
-          {/* Add Item — center (position 3/5 with justify-around = exactly 50%) */}
+          <Link
+            to="/map"
+            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+          >
+            <MapIcon className="h-5 w-5" />
+            <span>{t("navMap")}</span>
+          </Link>
           <Link
             to="/items/new"
             className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"

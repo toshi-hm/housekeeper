@@ -9,30 +9,31 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthIndexRouteImport } from './routes/_auth.index'
-import { Route as AuthStatsRouteImport } from './routes/_auth.stats'
-import { Route as AuthShoppingRouteImport } from './routes/_auth.shopping'
-import { Route as AuthSettingsRouteImport } from './routes/_auth.settings'
-import { Route as AuthRecipesRouteImport } from './routes/_auth.recipes'
-import { Route as AuthMealPlanRouteImport } from './routes/_auth.meal-plan'
 import { Route as AuthCalendarRouteImport } from './routes/_auth.calendar'
-import { Route as AuthSettingsTagsRouteImport } from './routes/_auth.settings.tags'
-import { Route as AuthSettingsPurchaseHistoryRouteImport } from './routes/_auth.settings.purchase-history'
-import { Route as AuthSettingsLocationsRouteImport } from './routes/_auth.settings.locations'
-import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
-import { Route as AuthSettingsArchivedItemsRouteImport } from './routes/_auth.settings.archived-items'
-import { Route as AuthLocationsLocationIdRouteImport } from './routes/_auth.locations.$locationId'
-import { Route as AuthItemsNewRouteImport } from './routes/_auth.items.new'
+import { Route as AuthMapRouteImport } from './routes/_auth.map'
+import { Route as AuthMealPlanRouteImport } from './routes/_auth.meal-plan'
+import { Route as AuthRecipesRouteImport } from './routes/_auth.recipes'
+import { Route as AuthSettingsRouteImport } from './routes/_auth.settings'
+import { Route as AuthShoppingRouteImport } from './routes/_auth.shopping'
+import { Route as AuthStatsRouteImport } from './routes/_auth.stats'
 import { Route as AuthItemsItemIdRouteImport } from './routes/_auth.items.$itemId'
-import { Route as AuthItemsItemIdEditRouteImport } from './routes/_auth.items.$itemId.edit'
+import { Route as AuthItemsNewRouteImport } from './routes/_auth.items.new'
+import { Route as AuthLocationsLocationIdRouteImport } from './routes/_auth.locations.$locationId'
+import { Route as AuthSettingsArchivedItemsRouteImport } from './routes/_auth.settings.archived-items'
+import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
+import { Route as AuthSettingsLocationsRouteImport } from './routes/_auth.settings.locations'
+import { Route as AuthSettingsPurchaseHistoryRouteImport } from './routes/_auth.settings.purchase-history'
+import { Route as AuthSettingsTagsRouteImport } from './routes/_auth.settings.tags'
 import { Route as AuthItemsItemIdConsumeRouteImport } from './routes/_auth.items.$itemId.consume'
+import { Route as AuthItemsItemIdEditRouteImport } from './routes/_auth.items.$itemId.edit'
+import { Route as AuthLocationsLocationIdEditRouteImport } from './routes/_auth.locations.$locationId.edit'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -40,8 +41,9 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/_auth',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthIndexRoute = AuthIndexRouteImport.update({
@@ -49,24 +51,14 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthStatsRoute = AuthStatsRouteImport.update({
-  id: '/stats',
-  path: '/stats',
+const AuthCalendarRoute = AuthCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthShoppingRoute = AuthShoppingRouteImport.update({
-  id: '/shopping',
-  path: '/shopping',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthSettingsRoute = AuthSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthRecipesRoute = AuthRecipesRouteImport.update({
-  id: '/recipes',
-  path: '/recipes',
+const AuthMapRoute = AuthMapRouteImport.update({
+  id: '/map',
+  path: '/map',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthMealPlanRoute = AuthMealPlanRouteImport.update({
@@ -74,14 +66,55 @@ const AuthMealPlanRoute = AuthMealPlanRouteImport.update({
   path: '/meal-plan',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthCalendarRoute = AuthCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
+const AuthRecipesRoute = AuthRecipesRouteImport.update({
+  id: '/recipes',
+  path: '/recipes',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthSettingsTagsRoute = AuthSettingsTagsRouteImport.update({
-  id: '/tags',
-  path: '/tags',
+const AuthSettingsRoute = AuthSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthShoppingRoute = AuthShoppingRouteImport.update({
+  id: '/shopping',
+  path: '/shopping',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthStatsRoute = AuthStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthItemsItemIdRoute = AuthItemsItemIdRouteImport.update({
+  id: '/items/$itemId',
+  path: '/items/$itemId',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
+  id: '/items/new',
+  path: '/items/new',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLocationsLocationIdRoute = AuthLocationsLocationIdRouteImport.update({
+  id: '/locations/$locationId',
+  path: '/locations/$locationId',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSettingsArchivedItemsRoute =
+  AuthSettingsArchivedItemsRouteImport.update({
+    id: '/archived-items',
+    path: '/archived-items',
+    getParentRoute: () => AuthSettingsRoute,
+  } as any)
+const AuthSettingsCategoriesRoute = AuthSettingsCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => AuthSettingsRoute,
+} as any)
+const AuthSettingsLocationsRoute = AuthSettingsLocationsRouteImport.update({
+  id: '/locations',
+  path: '/locations',
   getParentRoute: () => AuthSettingsRoute,
 } as any)
 const AuthSettingsPurchaseHistoryRoute =
@@ -90,53 +123,34 @@ const AuthSettingsPurchaseHistoryRoute =
     path: '/purchase-history',
     getParentRoute: () => AuthSettingsRoute,
   } as any)
-const AuthSettingsLocationsRoute = AuthSettingsLocationsRouteImport.update({
-  id: '/locations',
-  path: '/locations',
+const AuthSettingsTagsRoute = AuthSettingsTagsRouteImport.update({
+  id: '/tags',
+  path: '/tags',
   getParentRoute: () => AuthSettingsRoute,
-} as any)
-const AuthSettingsCategoriesRoute = AuthSettingsCategoriesRouteImport.update({
-  id: '/categories',
-  path: '/categories',
-  getParentRoute: () => AuthSettingsRoute,
-} as any)
-const AuthSettingsArchivedItemsRoute =
-  AuthSettingsArchivedItemsRouteImport.update({
-    id: '/archived-items',
-    path: '/archived-items',
-    getParentRoute: () => AuthSettingsRoute,
-  } as any)
-const AuthLocationsLocationIdRoute = AuthLocationsLocationIdRouteImport.update({
-  id: '/locations/$locationId',
-  path: '/locations/$locationId',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
-  id: '/items/new',
-  path: '/items/new',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthItemsItemIdRoute = AuthItemsItemIdRouteImport.update({
-  id: '/items/$itemId',
-  path: '/items/$itemId',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthItemsItemIdEditRoute = AuthItemsItemIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => AuthItemsItemIdRoute,
 } as any)
 const AuthItemsItemIdConsumeRoute = AuthItemsItemIdConsumeRouteImport.update({
   id: '/consume',
   path: '/consume',
   getParentRoute: () => AuthItemsItemIdRoute,
 } as any)
+const AuthItemsItemIdEditRoute = AuthItemsItemIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => AuthItemsItemIdRoute,
+} as any)
+const AuthLocationsLocationIdEditRoute =
+  AuthLocationsLocationIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AuthLocationsLocationIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthIndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/calendar': typeof AuthCalendarRoute
+  '/map': typeof AuthMapRoute
   '/meal-plan': typeof AuthMealPlanRoute
   '/recipes': typeof AuthRecipesRoute
   '/settings': typeof AuthSettingsRouteWithChildren
@@ -144,7 +158,7 @@ export interface FileRoutesByFullPath {
   '/stats': typeof AuthStatsRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
-  '/locations/$locationId': typeof AuthLocationsLocationIdRoute
+  '/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
@@ -152,11 +166,13 @@ export interface FileRoutesByFullPath {
   '/settings/tags': typeof AuthSettingsTagsRoute
   '/items/$itemId/consume': typeof AuthItemsItemIdConsumeRoute
   '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute
+  '/locations/$locationId/edit': typeof AuthLocationsLocationIdEditRoute
 }
 export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/calendar': typeof AuthCalendarRoute
+  '/map': typeof AuthMapRoute
   '/meal-plan': typeof AuthMealPlanRoute
   '/recipes': typeof AuthRecipesRoute
   '/settings': typeof AuthSettingsRouteWithChildren
@@ -165,7 +181,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthIndexRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
-  '/locations/$locationId': typeof AuthLocationsLocationIdRoute
+  '/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
@@ -173,6 +189,7 @@ export interface FileRoutesByTo {
   '/settings/tags': typeof AuthSettingsTagsRoute
   '/items/$itemId/consume': typeof AuthItemsItemIdConsumeRoute
   '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute
+  '/locations/$locationId/edit': typeof AuthLocationsLocationIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -180,6 +197,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/_auth/calendar': typeof AuthCalendarRoute
+  '/_auth/map': typeof AuthMapRoute
   '/_auth/meal-plan': typeof AuthMealPlanRoute
   '/_auth/recipes': typeof AuthRecipesRoute
   '/_auth/settings': typeof AuthSettingsRouteWithChildren
@@ -188,7 +206,7 @@ export interface FileRoutesById {
   '/_auth/': typeof AuthIndexRoute
   '/_auth/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/_auth/items/new': typeof AuthItemsNewRoute
-  '/_auth/locations/$locationId': typeof AuthLocationsLocationIdRoute
+  '/_auth/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/_auth/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/_auth/settings/categories': typeof AuthSettingsCategoriesRoute
   '/_auth/settings/locations': typeof AuthSettingsLocationsRoute
@@ -196,6 +214,7 @@ export interface FileRoutesById {
   '/_auth/settings/tags': typeof AuthSettingsTagsRoute
   '/_auth/items/$itemId/consume': typeof AuthItemsItemIdConsumeRoute
   '/_auth/items/$itemId/edit': typeof AuthItemsItemIdEditRoute
+  '/_auth/locations/$locationId/edit': typeof AuthLocationsLocationIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -204,6 +223,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/calendar'
+    | '/map'
     | '/meal-plan'
     | '/recipes'
     | '/settings'
@@ -219,11 +239,13 @@ export interface FileRouteTypes {
     | '/settings/tags'
     | '/items/$itemId/consume'
     | '/items/$itemId/edit'
+    | '/locations/$locationId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/forgot-password'
     | '/login'
     | '/calendar'
+    | '/map'
     | '/meal-plan'
     | '/recipes'
     | '/settings'
@@ -240,12 +262,14 @@ export interface FileRouteTypes {
     | '/settings/tags'
     | '/items/$itemId/consume'
     | '/items/$itemId/edit'
+    | '/locations/$locationId/edit'
   id:
     | '__root__'
     | '/_auth'
     | '/forgot-password'
     | '/login'
     | '/_auth/calendar'
+    | '/_auth/map'
     | '/_auth/meal-plan'
     | '/_auth/recipes'
     | '/_auth/settings'
@@ -262,6 +286,7 @@ export interface FileRouteTypes {
     | '/_auth/settings/tags'
     | '/_auth/items/$itemId/consume'
     | '/_auth/items/$itemId/edit'
+    | '/_auth/locations/$locationId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -272,11 +297,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -286,11 +311,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/': {
@@ -300,32 +325,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/stats': {
-      id: '/_auth/stats'
-      path: '/stats'
-      fullPath: '/stats'
-      preLoaderRoute: typeof AuthStatsRouteImport
+    '/_auth/calendar': {
+      id: '/_auth/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AuthCalendarRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/shopping': {
-      id: '/_auth/shopping'
-      path: '/shopping'
-      fullPath: '/shopping'
-      preLoaderRoute: typeof AuthShoppingRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/settings': {
-      id: '/_auth/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthSettingsRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/recipes': {
-      id: '/_auth/recipes'
-      path: '/recipes'
-      fullPath: '/recipes'
-      preLoaderRoute: typeof AuthRecipesRouteImport
+    '/_auth/map': {
+      id: '/_auth/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof AuthMapRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/meal-plan': {
@@ -335,60 +346,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthMealPlanRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/calendar': {
-      id: '/_auth/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof AuthCalendarRouteImport
+    '/_auth/recipes': {
+      id: '/_auth/recipes'
+      path: '/recipes'
+      fullPath: '/recipes'
+      preLoaderRoute: typeof AuthRecipesRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/settings/tags': {
-      id: '/_auth/settings/tags'
-      path: '/tags'
-      fullPath: '/settings/tags'
-      preLoaderRoute: typeof AuthSettingsTagsRouteImport
-      parentRoute: typeof AuthSettingsRoute
-    }
-    '/_auth/settings/purchase-history': {
-      id: '/_auth/settings/purchase-history'
-      path: '/purchase-history'
-      fullPath: '/settings/purchase-history'
-      preLoaderRoute: typeof AuthSettingsPurchaseHistoryRouteImport
-      parentRoute: typeof AuthSettingsRoute
-    }
-    '/_auth/settings/locations': {
-      id: '/_auth/settings/locations'
-      path: '/locations'
-      fullPath: '/settings/locations'
-      preLoaderRoute: typeof AuthSettingsLocationsRouteImport
-      parentRoute: typeof AuthSettingsRoute
-    }
-    '/_auth/settings/categories': {
-      id: '/_auth/settings/categories'
-      path: '/categories'
-      fullPath: '/settings/categories'
-      preLoaderRoute: typeof AuthSettingsCategoriesRouteImport
-      parentRoute: typeof AuthSettingsRoute
-    }
-    '/_auth/settings/archived-items': {
-      id: '/_auth/settings/archived-items'
-      path: '/archived-items'
-      fullPath: '/settings/archived-items'
-      preLoaderRoute: typeof AuthSettingsArchivedItemsRouteImport
-      parentRoute: typeof AuthSettingsRoute
-    }
-    '/_auth/locations/$locationId': {
-      id: '/_auth/locations/$locationId'
-      path: '/locations/$locationId'
-      fullPath: '/locations/$locationId'
-      preLoaderRoute: typeof AuthLocationsLocationIdRouteImport
+    '/_auth/settings': {
+      id: '/_auth/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthSettingsRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/items/new': {
-      id: '/_auth/items/new'
-      path: '/items/new'
-      fullPath: '/items/new'
-      preLoaderRoute: typeof AuthItemsNewRouteImport
+    '/_auth/shopping': {
+      id: '/_auth/shopping'
+      path: '/shopping'
+      fullPath: '/shopping'
+      preLoaderRoute: typeof AuthShoppingRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/stats': {
+      id: '/_auth/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof AuthStatsRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/items/$itemId': {
@@ -398,12 +381,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthItemsItemIdRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/items/$itemId/edit': {
-      id: '/_auth/items/$itemId/edit'
-      path: '/edit'
-      fullPath: '/items/$itemId/edit'
-      preLoaderRoute: typeof AuthItemsItemIdEditRouteImport
-      parentRoute: typeof AuthItemsItemIdRoute
+    '/_auth/items/new': {
+      id: '/_auth/items/new'
+      path: '/items/new'
+      fullPath: '/items/new'
+      preLoaderRoute: typeof AuthItemsNewRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/locations/$locationId': {
+      id: '/_auth/locations/$locationId'
+      path: '/locations/$locationId'
+      fullPath: '/locations/$locationId'
+      preLoaderRoute: typeof AuthLocationsLocationIdRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/settings/archived-items': {
+      id: '/_auth/settings/archived-items'
+      path: '/archived-items'
+      fullPath: '/settings/archived-items'
+      preLoaderRoute: typeof AuthSettingsArchivedItemsRouteImport
+      parentRoute: typeof AuthSettingsRoute
+    }
+    '/_auth/settings/categories': {
+      id: '/_auth/settings/categories'
+      path: '/categories'
+      fullPath: '/settings/categories'
+      preLoaderRoute: typeof AuthSettingsCategoriesRouteImport
+      parentRoute: typeof AuthSettingsRoute
+    }
+    '/_auth/settings/locations': {
+      id: '/_auth/settings/locations'
+      path: '/locations'
+      fullPath: '/settings/locations'
+      preLoaderRoute: typeof AuthSettingsLocationsRouteImport
+      parentRoute: typeof AuthSettingsRoute
+    }
+    '/_auth/settings/purchase-history': {
+      id: '/_auth/settings/purchase-history'
+      path: '/purchase-history'
+      fullPath: '/settings/purchase-history'
+      preLoaderRoute: typeof AuthSettingsPurchaseHistoryRouteImport
+      parentRoute: typeof AuthSettingsRoute
+    }
+    '/_auth/settings/tags': {
+      id: '/_auth/settings/tags'
+      path: '/tags'
+      fullPath: '/settings/tags'
+      preLoaderRoute: typeof AuthSettingsTagsRouteImport
+      parentRoute: typeof AuthSettingsRoute
     }
     '/_auth/items/$itemId/consume': {
       id: '/_auth/items/$itemId/consume'
@@ -411,6 +436,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/items/$itemId/consume'
       preLoaderRoute: typeof AuthItemsItemIdConsumeRouteImport
       parentRoute: typeof AuthItemsItemIdRoute
+    }
+    '/_auth/items/$itemId/edit': {
+      id: '/_auth/items/$itemId/edit'
+      path: '/edit'
+      fullPath: '/items/$itemId/edit'
+      preLoaderRoute: typeof AuthItemsItemIdEditRouteImport
+      parentRoute: typeof AuthItemsItemIdRoute
+    }
+    '/_auth/locations/$locationId/edit': {
+      id: '/_auth/locations/$locationId/edit'
+      path: '/edit'
+      fullPath: '/locations/$locationId/edit'
+      preLoaderRoute: typeof AuthLocationsLocationIdEditRouteImport
+      parentRoute: typeof AuthLocationsLocationIdRoute
     }
   }
 }
@@ -449,8 +488,23 @@ const AuthItemsItemIdRouteWithChildren = AuthItemsItemIdRoute._addFileChildren(
   AuthItemsItemIdRouteChildren,
 )
 
+interface AuthLocationsLocationIdRouteChildren {
+  AuthLocationsLocationIdEditRoute: typeof AuthLocationsLocationIdEditRoute
+}
+
+const AuthLocationsLocationIdRouteChildren: AuthLocationsLocationIdRouteChildren =
+  {
+    AuthLocationsLocationIdEditRoute: AuthLocationsLocationIdEditRoute,
+  }
+
+const AuthLocationsLocationIdRouteWithChildren =
+  AuthLocationsLocationIdRoute._addFileChildren(
+    AuthLocationsLocationIdRouteChildren,
+  )
+
 interface AuthRouteChildren {
   AuthCalendarRoute: typeof AuthCalendarRoute
+  AuthMapRoute: typeof AuthMapRoute
   AuthMealPlanRoute: typeof AuthMealPlanRoute
   AuthRecipesRoute: typeof AuthRecipesRoute
   AuthSettingsRoute: typeof AuthSettingsRouteWithChildren
@@ -459,11 +513,12 @@ interface AuthRouteChildren {
   AuthIndexRoute: typeof AuthIndexRoute
   AuthItemsItemIdRoute: typeof AuthItemsItemIdRouteWithChildren
   AuthItemsNewRoute: typeof AuthItemsNewRoute
-  AuthLocationsLocationIdRoute: typeof AuthLocationsLocationIdRoute
+  AuthLocationsLocationIdRoute: typeof AuthLocationsLocationIdRouteWithChildren
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCalendarRoute: AuthCalendarRoute,
+  AuthMapRoute: AuthMapRoute,
   AuthMealPlanRoute: AuthMealPlanRoute,
   AuthRecipesRoute: AuthRecipesRoute,
   AuthSettingsRoute: AuthSettingsRouteWithChildren,
@@ -472,7 +527,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthIndexRoute: AuthIndexRoute,
   AuthItemsItemIdRoute: AuthItemsItemIdRouteWithChildren,
   AuthItemsNewRoute: AuthItemsNewRoute,
-  AuthLocationsLocationIdRoute: AuthLocationsLocationIdRoute,
+  AuthLocationsLocationIdRoute: AuthLocationsLocationIdRouteWithChildren,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
