@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
+import { OpenedAlertBadge } from "@/components/atoms/OpenedAlertBadge";
 import { Spinner } from "@/components/atoms/Spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -17,6 +18,9 @@ interface ItemCardProps {
   categoryName?: string | undefined;
   locationName?: string | undefined;
   warningDays?: number;
+  /** 開封後使用推奨日数（アイテム個別設定とカテゴリ既定値を呼び出し元で解決した値、
+   *  {@link resolveOpenedAlertThresholdDays}）。未設定なら開封アラートは表示しない（#752）。 */
+  openedAlertThresholdDays?: number | null;
   onQuickConsume?: (item: Item) => void;
   isQuickConsuming?: boolean;
   /** 他アイテムのクイック消費が処理中の間、このボタンを無効化する（#571）。 */
@@ -36,6 +40,7 @@ export const ItemCard = ({
   categoryName,
   locationName,
   warningDays,
+  openedAlertThresholdDays,
   onQuickConsume,
   isQuickConsuming = false,
   quickConsumeDisabled = false,
@@ -152,6 +157,7 @@ export const ItemCard = ({
             warningDays={warningDays}
             expiryType={item.expiry_type}
           />
+          <OpenedAlertBadge openedAt={item.opened_at} thresholdDays={openedAlertThresholdDays} />
         </div>
       </CardFooter>
     </Card>

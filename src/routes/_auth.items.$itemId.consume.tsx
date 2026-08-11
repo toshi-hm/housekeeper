@@ -48,6 +48,8 @@ interface ConsumeLotUndoPayload {
   itemId: string;
   unitsBefore: number;
   openedRemainingBefore: number | null;
+  /** ロットが消費前に持っていた opened_at。undo時に復元する（#752）。 */
+  openedAtBefore: string | null;
   unitsAfter: number;
   openedRemainingAfter: number | null;
   logId: string | null;
@@ -82,6 +84,7 @@ export const ItemConsumePage = () => {
           itemId: payload.itemId,
           unitsBefore: payload.unitsBefore,
           openedRemainingBefore: payload.openedRemainingBefore,
+          openedAtBefore: payload.openedAtBefore,
           unitsAfter: payload.unitsAfter,
           openedRemainingAfter: payload.openedRemainingAfter,
           logId: payload.logId,
@@ -207,6 +210,7 @@ export const ItemConsumePage = () => {
         itemId: item.id,
         unitsBefore: selectedLot.units,
         openedRemainingBefore: selectedLot.opened_remaining ?? null,
+        openedAtBefore: selectedLot.opened_at ?? null,
         unitsAfter: result.units,
         openedRemainingAfter: result.opened_remaining ?? null,
         logId: result._logId ?? null,
@@ -232,6 +236,7 @@ export const ItemConsumePage = () => {
         itemId: item.id,
         unitsBefore: selectedLot.units,
         openedRemainingBefore: selectedLot.opened_remaining ?? null,
+        openedAtBefore: selectedLot.opened_at ?? null,
         unitsAfter: result.units,
         openedRemainingAfter: result.opened_remaining ?? null,
         logId: result._logId ?? null,

@@ -464,6 +464,7 @@ describe("ItemConsumePage consume undo", () => {
       itemId: baseItem.id,
       unitsBefore: baseLot.units,
       openedRemainingBefore: baseLot.opened_remaining ?? null,
+      openedAtBefore: baseLot.opened_at ?? null,
       unitsAfter: baseLot.units,
       openedRemainingAfter: baseLot.opened_remaining ?? null,
       logId: "log-1",

@@ -144,6 +144,10 @@ export const normalizeCreateValues = (values: ItemFormValues) => ({
     values.minimum_stock !== undefined && values.minimum_stock !== null
       ? values.minimum_stock
       : null,
+  days_use_after_opening:
+    values.days_use_after_opening !== undefined && values.days_use_after_opening !== null
+      ? values.days_use_after_opening
+      : null,
   auto_reorder: values.auto_reorder ?? false,
   reorder_threshold:
     values.reorder_threshold !== undefined && values.reorder_threshold !== null
@@ -189,6 +193,12 @@ export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
     normalized.minimum_stock =
       values.minimum_stock !== undefined && values.minimum_stock !== null
         ? values.minimum_stock
+        : null;
+  }
+  if (hasOwn(values, "days_use_after_opening")) {
+    normalized.days_use_after_opening =
+      values.days_use_after_opening !== undefined && values.days_use_after_opening !== null
+        ? values.days_use_after_opening
         : null;
   }
   if (hasOwn(values, "auto_reorder") && values.auto_reorder !== undefined) {
@@ -321,7 +331,17 @@ export const createItem = async ({
   const normalized = normalizeCreateValues(values);
   const { data, error } = await supabase
     .from("items")
-    .insert({ ...normalized, user_id: userData.user.id })
+    .insert({
+      ...normalized,
+      user_id: userData.user.id,
+      // #752: mirrors the item_lots_set_opened_at DB trigger, which stamps
+      // opened_at on INSERT when the lot is created already-open. This is a
+      // brand-new item, so there's no prior state to transition from — a
+      // non-null opened_remaining at creation time means "created already
+      // open," and "now" is the only available approximation of when that
+      // happened.
+      opened_at: normalized.opened_remaining !== null ? new Date().toISOString() : null,
+    })
     .select()
     .single();
   if (error) throw error;

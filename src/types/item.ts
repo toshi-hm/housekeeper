@@ -6,6 +6,9 @@ export interface Category {
   name: string;
   color?: string | null;
   icon?: string | null;
+  /** 開封後使用推奨日数の既定値。items.days_use_after_opening が未設定の
+   *  アイテムはこの値にフォールバックする（#752）。 */
+  days_use_after_opening?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +64,12 @@ export interface Item {
    *  null = 未設定・区別なし（既存アイテムは全て null のままで、これまで通りの
    *  一律の期限扱いを維持する）。 */
   expiry_type?: ExpiryType | null;
+  /** item_lots からの集計値: 現在開封中のロットのうち最も古い開封日時。
+   *  未開封（またはロットなし）なら null（#752）。 */
+  opened_at?: string | null;
+  /** 開封後使用推奨日数（個別上書き）。null = category.days_use_after_opening
+   *  にフォールバック（#752）。 */
+  days_use_after_opening?: number | null;
   notes?: string | null;
   image_path?: string | null;
   minimum_stock?: number | null;
@@ -98,6 +107,9 @@ export const itemFormSchema = z.object({
   notes: z.string().optional(),
   image_path: z.string().optional(),
   minimum_stock: z.coerce.number().int().min(0).nullable().optional(),
+  /** 開封後使用推奨日数（個別上書き）。任意入力、未設定 = null
+   *  （category.days_use_after_opening にフォールバック、#752）。 */
+  days_use_after_opening: z.coerce.number().int().positive().nullable().optional(),
   /** 1点あたりの購入単価（円）。任意入力、未設定 = null。 */
   unit_price: z.coerce.number().int().min(0).nullable().optional(),
   /** 購入先の店舗名。任意入力、未設定 = null（#697）。 */
@@ -120,6 +132,9 @@ export const itemLotSchema = z.object({
   expiry_date: z.string().nullable().optional(),
   /** 購入先の店舗名。null = 未設定（後方互換, #697）。 */
   store_name: z.string().nullable().optional(),
+  /** このロットが最初に開封された日時。DBトリガーが opened_remaining の
+   *  null <-> 非null 遷移から自動的に設定/クリアする（#752）。 */
+  opened_at: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -279,6 +294,52 @@ export const getExpirySeverity = (
   if (status === "expired") return expiryType === "best_before" ? "caution" : "danger";
   if (status === "expiring-soon") return "warning";
   return status;
+};
+
+/**
+ * 開封後使用推奨日数の有効値を解決する (#752)。
+ * アイテム個別の設定（`item.days_use_after_opening`）が優先され、未設定なら
+ * カテゴリの既定値（`category.days_use_after_opening`）にフォールバックする。
+ * どちらも未設定なら `null`（開封後アラート機能自体を使わない）。
+ */
+export const resolveOpenedAlertThresholdDays = (
+  item: Pick<Item, "days_use_after_opening">,
+  category?: Pick<Category, "days_use_after_opening"> | null,
+): number | null => item.days_use_after_opening ?? category?.days_use_after_opening ?? null;
+
+/**
+ * `since` から `now` までの経過日数（切り捨て）。無効な日付文字列なら `null`。
+ * `now` は明示的に渡さない限り呼び出し時点の `new Date()`（呼び出し元での
+ * 評価に委ねるため、この関数自体は純関数のまま — コンポーネントの render 内で
+ * 直接 `Date.now()`/`new Date()` を呼ぶと react-hooks/purity lint に引っかかる
+ * ため、バッジ側はこのヘルパー経由で日数を得る、#752）。
+ */
+export const getElapsedDays = (
+  since: string | null | undefined,
+  now: Date = new Date(),
+): number | null => {
+  if (!since) return null;
+  const sinceMs = new Date(since).getTime();
+  if (Number.isNaN(sinceMs)) return null;
+  return Math.floor((now.getTime() - sinceMs) / (1000 * 60 * 60 * 24));
+};
+
+/**
+ * 開封後アラートを表示すべきか判定する純関数 (#752)。
+ * `openedAt`（開封日時）と有効な推奨日数がともに設定されていて、
+ * 経過日数がその日数以上であれば `true`。未開封（`openedAt` が null）や
+ * 推奨日数が未設定（`thresholdDays` が null）の場合は常に `false`
+ * （＝賞味期限/消費期限バッジとは独立した別枠のアラートなので、判定材料が
+ * 揃わない限り何も表示しない）。
+ */
+export const isOpenedAlertDue = (
+  openedAt: string | null | undefined,
+  thresholdDays: number | null | undefined,
+  now: Date = new Date(),
+): boolean => {
+  if (!thresholdDays) return false;
+  const elapsedDays = getElapsedDays(openedAt, now);
+  return elapsedDays !== null && elapsedDays >= thresholdDays;
 };
 
 /**

@@ -26,6 +26,7 @@ import { z } from "zod";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ItemImage } from "@/components/atoms/ItemImage";
+import { OpenedAlertBadge } from "@/components/atoms/OpenedAlertBadge";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { TagBadge } from "@/components/atoms/TagBadge";
 import { DeletionReasonDialog } from "@/components/molecules/DeletionReasonDialog";
@@ -49,7 +50,12 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import { computeInventoryValue } from "@/lib/inventoryValue";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
-import { getExpiryStatus, getLotRemainingAmount, type ItemDeletionReason } from "@/types/item";
+import {
+  getExpiryStatus,
+  getLotRemainingAmount,
+  type ItemDeletionReason,
+  resolveOpenedAlertThresholdDays,
+} from "@/types/item";
 import { computeConsumptionPaceForecast, computeItemConsumptionPace } from "@/types/stats";
 
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
@@ -402,6 +408,10 @@ const ItemDetailPage = () => {
                 expiryDate={item.expiry_date}
                 warningDays={userSettings?.expiry_warning_days}
                 expiryType={item.expiry_type}
+              />
+              <OpenedAlertBadge
+                openedAt={item.opened_at}
+                thresholdDays={resolveOpenedAlertThresholdDays(item, category)}
               />
             </div>
             {itemTags.length > 0 && (

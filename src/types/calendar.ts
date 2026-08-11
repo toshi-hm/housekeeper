@@ -4,6 +4,8 @@ export interface PendingLotRemoval {
   itemName: string;
   units: number;
   openedRemaining: number | null;
+  /** ロットがゼロ化される前に持っていた opened_at。undo時に復元する（#752）。 */
+  openedAt: string | null;
   logId: string | null;
 }
 

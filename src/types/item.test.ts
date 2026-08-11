@@ -11,8 +11,10 @@ import {
   getLotRemainingAmount,
   isAlreadyInStock,
   isItemUnverified,
+  isOpenedAlertDue,
   itemFormSchema,
   itemLotSchema,
+  resolveOpenedAlertThresholdDays,
   roundFloat,
   STOCKTAKE_NEW_ITEM_GRACE_DAYS,
   targetsExistingItem,
@@ -253,6 +255,66 @@ describe("roundFloat", () => {
   test("leaves already-precise values unchanged", () => {
     expect(roundFloat(1.5)).toBe(1.5);
     expect(roundFloat(0)).toBe(0);
+  });
+});
+
+// --- resolveOpenedAlertThresholdDays / isOpenedAlertDue (#752) ---
+
+describe("resolveOpenedAlertThresholdDays", () => {
+  test("item-level override takes precedence over the category default", () => {
+    expect(
+      resolveOpenedAlertThresholdDays(
+        { days_use_after_opening: 5 },
+        { days_use_after_opening: 30 },
+      ),
+    ).toBe(5);
+  });
+
+  test("falls back to the category default when the item has none set", () => {
+    expect(
+      resolveOpenedAlertThresholdDays(
+        { days_use_after_opening: null },
+        { days_use_after_opening: 14 },
+      ),
+    ).toBe(14);
+  });
+
+  test("returns null when neither item nor category has a value", () => {
+    expect(
+      resolveOpenedAlertThresholdDays(
+        { days_use_after_opening: null },
+        { days_use_after_opening: null },
+      ),
+    ).toBeNull();
+    expect(resolveOpenedAlertThresholdDays({ days_use_after_opening: null }, null)).toBeNull();
+    expect(resolveOpenedAlertThresholdDays({ days_use_after_opening: null })).toBeNull();
+  });
+});
+
+describe("isOpenedAlertDue", () => {
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86400000).toISOString();
+
+  test("false when never opened", () => {
+    expect(isOpenedAlertDue(null, 7)).toBe(false);
+    expect(isOpenedAlertDue(undefined, 7)).toBe(false);
+  });
+
+  test("false when no threshold is configured", () => {
+    expect(isOpenedAlertDue(daysAgo(30), null)).toBe(false);
+    expect(isOpenedAlertDue(daysAgo(30), undefined)).toBe(false);
+  });
+
+  test("false before the threshold has elapsed", () => {
+    expect(isOpenedAlertDue(daysAgo(2), 7)).toBe(false);
+  });
+
+  test("true once the threshold has elapsed, inclusive of the exact day", () => {
+    expect(isOpenedAlertDue(daysAgo(7), 7)).toBe(true);
+    expect(isOpenedAlertDue(daysAgo(10), 7)).toBe(true);
+  });
+
+  test("false for an invalid opened_at string", () => {
+    expect(isOpenedAlertDue("not-a-date", 7)).toBe(false);
   });
 });
 
