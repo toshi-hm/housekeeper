@@ -24,20 +24,19 @@ interface Point {
 
 const newId = (): string => crypto.randomUUID();
 
-const toolLabelKey = {
-  select: "mapToolSelect",
-  wall: "mapToolWall",
-  rectangle: "mapToolRectangle",
-  circle: "mapToolCircle",
-  label: "mapToolLabel",
-} as const satisfies Record<FloorPlanTool, string>;
-
 export const FloorPlanEditor = ({
   initialDocument,
   onSave,
   isSaving = false,
 }: FloorPlanEditorProps) => {
   const { t } = useTranslation("common");
+  const toolLabel = {
+    select: t("mapToolSelect"),
+    wall: t("mapToolWall"),
+    rectangle: t("mapToolRectangle"),
+    circle: t("mapToolCircle"),
+    label: t("mapToolLabel"),
+  } as const satisfies Record<FloorPlanTool, string>;
   const [state, dispatch] = useReducer(
     floorPlanEditorReducer,
     initialDocument,
@@ -115,7 +114,7 @@ export const FloorPlanEditor = ({
             size="sm"
             onClick={() => setTool(value)}
           >
-            {t(toolLabelKey[value])}
+            {toolLabel[value]}
           </Button>
         ))}
         <Button

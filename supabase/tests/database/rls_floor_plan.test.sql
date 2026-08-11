@@ -1,7 +1,7 @@
 -- RLS regression tests for floor plans and item placements.
 begin;
 
-select plan(10);
+select plan(9);
 
 insert into auth.users (id, email)
 values

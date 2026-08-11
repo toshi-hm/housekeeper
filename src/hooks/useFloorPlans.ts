@@ -9,7 +9,7 @@ import {
   type FloorPlanItemPlacement,
 } from "@/types/floorPlan";
 
-export const FLOOR_PLANS_KEY = ["floor-plans"] as const;
+const FLOOR_PLANS_KEY = ["floor-plans"] as const;
 
 const getUserId = async (): Promise<string> => {
   const { data, error } = await supabase.auth.getUser();
@@ -151,21 +151,6 @@ export const useUpsertFloorPlanPlacement = () => {
       void queryClient.invalidateQueries({
         queryKey: ["floor-plan-placements", placement.floor_plan_id],
       });
-    },
-  });
-};
-
-export const useDeleteFloorPlanPlacement = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, floorPlanId }: { id: string; floorPlanId: string }) => {
-      requireOnline();
-      const { error } = await supabase.from("floor_plan_item_placements").delete().eq("id", id);
-      if (error) throw error;
-      return floorPlanId;
-    },
-    onSuccess: (floorPlanId) => {
-      void queryClient.invalidateQueries({ queryKey: ["floor-plan-placements", floorPlanId] });
     },
   });
 };

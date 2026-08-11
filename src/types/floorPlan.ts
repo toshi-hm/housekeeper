@@ -15,13 +15,13 @@ const baseShapeSchema = z.object({
   label: z.string().max(80).nullable().default(null),
 });
 
-export const floorPlanShapeSchema = z.discriminatedUnion("kind", [
+const floorPlanShapeSchema = z.discriminatedUnion("kind", [
   baseShapeSchema.extend({ kind: z.literal("rectangle") }),
   baseShapeSchema.extend({ kind: z.literal("circle") }),
   baseShapeSchema.extend({ kind: z.literal("label") }),
 ]);
 
-export const floorPlanWallSchema = z.object({
+const floorPlanWallSchema = z.object({
   id: z.string().min(1),
   start: pointSchema,
   end: pointSchema,
