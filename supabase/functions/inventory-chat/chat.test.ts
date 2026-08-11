@@ -126,6 +126,30 @@ Deno.test("buildContents - drops a stray unpaired trailing user turn from histor
   }
 });
 
+Deno.test("buildContents - truncation combined with a trailing stray user turn still alternates starting with user (#817)", () => {
+  // 9 turns (odd length, > MAX_HISTORY_TURNS=8), ending in an unpaired
+  // trailing user turn — slicing the last 8 alone would land on "model"
+  // (t1's model reply), so this exercises the leading-role fixup on top of
+  // the #554 same-role collapse.
+  const history: { role: "user" | "model"; text: string }[] = [
+    { role: "user", text: "u1" },
+    { role: "model", text: "m1" },
+    { role: "user", text: "u2" },
+    { role: "model", text: "m2" },
+    { role: "user", text: "u3" },
+    { role: "model", text: "m3" },
+    { role: "user", text: "u4" },
+    { role: "model", text: "m4" },
+    { role: "user", text: "u5" },
+  ];
+  const contents = buildContents("new message", history);
+  assert.strictEqual(contents[0].role, "user");
+  for (let i = 1; i < contents.length; i++) {
+    assert.notStrictEqual(contents[i].role, contents[i - 1].role);
+  }
+  assert.strictEqual(contents[contents.length - 1].parts[0].text, "new message");
+});
+
 Deno.test("buildContents - collapses consecutive same-role turns anywhere in history", () => {
   const contents = buildContents("new", [
     { role: "user", text: "a" },
