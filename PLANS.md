@@ -606,12 +606,12 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > ページトップの AI ボタンからチャットで在庫を質問できるようにする。設計: `docs/specs/features/inventory-chat.md`（親 Issue: #423）
 
-- [ ] 設計ドキュメント + PLANS.md 更新 <!-- issue:#424 -->
-- [ ] Edge Function `inventory-chat` 新設（Gemini `gemini-2.5-flash` / RLS スコープ） <!-- issue:#425 -->
-- [ ] `useInventoryChat` hook + 型 / Zod <!-- issue:#426 -->
-- [ ] チャット UI（`ChatBubble` / `ChatComposer` / `InventoryChatPanel` + Story） <!-- issue:#427 -->
-- [ ] レイアウト統合（AI ボタン）+ i18n `chat` 名前空間 <!-- issue:#428 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#429 -->
+- [x] 設計ドキュメント + PLANS.md 更新 <!-- issue:#424 -->
+- [x] Edge Function `inventory-chat` 新設（Gemini `gemini-2.5-flash` / RLS スコープ） <!-- issue:#425 -->
+- [x] `useInventoryChat` hook + 型 / Zod <!-- issue:#426 -->
+- [x] チャット UI（`ChatBubble` / `ChatComposer` / `InventoryChatPanel` + Story） <!-- issue:#427 -->
+- [x] レイアウト統合（AI ボタン）+ i18n `chat` 名前空間 <!-- issue:#428 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#429 -->
 
 ### v1.6 — 購入先（店舗）記録と店舗別価格比較
 
