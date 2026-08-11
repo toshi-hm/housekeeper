@@ -7,6 +7,7 @@ import { FloorPlanEditor } from "@/components/organisms/FloorPlanEditor";
 import { Button } from "@/components/ui/button";
 import { useFloorPlan, useUpsertFloorPlan } from "@/hooks/useFloorPlans";
 import { useStorageLocations } from "@/hooks/useMasterData";
+import { FloorPlanConflictError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import { createEmptyFloorPlanDocument } from "@/types/floorPlan";
 
@@ -16,7 +17,12 @@ const FloorPlanEditorPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: locations = [], isLoading: locationsLoading } = useStorageLocations();
-  const { data: floorPlan, isLoading: floorPlanLoading, isError } = useFloorPlan(locationId);
+  const {
+    data: floorPlan,
+    isLoading: floorPlanLoading,
+    isError,
+    refetch: refetchFloorPlan,
+  } = useFloorPlan(locationId);
   const saveFloorPlan = useUpsertFloorPlan();
   const location = locations.find((item) => item.id === locationId);
 
@@ -49,6 +55,7 @@ const FloorPlanEditorPage = () => {
         </div>
       </div>
       <FloorPlanEditor
+        key={`${floorPlan?.id ?? "new"}:${floorPlan?.revision ?? 0}`}
         initialDocument={floorPlan?.document ?? createEmptyFloorPlanDocument()}
         isSaving={saveFloorPlan.isPending}
         onSave={(document) => {
@@ -65,7 +72,20 @@ const FloorPlanEditorPage = () => {
                 toast(t("saveSuccess"), "success");
                 void navigate({ to: "/locations/$locationId", params: { locationId } });
               },
-              onError: () => toast(t("unknownError"), "error"),
+              onError: (error) => {
+                if (error instanceof FloorPlanConflictError) {
+                  toast(t("mapFloorPlanConflict"), "error", {
+                    action: {
+                      label: t("mapReloadFloorPlan"),
+                      onClick: () => {
+                        void refetchFloorPlan();
+                      },
+                    },
+                  });
+                  return;
+                }
+                toast(t("unknownError"), "error");
+              },
             },
           );
         }}

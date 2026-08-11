@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { requireOnline } from "@/lib/requireOnline";
+import { FloorPlanConflictError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import {
   type FloorPlan,
@@ -99,8 +99,12 @@ export const useUpsertFloorPlan = () => {
             .eq("user_id", userId)
             .eq("revision", input.revision ?? 1)
         : supabase.from("floor_plans").insert(payload);
-      const { data, error } = await query.select().single();
+      const { data, error } = await query.select().maybeSingle();
       if (error) throw error;
+      if (!data) {
+        if (input.id) throw new FloorPlanConflictError();
+        throw new Error("Floor plan was not created");
+      }
       return parseFloorPlan(data);
     },
     onSuccess: (floorPlan) => {

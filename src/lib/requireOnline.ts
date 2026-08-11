@@ -15,6 +15,14 @@ export class ConcurrentUpdateError extends Error {
   }
 }
 
+/** Thrown when a floor plan update targets a stale revision. */
+export class FloorPlanConflictError extends Error {
+  readonly isFloorPlanConflict = true;
+  constructor() {
+    super("The floor plan was modified by another request");
+  }
+}
+
 export const requireOnline = () => {
   if (!navigator.onLine) throw new OfflineError();
 };
