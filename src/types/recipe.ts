@@ -1,4 +1,4 @@
-import { getLotRemainingAmount, type Item, type ItemLot } from "@/types/item";
+import { getExpiryStatus, getLotRemainingAmount, type Item, type ItemLot } from "@/types/item";
 
 interface Recipe {
   id: string;
@@ -113,4 +113,45 @@ export const checkRecipeStock = (
   }
 
   return { ok: shortages.length === 0, shortages };
+};
+
+export interface RecipeExpiryScore {
+  recipe: RecipeWithItems;
+  /** レシピの構成アイテムのうち、期限切れ/期限間近（`getExpiryStatus`）のものの件数 */
+  matchingExpiringCount: number;
+}
+
+/**
+ * 空き枠向けレコメンド（#715 meal-plan.md「空き枠のレコメンド」節）: ユーザーが
+ * 既に登録している `recipes` を、期限切れ/期限間近のアイテムをどれだけ含むかで
+ * スコアリングし、降順に並べる。外部 API 呼び出しを伴わない純粋関数。
+ *
+ * スコア0（該当アイテムなし）のレシピは結果から除外する — 「一致するレシピが
+ * 無い」ケースを呼び出し側が `length === 0` だけで判定できるようにするため。
+ * 構成アイテムを持たないレシピ（`items.length === 0`）も同様に除外される。
+ *
+ * `units > 0` のアイテムのみを対象とする（`WeeklyMealPlanner` の `urgentItems`
+ * フィルタと同じ基準）。ロットを経由しない直接消費フォールバック
+ * （`useConsumeItem.ts`）で在庫が0になったアイテムは `expiry_date` が
+ * 更新されないまま残ることがあり、`units` を見ずに期限日だけで判定すると
+ * 在庫が無いアイテムを含むレシピを「一致するレシピ」として誤って
+ * レコメンドしてしまう。
+ */
+export const rankRecipesByExpiringStock = (
+  recipes: readonly RecipeWithItems[],
+  itemsById: Record<string, Pick<Item, "expiry_date" | "units"> | undefined>,
+  warningDays?: number,
+): RecipeExpiryScore[] => {
+  return recipes
+    .map((recipe) => {
+      const matchingExpiringCount = recipe.items.filter((recipeItem) => {
+        const item = itemsById[recipeItem.item_id];
+        if (!item || item.units <= 0) return false;
+        const status = getExpiryStatus(item.expiry_date, warningDays);
+        return status === "expired" || status === "expiring-soon";
+      }).length;
+      return { recipe, matchingExpiringCount };
+    })
+    .filter((score) => score.matchingExpiringCount > 0)
+    .sort((a, b) => b.matchingExpiringCount - a.matchingExpiringCount);
 };

@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { checkRecipeStock, type RecipeStockItem } from "@/types/recipe";
+import {
+  checkRecipeStock,
+  rankRecipesByExpiringStock,
+  type RecipeStockItem,
+  type RecipeWithItems,
+} from "@/types/recipe";
 
 const makeItem = (overrides: Partial<RecipeStockItem> = {}): RecipeStockItem => ({
   id: "item-1",
@@ -139,5 +144,87 @@ describe("checkRecipeStock", () => {
       const result = checkRecipeStock([{ item_id: "item-1", amount: 150 }], items, {});
       expect(result.ok).toBe(true);
     });
+  });
+});
+
+describe("rankRecipesByExpiringStock", () => {
+  const makeRecipe = (overrides: Partial<RecipeWithItems> = {}): RecipeWithItems => ({
+    id: "recipe-1",
+    user_id: "user-1",
+    name: "レシピ",
+    created_at: "",
+    updated_at: "",
+    items: [],
+    ...overrides,
+  });
+
+  test("期限切れ/期限間近アイテムを含むレシピを一致件数の降順で返す", () => {
+    const recipes = [
+      makeRecipe({
+        id: "r1",
+        name: "1件一致",
+        items: [{ id: "ri1", recipe_id: "r1", item_id: "expired-1", amount: 1, created_at: "" }],
+      }),
+      makeRecipe({
+        id: "r2",
+        name: "2件一致",
+        items: [
+          { id: "ri2", recipe_id: "r2", item_id: "expired-1", amount: 1, created_at: "" },
+          { id: "ri3", recipe_id: "r2", item_id: "expiring-1", amount: 1, created_at: "" },
+        ],
+      }),
+    ];
+    const itemsById = {
+      "expired-1": { expiry_date: "2020-01-01", units: 1 },
+      "expiring-1": {
+        expiry_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        units: 1,
+      },
+    };
+
+    const result = rankRecipesByExpiringStock(recipes, itemsById);
+
+    expect(result.map((r) => r.recipe.id)).toEqual(["r2", "r1"]);
+    expect(result[0]?.matchingExpiringCount).toBe(2);
+    expect(result[1]?.matchingExpiringCount).toBe(1);
+  });
+
+  test("該当アイテムが無いレシピ(スコア0)は結果から除外する", () => {
+    const recipes = [
+      makeRecipe({
+        id: "r1",
+        items: [{ id: "ri1", recipe_id: "r1", item_id: "ok-1", amount: 1, created_at: "" }],
+      }),
+    ];
+    const itemsById = { "ok-1": { expiry_date: "2099-01-01", units: 1 } };
+
+    expect(rankRecipesByExpiringStock(recipes, itemsById)).toEqual([]);
+  });
+
+  test("在庫が0のアイテムは期限切れ/期限間近でも一致に数えない", () => {
+    const recipes = [
+      makeRecipe({
+        id: "r1",
+        items: [{ id: "ri1", recipe_id: "r1", item_id: "depleted-1", amount: 1, created_at: "" }],
+      }),
+    ];
+    const itemsById = { "depleted-1": { expiry_date: "2020-01-01", units: 0 } };
+
+    expect(rankRecipesByExpiringStock(recipes, itemsById)).toEqual([]);
+  });
+
+  test("構成アイテムが無いレシピは除外する", () => {
+    const recipes = [makeRecipe({ id: "r1", items: [] })];
+    expect(rankRecipesByExpiringStock(recipes, {})).toEqual([]);
+  });
+
+  test("アイテムが見つからない(削除済み等)場合はそのアイテムを一致に数えない", () => {
+    const recipes = [
+      makeRecipe({
+        id: "r1",
+        items: [{ id: "ri1", recipe_id: "r1", item_id: "missing", amount: 1, created_at: "" }],
+      }),
+    ];
+    expect(rankRecipesByExpiringStock(recipes, {})).toEqual([]);
   });
 });

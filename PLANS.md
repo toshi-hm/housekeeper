@@ -643,17 +643,17 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 > 設計: `docs/specs/features/meal-plan.md`（親 Issue: #715）。`recipes`/`recipe_items`・
 > `checkRecipeStock`/`useExecuteRecipe`・買い物リスト・期限アラートを統合する。
 
-- [ ] migration: `meal_plans` テーブル新設（`unique(user_id, planned_date)` + RLS）
-- [ ] `useMealPlans` / `useUpsertMealPlan` hook
-- [ ] `useExecuteMealPlan` hook（既存 `useExecuteRecipe` のラッパー + `executed_at` 更新）
-- [ ] 在庫確認・買い物リスト追加導線（`checkRecipeStock` / `useUpsertShoppingItem` 再利用）
-- [ ] `MealSlot` / `MealSlotRecipePicker` / `MealPlanStockWarning` molecule + Story
-- [ ] `WeeklyMealPlanner` organism + Story
-- [ ] 空き枠レコメンド（内部 `rankRecipesByExpiringStock` + 外部 `recipe-suggest` フォールバック、
+- [x] migration: `meal_plans` テーブル新設（`unique(user_id, planned_date)` + RLS）
+- [x] `useMealPlans` / `useUpsertMealPlan` hook
+- [x] `useExecuteMealPlan` hook（既存 `useExecuteRecipe` のラッパー + `executed_at` 更新）
+- [x] 在庫確認・買い物リスト追加導線（`checkRecipeStock` / `useUpsertShoppingItem` 再利用）
+- [x] `MealSlot` / `MealSlotRecipePicker` / `MealPlanStockWarning` molecule + Story
+- [x] `WeeklyMealPlanner` organism + Story
+- [x] 空き枠レコメンド（内部 `rankRecipesByExpiringStock` + 外部 `recipe-suggest` フォールバック、
       `MealPlanExpiryRecommendation` molecule + Story）
-- [ ] `/_auth/meal-plan` ルート + ダッシュボードからのショートカット
-- [ ] i18n `mealPlan` 名前空間
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [x] `/_auth/meal-plan` ルート + ダッシュボードからのショートカット
+- [x] i18n `mealPlan` 名前空間
+- [x] テスト / CI 整備と PR CI グリーン化
 
 ### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
 
