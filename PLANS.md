@@ -483,6 +483,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 | 2026-07-31 | 「Single user」制約を変更し、世帯（household）単位の多人数共有を実装する方針を承認（#64 / #159）。設計は `docs/specs/features/household-sharing.md` | ユーザー承認（issue #64/#159 対応の feature-proposal フロー） |
 | 2026-07-31 | レシート一括登録（#696）・購入先/店舗別価格比較（#697）を spec ドラフト済みとして Backlog から昇格                                                  | ユーザー承認（feature-proposal フロー）                       |
 | 2026-08-01 | 在庫優先の週間献立プランナー（#715）を spec ドラフト済みとして Backlog から昇格                                                                     | ユーザー承認（feature-proposal フロー）                       |
+| 2026-08-11 | 間取りマップ（v1.9）を追加。2D編集と3D参照を段階導入し、既存写真マップは互換維持 | ユーザー承認。2DはReact+SVG、3Dはthree+R3F、保存は意味モデルJSONB |
 
 ---
 
@@ -655,6 +656,22 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [x] i18n `mealPlan` 名前空間
 - [x] テスト / CI 整備と PR CI グリーン化
 
+### v1.9 — 間取りマップ（2D編集 + 3D参照）
+
+> 詳細: `docs/specs/features/floor-plan-map.md`、実装計画: `docs/floor-plan-map-plan.md`
+
+- [ ] 設計: 技術選定・状態遷移・テストマトリクス・運用方針を確定
+- [ ] migration: `floor_plans` と `floor_plan_item_placements`、RLS、index、updated_at trigger
+- [ ] `FloorPlanDocument` Zod schema、編集reducer、グリッド吸着、Undo/Redo
+- [ ] `useFloorPlan` / `useUpsertFloorPlan` / `useFloorPlanItemPlacements`
+- [ ] フッター左から3番目のマップタブ、`/_auth/map`、検索と詳細遷移
+- [ ] `FloorPlanViewer`（SVG）と写真マップの表示モード統合
+- [ ] `FloorPlanEditor`（線・矩形・ラベル・家具、キーボード操作）
+- [ ] 在庫検索・間取り上の配置・配置解除
+- [ ] `ThreeDFloorPlanViewer`（route-level lazy load、2Dフォールバック）
+- [ ] Storybook / axe / Chromatic / bun:test / Playwright / pgTAP
+- [ ] モックデータ・ローカル確認・性能計測・Sentry固定分類
+
 ### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
 
 > 「Single user」制約を変更する根本方針変更。設計: `docs/specs/features/household-sharing.md`
@@ -702,6 +719,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - `docs/specs/features/shopping-list.md`
 - `docs/specs/features/consumption-purchase.md`
 - `docs/specs/features/meal-plan.md`
+- `docs/specs/features/floor-plan-map.md`
 - `docs/specs/features/notifications.md`
 - `docs/specs/features/pwa.md`
 - `docs/specs/features/i18n.md`

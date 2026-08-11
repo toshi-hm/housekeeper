@@ -33,6 +33,8 @@ Supabase (Postgres 15+)
 | `push_subscriptions`       | Web Push 購読                           | v1.2 | user 削除で CASCADE                           |
 | `recipes`                  | レシピ/セット消費のテンプレート         | v1.3 | user 削除で CASCADE                           |
 | `recipe_items`             | レシピの構成アイテムと消費量            | v1.3 | recipe 削除で CASCADE / item 削除で CASCADE   |
+| `floor_plans`              | 保管場所に紐づく2D間取りの意味モデル     | v1.9 | storage_location / user 削除で CASCADE        |
+| `floor_plan_item_placements` | 間取り上の在庫配置                     | v1.9 | floor_plan / item / user 削除で CASCADE       |
 
 ---
 
@@ -163,6 +165,108 @@ create index storage_locations_user_id_idx on storage_locations(user_id);
 
 - `photo_path` は保管場所の「収納マップ」写真（`docs/specs/features/storage-location-map.md`）。
   未登録時は `null`
+
+## floor_plans（v1.9）
+
+2D間取りの正本。描画ライブラリ固有のJSONではなく、Zodで検証するアプリ固有の意味モデルを `document` に保持する。
+3D表示はこの文書をクライアント側で押し出して生成し、3D専用の正本は持たない。
+
+```sql
+create table floor_plans (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  storage_location_id uuid not null references storage_locations(id) on delete cascade,
+  name text not null check (name = btrim(name) and char_length(name) between 1 and 80),
+  schema_version integer not null default 1 check (schema_version = 1),
+  document jsonb not null,
+  revision integer not null default 1 check (revision > 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, storage_location_id)
+);
+
+create index floor_plans_user_id_idx on floor_plans(user_id);
+create index floor_plans_location_idx on floor_plans(storage_location_id);
+
+alter table floor_plans enable row level security;
+
+create policy "floor_plans_owner_all" on floor_plans for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from storage_locations location
+      where location.id = floor_plans.storage_location_id
+        and location.user_id = auth.uid()
+    )
+  );
+```
+
+`document` の必須構造は `src/types/floorPlan.ts` と `docs/specs/features/floor-plan-map.md` をSOTとする。
+DBはJSON内部の座標や図形種別を完全には検証せず、読み込み時・保存前にZodで検証する。未知の `schema_version` は表示せず、移行導線を出す。
+
+- 1保管場所につき1間取り。将来複数階や複数間取りが必要になった場合は `floor_plan_levels` を追加する。
+- `revision` は複数タブ／端末による上書きを検知するための楽観ロック値。
+- `storage_locations` 削除時は間取りもCASCADE。写真マップの `photo_path` と `items.pin_x/pin_y` は既存互換のため変更しない。
+
+## floor_plan_item_placements（v1.9）
+
+間取り文書と在庫の責務を分離する中間テーブル。アイテム名変更・削除後も文書を破壊しない。
+
+```sql
+create table floor_plan_item_placements (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  floor_plan_id uuid not null references floor_plans(id) on delete cascade,
+  item_id uuid not null references items(id) on delete cascade,
+  object_id text,
+  x numeric(12,3) not null check (x >= 0),
+  y numeric(12,3) not null check (y >= 0),
+  z numeric(12,3) not null default 0 check (z >= 0),
+  rotation numeric(8,3) not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (floor_plan_id, item_id)
+);
+
+create index floor_plan_item_placements_plan_idx
+  on floor_plan_item_placements(floor_plan_id);
+create index floor_plan_item_placements_item_idx
+  on floor_plan_item_placements(item_id);
+
+alter table floor_plan_item_placements enable row level security;
+
+create policy "floor_plan_item_placements_owner_all"
+  on floor_plan_item_placements for all
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1 from floor_plans plan
+      where plan.id = floor_plan_item_placements.floor_plan_id
+        and plan.user_id = auth.uid()
+    )
+    and exists (
+      select 1 from items item
+      where item.id = floor_plan_item_placements.item_id
+        and item.user_id = auth.uid()
+    )
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from floor_plans plan
+      where plan.id = floor_plan_item_placements.floor_plan_id
+        and plan.user_id = auth.uid()
+    )
+    and exists (
+      select 1 from items item
+      where item.id = floor_plan_item_placements.item_id
+        and item.user_id = auth.uid()
+    )
+  );
+```
+
+初期版は配置の保存を1アイテム単位のmutationとする。複数図形・配置・履歴を1トランザクションで保存する要件が出た場合は、`save_floor_plan` RPC（`security invoker`、expected revision検証、`FOR UPDATE`）へ移行する。
 
 ## custom_units（v1.1）
 

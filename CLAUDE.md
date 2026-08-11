@@ -54,6 +54,7 @@ Read the relevant spec file before implementing any feature.
 - Accessibility: docs/specs/accessibility.md
 - Household sharing (multi-user, planned): docs/specs/features/household-sharing.md
 - Receipt scan bulk registration (planned): docs/specs/features/receipt-scan.md
+- Floor-plan map (v1.9): docs/specs/features/floor-plan-map.md
 
 ## TODO / Progress
 

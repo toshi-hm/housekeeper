@@ -35,6 +35,15 @@ src/
 - templatesはchildren/slotでコンテンツを受け取るだけ（ロジックなし）
 - shadcn/uiコンポーネントはsrc/components/ui/に置き、Atomic分類しない
 
+### 間取りマップの分類
+
+- `FloorPlanShape` / `FloorPlanItemMarker` / `GridBackground`: atoms（propsのみ、図形の意味表示）
+- `FloorPlanToolbar` / `MapViewToggle` / `ItemPlacementRow`: molecules（atomsを組み合わせた操作UI）
+- `FloorPlanEditor` / `FloorPlanViewer` / `ThreeDFloorPlanViewer` / `MapSearchPanel`: organisms（編集状態、Query、描画境界を含む）
+- `MapPage` / `LocationMapPage` / `FloorPlanEditorPage`: pages（ルートから呼び出す最上位）
+
+3Dレンダラーは遅延ロードし、2DとDOMの在庫リストを正式な操作経路として残す。
+
 ## Routing (TanStack Router, file-based)
 
 ```
