@@ -11,6 +11,8 @@
     "src/hooks/**/*.ts",
     "src/lib/**/*.ts",
     "src/types/**/*.ts",
+    "src/components/molecules/ItemCard.tsx",
+    "src/components/molecules/ItemListRow.tsx",
     "!src/**/*.test.ts",
     "!src/**/*.test.tsx",
     "!src/**/*.stories.tsx",
@@ -18,6 +20,7 @@
   ],
   "ignorePatterns": [
     ".claude",
+    ".agents",
     "reports",
     "e2e",
     "supabase",
@@ -35,8 +38,8 @@
   },
   "thresholds": {
     "high": 80,
-    "low": 60,
-    "break": null
+    "low": 45,
+    "break": 35
   },
   "tempDirName": "reports/stryker-tmp",
   "cleanTempDir": true
