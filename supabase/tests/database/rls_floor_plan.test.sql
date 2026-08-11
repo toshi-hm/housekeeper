@@ -11,8 +11,13 @@ values
 insert into storage_locations (id, user_id, name)
 values ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Kitchen');
 
-insert into items (id, user_id, name)
-values ('aaaaaaaa-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'Fridge');
+insert into items (id, user_id, storage_location_id, name)
+values (
+  'aaaaaaaa-0000-0000-0000-000000000002',
+  '11111111-1111-1111-1111-111111111111',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'Fridge'
+);
 
 insert into floor_plans (id, user_id, storage_location_id, name, document)
 values (
