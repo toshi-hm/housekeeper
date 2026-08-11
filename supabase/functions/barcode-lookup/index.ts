@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { checkBarcodeRateLimit } from "../_shared/rate-limit.ts";
 import { isValidBarcode } from "./validation.ts";
 import { fetchYahooShoppingProduct } from "./yahoo.ts";
 
@@ -33,6 +34,18 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const rateLimit = await checkBarcodeRateLimit(supabase);
+  if (!rateLimit.allowed) {
+    return new Response(JSON.stringify({ error: "rate_limited" }), {
+      status: 429,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        "Retry-After": String(rateLimit.retryAfterSeconds),
+      },
     });
   }
 

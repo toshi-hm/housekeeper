@@ -63,6 +63,19 @@ Edge Function 実装: `supabase/functions/barcode-lookup/index.ts`
 - カメラデバイスなし → 同上
 - 連続読み取り失敗（30 秒超） → リトライ / キャンセル
 - Edge Function 失敗 → バーコード文字列だけ反映 + 手入力
+- レート制限超過（429） → 「利用回数が上限に達しました」メッセージ + 手入力（4.1 参照）
+
+### 4.1 レート制限（#803）
+
+共有の `YAHOO_SHOPPING_APP_ID` クォータ枯渇を防ぐため、`inventory-chat`（#558）・`recipe-suggest`（#786）
+と同じユーザー単位・固定ウィンドウのレート制限を `barcode-lookup` にも適用する。
+
+- 実装: `check_barcode_rate_limit()`（Postgres, SECURITY DEFINER） + `checkBarcodeRateLimit()`
+  （`supabase/functions/_shared/rate-limit.ts`）
+- 上限: 60 秒あたり 20 リクエスト / ユーザー（`chat_rate_limits` / `recipe_rate_limits` と同じ閾値）
+- 超過時は `barcode-lookup` が `429 { error: "rate_limited" }` を `Retry-After` ヘッダ付きで返す
+- クライアント（`useBarcodeLookup`）はこれを `rate_limited` エラーとして区別し、
+  `ProductLookupResult` が専用メッセージ（`items:productLookupRateLimited`）を表示する
 
 ## v1 範囲
 

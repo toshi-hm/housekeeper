@@ -168,6 +168,7 @@
   "pinPickerSelected": "選択中の位置",
   "presetUnitCannotDelete": "プリセット単位は削除できません",
   "productBrand": "ブランド",
+  "productLookupRateLimited": "商品検索の利用回数が上限に達しました。しばらくしてから再度お試しください",
   "productLookupServerError": "商品検索でエラーが発生しました。しばらくしてから再度お試しください",
   "productLookupTimeout": "商品検索がタイムアウトしました。しばらくしてから再度お試しください",
   "productNotFound": "該当の商品が見つかりませんでした",

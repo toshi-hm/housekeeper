@@ -42,6 +42,14 @@ describe("ProductLookupResult (#655)", () => {
     expect(getByText(i18n.t("items:productLookupTimeout"))).toBeTruthy();
   });
 
+  it("errorType=rate_limitedの場合は専用のレート制限メッセージを表示する（#803）", () => {
+    const { getByText } = render(
+      <ProductLookupResult isLoading={false} product={null} errorType="rate_limited" />,
+      { wrapper },
+    );
+    expect(getByText(i18n.t("items:productLookupRateLimited"))).toBeTruthy();
+  });
+
   it("ローディング中はスピナー用テキストを表示する", () => {
     const { getByText } = render(<ProductLookupResult isLoading product={undefined} />, {
       wrapper,
