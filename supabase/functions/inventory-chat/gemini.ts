@@ -124,9 +124,12 @@ export const buildContents = (message: string, history: ChatHistoryTurn[]): Gemi
   // alternation invariant when `history` has an odd length beyond the cap
   // (i.e. it legitimately ends in an unpaired trailing turn) — the cut can
   // land on a "model" turn, leaving `trimmed` starting with "model" instead
-  // of "user". Drop any leading non-"user" turn so the same-role collapse
-  // pass below only ever has to deal with a well-formed user-first sequence.
-  if (trimmed.length > 0 && trimmed[0].role !== "user") {
+  // of "user". Drop any leading non-"user" turns (a `while`, not a single
+  // `if`: this is a defense-in-depth guard against arbitrary malformed
+  // `history`, which — same as the same-role collapse pass below — could in
+  // principle have more than one leading non-"user" turn) so the collapse
+  // pass only ever has to deal with a well-formed user-first sequence.
+  while (trimmed.length > 0 && trimmed[0].role !== "user") {
     trimmed = trimmed.slice(1);
   }
   const turns: ChatHistoryTurn[] = [...trimmed, { role: "user", text: message }];
