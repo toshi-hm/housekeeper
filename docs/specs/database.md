@@ -18,23 +18,23 @@ Supabase (Postgres 15+)
 
 ## テーブル一覧
 
-| テーブル                   | 役割                                    | MVP  | 削除動作（参照元 → 自身）                     |
-| -------------------------- | --------------------------------------- | ---- | --------------------------------------------- |
-| `items`                    | 在庫アイテム                            | ✅   | カテゴリ/場所マスタ削除で SET NULL            |
-| `item_lots`                | 購入ロット（数量・単価・期限）          | ✅   | item 削除で CASCADE                           |
-| `categories`               | カテゴリマスタ                          | ✅   | items.category_id = NULL                      |
-| `storage_locations`        | 保管場所マスタ                          | ✅   | items.storage_location_id = NULL              |
-| `custom_units`             | カスタム単位マスタ                      | v1.1 | 削除は items に影響しない（FK ではない）      |
-| `consumption_logs`         | 消費イベント履歴                        | ✅   | item 削除で CASCADE                           |
-| `user_settings`            | ユーザー設定（言語/閾値/通知時刻 など） | ✅   | user 削除で CASCADE                           |
-| `shopping_list_items`      | 買い物リスト                            | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに） |
-| `shopping_list_archive`    | 買い物リストの購入履歴アーカイブ        | v1.2 | user 削除で CASCADE（行自体は不変・更新なし） |
-| `notification_preferences` | 通知 ON/OFF                             | v1.2 | user 削除で CASCADE                           |
-| `push_subscriptions`       | Web Push 購読                           | v1.2 | user 削除で CASCADE                           |
-| `recipes`                  | レシピ/セット消費のテンプレート         | v1.3 | user 削除で CASCADE                           |
-| `recipe_items`             | レシピの構成アイテムと消費量            | v1.3 | recipe 削除で CASCADE / item 削除で CASCADE   |
-| `floor_plans`              | 保管場所に紐づく2D間取りの意味モデル     | v1.9 | storage_location / user 削除で CASCADE        |
-| `floor_plan_item_placements` | 間取り上の在庫配置                     | v1.9 | floor_plan / item / user 削除で CASCADE       |
+| テーブル                     | 役割                                    | MVP  | 削除動作（参照元 → 自身）                     |
+| ---------------------------- | --------------------------------------- | ---- | --------------------------------------------- |
+| `items`                      | 在庫アイテム                            | ✅   | カテゴリ/場所マスタ削除で SET NULL            |
+| `item_lots`                  | 購入ロット（数量・単価・期限）          | ✅   | item 削除で CASCADE                           |
+| `categories`                 | カテゴリマスタ                          | ✅   | items.category_id = NULL                      |
+| `storage_locations`          | 保管場所マスタ                          | ✅   | items.storage_location_id = NULL              |
+| `custom_units`               | カスタム単位マスタ                      | v1.1 | 削除は items に影響しない（FK ではない）      |
+| `consumption_logs`           | 消費イベント履歴                        | ✅   | item 削除で CASCADE                           |
+| `user_settings`              | ユーザー設定（言語/閾値/通知時刻 など） | ✅   | user 削除で CASCADE                           |
+| `shopping_list_items`        | 買い物リスト                            | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに） |
+| `shopping_list_archive`      | 買い物リストの購入履歴アーカイブ        | v1.2 | user 削除で CASCADE（行自体は不変・更新なし） |
+| `notification_preferences`   | 通知 ON/OFF                             | v1.2 | user 削除で CASCADE                           |
+| `push_subscriptions`         | Web Push 購読                           | v1.2 | user 削除で CASCADE                           |
+| `recipes`                    | レシピ/セット消費のテンプレート         | v1.3 | user 削除で CASCADE                           |
+| `recipe_items`               | レシピの構成アイテムと消費量            | v1.3 | recipe 削除で CASCADE / item 削除で CASCADE   |
+| `floor_plans`                | 保管場所に紐づく2D間取りの意味モデル    | v1.9 | storage_location / user 削除で CASCADE        |
+| `floor_plan_item_placements` | 間取り上の在庫配置                      | v1.9 | floor_plan / item / user 削除で CASCADE       |
 
 ---
 

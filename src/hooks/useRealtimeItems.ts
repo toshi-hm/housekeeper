@@ -8,6 +8,8 @@ const REALTIME_TABLES = [
   { table: "items", queryKey: ["items"] },
   { table: "item_lots", queryKey: ["item-lots"] },
   { table: "shopping_list_items", queryKey: ["shopping"] },
+  { table: "floor_plans", queryKey: ["floor-plans"] },
+  { table: "floor_plan_item_placements", queryKey: ["floor-plan-placements"] },
 ] as const;
 
 const CHANNEL_NAME = "housekeeper-realtime";
