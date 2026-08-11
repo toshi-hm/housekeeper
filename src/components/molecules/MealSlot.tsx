@@ -20,6 +20,39 @@ interface MealSlotRecommendation {
   isLoadingExternal: boolean;
 }
 
+/** 割当済み枠（レシピ/メモどちらも）で共通の「変更」「割り当て解除」ボタン対 */
+const SlotEditActions = ({
+  onStartEdit,
+  onUnassign,
+}: {
+  onStartEdit: () => void;
+  onUnassign: () => void;
+}) => {
+  const { t } = useTranslation("mealPlan");
+  return (
+    <div className="flex shrink-0 gap-1">
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-7 w-7"
+        aria-label={t("changeRecipe")}
+        onClick={onStartEdit}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-7 w-7"
+        aria-label={t("unassign")}
+        onClick={onUnassign}
+      >
+        <X className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+};
+
 interface MealSlotProps {
   /** YYYY-MM-DD */
   date: string;
@@ -99,33 +132,19 @@ export const MealSlot = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="min-w-0 truncate font-medium">{plan.recipe.name}</p>
-            <div className="flex shrink-0 gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                aria-label={t("changeRecipe")}
-                onClick={onStartEdit}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                aria-label={t("unassign")}
-                onClick={onUnassign}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <SlotEditActions onStartEdit={onStartEdit} onUnassign={onUnassign} />
           </div>
           <MealPlanStockWarning
             shortages={stockCheck?.shortages ?? []}
             isAdding={isAddingToShoppingList}
             onAddMissingToShoppingList={onAddMissingToShoppingList}
           />
-          <Button size="sm" className="w-full" disabled={isExecuting} onClick={onExecute}>
+          <Button
+            size="sm"
+            className="w-full"
+            disabled={isExecuting || !!plan.executed_at}
+            onClick={onExecute}
+          >
             <Play className="mr-1.5 h-3.5 w-3.5" />
             {isExecuting ? t("executing") : t("execute")}
           </Button>
@@ -134,26 +153,7 @@ export const MealSlot = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="min-w-0 truncate text-sm">{plan.note}</p>
-            <div className="flex shrink-0 gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                aria-label={t("changeRecipe")}
-                onClick={onStartEdit}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                aria-label={t("unassign")}
-                onClick={onUnassign}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <SlotEditActions onStartEdit={onStartEdit} onUnassign={onUnassign} />
           </div>
         </div>
       ) : (

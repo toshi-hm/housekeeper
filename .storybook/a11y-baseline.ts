@@ -59,6 +59,11 @@ export const A11Y_BASELINE = new Set<string>([
   "components-molecules-shoppingrow--purchased-no-actions",
   "components-molecules-expiryrecipesuggestions--no-image",
   "components-molecules-expiryrecipesuggestions--with-suggestions",
+  // molecules/MealPlanExpiryRecommendation (#715): the "external fallback"
+  // state renders ExpiryRecipeSuggestions verbatim (spec: reuse it as-is),
+  // so it inherits the exact same pre-existing contrast issue as the two
+  // entries above rather than introducing a new one.
+  "components-molecules-mealplanexpiryrecommendation--external-fallback",
   "components-molecules-deletionreasondialog--default",
   "components-molecules-deletionreasondialog--bulk-delete",
   // organisms/ExpiryCalendar, pages/CalendarPage: same contrast issue

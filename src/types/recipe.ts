@@ -129,17 +129,24 @@ export interface RecipeExpiryScore {
  * スコア0（該当アイテムなし）のレシピは結果から除外する — 「一致するレシピが
  * 無い」ケースを呼び出し側が `length === 0` だけで判定できるようにするため。
  * 構成アイテムを持たないレシピ（`items.length === 0`）も同様に除外される。
+ *
+ * `units > 0` のアイテムのみを対象とする（`WeeklyMealPlanner` の `urgentItems`
+ * フィルタと同じ基準）。ロットを経由しない直接消費フォールバック
+ * （`useConsumeItem.ts`）で在庫が0になったアイテムは `expiry_date` が
+ * 更新されないまま残ることがあり、`units` を見ずに期限日だけで判定すると
+ * 在庫が無いアイテムを含むレシピを「一致するレシピ」として誤って
+ * レコメンドしてしまう。
  */
 export const rankRecipesByExpiringStock = (
   recipes: readonly RecipeWithItems[],
-  itemsById: Record<string, Pick<Item, "expiry_date"> | undefined>,
+  itemsById: Record<string, Pick<Item, "expiry_date" | "units"> | undefined>,
   warningDays?: number,
 ): RecipeExpiryScore[] => {
   return recipes
     .map((recipe) => {
       const matchingExpiringCount = recipe.items.filter((recipeItem) => {
         const item = itemsById[recipeItem.item_id];
-        if (!item) return false;
+        if (!item || item.units <= 0) return false;
         const status = getExpiryStatus(item.expiry_date, warningDays);
         return status === "expired" || status === "expiring-soon";
       }).length;

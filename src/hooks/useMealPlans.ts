@@ -40,7 +40,8 @@ const fetchMealPlans = async (range: readonly string[]): Promise<MealPlan[]> => 
  * （meal-plan.md「API」節）。
  */
 export const useMealPlans = (range: readonly string[]) => {
-  const { data: recipes = [] } = useRecipes();
+  const recipesQuery = useRecipes();
+  const recipes = recipesQuery.data ?? [];
   const query = useQuery({
     queryKey: [...MEAL_PLANS_KEY, range[0], range[range.length - 1]],
     queryFn: () => fetchMealPlans(range),
@@ -61,7 +62,10 @@ export const useMealPlans = (range: readonly string[]) => {
     return { date, plan: withRecipe };
   });
 
-  return { ...query, slots };
+  // recipesQuery が読み込み中のまま meal_plans だけ先に返ると、既にレシピが
+  // 割り当てられている枠の recipe が一時的に解決できず(recipesById が空)、
+  // 空き枠のUI(レコメンド付き)へ一瞬フォールバックしてしまう(#715 セルフレビュー)。
+  return { ...query, isLoading: query.isLoading || recipesQuery.isLoading, slots };
 };
 
 /** `useUpsertMealPlan` の実処理。単体テストのため素の関数として切り出している。 */

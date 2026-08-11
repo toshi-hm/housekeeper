@@ -175,8 +175,11 @@ describe("rankRecipesByExpiringStock", () => {
       }),
     ];
     const itemsById = {
-      "expired-1": { expiry_date: "2020-01-01" },
-      "expiring-1": { expiry_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10) },
+      "expired-1": { expiry_date: "2020-01-01", units: 1 },
+      "expiring-1": {
+        expiry_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        units: 1,
+      },
     };
 
     const result = rankRecipesByExpiringStock(recipes, itemsById);
@@ -193,7 +196,19 @@ describe("rankRecipesByExpiringStock", () => {
         items: [{ id: "ri1", recipe_id: "r1", item_id: "ok-1", amount: 1, created_at: "" }],
       }),
     ];
-    const itemsById = { "ok-1": { expiry_date: "2099-01-01" } };
+    const itemsById = { "ok-1": { expiry_date: "2099-01-01", units: 1 } };
+
+    expect(rankRecipesByExpiringStock(recipes, itemsById)).toEqual([]);
+  });
+
+  test("在庫が0のアイテムは期限切れ/期限間近でも一致に数えない", () => {
+    const recipes = [
+      makeRecipe({
+        id: "r1",
+        items: [{ id: "ri1", recipe_id: "r1", item_id: "depleted-1", amount: 1, created_at: "" }],
+      }),
+    ];
+    const itemsById = { "depleted-1": { expiry_date: "2020-01-01", units: 0 } };
 
     expect(rankRecipesByExpiringStock(recipes, itemsById)).toEqual([]);
   });

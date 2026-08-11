@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/atoms/Skeleton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { MealSlot } from "@/components/molecules/MealSlot";
 import type { MealSlotAssignmentValues } from "@/components/molecules/MealSlotRecipePicker";
+import { LOTS_KEY } from "@/hooks/useItemLots";
 import { useItems } from "@/hooks/useItems";
 import {
   shortageToShoppingItemInput,
@@ -68,8 +69,12 @@ export const WeeklyMealPlanner = () => {
   const stockCheckItemIds = [
     ...new Set(assignedRecipes.flatMap((recipe) => recipe.items.map((i) => i.item_id))),
   ].sort();
+  // LOTS_KEY を接頭辞に含めることで、useExecuteMealPlan の成功時invalidate
+  // （queryKey: LOTS_KEY、既存のitem_lots変更時と同じ既定のprefixマッチ）が
+  // このクエリも対象にする。専用キーのままだと実行後もここが古いまま残り、
+  // 同じ食材を含む他の枠の在庫確認が古い値を表示し続けてしまう（#715 セルフレビュー）。
   const { data: fefoLotByItemId = {} } = useQuery({
-    queryKey: ["meal-plan-fefo-lots", stockCheckItemIds],
+    queryKey: [...LOTS_KEY, "meal-plan-fefo", stockCheckItemIds],
     queryFn: () => fetchFefoLotByItemId(stockCheckItemIds),
     enabled: stockCheckItemIds.length > 0,
     staleTime: 30_000,
@@ -114,16 +119,15 @@ export const WeeklyMealPlanner = () => {
 
   const handleAddMissingToShoppingList = async (date: string, shortages: RecipeShortage[]) => {
     setAddingShoppingListDate(date);
-    let succeeded = 0;
-    let failed = 0;
-    for (const shortage of shortages) {
-      try {
-        await upsertShoppingItem.mutateAsync(shortageToShoppingItemInput(shortage));
-        succeeded += 1;
-      } catch {
-        failed += 1;
-      }
-    }
+    // ベストエフォート方針（consumption-purchase.mdのレシピ実行と同じ）のため、
+    // 1件の失敗が他の追加をブロックしないよう並列実行する (#715 セルフレビュー)。
+    const results = await Promise.allSettled(
+      shortages.map((shortage) =>
+        upsertShoppingItem.mutateAsync(shortageToShoppingItemInput(shortage)),
+      ),
+    );
+    const succeeded = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.filter((r) => r.status === "rejected").length;
     setAddingShoppingListDate(null);
     if (failed === 0) {
       toast(t("addedToShoppingList", { count: succeeded }), "success");

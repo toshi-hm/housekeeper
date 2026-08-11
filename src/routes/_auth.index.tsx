@@ -494,9 +494,8 @@ export const DashboardPage = () => {
                 </Button>
               </Link>
               <Link to="/meal-plan">
-                <Button size="sm" variant="outline">
-                  <CalendarDays className="mr-1 h-4 w-4" />
-                  {t("mealPlan:mealPlanShortcut")}
+                <Button size="icon" variant="outline" aria-label={t("mealPlan:mealPlanShortcut")}>
+                  <CalendarDays className="h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/items/new">
