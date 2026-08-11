@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -24,6 +24,10 @@ const ThreeDFloorPlanViewer = lazy(() =>
 
 export const LocationMapPage = () => {
   const { locationId } = Route.useParams();
+  const isEditorActive = useRouterState({
+    select: (state) =>
+      state.matches.some((match) => match.routeId === "/_auth/locations/$locationId/edit"),
+  });
   const { t } = useTranslation("common");
   const { t: ts } = useTranslation("settings");
   const navigate = useNavigate();
@@ -58,6 +62,10 @@ export const LocationMapPage = () => {
   const unpinnedItems = items
     .filter((item) => item.pin_x === null || item.pin_x === undefined || item.pin_y === null)
     .map((item) => ({ id: item.id, name: item.name }));
+
+  if (isEditorActive) {
+    return <Outlet />;
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
