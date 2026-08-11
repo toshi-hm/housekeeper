@@ -17,6 +17,7 @@ import { Route as AuthStatsRouteImport } from './routes/_auth.stats'
 import { Route as AuthShoppingRouteImport } from './routes/_auth.shopping'
 import { Route as AuthSettingsRouteImport } from './routes/_auth.settings'
 import { Route as AuthRecipesRouteImport } from './routes/_auth.recipes'
+import { Route as AuthMealPlanRouteImport } from './routes/_auth.meal-plan'
 import { Route as AuthCalendarRouteImport } from './routes/_auth.calendar'
 import { Route as AuthSettingsTagsRouteImport } from './routes/_auth.settings.tags'
 import { Route as AuthSettingsPurchaseHistoryRouteImport } from './routes/_auth.settings.purchase-history'
@@ -66,6 +67,11 @@ const AuthSettingsRoute = AuthSettingsRouteImport.update({
 const AuthRecipesRoute = AuthRecipesRouteImport.update({
   id: '/recipes',
   path: '/recipes',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthMealPlanRoute = AuthMealPlanRouteImport.update({
+  id: '/meal-plan',
+  path: '/meal-plan',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthCalendarRoute = AuthCalendarRouteImport.update({
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/calendar': typeof AuthCalendarRoute
+  '/meal-plan': typeof AuthMealPlanRoute
   '/recipes': typeof AuthRecipesRoute
   '/settings': typeof AuthSettingsRouteWithChildren
   '/shopping': typeof AuthShoppingRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/calendar': typeof AuthCalendarRoute
+  '/meal-plan': typeof AuthMealPlanRoute
   '/recipes': typeof AuthRecipesRoute
   '/settings': typeof AuthSettingsRouteWithChildren
   '/shopping': typeof AuthShoppingRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/_auth/calendar': typeof AuthCalendarRoute
+  '/_auth/meal-plan': typeof AuthMealPlanRoute
   '/_auth/recipes': typeof AuthRecipesRoute
   '/_auth/settings': typeof AuthSettingsRouteWithChildren
   '/_auth/shopping': typeof AuthShoppingRoute
@@ -195,6 +204,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/calendar'
+    | '/meal-plan'
     | '/recipes'
     | '/settings'
     | '/shopping'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/calendar'
+    | '/meal-plan'
     | '/recipes'
     | '/settings'
     | '/shopping'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/_auth/calendar'
+    | '/_auth/meal-plan'
     | '/_auth/recipes'
     | '/_auth/settings'
     | '/_auth/shopping'
@@ -314,6 +326,13 @@ declare module '@tanstack/react-router' {
       path: '/recipes'
       fullPath: '/recipes'
       preLoaderRoute: typeof AuthRecipesRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/meal-plan': {
+      id: '/_auth/meal-plan'
+      path: '/meal-plan'
+      fullPath: '/meal-plan'
+      preLoaderRoute: typeof AuthMealPlanRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/calendar': {
@@ -432,6 +451,7 @@ const AuthItemsItemIdRouteWithChildren = AuthItemsItemIdRoute._addFileChildren(
 
 interface AuthRouteChildren {
   AuthCalendarRoute: typeof AuthCalendarRoute
+  AuthMealPlanRoute: typeof AuthMealPlanRoute
   AuthRecipesRoute: typeof AuthRecipesRoute
   AuthSettingsRoute: typeof AuthSettingsRouteWithChildren
   AuthShoppingRoute: typeof AuthShoppingRoute
@@ -444,6 +464,7 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCalendarRoute: AuthCalendarRoute,
+  AuthMealPlanRoute: AuthMealPlanRoute,
   AuthRecipesRoute: AuthRecipesRoute,
   AuthSettingsRoute: AuthSettingsRouteWithChildren,
   AuthShoppingRoute: AuthShoppingRoute,

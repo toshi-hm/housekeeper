@@ -1,10 +1,7 @@
 # Feature Spec: Weekly Meal Planner（在庫優先の週間献立プランナー）
 
-> **本 spec は設計ドラフトである。実装（migration・hook・コンポーネント・route・i18n・テスト）は
-> 含まない。** `feature-proposal` スキルの手順（提案 → spec ドラフト → PLANS.md 反映 → 承認後に
-> 実装）に従い、L サイズの新規機能のためレビュー可能な設計を先に固める（元 issue: #715、
-> PR #706 の household-sharing / receipt-scan と同じ進め方）。実装は本 spec の「実装しないこと」
-> の通り別 Issue・別 PR に分割する（breakdown は `PLANS.md` §10 参照）。
+> 本 spec の設計に基づき実装済み（#715, PLANS.md §10 v1.8）。「実装しないこと」節は
+> 設計ドラフト当時の分割方針の記録として残しているが、実際には1PRにまとめて実装した。
 
 ## 概要
 

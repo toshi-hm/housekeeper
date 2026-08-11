@@ -670,6 +670,45 @@ export interface Database {
           },
         ];
       };
+      meal_plans: {
+        Row: {
+          id: string;
+          user_id: string;
+          planned_date: string;
+          recipe_id: string | null;
+          note: string | null;
+          executed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          planned_date: string;
+          recipe_id?: string | null;
+          note?: string | null;
+          executed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          planned_date?: string;
+          recipe_id?: string | null;
+          note?: string | null;
+          executed_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meal_plans_recipe_id_fkey";
+            columns: ["recipe_id"];
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {

@@ -22,7 +22,7 @@ import {
  * 取得する。`checkRecipeStock` の事前チェックを実消費と同じ基準（単一ロット）に
  * 揃えるために使う。
  */
-const fetchFefoLotByItemId = async (
+export const fetchFefoLotByItemId = async (
   itemIds: string[],
 ): Promise<Record<string, RecipeFefoLot | undefined>> => {
   if (itemIds.length === 0) return {};

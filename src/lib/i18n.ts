@@ -7,6 +7,7 @@ import enCalendar from "@/locales/en/calendar.json";
 import enChat from "@/locales/en/chat.json";
 import enCommon from "@/locales/en/common.json";
 import enItems from "@/locales/en/items.json";
+import enMealPlan from "@/locales/en/mealPlan.json";
 import enMfa from "@/locales/en/mfa.json";
 import enNotifications from "@/locales/en/notifications.json";
 import enRecipes from "@/locales/en/recipes.json";
@@ -18,6 +19,7 @@ import jaCalendar from "@/locales/ja/calendar.json";
 import jaChat from "@/locales/ja/chat.json";
 import jaCommon from "@/locales/ja/common.json";
 import jaItems from "@/locales/ja/items.json";
+import jaMealPlan from "@/locales/ja/mealPlan.json";
 import jaMfa from "@/locales/ja/mfa.json";
 import jaNotifications from "@/locales/ja/notifications.json";
 import jaRecipes from "@/locales/ja/recipes.json";
@@ -43,6 +45,7 @@ void i18n
       "chat",
       "mfa",
       "recipes",
+      "mealPlan",
     ],
     defaultNS: "common",
     interpolation: { escapeValue: false },
@@ -59,6 +62,7 @@ void i18n
         chat: jaChat,
         mfa: jaMfa,
         recipes: jaRecipes,
+        mealPlan: jaMealPlan,
       },
       en: {
         common: enCommon,
@@ -72,6 +76,7 @@ void i18n
         chat: enChat,
         mfa: enMfa,
         recipes: enRecipes,
+        mealPlan: enMealPlan,
       },
     },
   });

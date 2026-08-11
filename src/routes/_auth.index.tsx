@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
+  CalendarDays,
   CheckSquare,
   ChefHat,
   Plus,
@@ -490,6 +491,12 @@ export const DashboardPage = () => {
                 <Button size="sm" variant="outline">
                   <ChefHat className="mr-1 h-4 w-4" />
                   {t("recipes:recipesShortcut")}
+                </Button>
+              </Link>
+              <Link to="/meal-plan">
+                <Button size="sm" variant="outline">
+                  <CalendarDays className="mr-1 h-4 w-4" />
+                  {t("mealPlan:mealPlanShortcut")}
                 </Button>
               </Link>
               <Link to="/items/new">
