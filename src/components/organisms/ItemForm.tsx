@@ -109,6 +109,7 @@ export const ItemForm = ({
     notes: defaultValues?.notes ?? "",
     image_path: defaultValues?.image_path ?? "",
     minimum_stock: defaultValues?.minimum_stock ?? null,
+    days_use_after_opening: defaultValues?.days_use_after_opening ?? null,
     unit_price: defaultValues?.unit_price ?? null,
     store_name: defaultValues?.store_name ?? null,
     auto_reorder: defaultValues?.auto_reorder ?? false,
@@ -126,6 +127,7 @@ export const ItemForm = ({
   const [unitsError, setUnitsError] = useState("");
   const [contentAmountError, setContentAmountError] = useState("");
   const [minimumStockError, setMinimumStockError] = useState("");
+  const [daysUseAfterOpeningError, setDaysUseAfterOpeningError] = useState("");
   const [unitPriceError, setUnitPriceError] = useState("");
   const [reorderThresholdError, setReorderThresholdError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
@@ -316,6 +318,14 @@ export const ItemForm = ({
       (isNaN(values.minimum_stock) || values.minimum_stock < 0)
     ) {
       setMinimumStockError(t("minimumStockInvalid"));
+      hasError = true;
+    }
+
+    if (
+      typeof values.days_use_after_opening === "number" &&
+      (isNaN(values.days_use_after_opening) || values.days_use_after_opening < 1)
+    ) {
+      setDaysUseAfterOpeningError(t("daysUseAfterOpeningInvalid"));
       hasError = true;
     }
 
@@ -725,6 +735,46 @@ export const ItemForm = ({
           {minimumStockError && (
             <p id="minimum-stock-error" className="text-sm text-destructive">
               {minimumStockError}
+            </p>
+          )}
+        </div>
+
+        {/* Days to use after opening (#752) */}
+        <div className="space-y-2">
+          <Label htmlFor="days_use_after_opening">{t("daysUseAfterOpening")}</Label>
+          <p id="days-use-after-opening-help" className="text-xs text-muted-foreground">
+            {t("daysUseAfterOpeningHelp")}
+          </p>
+          <Input
+            id="days_use_after_opening"
+            type="number"
+            min={1}
+            className="w-28"
+            value={values.days_use_after_opening ?? ""}
+            placeholder="—"
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "") {
+                set("days_use_after_opening", null);
+                setDaysUseAfterOpeningError("");
+                return;
+              }
+              const parsed = parseInt(v, 10);
+              set("days_use_after_opening", isNaN(parsed) ? null : parsed);
+              setDaysUseAfterOpeningError(
+                !isNaN(parsed) && parsed < 1 ? t("daysUseAfterOpeningInvalid") : "",
+              );
+            }}
+            aria-invalid={!!daysUseAfterOpeningError}
+            aria-describedby={
+              daysUseAfterOpeningError
+                ? "days-use-after-opening-help days-use-after-opening-error"
+                : "days-use-after-opening-help"
+            }
+          />
+          {daysUseAfterOpeningError && (
+            <p id="days-use-after-opening-error" className="text-sm text-destructive">
+              {daysUseAfterOpeningError}
             </p>
           )}
         </div>

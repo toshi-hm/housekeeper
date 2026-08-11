@@ -100,6 +100,59 @@ export const getExpiryStatus = (
   `best_before` のみで構成される場合は穏やかな文言（品質の目安）にタイトル・本文を出し分ける。
   時刻一致判定（`scheduled` 分岐）等の既存ロジックは変更していない
 
+## 開封後の消費期限リマインダー（#752）
+
+マヨネーズ・開封後の乳製品・ソースのように「開封後は印字期限より早く傷む」食品は、
+`expiry_type`（賞味期限/消費期限）だけでは表現できない。開封してからの経過日数を
+別枠でアラートするための最小限の仕組みを追加した。
+
+### データモデル
+
+- `item_lots.opened_at timestamptz null`: そのロットが最初に開封された日時。
+  `opened_remaining` が最初に非nullになったタイミングで自動的にセットされる
+  （DBトリガー `item_lots_set_opened_at`、`item_lots_set_opened_at()` 関数）。
+  再び未開封相当（`opened_remaining = null`）に戻ると自動的にクリアされる。
+  アプリ側のコード（`consumeLot` / `restoreLotConsumption` / `updateLot` / カレンダーの
+  ゼロ化操作など、すべて `item_lots` への直接 INSERT/UPDATE を経由する）は
+  この列を明示的に書き込む必要がない。
+- `items.opened_at timestamptz null`: `item_lots` からの集計値。`syncItemAggregate`
+  （`src/hooks/useItemLots.ts`）が、現在アクティブ（残量あり）かつ現在開封中の
+  ロットのうち最も古い `opened_at` を都度再計算して書き込む（`expiry_date` の
+  「最も近い期限を採用」と同じ考え方）。ロットを経由しないレガシー経路
+  （`useConsumeItem.ts` の "direct" フォールバック、ロットがまだ存在しないアイテムの
+  クイック消費）は、同じ null↔非null遷移ロジックをアプリ側で個別に再現している。
+- `items.days_use_after_opening integer null` / `categories.days_use_after_opening integer null`:
+  開封後使用推奨日数。アイテム個別設定が優先され、未設定なら
+  カテゴリの既定値にフォールバックする（`resolveOpenedAlertThresholdDays`,
+  `src/types/item.ts`）。どちらも未設定ならこの機能自体を使わない（`null`）。
+
+### 表示
+
+- `OpenedAlertBadge` atom（`src/components/atoms/OpenedAlertBadge.tsx`）: 開封日時から
+  推奨日数以上経過している場合にのみ表示するセカンダリバッジ。`ExpiryBadge`
+  （賞味期限/消費期限）とは完全に独立しており、両方が同時に表示されることもある。
+  判定ロジックは純関数 `isOpenedAlertDue`（`src/types/item.ts`）に切り出してある。
+- ダッシュボード（`ItemCard` / `ItemListRow`）とアイテム詳細ページで `ExpiryBadge` の
+  隣に表示する。ダッシュボードは `categories` を id 引きした `Category` を渡し、
+  各コンポーネントは呼び出し元が解決済みの `openedAlertThresholdDays` を受け取るだけで、
+  カテゴリ一覧を自前で持たない（`categoryName` 等、既存の解決済みprops方式を踏襲）。
+- 設定UI: `ItemForm` に「開封後使用推奨日数」の数値入力（任意、1以上の整数）。
+  カテゴリ設定ページ（`/settings/categories`）にも同名フィールドを追加し、
+  カテゴリ単位の既定値を設定できる。
+
+### 既知の制約
+
+- `items.opened_at` に対しては DB トリガーを付けていない（`item_lots` とは異なり、
+  「直前の書き込みからの単純な遷移」ではなく「現在アクティブな全ロットの中で
+  最も古い `opened_at`」を都度再計算する必要があるため、同じトリガーを付けると
+  `syncItemAggregate` が計算した正しい値を誤って上書きしてしまう）。そのため
+  `items` を直接更新するコード経路が新たに増えた場合は、この集計ロジックを
+  手動で踏襲する必要がある。
+- JSONバックアップのエクスポート/インポート（`docs/specs/features/consumption-purchase.md`
+  参照）は `opened_at` を往復させない。将来インポート機能を実装する際は、
+  素朴な `insert` だとトリガーが `opened_at` を「インポート実行時刻」に
+  上書きしてしまう点に注意が必要（現状インポート機能自体が未実装のため影響なし）。
+
 ## Backlog
 
 - カテゴリ別のデフォルト期限種別（`categories.default_expiry_type`）— `ItemForm` の

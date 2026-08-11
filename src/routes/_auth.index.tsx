@@ -61,6 +61,7 @@ import {
   isItemUnverified,
   type Item,
   type ItemDeletionReason,
+  resolveOpenedAlertThresholdDays,
 } from "@/types/item";
 
 interface QuickConsumeUndoPayload {
@@ -295,6 +296,10 @@ export const DashboardPage = () => {
 
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   const locationMap = Object.fromEntries(locations.map((l) => [l.id, l.name]));
+  // #752: id -> category, so ItemCard/ItemListRow can resolve each item's
+  // effective opened-alert threshold (item override falls back to the
+  // category default) without needing the full category list themselves.
+  const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
 
   const baseFiltered = items.filter((item) => !hideEmpty || item.units > 0);
 
@@ -892,6 +897,10 @@ export const DashboardPage = () => {
                     item.storage_location_id ? locationMap[item.storage_location_id] : undefined
                   }
                   warningDays={warningDays}
+                  openedAlertThresholdDays={resolveOpenedAlertThresholdDays(
+                    item,
+                    item.category_id ? categoryById[item.category_id] : null,
+                  )}
                   isQuickConsuming={quickConsumingId === item.id}
                   quickConsumeDisabled={quickConsumingId !== null && quickConsumingId !== item.id}
                   onQuickConsume={(i) => {
@@ -912,6 +921,10 @@ export const DashboardPage = () => {
                   key={item.id}
                   item={item}
                   warningDays={warningDays}
+                  openedAlertThresholdDays={resolveOpenedAlertThresholdDays(
+                    item,
+                    item.category_id ? categoryById[item.category_id] : null,
+                  )}
                   selectionMode={selectionMode}
                   isSelected={selectedIds.has(item.id)}
                   onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}

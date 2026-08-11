@@ -9,6 +9,27 @@ import { useToast } from "@/lib/toast-context";
 import { computeConsumption, type ConsumeParams, type Item } from "@/types/item";
 
 /**
+ * #752: mirrors the item_lots_set_opened_at DB trigger for the "direct"
+ * no-lots-yet fallback path below, which writes to `items` directly and so
+ * never goes through that trigger. Only the null <-> non-null transition of
+ * opened_remaining changes opened_at; a non-null -> non-null change (partial
+ * consumption of an already-open item) leaves the original opened_at as-is.
+ */
+const computeOpenedAtTransition = (
+  openedRemainingBefore: number | null,
+  openedRemainingAfter: number | null,
+  openedAtBefore: string | null,
+): string | null => {
+  if (openedRemainingAfter !== null && openedRemainingBefore === null) {
+    return new Date().toISOString();
+  }
+  if (openedRemainingAfter === null && openedRemainingBefore !== null) {
+    return null;
+  }
+  return openedAtBefore;
+};
+
+/**
  * Enough information to reverse a `consumeItem` call. Two shapes depending
  * on which path was taken internally: a lot was found and consumed from
  * ("lot"), or the item had no lots yet and its aggregate row was updated
@@ -21,6 +42,9 @@ export type ConsumeItemUndo =
       lotId: string;
       unitsBefore: number;
       openedRemainingBefore: number | null;
+      /** ロットが消費前に持っていた opened_at。undo時にそのまま復元する
+       *  （#752 セルフレビュー — 参照: RestoreLotConsumptionParams.openedAtBefore）。 */
+      openedAtBefore: string | null;
       unitsAfter: number;
       openedRemainingAfter: number | null;
       logId: string | null;
@@ -30,6 +54,7 @@ export type ConsumeItemUndo =
       itemId: string;
       unitsBefore: number;
       openedRemainingBefore: number | null;
+      openedAtBefore: string | null;
       logId: string | null;
     };
 
@@ -73,6 +98,7 @@ export const consumeItem = async ({
       lotId: targetLot.id,
       unitsBefore: targetLot.units,
       openedRemainingBefore: targetLot.opened_remaining ?? null,
+      openedAtBefore: targetLot.opened_at ?? null,
       unitsAfter: lotResult.units,
       openedRemainingAfter: lotResult.opened_remaining ?? null,
       logId: lotResult._logId ?? null,
@@ -82,11 +108,17 @@ export const consumeItem = async ({
     const result = computeConsumption(item, deltaAmount);
     if (result.error) throw new Error(result.error);
 
+    const openedAtAfter = computeOpenedAtTransition(
+      item.opened_remaining ?? null,
+      result.opened_remaining_after,
+      item.opened_at ?? null,
+    );
     const { error: updateError } = await supabase
       .from("items")
       .update({
         units: result.units_after,
         opened_remaining: result.opened_remaining_after,
+        opened_at: openedAtAfter,
         updated_at: new Date().toISOString(),
       })
       .eq("id", item.id);
@@ -120,6 +152,7 @@ export const consumeItem = async ({
       itemId: item.id,
       unitsBefore: item.units,
       openedRemainingBefore: item.opened_remaining ?? null,
+      openedAtBefore: item.opened_at ?? null,
       logId: (logData as { id: string } | null)?.id ?? null,
     };
 
@@ -146,6 +179,7 @@ export const undoConsumeItem = async (undo: ConsumeItemUndo): Promise<void> => {
       itemId: undo.itemId,
       unitsBefore: undo.unitsBefore,
       openedRemainingBefore: undo.openedRemainingBefore,
+      openedAtBefore: undo.openedAtBefore,
       unitsAfter: undo.unitsAfter,
       openedRemainingAfter: undo.openedRemainingAfter,
       logId: undo.logId,
@@ -159,6 +193,7 @@ export const undoConsumeItem = async (undo: ConsumeItemUndo): Promise<void> => {
     .update({
       units: undo.unitsBefore,
       opened_remaining: undo.openedRemainingBefore,
+      opened_at: undo.openedAtBefore,
       updated_at: new Date().toISOString(),
     })
     .eq("id", undo.itemId);

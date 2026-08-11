@@ -19,6 +19,9 @@ export interface Database {
           name: string;
           color: string | null;
           icon: string | null;
+          /** 開封後使用推奨日数（既定値）。items.days_use_after_opening が
+           *  未設定のアイテムはこの値にフォールバックする（#752）。 */
+          days_use_after_opening: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -28,6 +31,7 @@ export interface Database {
           name: string;
           color?: string | null;
           icon?: string | null;
+          days_use_after_opening?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -37,6 +41,7 @@ export interface Database {
           name?: string;
           color?: string | null;
           icon?: string | null;
+          days_use_after_opening?: number | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -115,6 +120,12 @@ export interface Database {
           expiry_type: "best_before" | "use_by" | null;
           pin_x: number | null;
           pin_y: number | null;
+          /** item_lots からの集計値: 現在開封中のロットのうち最も古い開封日時
+           *  （複数ロットが同時に開封中の場合は最古を採用）。未開封なら null（#752）。 */
+          opened_at: string | null;
+          /** 開封後使用推奨日数（個別上書き）。null = categories.days_use_after_opening
+           *  にフォールバック（#752）。 */
+          days_use_after_opening: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -142,6 +153,8 @@ export interface Database {
           expiry_type?: "best_before" | "use_by" | null;
           pin_x?: number | null;
           pin_y?: number | null;
+          opened_at?: string | null;
+          days_use_after_opening?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -169,6 +182,8 @@ export interface Database {
           expiry_type?: "best_before" | "use_by" | null;
           pin_x?: number | null;
           pin_y?: number | null;
+          opened_at?: string | null;
+          days_use_after_opening?: number | null;
           updated_at?: string;
         };
         Relationships: [
@@ -369,6 +384,9 @@ export interface Database {
           purchase_date: string | null;
           expiry_date: string | null;
           store_name: string | null;
+          /** このロットが最初に開封された日時。トリガーが opened_remaining の
+           *  null <-> 非null 遷移から自動的に設定/クリアする（#752）。 */
+          opened_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -383,6 +401,7 @@ export interface Database {
           purchase_date?: string | null;
           expiry_date?: string | null;
           store_name?: string | null;
+          opened_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -397,6 +416,7 @@ export interface Database {
           purchase_date?: string | null;
           expiry_date?: string | null;
           store_name?: string | null;
+          opened_at?: string | null;
           updated_at?: string;
         };
         Relationships: [

@@ -3,12 +3,16 @@ import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
+import { OpenedAlertBadge } from "@/components/atoms/OpenedAlertBadge";
 import { cn } from "@/lib/utils";
 import { formatRemaining, getExpiryStatus, type Item } from "@/types/item";
 
 interface ItemListRowProps {
   item: Item;
   warningDays?: number;
+  /** 開封後使用推奨日数（アイテム個別設定とカテゴリ既定値を呼び出し元で解決した値、
+   *  {@link resolveOpenedAlertThresholdDays}）。未設定なら開封アラートは表示しない（#752）。 */
+  openedAlertThresholdDays?: number | null;
   /** 一括操作の選択モード（#359） */
   selectionMode?: boolean;
   isSelected?: boolean;
@@ -22,6 +26,7 @@ interface ItemListRowProps {
 export const ItemListRow = ({
   item,
   warningDays,
+  openedAlertThresholdDays,
   selectionMode = false,
   isSelected = false,
   onToggleSelect,
@@ -70,6 +75,7 @@ export const ItemListRow = ({
         warningDays={warningDays}
         expiryType={item.expiry_type}
       />
+      <OpenedAlertBadge openedAt={item.opened_at} thresholdDays={openedAlertThresholdDays} />
     </div>
   );
 

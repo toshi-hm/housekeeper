@@ -35,20 +35,42 @@ const CategoriesPage = () => {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState<string | null>(null);
   const [newIcon, setNewIcon] = useState<string | null>(null);
+  const [newDaysUseAfterOpening, setNewDaysUseAfterOpening] = useState<number | null>(null);
+  const [newDaysError, setNewDaysError] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState<string | null>(null);
   const [editIcon, setEditIcon] = useState<string | null>(null);
+  const [editDaysUseAfterOpening, setEditDaysUseAfterOpening] = useState<number | null>(null);
+  const [editDaysError, setEditDaysError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
 
+  /** 空文字は「未設定」として許容し null を返す。それ以外で 1 以上の整数
+   *  でなければ null を返しつつ、呼び出し元にエラー表示させるため isValid: false
+   *  を返す（#752 セルフレビュー — 無効値をエラー表示なしに黙って捨てていた）。 */
+  const parseDaysInput = (v: string): { value: number | null; isValid: boolean } => {
+    if (v.trim() === "") return { value: null, isValid: true };
+    const parsed = parseInt(v, 10);
+    if (isNaN(parsed) || parsed < 1) return { value: null, isValid: false };
+    return { value: parsed, isValid: true };
+  };
+
   const handleCreate = async () => {
     if (!newName.trim()) return;
+    if (newDaysError) return;
     try {
-      await createCategory.mutateAsync({ name: newName.trim(), color: newColor, icon: newIcon });
+      await createCategory.mutateAsync({
+        name: newName.trim(),
+        color: newColor,
+        icon: newIcon,
+        daysUseAfterOpening: newDaysUseAfterOpening,
+      });
       setNewName("");
       setNewColor(null);
       setNewIcon(null);
+      setNewDaysUseAfterOpening(null);
+      setNewDaysError("");
       toast(t("common:saveSuccess"), "success");
     } catch {
       // error is handled by the mutation's onError
@@ -57,12 +79,14 @@ const CategoriesPage = () => {
 
   const handleUpdate = async () => {
     if (!editId || !editName.trim()) return;
+    if (editDaysError) return;
     try {
       await updateCategory.mutateAsync({
         id: editId,
         name: editName.trim(),
         color: editColor,
         icon: editIcon,
+        daysUseAfterOpening: editDaysUseAfterOpening,
       });
       setEditId(null);
       toast(t("common:saveSuccess"), "success");
@@ -150,6 +174,31 @@ const CategoriesPage = () => {
         </div>
         <ColorPicker value={newColor} onChange={setNewColor} />
         <IconPicker value={newIcon} onChange={setNewIcon} />
+        <div className="space-y-1">
+          <label htmlFor="new-category-days" className="text-xs text-muted-foreground">
+            {t("items:daysUseAfterOpening")}
+          </label>
+          <Input
+            id="new-category-days"
+            type="number"
+            min={1}
+            className="w-28"
+            placeholder="—"
+            value={newDaysUseAfterOpening ?? ""}
+            onChange={(e) => {
+              const { value, isValid } = parseDaysInput(e.target.value);
+              setNewDaysUseAfterOpening(value);
+              setNewDaysError(isValid ? "" : t("items:daysUseAfterOpeningInvalid"));
+            }}
+            aria-invalid={!!newDaysError}
+            aria-describedby={newDaysError ? "new-category-days-error" : undefined}
+          />
+          {newDaysError && (
+            <p id="new-category-days-error" className="text-sm text-destructive">
+              {newDaysError}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* List */}
@@ -193,6 +242,39 @@ const CategoriesPage = () => {
                   </div>
                   <ColorPicker value={editColor} onChange={setEditColor} />
                   <IconPicker value={editIcon} onChange={setEditIcon} />
+                  <div className="space-y-1">
+                    <label
+                      htmlFor={`edit-category-days-${c.id}`}
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t("items:daysUseAfterOpening")}
+                    </label>
+                    <Input
+                      id={`edit-category-days-${c.id}`}
+                      type="number"
+                      min={1}
+                      className="w-28"
+                      placeholder="—"
+                      value={editDaysUseAfterOpening ?? ""}
+                      onChange={(e) => {
+                        const { value, isValid } = parseDaysInput(e.target.value);
+                        setEditDaysUseAfterOpening(value);
+                        setEditDaysError(isValid ? "" : t("items:daysUseAfterOpeningInvalid"));
+                      }}
+                      aria-invalid={!!editDaysError}
+                      aria-describedby={
+                        editDaysError ? `edit-category-days-error-${c.id}` : undefined
+                      }
+                    />
+                    {editDaysError && (
+                      <p
+                        id={`edit-category-days-error-${c.id}`}
+                        className="text-sm text-destructive"
+                      >
+                        {editDaysError}
+                      </p>
+                    )}
+                  </div>
                 </>
               ) : (
                 <div className="flex items-center gap-3">
@@ -208,6 +290,8 @@ const CategoriesPage = () => {
                       setEditName(c.name);
                       setEditColor(c.color ?? null);
                       setEditIcon(c.icon ?? null);
+                      setEditDaysUseAfterOpening(c.days_use_after_opening ?? null);
+                      setEditDaysError("");
                     }}
                   >
                     <Pencil className="h-4 w-4" />

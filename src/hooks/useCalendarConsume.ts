@@ -38,6 +38,7 @@ export const useCalendarConsume = () => {
           itemId: pending.itemId,
           unitsBefore: pending.units,
           openedRemainingBefore: pending.openedRemaining,
+          openedAtBefore: pending.openedAt,
           // `check()` below always zeroes the lot out unconditionally
           // (units: 0, opened_remaining: null), so that's what the lot is
           // still expected to look like when undo runs.
@@ -63,7 +64,7 @@ export const useCalendarConsume = () => {
 
       const { data: lots, error } = await supabase
         .from("item_lots")
-        .select("id, units, opened_remaining, expiry_date")
+        .select("id, units, opened_remaining, opened_at, expiry_date")
         .eq("item_id", item.id)
         .order("expiry_date", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: true });
@@ -143,6 +144,7 @@ export const useCalendarConsume = () => {
         itemName: item.name,
         units: targetLot.units,
         openedRemaining: targetLot.opened_remaining,
+        openedAt: targetLot.opened_at,
         logId: logData?.id ?? null,
       });
     } catch (err) {

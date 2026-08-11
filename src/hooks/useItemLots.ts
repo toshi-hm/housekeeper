@@ -96,13 +96,13 @@ const updateLot = async (
   return data as ItemLot;
 };
 
-/** Recompute and update the item aggregate (units, expiry_date, opened_remaining) from its lots. */
+/** Recompute and update the item aggregate (units, expiry_date, opened_remaining, opened_at) from its lots. */
 export const syncItemAggregate = async (itemId: string): Promise<void> => {
   const [{ data: lots, error: lotsError }, { data: itemRow, error: itemError }] = await Promise.all(
     [
       supabase
         .from("item_lots")
-        .select("units, expiry_date, opened_remaining")
+        .select("units, expiry_date, opened_remaining, opened_at")
         .eq("item_id", itemId),
       supabase.from("items").select("content_amount").eq("id", itemId).single(),
     ],
@@ -127,6 +127,20 @@ export const syncItemAggregate = async (itemId: string): Promise<void> => {
     .map((l) => l.expiry_date as string | null)
     .filter((d): d is string => d !== null);
   const earliestExpiry = expiryDates.length > 0 ? expiryDates.sort()[0] : null;
+
+  // Aggregate opened_at (#752): the item-level "when was this opened"
+  // reminder should reflect the *oldest* currently-open lot, matching the
+  // "earliest expiry wins" logic above — a lot only counts if it's both
+  // still active (has remaining stock) and currently open
+  // (opened_remaining !== null; a sealed lot has no opened_at of its own
+  // even if it was opened and fully consumed in the past, since
+  // item_lots_set_opened_at clears opened_at back to null when a lot closes
+  // out). Lots with no opened_at (never opened) are excluded before sorting.
+  const openedAtDates = activeRows
+    .filter((l) => l.opened_remaining !== null)
+    .map((l) => l.opened_at as string | null)
+    .filter((d): d is string => d !== null);
+  const earliestOpenedAt = openedAtDates.length > 0 ? openedAtDates.sort()[0] : null;
 
   // Aggregate opened_remaining/units: sum each lot's *actual* remaining
   // amount (getLotRemainingAmount already accounts for the opened package
@@ -166,6 +180,7 @@ export const syncItemAggregate = async (itemId: string): Promise<void> => {
       units: aggregateUnits,
       expiry_date: earliestExpiry,
       opened_remaining: aggregateOpenedRemaining,
+      opened_at: earliestOpenedAt,
       updated_at: new Date().toISOString(),
     })
     .eq("id", itemId);
@@ -264,6 +279,13 @@ export interface RestoreLotConsumptionParams {
   itemId: string;
   unitsBefore: number;
   openedRemainingBefore: number | null;
+  /** ロットが消費前に持っていた opened_at。item_lots_set_opened_at トリガーは
+   *  opened_remaining の null<->非null遷移で opened_at を自動的に書き換えるが、
+   *  この関数のUPDATEで opened_at を明示的に指定しない限り、undo で
+   *  opened_remaining を null から非null に戻す遷移も「新規開封」と誤認されて
+   *  now() に上書きされてしまう。ここで明示的に渡すことで、トリガーはこの値を
+   *  そのまま採用する（#752 セルフレビュー）。 */
+  openedAtBefore: string | null;
   /** ロットが消費直後（undo対象の書き込み直後）に持っているはずの units。
    *  undo実行時にこの値と一致する行だけを対象にrestoreする（#762）。 */
   unitsAfter: number;
@@ -295,6 +317,7 @@ export const restoreLotConsumption = async ({
   itemId,
   unitsBefore,
   openedRemainingBefore,
+  openedAtBefore,
   unitsAfter,
   openedRemainingAfter,
   logId,
@@ -305,6 +328,7 @@ export const restoreLotConsumption = async ({
     .update({
       units: unitsBefore,
       opened_remaining: openedRemainingBefore,
+      opened_at: openedAtBefore,
       updated_at: new Date().toISOString(),
     })
     .eq("id", lotId)

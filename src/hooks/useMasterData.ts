@@ -68,6 +68,7 @@ export const createCategory = async (
   name: string,
   color?: string | null,
   icon?: string | null,
+  daysUseAfterOpening?: number | null,
 ): Promise<Category> => {
   requireOnline();
   validateNameLength(name);
@@ -75,7 +76,13 @@ export const createCategory = async (
   if (userError || !userData.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
     .from("categories")
-    .insert({ name, color: color ?? null, icon: icon ?? null, user_id: userData.user.id })
+    .insert({
+      name,
+      color: color ?? null,
+      icon: icon ?? null,
+      days_use_after_opening: daysUseAfterOpening ?? null,
+      user_id: userData.user.id,
+    })
     .select()
     .single();
   if (error) {
@@ -90,6 +97,7 @@ export const updateCategory = async (
   name: string,
   color?: string | null,
   icon?: string | null,
+  daysUseAfterOpening?: number | null,
 ): Promise<Category> => {
   requireOnline();
   validateNameLength(name);
@@ -99,6 +107,7 @@ export const updateCategory = async (
       name,
       color: color ?? null,
       icon: icon ?? null,
+      days_use_after_opening: daysUseAfterOpening ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -151,11 +160,13 @@ export const useCreateCategory = () => {
       name,
       color,
       icon,
+      daysUseAfterOpening,
     }: {
       name: string;
       color?: string | null;
       icon?: string | null;
-    }) => createCategory(name, color, icon),
+      daysUseAfterOpening?: number | null;
+    }) => createCategory(name, color, icon, daysUseAfterOpening),
     onSuccess: (category) => {
       qc.setQueryData<Category[]>(CATEGORIES_KEY, (old) => {
         if (!old) return [category];
@@ -183,12 +194,14 @@ export const useUpdateCategory = () => {
       name,
       color,
       icon,
+      daysUseAfterOpening,
     }: {
       id: string;
       name: string;
       color?: string | null;
       icon?: string | null;
-    }) => updateCategory(id, name, color, icon),
+      daysUseAfterOpening?: number | null;
+    }) => updateCategory(id, name, color, icon, daysUseAfterOpening),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
     },

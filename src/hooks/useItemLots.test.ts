@@ -414,6 +414,46 @@ describe("restoreLotConsumption", () => {
     });
   });
 
+  test("開封中ロットのopened_atも消費前の値へ復元する（#752 セルフレビュー: 単にnow()で上書きされない）", async () => {
+    // DBトリガー(item_lots_set_opened_at)はopened_remainingがnull->非nullに
+    // 遷移する更新を「新規開封」とみなしopened_atをnow()にする。undoでも
+    // まさにこの遷移(null -> 元のopened_remaining)が起きるため、呼び出し側が
+    // opened_atを明示的に指定しない限りトリガーに元の開封日時を上書きされて
+    // しまう。restoreLotConsumptionが実際にopened_atを更新payloadへ含めて
+    // いることを確認する（トリガー自体の分岐ロジックはDB側でしか検証できない）。
+    responseQueues.item_lots = [
+      { data: { id: "lot-1", units: 2, opened_remaining: null }, error: null },
+      {
+        data: [
+          { units: 2, expiry_date: null, opened_remaining: 0.5, opened_at: "2026-08-01T00:00:00Z" },
+        ],
+        error: null,
+      },
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: null, error: null },
+    ];
+
+    await restoreLotConsumption({
+      lotId: "lot-1",
+      itemId: "item-1",
+      unitsBefore: 2,
+      openedRemainingBefore: 0.5,
+      openedAtBefore: "2026-08-01T00:00:00Z",
+      unitsAfter: 2,
+      openedRemainingAfter: null,
+      logId: "log-1",
+    });
+
+    const lotUpdateCall = callLog.find((c) => c.table === "item_lots" && c.method === "update");
+    expect(lotUpdateCall?.args[0]).toMatchObject({
+      units: 2,
+      opened_remaining: 0.5,
+      opened_at: "2026-08-01T00:00:00Z",
+    });
+  });
+
   test("logIdがnullの場合はconsumption_logsのdeleteを呼ばない", async () => {
     responseQueues.item_lots = [
       { data: { id: "lot-1", units: 1, opened_remaining: null }, error: null },
