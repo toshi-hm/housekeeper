@@ -202,6 +202,8 @@ create policy "floor_plans_owner_all" on floor_plans for all
   );
 ```
 
+Data API経由の認証済みクライアントから利用するため、`authenticated` に必要なCRUD権限を付与する。RLSは別途有効化し、所有者以外の行を返さない。
+
 `document` の必須構造は `src/types/floorPlan.ts` と `docs/specs/features/floor-plan-map.md` をSOTとする。
 DBはJSON内部の座標や図形種別を完全には検証せず、読み込み時・保存前にZodで検証する。未知の `schema_version` は表示せず、移行導線を出す。
 
@@ -247,7 +249,10 @@ create policy "floor_plan_item_placements_owner_all"
     )
     and exists (
       select 1 from items item
-      where item.id = floor_plan_item_placements.item_id
+      join floor_plans plan
+        on plan.storage_location_id = item.storage_location_id
+      where plan.id = floor_plan_item_placements.floor_plan_id
+        and item.id = floor_plan_item_placements.item_id
         and item.user_id = auth.uid()
     )
   )
@@ -260,11 +265,16 @@ create policy "floor_plan_item_placements_owner_all"
     )
     and exists (
       select 1 from items item
-      where item.id = floor_plan_item_placements.item_id
+      join floor_plans plan
+        on plan.storage_location_id = item.storage_location_id
+      where plan.id = floor_plan_item_placements.floor_plan_id
+        and item.id = floor_plan_item_placements.item_id
         and item.user_id = auth.uid()
     )
   );
 ```
+
+配置テーブルにも `authenticated` のCRUD権限を付与する。Realtime購読を利用する場合は、両テーブルを `supabase_realtime` publication に登録する。権限付与はRLSを置き換えず、行単位の所有者検証と併用する。
 
 初期版は配置の保存を1アイテム単位のmutationとする。複数図形・配置・履歴を1トランザクションで保存する要件が出た場合は、`save_floor_plan` RPC（`security invoker`、expected revision検証、`FOR UPDATE`）へ移行する。
 

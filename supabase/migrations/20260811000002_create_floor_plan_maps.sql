@@ -20,6 +20,8 @@ create index if not exists floor_plans_location_idx on public.floor_plans(storag
 
 alter table public.floor_plans enable row level security;
 
+grant select, insert, update, delete on table public.floor_plans to authenticated;
+
 drop policy if exists "floor_plans_owner_all" on public.floor_plans;
 create policy "floor_plans_owner_all" on public.floor_plans for all
   using (auth.uid() = user_id)
@@ -71,7 +73,10 @@ create policy "floor_plan_item_placements_owner_all"
     )
     and exists (
       select 1 from public.items item
-      where item.id = floor_plan_item_placements.item_id
+      join public.floor_plans plan
+        on plan.storage_location_id = item.storage_location_id
+      where plan.id = floor_plan_item_placements.floor_plan_id
+        and item.id = floor_plan_item_placements.item_id
         and item.user_id = auth.uid()
     )
   )
@@ -84,7 +89,10 @@ create policy "floor_plan_item_placements_owner_all"
     )
     and exists (
       select 1 from public.items item
-      where item.id = floor_plan_item_placements.item_id
+      join public.floor_plans plan
+        on plan.storage_location_id = item.storage_location_id
+      where plan.id = floor_plan_item_placements.floor_plan_id
+        and item.id = floor_plan_item_placements.item_id
         and item.user_id = auth.uid()
     )
   );
@@ -94,3 +102,30 @@ drop trigger if exists floor_plan_item_placements_set_updated_at
 create trigger floor_plan_item_placements_set_updated_at
   before update on public.floor_plan_item_placements
   for each row execute function public.set_updated_at();
+
+grant select, insert, update, delete
+  on table public.floor_plan_item_placements to authenticated;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'floor_plans'
+  ) then
+    alter publication supabase_realtime add table public.floor_plans;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'floor_plan_item_placements'
+  ) then
+    alter publication supabase_realtime add table public.floor_plan_item_placements;
+  end if;
+end
+$$;
