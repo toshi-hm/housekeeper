@@ -119,7 +119,19 @@ const RESPONSE_SCHEMA = {
 // to keep history well-formed on its own (see InventoryChatPanel's
 // `markMessageFailed`, #554).
 export const buildContents = (message: string, history: ChatHistoryTurn[]): GeminiContent[] => {
-  const trimmed = history.slice(-MAX_HISTORY_TURNS);
+  let trimmed = history.slice(-MAX_HISTORY_TURNS);
+  // #817: slicing to the last MAX_HISTORY_TURNS entries can itself break the
+  // alternation invariant when `history` has an odd length beyond the cap
+  // (i.e. it legitimately ends in an unpaired trailing turn) — the cut can
+  // land on a "model" turn, leaving `trimmed` starting with "model" instead
+  // of "user". Drop any leading non-"user" turns (a `while`, not a single
+  // `if`: this is a defense-in-depth guard against arbitrary malformed
+  // `history`, which — same as the same-role collapse pass below — could in
+  // principle have more than one leading non-"user" turn) so the collapse
+  // pass only ever has to deal with a well-formed user-first sequence.
+  while (trimmed.length > 0 && trimmed[0].role !== "user") {
+    trimmed = trimmed.slice(1);
+  }
   const turns: ChatHistoryTurn[] = [...trimmed, { role: "user", text: message }];
 
   const sanitized: ChatHistoryTurn[] = [];
