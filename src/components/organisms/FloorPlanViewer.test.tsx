@@ -49,4 +49,49 @@ describe("FloorPlanViewer", () => {
     fireEvent.click(itemButton);
     expect(onItemClick).toHaveBeenCalledWith("item-1");
   });
+
+  it("renders storage-location markers and opens the selected location", () => {
+    const onStorageLocationClick = mock(() => undefined);
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanViewer
+          document={document}
+          storageLocations={[
+            {
+              id: "location-1",
+              user_id: "user-1",
+              name: "Kitchen",
+              photo_path: null,
+              created_at: "2026-01-01T00:00:00Z",
+              updated_at: "2026-01-01T00:00:00Z",
+            },
+          ]}
+          storageLocationMarkers={[
+            {
+              id: "marker-1",
+              user_id: "user-1",
+              floor_plan_id: "plan-1",
+              storage_location_id: "location-1",
+              object_id: null,
+              x: 30,
+              y: 40,
+              z: 0,
+              rotation: 0,
+              created_at: "2026-01-01T00:00:00Z",
+              updated_at: "2026-01-01T00:00:00Z",
+            },
+          ]}
+          onStorageLocationClick={onStorageLocationClick}
+        />
+      </I18nextProvider>,
+    );
+
+    const locationButtons = getByRole("list", {
+      name: /Storage locations|間取り上の保管場所/,
+    }).querySelectorAll("button");
+    const locationButton = locationButtons[0];
+    if (!locationButton) throw new Error("Expected a storage location button");
+    fireEvent.click(locationButton);
+    expect(onStorageLocationClick).toHaveBeenCalledWith("location-1");
+  });
 });

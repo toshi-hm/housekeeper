@@ -74,21 +74,21 @@ beforeEach(() => {
 });
 
 describe("useRealtimeItems", () => {
-  test("5 テーブルを購読し、変更イベントで該当クエリを無効化する", () => {
+  test("6 テーブルを購読し、変更イベントで該当クエリを無効化する", () => {
     const qc = new QueryClient();
     const invalidateSpy = mock(() => Promise.resolve());
     qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
 
     const { unmount } = renderHook(() => useRealtimeItems(), { wrapper: makeWrapper(qc) });
 
-    // items / item_lots / shopping_list_items / floor plans の 5 テーブルを購読
+    // items / item_lots / shopping_list_items / floor plans / markers / placements を購読
     expect(channelMock).toHaveBeenCalled();
     const channel = createdChannels[0]!;
-    expect(channel.handlers.length).toBe(5);
+    expect(channel.handlers.length).toBe(6);
 
     // postgres_changes イベント発火 → invalidateQueries が呼ばれる
     channel.handlers.forEach((cb) => cb());
-    expect(invalidateSpy).toHaveBeenCalledTimes(5);
+    expect(invalidateSpy).toHaveBeenCalledTimes(6);
 
     // アンマウントで購読解除
     unmount();

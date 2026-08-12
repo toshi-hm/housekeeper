@@ -28,8 +28,13 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     eq: chainMethod("eq"),
     update: chainMethod("update"),
     insert: chainMethod("insert"),
+    upsert: chainMethod("upsert"),
     maybeSingle: () => {
       callLog.push({ table, method: "maybeSingle", args: [] });
+      return Promise.resolve(response);
+    },
+    single: () => {
+      callLog.push({ table, method: "single", args: [] });
       return Promise.resolve(response);
     },
   });
@@ -48,7 +53,8 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { useUpsertFloorPlan } = await import("@/hooks/useFloorPlans");
+const { useUpsertFloorPlan, useUpsertFloorPlanStorageLocationMarker } =
+  await import("@/hooks/useFloorPlans");
 
 const makeWrapper =
   (queryClient: QueryClient) =>
@@ -72,7 +78,6 @@ describe("useUpsertFloorPlan", () => {
     act(() => {
       result.current.mutate({
         id: "plan-1",
-        storageLocationId: "location-1",
         name: "Kitchen",
         document: createEmptyFloorPlanDocument(),
         revision: 3,
@@ -84,5 +89,60 @@ describe("useUpsertFloorPlan", () => {
     expect(result.current.error).toBeInstanceOf(FloorPlanConflictError);
     expect(callLog).toContainEqual({ table: "floor_plans", method: "eq", args: ["revision", 3] });
     expect(callLog).toContainEqual({ table: "floor_plans", method: "maybeSingle", args: [] });
+  });
+});
+
+describe("useUpsertFloorPlanStorageLocationMarker", () => {
+  test("upserts a marker for the shared floor plan and storage location", async () => {
+    responseQueues.floor_plan_storage_location_markers = [
+      {
+        data: {
+          id: "marker-1",
+          user_id: "user-1",
+          floor_plan_id: "plan-1",
+          storage_location_id: "location-1",
+          object_id: null,
+          x: 120,
+          y: 80,
+          z: 0,
+          rotation: 0,
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        },
+        error: null,
+      },
+    ];
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const { result } = renderHook(() => useUpsertFloorPlanStorageLocationMarker(), {
+      wrapper: makeWrapper(queryClient),
+    });
+
+    act(() => {
+      result.current.mutate({
+        floorPlanId: "plan-1",
+        storageLocationId: "location-1",
+        x: 120,
+        y: 80,
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(callLog).toContainEqual({
+      table: "floor_plan_storage_location_markers",
+      method: "upsert",
+      args: [
+        {
+          user_id: "user-1",
+          floor_plan_id: "plan-1",
+          storage_location_id: "location-1",
+          object_id: null,
+          x: 120,
+          y: 80,
+          z: 0,
+          rotation: 0,
+        },
+        { onConflict: "floor_plan_id,storage_location_id" },
+      ],
+    });
   });
 });
