@@ -489,9 +489,8 @@ export const DashboardPage = () => {
                 </Button>
               )}
               <Link to="/recipes">
-                <Button size="sm" variant="outline">
-                  <ChefHat className="mr-1 h-4 w-4" />
-                  {t("recipes:recipesShortcut")}
+                <Button size="icon" variant="outline" aria-label={t("recipes:recipesShortcut")}>
+                  <ChefHat className="h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/meal-plan">
