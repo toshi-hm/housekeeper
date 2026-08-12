@@ -1,4 +1,5 @@
 import { AlertTriangle, Check, Loader2, Trash2, X } from "lucide-react";
+import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Input } from "@/components/ui/input";
@@ -30,13 +31,24 @@ export const ReceiptLineItemRow = ({
   const { t } = useTranslation("receiptScan");
   const { t: ti } = useTranslation("items");
   const isBusy = status === "registering" || status === "success";
+  const idPrefix = useId();
+  const quantityFieldId = `${idPrefix}-quantity`;
+  const unitPriceFieldId = `${idPrefix}-unit-price`;
+  const categoryFieldId = `${idPrefix}-category`;
+  const storageLocationFieldId = `${idPrefix}-storage-location`;
+  const expiryDateFieldId = `${idPrefix}-expiry-date`;
 
   return (
     <div
-      className={`space-y-2 rounded-lg border p-3 ${draft.included ? "" : "opacity-50"} ${
+      className={`space-y-2 rounded-lg border p-3 ${draft.included ? "" : "border-dashed text-muted-foreground"} ${
         draft.confidence === "low" ? "border-orange-300 bg-orange-50/50 dark:bg-orange-950/10" : ""
       }`}
     >
+      {/* #823 a11y: dim the excluded state via a muted text color + dashed
+       *  border rather than `opacity-50` on the whole row — opacity halves
+       *  contrast for every descendant (inputs, selects, labels) and fails
+       *  WCAG AA (axe `color-contrast`), whereas `text-muted-foreground` is
+       *  already contrast-checked and used elsewhere in this same form. */}
       <div className="flex items-center gap-2">
         <input
           type="checkbox"
@@ -80,8 +92,11 @@ export const ReceiptLineItemRow = ({
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{t("quantity")}</label>
+          <label htmlFor={quantityFieldId} className="text-xs text-muted-foreground">
+            {t("quantity")}
+          </label>
           <Input
+            id={quantityFieldId}
             type="number"
             min={1}
             step={1}
@@ -91,8 +106,11 @@ export const ReceiptLineItemRow = ({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{t("unitPrice")}</label>
+          <label htmlFor={unitPriceFieldId} className="text-xs text-muted-foreground">
+            {t("unitPrice")}
+          </label>
           <Input
+            id={unitPriceFieldId}
             type="number"
             min={0}
             step={1}
@@ -107,8 +125,11 @@ export const ReceiptLineItemRow = ({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{ti("category")}</label>
+          <label htmlFor={categoryFieldId} className="text-xs text-muted-foreground">
+            {ti("category")}
+          </label>
           <Select
+            id={categoryFieldId}
             value={draft.categoryId ?? ""}
             onChange={(e) => onChange({ categoryId: e.target.value || null })}
             disabled={isBusy}
@@ -122,8 +143,11 @@ export const ReceiptLineItemRow = ({
           </Select>
         </div>
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">{ti("storageLocation")}</label>
+          <label htmlFor={storageLocationFieldId} className="text-xs text-muted-foreground">
+            {ti("storageLocation")}
+          </label>
           <Select
+            id={storageLocationFieldId}
             value={draft.storageLocationId ?? ""}
             onChange={(e) => onChange({ storageLocationId: e.target.value || null })}
             disabled={isBusy}
@@ -137,8 +161,11 @@ export const ReceiptLineItemRow = ({
           </Select>
         </div>
         <div className="col-span-2 space-y-1">
-          <label className="text-xs text-muted-foreground">{ti("expiryDate")}</label>
+          <label htmlFor={expiryDateFieldId} className="text-xs text-muted-foreground">
+            {ti("expiryDate")}
+          </label>
           <Input
+            id={expiryDateFieldId}
             type="date"
             value={draft.expiryDate ?? ""}
             onChange={(e) => onChange({ expiryDate: e.target.value || null })}
