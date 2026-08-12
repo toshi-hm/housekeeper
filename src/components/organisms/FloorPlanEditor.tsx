@@ -208,7 +208,14 @@ export const FloorPlanEditor = ({
       <div className="overflow-auto rounded-lg border bg-muted/20 p-2">
         <svg
           viewBox={`0 0 ${state.document.width} ${state.document.height}`}
-          className="h-auto min-h-80 w-full min-w-[480px] touch-none"
+          // Only opt out of native touch scrolling while a gesture on the
+          // canvas actually means something (drawing a wall/shape or placing
+          // a marker). In "select" mode, `touch-none` unconditionally here
+          // blocked the only way to pan this min-w-[480px] canvas into view
+          // on phones narrower than that (#819 review).
+          className={`h-auto min-h-80 w-full min-w-[480px] ${
+            tool === "select" && !isMarkerMode ? "touch-auto" : "touch-none"
+          }`}
           role="application"
           tabIndex={0}
           aria-label={t("mapEditorAriaLabel")}
@@ -216,6 +223,7 @@ export const FloorPlanEditor = ({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
+          onLostPointerCapture={handlePointerCancel}
           onKeyDown={handleKeyDown}
         >
           <defs>
