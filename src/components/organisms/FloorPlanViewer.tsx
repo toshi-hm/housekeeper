@@ -144,7 +144,10 @@ export const FloorPlanViewer = ({
                 className={onStorageLocationClick ? "cursor-pointer" : undefined}
                 onClick={
                   onStorageLocationClick
-                    ? () => onStorageLocationClick(marker.storage_location_id)
+                    ? (event) => {
+                        event.stopPropagation();
+                        onStorageLocationClick(marker.storage_location_id);
+                      }
                     : undefined
                 }
                 onKeyDown={
@@ -152,6 +155,7 @@ export const FloorPlanViewer = ({
                     ? (event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
+                          event.stopPropagation();
                           onStorageLocationClick(marker.storage_location_id);
                         }
                       }
@@ -182,12 +186,20 @@ export const FloorPlanViewer = ({
                 tabIndex={onItemClick ? 0 : undefined}
                 aria-label={item?.name ?? t("mapUnknownItem")}
                 className={onItemClick ? "cursor-pointer" : undefined}
-                onClick={onItemClick ? () => onItemClick(placement.item_id) : undefined}
+                onClick={
+                  onItemClick
+                    ? (event) => {
+                        event.stopPropagation();
+                        onItemClick(placement.item_id);
+                      }
+                    : undefined
+                }
                 onKeyDown={
                   onItemClick
                     ? (event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
+                          event.stopPropagation();
                           onItemClick(placement.item_id);
                         }
                       }
