@@ -96,6 +96,13 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
               expiry_date: values.expiry_date ?? null,
               store_name: values.store_name ?? null,
             },
+            // #825: guards against overwriting a concurrent consumption made
+            // while this form was open (dashboard quick-consume, another
+            // device, ...) with this stale pre-edit snapshot.
+            expected: {
+              units: selectedLot.units,
+              opened_remaining: selectedLot.opened_remaining ?? null,
+            },
           });
         } catch {
           // Item was updated but lot update failed — show warning and navigate
