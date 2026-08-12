@@ -23,6 +23,12 @@ const MapPage = () => {
     isLoading: itemsLoading,
     isError: itemsError,
   } = useItems({ search: search.trim() || undefined }, "created_at");
+  // Unfiltered, for the shared floor plan's item-placement labels (below):
+  // `items` narrows to the search query, but placements on the plan can
+  // reference items that don't match the current search — using the
+  // filtered list there made every non-matching placement render as
+  // "Unknown item" as soon as the user typed anything.
+  const { data: allItems = [] } = useItems({}, "created_at");
   const { data: locations = [], isLoading: locationsLoading } = useStorageLocations();
   const { data: floorPlan, isLoading: floorPlanLoading } = useFloorPlan();
   const { data: storageLocationMarkers = [], isLoading: markersLoading } =
@@ -72,7 +78,7 @@ const MapPage = () => {
             storageLocationMarkers={storageLocationMarkers}
             storageLocations={locations}
             placements={placements}
-            items={items}
+            items={allItems}
             onStorageLocationClick={(storageLocationId) => {
               void navigate({
                 to: "/locations/$locationId",
