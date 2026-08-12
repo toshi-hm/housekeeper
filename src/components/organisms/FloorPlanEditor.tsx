@@ -55,6 +55,7 @@ export const FloorPlanEditor = ({
   );
   const [tool, setTool] = useState<FloorPlanTool>("select");
   const [start, setStart] = useState<Point | null>(null);
+  const [currentPoint, setCurrentPoint] = useState<Point | null>(null);
   const [isMarkerMode, setIsMarkerMode] = useState(false);
 
   const getPoint = (event: React.PointerEvent<SVGSVGElement>): Point => {
@@ -69,18 +70,26 @@ export const FloorPlanEditor = ({
 
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
     if (isMarkerMode) {
-      event.currentTarget.setPointerCapture(event.pointerId);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      setCurrentPoint(getPoint(event));
       return;
     }
     if (tool === "select") return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setStart(getPoint(event));
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const point = getPoint(event);
+    setStart(point);
+    setCurrentPoint(point);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (isMarkerMode || start) setCurrentPoint(getPoint(event));
   };
 
   const handlePointerUp = (event: React.PointerEvent<SVGSVGElement>) => {
     if (isMarkerMode) {
       onStorageLocationMarkerChange?.(getPoint(event));
       setIsMarkerMode(false);
+      setCurrentPoint(null);
       return;
     }
     if (!start || tool === "select") return;
@@ -104,7 +113,13 @@ export const FloorPlanEditor = ({
       });
     }
     setStart(null);
+    setCurrentPoint(null);
     setTool("select");
+  };
+
+  const handlePointerCancel = () => {
+    setStart(null);
+    setCurrentPoint(null);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<SVGSVGElement>) => {
@@ -121,6 +136,7 @@ export const FloorPlanEditor = ({
       setTool("select");
       setIsMarkerMode(false);
       setStart(null);
+      setCurrentPoint(null);
       dispatch({ type: "select", id: null, kind: null });
     }
   };
@@ -198,7 +214,9 @@ export const FloorPlanEditor = ({
           tabIndex={0}
           aria-label={t("mapEditorAriaLabel")}
           onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
           onKeyDown={handleKeyDown}
         >
           <defs>
@@ -270,6 +288,70 @@ export const FloorPlanEditor = ({
               )}
             </g>
           ))}
+          {start && currentPoint && tool !== "select" && (
+            <g data-testid="floor-plan-drawing-preview" pointerEvents="none">
+              {tool === "wall" ? (
+                <line
+                  x1={start.x}
+                  y1={start.y}
+                  x2={currentPoint.x}
+                  y2={currentPoint.y}
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="8"
+                  strokeDasharray="10 6"
+                  strokeOpacity="0.75"
+                  strokeLinecap="round"
+                />
+              ) : (
+                (() => {
+                  const preview = normalizeRect(start, currentPoint, state.document.gridSize);
+                  if (tool === "circle") {
+                    return (
+                      <ellipse
+                        cx={preview.x + preview.width / 2}
+                        cy={preview.y + preview.height / 2}
+                        rx={preview.width / 2}
+                        ry={preview.height / 2}
+                        fill="hsl(var(--primary) / 0.12)"
+                        stroke="hsl(var(--primary))"
+                        strokeDasharray="10 6"
+                        strokeOpacity="0.75"
+                        strokeWidth="2"
+                      />
+                    );
+                  }
+                  return (
+                    <rect
+                      x={preview.x}
+                      y={preview.y}
+                      width={preview.width}
+                      height={preview.height}
+                      rx="4"
+                      fill={tool === "label" ? "transparent" : "hsl(var(--primary) / 0.12)"}
+                      stroke="hsl(var(--primary))"
+                      strokeDasharray="10 6"
+                      strokeOpacity="0.75"
+                      strokeWidth="2"
+                    />
+                  );
+                })()
+              )}
+            </g>
+          )}
+          {isMarkerMode && currentPoint && (
+            <circle
+              data-testid="floor-plan-marker-preview"
+              cx={currentPoint.x}
+              cy={currentPoint.y}
+              r="12"
+              fill="hsl(var(--accent))"
+              fillOpacity="0.65"
+              stroke="hsl(var(--background))"
+              strokeDasharray="6 4"
+              strokeWidth="3"
+              pointerEvents="none"
+            />
+          )}
           {storageLocationMarkers.map((marker) => {
             const location = storageLocations.find(
               (candidate) => candidate.id === marker.storage_location_id,
