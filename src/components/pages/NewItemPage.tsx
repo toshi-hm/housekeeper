@@ -238,6 +238,11 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         }}
         onNameBlur={handleNameBlur}
         submitLabel={existingItem ? t("stackSubmitLabel") : undefined}
+        // #833: stacking onto an existing item reuses that item's content_amount to
+        // interpret the new lot (tryStackToActiveItem never reads this form's value),
+        // so editing it here would silently discard the input. Lock it like
+        // EditItemPage does for items that already have lots (#742).
+        disableContentAmount={!!existingItem}
         defaultValues={cloneDefaultValues}
         draftKey={cloneFrom ? undefined : "new-item"}
         extraFields={
