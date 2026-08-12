@@ -6,6 +6,7 @@ import { maybeAutoReorder } from "@/lib/autoReorder";
 import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { isSchemaMismatchError } from "@/lib/supabaseErrors";
 import { fetchAllPages } from "@/lib/supabasePagination";
 import { useToast } from "@/lib/toast-context";
 import {
@@ -19,6 +20,40 @@ import {
 export type { ItemFilters, ItemSortKey };
 
 const ITEMS_KEY = ["items"] as const;
+
+type MutationErrorKind = "offline" | "schemaMismatch" | "unknown";
+
+/**
+ * ミューテーション失敗時のトーストメッセージ。CLAUDE.md「i18n キーの動的参照ルール」に
+ * 従い、テンプレートリテラル連結ではなく Key Map 経由で参照する（i18next-parser は
+ * このキーを抽出できないため、locales 側は手動管理）。
+ */
+const MUTATION_ERROR_MESSAGE_KEY = {
+  offline: "common:offlineError",
+  schemaMismatch: "common:schemaMismatchError",
+  unknown: "common:unknownError",
+} as const satisfies Record<MutationErrorKind, string>;
+
+/**
+ * 失敗理由を分類する。`schemaMismatch` は本番DBにマイグレーションが適用されて
+ * いない（アプリが送った列/RPCがDB側に無い）ケースで、リトライしても回復しない。
+ * この区別が無いと保存失敗が一律「エラーが発生しました」になり、原因が
+ * 画面からもコンソールからも分からなくなる。
+ */
+const classifyMutationError = (error: unknown): MutationErrorKind => {
+  if (error instanceof OfflineError) return "offline";
+  if (isSchemaMismatchError(error)) {
+    // 一律トーストだけだと調査の手掛かりが残らないため、元のエラーは必ず出す。
+    // oxlint-disable-next-line no-console
+    console.error(
+      "Supabase schema mismatch: DBがアプリの期待するスキーマを持っていません。" +
+        "supabase/migrations の適用漏れの可能性があります (supabase db push)。",
+      error,
+    );
+    return "schemaMismatch";
+  }
+  return "unknown";
+};
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -569,8 +604,7 @@ export const useCreateItem = () => {
       }
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
-      else toast(t("common:unknownError"), "error");
+      toast(t(MUTATION_ERROR_MESSAGE_KEY[classifyMutationError(error)]), "error");
     },
   });
 };
@@ -588,8 +622,7 @@ export const useUpdateItem = (id: string) => {
       await qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" });
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("offlineError"), "error");
-      else toast(t("unknownError"), "error");
+      toast(t(MUTATION_ERROR_MESSAGE_KEY[classifyMutationError(error)]), "error");
     },
   });
 };
@@ -607,8 +640,7 @@ export const useSoftDeleteItem = () => {
       // would otherwise double up with this one.
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("offlineError"), "error");
-      else toast(t("unknownError"), "error");
+      toast(t(MUTATION_ERROR_MESSAGE_KEY[classifyMutationError(error)]), "error");
     },
   });
 };
@@ -660,8 +692,7 @@ export const useVerifyItem = () => {
       toast(t("items:verifySuccess"), "success");
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
-      else toast(t("common:unknownError"), "error");
+      toast(t(MUTATION_ERROR_MESSAGE_KEY[classifyMutationError(error)]), "error");
     },
   });
 };
@@ -720,8 +751,7 @@ export const useRestoreItem = () => {
       toast(t("settings:restoreSuccess"), "success");
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
-      else toast(t("common:unknownError"), "error");
+      toast(t(MUTATION_ERROR_MESSAGE_KEY[classifyMutationError(error)]), "error");
     },
   });
 };
@@ -819,8 +849,7 @@ export const useBulkItemAction = () => {
       toast(t("items:bulkActionSuccess"), "success");
     },
     onError: (error) => {
-      if (error instanceof OfflineError) toast(t("common:offlineError"), "error");
-      else toast(t("common:unknownError"), "error");
+      toast(t(MUTATION_ERROR_MESSAGE_KEY[classifyMutationError(error)]), "error");
     },
   });
 };

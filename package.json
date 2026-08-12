@@ -21,6 +21,8 @@
     "mutation": "stryker run",
     "mutation:report": "bun run scripts/mutation-report.ts",
     "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/supabase.ts && node scripts/fix-supabase-types.mjs",
+    "db:push": "supabase db push",
+    "db:status": "supabase migration list",
     "test:db": "supabase test db",
     "release": "changelogen --release --push",
     "spec-drift-check": "node scripts/check-spec-drift.mjs",

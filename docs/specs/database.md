@@ -482,3 +482,18 @@ create policy "item_images_owner_write"
   2. `update items set units = quantity`
   3. `quantity` を drop
      この順で安全に移行
+
+### 本番への適用（手動デプロイ手順）
+
+- マイグレーションを本番へ適用する CI は **無い**。フロントエンドは Cloudflare Pages が
+  自動デプロイするが、DB は `bun run db:push`（= `supabase db push`）を人が実行する必要がある
+- **フロントのデプロイより先に（または同時に）適用する**。逆順にすると、アプリが
+  マイグレーションで追加された列を送るのに DB 側に無く、PostgREST が `PGRST204` で
+  書き込みを拒否する（アイテムの保存が失敗する）
+- 未適用の確認: `bun run db:status`（= `supabase migration list`）
+- `db:status` はマイグレーション **履歴テーブル** の比較なので、履歴が誤った version で
+  記録されている場合はドリフトを見逃す。実スキーマとの突き合わせは
+  `bun run gen:types` 後の `src/types/supabase.ts` の差分で確認する
+- アプリ側は「DB にアプリの期待する列/RPC が無い」エラー（`PGRST204` / `PGRST202` /
+  `42703` / `42P01` / `42883`）を `isSchemaMismatchError`（`src/lib/supabaseErrors.ts`）で
+  判別し、汎用の「エラーが発生しました」ではなく適用漏れを示すメッセージを表示する
