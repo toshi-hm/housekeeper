@@ -45,11 +45,26 @@ export type FloorPlanDocument = z.infer<typeof floorPlanDocumentSchema>;
 export interface FloorPlan {
   id: string;
   user_id: string;
-  storage_location_id: string;
+  /** Deprecated compatibility field for pre-shared-plan clients. */
+  storage_location_id?: string | null;
   name: string;
   schema_version: number;
   document: FloorPlanDocument;
   revision: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FloorPlanStorageLocationMarker {
+  id: string;
+  user_id: string;
+  floor_plan_id: string;
+  storage_location_id: string;
+  object_id: string | null;
+  x: number;
+  y: number;
+  z: number;
+  rotation: number;
   created_at: string;
   updated_at: string;
 }

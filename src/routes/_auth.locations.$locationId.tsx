@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import {
   useFloorPlan,
   useFloorPlanPlacements,
+  useFloorPlanStorageLocationMarkers,
   useUpsertFloorPlanPlacement,
 } from "@/hooks/useFloorPlans";
 import { useItems } from "@/hooks/useItems";
@@ -46,9 +47,9 @@ export const LocationMapPage = () => {
   } = useItems({ storageLocationId: locationId }, "created_at");
   const { data: photoUrl } = useSignedLocationPhoto(location?.photo_path);
   // 写真マップは既存導線を最短で表示し、2D/3Dを選択した時だけ間取りを取得する。
-  const { data: floorPlan, isLoading: isLoadingFloorPlan } = useFloorPlan(
-    view === "photo" ? "" : locationId,
-  );
+  const { data: floorPlan, isLoading: isLoadingFloorPlan } = useFloorPlan(view !== "photo");
+  const { data: storageLocationMarkers = [], isLoading: isLoadingStorageLocationMarkers } =
+    useFloorPlanStorageLocationMarkers(floorPlan?.id ?? null);
   const { data: placements = [], isLoading: isLoadingPlacements } = useFloorPlanPlacements(
     floorPlan?.id ?? null,
   );
@@ -80,7 +81,11 @@ export const LocationMapPage = () => {
         <h1 className="text-xl font-bold">{location?.name ?? ts("storageLocationMap")}</h1>
       </div>
 
-      {isLoadingLocations || isLoadingItems || isLoadingFloorPlan || isLoadingPlacements ? (
+      {isLoadingLocations ||
+      isLoadingItems ||
+      isLoadingFloorPlan ||
+      isLoadingPlacements ||
+      isLoadingStorageLocationMarkers ? (
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
@@ -115,7 +120,7 @@ export const LocationMapPage = () => {
             {view === "2d" && (
               <Link to="/locations/$locationId/edit" params={{ locationId }}>
                 <Button type="button" size="sm" variant="secondary">
-                  {floorPlan ? t("mapEditFloorPlan") : t("mapCreateFloorPlan")}
+                  {floorPlan ? t("mapEditSharedFloorPlan") : t("mapCreateSharedFloorPlan")}
                 </Button>
               </Link>
             )}
@@ -132,6 +137,15 @@ export const LocationMapPage = () => {
             (floorPlan ? (
               <FloorPlanViewer
                 document={floorPlan.document}
+                storageLocationMarkers={storageLocationMarkers}
+                storageLocations={locations}
+                highlightedStorageLocationId={locationId}
+                onStorageLocationClick={(storageLocationId) =>
+                  void navigate({
+                    to: "/locations/$locationId",
+                    params: { locationId: storageLocationId },
+                  })
+                }
                 placements={placements}
                 items={items}
                 unplacedItems={unplacedFloorPlanItems}
@@ -150,7 +164,7 @@ export const LocationMapPage = () => {
               />
             ) : (
               <p className="rounded-lg border p-4 text-sm text-muted-foreground">
-                {t("mapNoFloorPlan")}
+                {t("mapNoSharedFloorPlan")}
               </p>
             ))}
           {view === "3d" &&
@@ -162,11 +176,15 @@ export const LocationMapPage = () => {
                   </div>
                 }
               >
-                <ThreeDFloorPlanViewer document={floorPlan.document} />
+                <ThreeDFloorPlanViewer
+                  document={floorPlan.document}
+                  storageLocationMarkers={storageLocationMarkers}
+                  storageLocations={locations}
+                />
               </Suspense>
             ) : (
               <p className="rounded-lg border p-4 text-sm text-muted-foreground">
-                {t("mapNoFloorPlan")}
+                {t("mapNoSharedFloorPlan")}
               </p>
             ))}
         </>

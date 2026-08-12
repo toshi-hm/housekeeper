@@ -9,12 +9,18 @@ import {
   normalizeRect,
   snapToGrid,
 } from "@/lib/floorPlanEditor";
-import type { FloorPlanDocument } from "@/types/floorPlan";
+import type { FloorPlanDocument, FloorPlanStorageLocationMarker } from "@/types/floorPlan";
+import type { StorageLocation } from "@/types/item";
 
 interface FloorPlanEditorProps {
   initialDocument: FloorPlanDocument;
   onSave: (document: FloorPlanDocument) => void;
   isSaving?: boolean;
+  storageLocationMarkers?: FloorPlanStorageLocationMarker[];
+  storageLocations?: StorageLocation[];
+  selectedStorageLocationId?: string;
+  onSelectStorageLocation?: (storageLocationId: string) => void;
+  onStorageLocationMarkerChange?: (point: Point) => void;
 }
 
 interface Point {
@@ -28,6 +34,11 @@ export const FloorPlanEditor = ({
   initialDocument,
   onSave,
   isSaving = false,
+  storageLocationMarkers = [],
+  storageLocations = [],
+  selectedStorageLocationId,
+  onSelectStorageLocation,
+  onStorageLocationMarkerChange,
 }: FloorPlanEditorProps) => {
   const { t } = useTranslation("common");
   const toolLabel = {
@@ -44,6 +55,7 @@ export const FloorPlanEditor = ({
   );
   const [tool, setTool] = useState<FloorPlanTool>("select");
   const [start, setStart] = useState<Point | null>(null);
+  const [isMarkerMode, setIsMarkerMode] = useState(false);
 
   const getPoint = (event: React.PointerEvent<SVGSVGElement>): Point => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -56,12 +68,21 @@ export const FloorPlanEditor = ({
   };
 
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (isMarkerMode) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      return;
+    }
     if (tool === "select") return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setStart(getPoint(event));
   };
 
   const handlePointerUp = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (isMarkerMode) {
+      onStorageLocationMarkerChange?.(getPoint(event));
+      setIsMarkerMode(false);
+      return;
+    }
     if (!start || tool === "select") return;
     const end = getPoint(event);
     if (tool === "wall") {
@@ -98,6 +119,7 @@ export const FloorPlanEditor = ({
       dispatch({ type: "delete-selected" });
     } else if (event.key === "Escape") {
       setTool("select");
+      setIsMarkerMode(false);
       setStart(null);
       dispatch({ type: "select", id: null, kind: null });
     }
@@ -139,6 +161,35 @@ export const FloorPlanEditor = ({
           {isSaving ? t("mapSaving") : t("save")}
         </Button>
       </div>
+      {storageLocations.length > 0 && onSelectStorageLocation && (
+        <div className="flex flex-wrap items-end gap-2 rounded-lg border p-3">
+          <label className="grid gap-1 text-sm">
+            <span className="font-medium">{t("mapStorageLocationMarkerTarget")}</span>
+            <select
+              className="min-h-11 rounded-md border bg-background px-3 py-2"
+              value={selectedStorageLocationId ?? ""}
+              onChange={(event) => onSelectStorageLocation(event.target.value)}
+              aria-label={t("mapStorageLocationMarkerTarget")}
+            >
+              {storageLocations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            type="button"
+            size="sm"
+            variant={isMarkerMode ? "default" : "outline"}
+            disabled={!selectedStorageLocationId}
+            onClick={() => setIsMarkerMode((current) => !current)}
+          >
+            {isMarkerMode ? t("mapPlaceMarkerActive") : t("mapPlaceMarker")}
+          </Button>
+          <p className="basis-full text-xs text-muted-foreground">{t("mapPlaceMarkerHelp")}</p>
+        </div>
+      )}
       <div className="overflow-auto rounded-lg border bg-muted/20 p-2">
         <svg
           viewBox={`0 0 ${state.document.width} ${state.document.height}`}
@@ -219,6 +270,27 @@ export const FloorPlanEditor = ({
               )}
             </g>
           ))}
+          {storageLocationMarkers.map((marker) => {
+            const location = storageLocations.find(
+              (candidate) => candidate.id === marker.storage_location_id,
+            );
+            const isSelected = marker.storage_location_id === selectedStorageLocationId;
+            return (
+              <g key={marker.id} pointerEvents="none">
+                <circle
+                  cx={marker.x}
+                  cy={marker.y}
+                  r={isSelected ? 14 : 11}
+                  fill={isSelected ? "hsl(var(--destructive))" : "hsl(var(--accent))"}
+                  stroke="hsl(var(--background))"
+                  strokeWidth="3"
+                />
+                <text x={marker.x + 16} y={marker.y + 4} fontSize="12" fill="currentColor">
+                  {location?.name ?? t("mapUnknownStorageLocation")}
+                </text>
+              </g>
+            );
+          })}
         </svg>
       </div>
       <p className="text-xs text-muted-foreground">

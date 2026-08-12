@@ -2,13 +2,16 @@ import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useTranslation } from "react-i18next";
 
-import type { FloorPlanDocument } from "@/types/floorPlan";
+import type { FloorPlanDocument, FloorPlanStorageLocationMarker } from "@/types/floorPlan";
+import type { StorageLocation } from "@/types/item";
 
 interface ThreeDFloorPlanViewerProps {
   document: FloorPlanDocument;
+  storageLocationMarkers?: FloorPlanStorageLocationMarker[];
+  storageLocations?: StorageLocation[];
 }
 
-const FloorPlanScene = ({ document }: ThreeDFloorPlanViewerProps) => (
+const FloorPlanScene = ({ document, storageLocationMarkers = [] }: ThreeDFloorPlanViewerProps) => (
   <>
     <ambientLight intensity={1.5} />
     <directionalLight position={[200, 400, 200]} intensity={2} />
@@ -46,11 +49,21 @@ const FloorPlanScene = ({ document }: ThreeDFloorPlanViewerProps) => (
         <meshStandardMaterial color={shape.kind === "label" ? "#93c5fd" : "#60a5fa"} />
       </mesh>
     ))}
+    {storageLocationMarkers.map((marker) => (
+      <mesh key={marker.id} position={[marker.x, 48, marker.y]}>
+        <sphereGeometry args={[18, 24, 16]} />
+        <meshStandardMaterial color="#f97316" />
+      </mesh>
+    ))}
     <OrbitControls target={[document.width / 2, 0, document.height / 2]} />
   </>
 );
 
-export const ThreeDFloorPlanViewer = ({ document }: ThreeDFloorPlanViewerProps) => {
+export const ThreeDFloorPlanViewer = ({
+  document,
+  storageLocationMarkers = [],
+  storageLocations = [],
+}: ThreeDFloorPlanViewerProps) => {
   const { t } = useTranslation("common");
   return (
     <div className="space-y-2">
@@ -59,9 +72,19 @@ export const ThreeDFloorPlanViewer = ({ document }: ThreeDFloorPlanViewerProps) 
           camera={{ position: [document.width / 2, document.height, document.height], fov: 45 }}
           fallback={<p className="p-4 text-sm text-muted-foreground">{t("map3dFallback")}</p>}
         >
-          <FloorPlanScene document={document} />
+          <FloorPlanScene document={document} storageLocationMarkers={storageLocationMarkers} />
         </Canvas>
       </div>
+      {storageLocationMarkers.length > 0 && (
+        <ul className="divide-y rounded-lg border" aria-label={t("mapStorageLocations")}>
+          {storageLocationMarkers.map((marker) => (
+            <li key={marker.id} className="p-3 text-sm">
+              {storageLocations.find((location) => location.id === marker.storage_location_id)
+                ?.name ?? t("mapUnknownStorageLocation")}
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="text-xs text-muted-foreground">{t("map3dHelp")}</p>
     </div>
   );

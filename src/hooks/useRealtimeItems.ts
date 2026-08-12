@@ -9,6 +9,10 @@ const REALTIME_TABLES = [
   { table: "item_lots", queryKey: ["item-lots"] },
   { table: "shopping_list_items", queryKey: ["shopping"] },
   { table: "floor_plans", queryKey: ["floor-plans"] },
+  {
+    table: "floor_plan_storage_location_markers",
+    queryKey: ["floor-plan-storage-location-markers"],
+  },
   { table: "floor_plan_item_placements", queryKey: ["floor-plan-placements"] },
 ] as const;
 
@@ -26,7 +30,7 @@ const FAILURE_STATUSES = new Set(["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"]);
 
 /**
  * Supabase Realtime (`postgres_changes`) を購読し、`items` / `item_lots` /
- * `shopping_list_items` の変更を検知して TanStack Query キャッシュを無効化する。
+ * `shopping_list_items` と間取り関連テーブルの変更を検知して TanStack Query キャッシュを無効化する。
  *
  * 複数デバイス間で在庫情報をリアルタイム同期するためのフック。
  * オフライン時は購読を張らず、オンライン復帰時に再接続する。

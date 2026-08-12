@@ -7,9 +7,10 @@ import {
   type FloorPlanDocument,
   floorPlanDocumentSchema,
   type FloorPlanItemPlacement,
+  type FloorPlanStorageLocationMarker,
 } from "@/types/floorPlan";
 
-const FLOOR_PLANS_KEY = ["floor-plans"] as const;
+const FLOOR_PLAN_KEY = ["floor-plans", "shared"] as const;
 
 const getUserId = async (): Promise<string> => {
   const { data, error } = await supabase.auth.getUser();
@@ -25,16 +26,29 @@ const parseFloorPlan = (row: unknown): FloorPlan => {
   };
 };
 
-const fetchFloorPlan = async (storageLocationId: string): Promise<FloorPlan | null> => {
+const fetchFloorPlan = async (): Promise<FloorPlan | null> => {
   const userId = await getUserId();
   const { data, error } = await supabase
     .from("floor_plans")
     .select("*")
     .eq("user_id", userId)
-    .eq("storage_location_id", storageLocationId)
     .maybeSingle();
   if (error) throw error;
   return data ? parseFloorPlan(data) : null;
+};
+
+const fetchFloorPlanStorageLocationMarkers = async (
+  floorPlanId: string,
+): Promise<FloorPlanStorageLocationMarker[]> => {
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from("floor_plan_storage_location_markers")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("floor_plan_id", floorPlanId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as FloorPlanStorageLocationMarker[];
 };
 
 const fetchFloorPlanPlacements = async (floorPlanId: string): Promise<FloorPlanItemPlacement[]> => {
@@ -49,11 +63,18 @@ const fetchFloorPlanPlacements = async (floorPlanId: string): Promise<FloorPlanI
   return (data ?? []) as FloorPlanItemPlacement[];
 };
 
-export const useFloorPlan = (storageLocationId: string) =>
+export const useFloorPlan = (enabled = true) =>
   useQuery({
-    queryKey: [...FLOOR_PLANS_KEY, storageLocationId],
-    queryFn: () => fetchFloorPlan(storageLocationId),
-    enabled: storageLocationId.length > 0,
+    queryKey: FLOOR_PLAN_KEY,
+    queryFn: fetchFloorPlan,
+    enabled,
+  });
+
+export const useFloorPlanStorageLocationMarkers = (floorPlanId: string | null) =>
+  useQuery({
+    queryKey: ["floor-plan-storage-location-markers", floorPlanId],
+    queryFn: () => fetchFloorPlanStorageLocationMarkers(floorPlanId!),
+    enabled: !!floorPlanId,
   });
 
 export const useFloorPlanPlacements = (floorPlanId: string | null) =>
@@ -65,7 +86,6 @@ export const useFloorPlanPlacements = (floorPlanId: string | null) =>
 
 interface UpsertFloorPlanInput {
   id?: string;
-  storageLocationId: string;
   name: string;
   document: FloorPlanDocument;
   revision?: number;
@@ -80,7 +100,6 @@ export const useUpsertFloorPlan = () => {
       const document = floorPlanDocumentSchema.parse(input.document);
       const payload = {
         user_id: userId,
-        storage_location_id: input.storageLocationId,
         name: input.name.trim(),
         schema_version: document.schemaVersion,
         document,
@@ -107,9 +126,53 @@ export const useUpsertFloorPlan = () => {
       }
       return parseFloorPlan(data);
     },
-    onSuccess: (floorPlan) => {
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: FLOOR_PLAN_KEY });
+    },
+  });
+};
+
+interface UpsertFloorPlanStorageLocationMarkerInput {
+  floorPlanId: string;
+  storageLocationId: string;
+  objectId?: string | null;
+  x: number;
+  y: number;
+  z?: number;
+  rotation?: number;
+}
+
+export const useUpsertFloorPlanStorageLocationMarker = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      input: UpsertFloorPlanStorageLocationMarkerInput,
+    ): Promise<FloorPlanStorageLocationMarker> => {
+      requireOnline();
+      const userId = await getUserId();
+      const { data, error } = await supabase
+        .from("floor_plan_storage_location_markers")
+        .upsert(
+          {
+            user_id: userId,
+            floor_plan_id: input.floorPlanId,
+            storage_location_id: input.storageLocationId,
+            object_id: input.objectId ?? null,
+            x: input.x,
+            y: input.y,
+            z: input.z ?? 0,
+            rotation: input.rotation ?? 0,
+          },
+          { onConflict: "floor_plan_id,storage_location_id" },
+        )
+        .select()
+        .single();
+      if (error) throw error;
+      return data as FloorPlanStorageLocationMarker;
+    },
+    onSuccess: (marker) => {
       void queryClient.invalidateQueries({
-        queryKey: [...FLOOR_PLANS_KEY, floorPlan.storage_location_id],
+        queryKey: ["floor-plan-storage-location-markers", marker.floor_plan_id],
       });
     },
   });

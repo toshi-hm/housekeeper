@@ -1,15 +1,22 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Map as MapIcon, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { FloorPlanViewer } from "@/components/organisms/FloorPlanViewer";
 import { Input } from "@/components/ui/input";
+import {
+  useFloorPlan,
+  useFloorPlanPlacements,
+  useFloorPlanStorageLocationMarkers,
+} from "@/hooks/useFloorPlans";
 import { useItems } from "@/hooks/useItems";
 import { useStorageLocations } from "@/hooks/useMasterData";
 
 const MapPage = () => {
   const { t } = useTranslation("common");
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const {
     data: items = [],
@@ -17,11 +24,18 @@ const MapPage = () => {
     isError: itemsError,
   } = useItems({ search: search.trim() || undefined }, "created_at");
   const { data: locations = [], isLoading: locationsLoading } = useStorageLocations();
+  const { data: floorPlan, isLoading: floorPlanLoading } = useFloorPlan();
+  const { data: storageLocationMarkers = [], isLoading: markersLoading } =
+    useFloorPlanStorageLocationMarkers(floorPlan?.id ?? null);
+  const { data: placements = [], isLoading: placementsLoading } = useFloorPlanPlacements(
+    floorPlan?.id ?? null,
+  );
   const locationNames = useMemo(
     () => new Map(locations.map((location) => [location.id, location.name])),
     [locations],
   );
-  const isLoading = itemsLoading || locationsLoading;
+  const isLoading =
+    itemsLoading || locationsLoading || floorPlanLoading || markersLoading || placementsLoading;
 
   return (
     <div className="space-y-4">
@@ -39,6 +53,42 @@ const MapPage = () => {
           className="pl-9"
         />
       </label>
+      {floorPlan ? (
+        <section className="space-y-2" aria-labelledby="shared-floor-plan">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="shared-floor-plan" className="text-base font-semibold">
+              {t("mapSharedFloorPlan")}
+            </h2>
+            {locations[0] && (
+              <Link to="/locations/$locationId/edit" params={{ locationId: locations[0].id }}>
+                <span className="text-sm text-primary underline">
+                  {t("mapEditSharedFloorPlan")}
+                </span>
+              </Link>
+            )}
+          </div>
+          <FloorPlanViewer
+            document={floorPlan.document}
+            storageLocationMarkers={storageLocationMarkers}
+            storageLocations={locations}
+            placements={placements}
+            items={items}
+            onStorageLocationClick={(storageLocationId) => {
+              void navigate({
+                to: "/locations/$locationId",
+                params: { locationId: storageLocationId },
+              });
+            }}
+            onItemClick={(itemId) => {
+              void navigate({ to: "/items/$itemId", params: { itemId } });
+            }}
+          />
+        </section>
+      ) : (
+        <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+          {t("mapNoSharedFloorPlan")}
+        </p>
+      )}
       <section aria-labelledby="map-search-results" className="space-y-2">
         <h2 id="map-search-results" className="text-base font-semibold">
           {t("mapSearchResults")}

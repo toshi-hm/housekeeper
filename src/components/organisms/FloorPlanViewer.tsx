@@ -1,10 +1,18 @@
 import { useTranslation } from "react-i18next";
 
-import type { FloorPlanDocument, FloorPlanItemPlacement } from "@/types/floorPlan";
-import type { Item } from "@/types/item";
+import type {
+  FloorPlanDocument,
+  FloorPlanItemPlacement,
+  FloorPlanStorageLocationMarker,
+} from "@/types/floorPlan";
+import type { Item, StorageLocation } from "@/types/item";
 
 interface FloorPlanViewerProps {
   document: FloorPlanDocument;
+  storageLocationMarkers?: FloorPlanStorageLocationMarker[];
+  storageLocations?: StorageLocation[];
+  highlightedStorageLocationId?: string | null;
+  onStorageLocationClick?: (storageLocationId: string) => void;
   placements?: FloorPlanItemPlacement[];
   items?: Item[];
   unplacedItems?: Item[];
@@ -20,6 +28,10 @@ const itemById = (items: Item[]): Map<string, Item> =>
 
 export const FloorPlanViewer = ({
   document,
+  storageLocationMarkers = [],
+  storageLocations = [],
+  highlightedStorageLocationId = null,
+  onStorageLocationClick,
   placements = [],
   items = [],
   unplacedItems = [],
@@ -31,6 +43,7 @@ export const FloorPlanViewer = ({
 }: FloorPlanViewerProps) => {
   const { t } = useTranslation("common");
   const itemsById = itemById(items);
+  const storageLocationsById = new Map(storageLocations.map((location) => [location.id, location]));
 
   return (
     <div className="space-y-3">
@@ -119,6 +132,46 @@ export const FloorPlanViewer = ({
               </g>
             );
           })}
+          {storageLocationMarkers.map((marker) => {
+            const location = storageLocationsById.get(marker.storage_location_id);
+            const isHighlighted = marker.storage_location_id === highlightedStorageLocationId;
+            return (
+              <g
+                key={marker.id}
+                role={onStorageLocationClick ? "button" : undefined}
+                tabIndex={onStorageLocationClick ? 0 : undefined}
+                aria-label={location?.name ?? t("mapUnknownStorageLocation")}
+                className={onStorageLocationClick ? "cursor-pointer" : undefined}
+                onClick={
+                  onStorageLocationClick
+                    ? () => onStorageLocationClick(marker.storage_location_id)
+                    : undefined
+                }
+                onKeyDown={
+                  onStorageLocationClick
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          onStorageLocationClick(marker.storage_location_id);
+                        }
+                      }
+                    : undefined
+                }
+              >
+                <circle
+                  cx={marker.x}
+                  cy={marker.y}
+                  r={isHighlighted ? 14 : 11}
+                  fill={isHighlighted ? "hsl(var(--destructive))" : "hsl(var(--accent))"}
+                  stroke="hsl(var(--background))"
+                  strokeWidth="3"
+                />
+                <text x={marker.x + 16} y={marker.y + 4} fontSize="12" fill="currentColor">
+                  {location?.name ?? t("mapUnknownStorageLocation")}
+                </text>
+              </g>
+            );
+          })}
           {placements.map((placement) => {
             const item = itemsById.get(placement.item_id);
             const isHighlighted = placement.item_id === highlightedItemId;
@@ -158,6 +211,28 @@ export const FloorPlanViewer = ({
         </svg>
       </div>
       <p className="text-xs text-muted-foreground">{t("mapFloorPlanFallbackHelp")}</p>
+      {storageLocationMarkers.length > 0 && (
+        <ul className="divide-y rounded-lg border" aria-label={t("mapStorageLocations")}>
+          {storageLocationMarkers.map((marker) => {
+            const location = storageLocationsById.get(marker.storage_location_id);
+            return (
+              <li key={marker.id}>
+                <button
+                  type="button"
+                  className="w-full p-3 text-left text-sm hover:bg-muted/50"
+                  onClick={
+                    onStorageLocationClick
+                      ? () => onStorageLocationClick(marker.storage_location_id)
+                      : undefined
+                  }
+                >
+                  {location?.name ?? t("mapUnknownStorageLocation")}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       {onSelectItemForPlacement && unplacedItems.length > 0 && (
         <div className="space-y-2 rounded-lg border p-3">
           <p className="text-sm font-medium">{t("mapChooseItemToPlace")}</p>

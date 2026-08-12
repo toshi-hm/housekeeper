@@ -1,11 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
 import { FloorPlanEditor } from "@/components/organisms/FloorPlanEditor";
 import { Button } from "@/components/ui/button";
-import { useFloorPlan, useUpsertFloorPlan } from "@/hooks/useFloorPlans";
+import {
+  useFloorPlan,
+  useFloorPlanStorageLocationMarkers,
+  useUpsertFloorPlan,
+  useUpsertFloorPlanStorageLocationMarker,
+} from "@/hooks/useFloorPlans";
 import { useStorageLocations } from "@/hooks/useMasterData";
 import { FloorPlanConflictError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
@@ -16,17 +22,21 @@ const FloorPlanEditorPage = () => {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [selectedStorageLocationId, setSelectedStorageLocationId] = useState(locationId);
   const { data: locations = [], isLoading: locationsLoading } = useStorageLocations();
   const {
     data: floorPlan,
     isLoading: floorPlanLoading,
     isError,
     refetch: refetchFloorPlan,
-  } = useFloorPlan(locationId);
+  } = useFloorPlan();
+  const { data: storageLocationMarkers = [], isLoading: markersLoading } =
+    useFloorPlanStorageLocationMarkers(floorPlan?.id ?? null);
   const saveFloorPlan = useUpsertFloorPlan();
+  const saveStorageLocationMarker = useUpsertFloorPlanStorageLocationMarker();
   const location = locations.find((item) => item.id === locationId);
 
-  if (locationsLoading || floorPlanLoading) {
+  if (locationsLoading || floorPlanLoading || markersLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner />
@@ -51,19 +61,34 @@ const FloorPlanEditorPage = () => {
         </Button>
         <div>
           <p className="text-sm text-muted-foreground">{location.name}</p>
-          <h1 className="text-xl font-bold">{t("mapEditFloorPlan")}</h1>
+          <h1 className="text-xl font-bold">{t("mapEditSharedFloorPlan")}</h1>
         </div>
       </div>
       <FloorPlanEditor
         key={`${floorPlan?.id ?? "new"}:${floorPlan?.revision ?? 0}`}
         initialDocument={floorPlan?.document ?? createEmptyFloorPlanDocument()}
         isSaving={saveFloorPlan.isPending}
+        storageLocationMarkers={storageLocationMarkers}
+        storageLocations={locations}
+        selectedStorageLocationId={selectedStorageLocationId}
+        onSelectStorageLocation={setSelectedStorageLocationId}
+        onStorageLocationMarkerChange={(point) => {
+          if (!floorPlan) {
+            toast(t("mapSaveBeforeMarker"), "error");
+            return;
+          }
+          saveStorageLocationMarker.mutate({
+            floorPlanId: floorPlan.id,
+            storageLocationId: selectedStorageLocationId,
+            x: point.x,
+            y: point.y,
+          });
+        }}
         onSave={(document) => {
           saveFloorPlan.mutate(
             {
               id: floorPlan?.id,
-              storageLocationId: locationId,
-              name: floorPlan?.name ?? `${location.name} ${t("mapFloorPlan")}`,
+              name: floorPlan?.name ?? t("mapSharedFloorPlanName"),
               document,
               revision: floorPlan?.revision,
             },

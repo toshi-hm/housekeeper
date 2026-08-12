@@ -79,7 +79,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          storage_location_id: string;
+          storage_location_id: string | null;
           name: string;
           schema_version: number;
           document: unknown;
@@ -90,7 +90,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
-          storage_location_id: string;
+          storage_location_id?: string | null;
           name: string;
           schema_version?: number;
           document: unknown;
@@ -101,11 +101,52 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
-          storage_location_id?: string;
+          storage_location_id?: string | null;
           name?: string;
           schema_version?: number;
           document?: unknown;
           revision?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      floor_plan_storage_location_markers: {
+        Row: {
+          id: string;
+          user_id: string;
+          floor_plan_id: string;
+          storage_location_id: string;
+          object_id: string | null;
+          x: number;
+          y: number;
+          z: number;
+          rotation: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          floor_plan_id: string;
+          storage_location_id: string;
+          object_id?: string | null;
+          x: number;
+          y: number;
+          z?: number;
+          rotation?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          floor_plan_id?: string;
+          storage_location_id?: string;
+          object_id?: string | null;
+          x?: number;
+          y?: number;
+          z?: number;
+          rotation?: number;
           updated_at?: string;
         };
         Relationships: [];
