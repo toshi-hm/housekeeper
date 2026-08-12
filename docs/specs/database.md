@@ -18,23 +18,24 @@ Supabase (Postgres 15+)
 
 ## テーブル一覧
 
-| テーブル                     | 役割                                    | MVP  | 削除動作（参照元 → 自身）                     |
-| ---------------------------- | --------------------------------------- | ---- | --------------------------------------------- |
-| `items`                      | 在庫アイテム                            | ✅   | カテゴリ/場所マスタ削除で SET NULL            |
-| `item_lots`                  | 購入ロット（数量・単価・期限）          | ✅   | item 削除で CASCADE                           |
-| `categories`                 | カテゴリマスタ                          | ✅   | items.category_id = NULL                      |
-| `storage_locations`          | 保管場所マスタ                          | ✅   | items.storage_location_id = NULL              |
-| `custom_units`               | カスタム単位マスタ                      | v1.1 | 削除は items に影響しない（FK ではない）      |
-| `consumption_logs`           | 消費イベント履歴                        | ✅   | item 削除で CASCADE                           |
-| `user_settings`              | ユーザー設定（言語/閾値/通知時刻 など） | ✅   | user 削除で CASCADE                           |
-| `shopping_list_items`        | 買い物リスト                            | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに） |
-| `shopping_list_archive`      | 買い物リストの購入履歴アーカイブ        | v1.2 | user 削除で CASCADE（行自体は不変・更新なし） |
-| `notification_preferences`   | 通知 ON/OFF                             | v1.2 | user 削除で CASCADE                           |
-| `push_subscriptions`         | Web Push 購読                           | v1.2 | user 削除で CASCADE                           |
-| `recipes`                    | レシピ/セット消費のテンプレート         | v1.3 | user 削除で CASCADE                           |
-| `recipe_items`               | レシピの構成アイテムと消費量            | v1.3 | recipe 削除で CASCADE / item 削除で CASCADE   |
-| `floor_plans`                | 保管場所に紐づく2D間取りの意味モデル    | v1.9 | storage_location / user 削除で CASCADE        |
-| `floor_plan_item_placements` | 間取り上の在庫配置                      | v1.9 | floor_plan / item / user 削除で CASCADE       |
+| テーブル                              | 役割                                     | MVP  | 削除動作（参照元 → 自身）                           |
+| ------------------------------------- | ---------------------------------------- | ---- | --------------------------------------------------- |
+| `items`                               | 在庫アイテム                             | ✅   | カテゴリ/場所マスタ削除で SET NULL                  |
+| `item_lots`                           | 購入ロット（数量・単価・期限）           | ✅   | item 削除で CASCADE                                 |
+| `categories`                          | カテゴリマスタ                           | ✅   | items.category_id = NULL                            |
+| `storage_locations`                   | 保管場所マスタ                           | ✅   | items.storage_location_id = NULL                    |
+| `custom_units`                        | カスタム単位マスタ                       | v1.1 | 削除は items に影響しない（FK ではない）            |
+| `consumption_logs`                    | 消費イベント履歴                         | ✅   | item 削除で CASCADE                                 |
+| `user_settings`                       | ユーザー設定（言語/閾値/通知時刻 など）  | ✅   | user 削除で CASCADE                                 |
+| `shopping_list_items`                 | 買い物リスト                             | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに）       |
+| `shopping_list_archive`               | 買い物リストの購入履歴アーカイブ         | v1.2 | user 削除で CASCADE（行自体は不変・更新なし）       |
+| `notification_preferences`            | 通知 ON/OFF                              | v1.2 | user 削除で CASCADE                                 |
+| `push_subscriptions`                  | Web Push 購読                            | v1.2 | user 削除で CASCADE                                 |
+| `recipes`                             | レシピ/セット消費のテンプレート          | v1.3 | user 削除で CASCADE                                 |
+| `recipe_items`                        | レシピの構成アイテムと消費量             | v1.3 | recipe 削除で CASCADE / item 削除で CASCADE         |
+| `floor_plans`                         | ユーザー共通の家全体2D間取りの意味モデル | v1.9 | user 削除で CASCADE                                 |
+| `floor_plan_storage_location_markers` | 共通間取り上の保管場所マーカー           | v1.9 | floor_plan / storage_location / user 削除で CASCADE |
+| `floor_plan_item_placements`          | 間取り上の在庫配置                       | v1.9 | floor_plan / item / user 削除で CASCADE             |
 
 ---
 
@@ -175,31 +176,23 @@ create index storage_locations_user_id_idx on storage_locations(user_id);
 create table floor_plans (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  storage_location_id uuid not null references storage_locations(id) on delete cascade,
+  storage_location_id uuid references storage_locations(id) on delete set null, -- 旧クライアント互換用。新規コードはマーカーを使う
   name text not null check (name = btrim(name) and char_length(name) between 1 and 80),
   schema_version integer not null default 1 check (schema_version = 1),
   document jsonb not null,
   revision integer not null default 1 check (revision > 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (user_id, storage_location_id)
+  unique (user_id)
 );
 
 create index floor_plans_user_id_idx on floor_plans(user_id);
-create index floor_plans_location_idx on floor_plans(storage_location_id);
 
 alter table floor_plans enable row level security;
 
 create policy "floor_plans_owner_all" on floor_plans for all
   using (auth.uid() = user_id)
-  with check (
-    auth.uid() = user_id
-    and exists (
-      select 1 from storage_locations location
-      where location.id = floor_plans.storage_location_id
-        and location.user_id = auth.uid()
-    )
-  );
+  with check (auth.uid() = user_id);
 ```
 
 Data API経由の認証済みクライアントから利用するため、`authenticated` に必要なCRUD権限を付与する。RLSは別途有効化し、所有者以外の行を返さない。
@@ -207,9 +200,33 @@ Data API経由の認証済みクライアントから利用するため、`authe
 `document` の必須構造は `src/types/floorPlan.ts` と `docs/specs/features/floor-plan-map.md` をSOTとする。
 DBはJSON内部の座標や図形種別を完全には検証せず、読み込み時・保存前にZodで検証する。未知の `schema_version` は表示せず、移行導線を出す。
 
-- 1保管場所につき1間取り。将来複数階や複数間取りが必要になった場合は `floor_plan_levels` を追加する。
+- 1ユーザーにつき1共通間取り。将来複数階や複数間取りが必要になった場合は `floor_plan_levels` を追加する。
 - `revision` は複数タブ／端末による上書きを検知するための楽観ロック値。
-- `storage_locations` 削除時は間取りもCASCADE。写真マップの `photo_path` と `items.pin_x/pin_y` は既存互換のため変更しない。
+- `storage_location_id` は旧クライアント互換の非推奨列で、新規コードでは使用しない。保管場所の正本はマーカー。
+- 写真マップの `photo_path` と `items.pin_x/pin_y` は既存互換のため変更しない。
+
+## floor_plan_storage_location_markers（v1.9）
+
+共通間取り上の保管場所の位置を保持する。1つの保管場所は共通間取り上に最大1つのマーカーを持つ。
+
+```sql
+create table floor_plan_storage_location_markers (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  floor_plan_id uuid not null references floor_plans(id) on delete cascade,
+  storage_location_id uuid not null references storage_locations(id) on delete cascade,
+  object_id text,
+  x numeric(12,3) not null check (x >= 0),
+  y numeric(12,3) not null check (y >= 0),
+  z numeric(12,3) not null default 0 check (z >= 0),
+  rotation numeric(8,3) not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (floor_plan_id, storage_location_id)
+);
+```
+
+RLSは `user_id`、参照先の `floor_plans.user_id`、`storage_locations.user_id` がすべて `auth.uid()` であることを検証する。`authenticated` へのCRUD権限とRealtime publication登録を行う。
 
 ## floor_plan_item_placements（v1.9）
 
@@ -249,10 +266,7 @@ create policy "floor_plan_item_placements_owner_all"
     )
     and exists (
       select 1 from items item
-      join floor_plans plan
-        on plan.storage_location_id = item.storage_location_id
-      where plan.id = floor_plan_item_placements.floor_plan_id
-        and item.id = floor_plan_item_placements.item_id
+      where item.id = floor_plan_item_placements.item_id
         and item.user_id = auth.uid()
     )
   )
@@ -265,10 +279,7 @@ create policy "floor_plan_item_placements_owner_all"
     )
     and exists (
       select 1 from items item
-      join floor_plans plan
-        on plan.storage_location_id = item.storage_location_id
-      where plan.id = floor_plan_item_placements.floor_plan_id
-        and item.id = floor_plan_item_placements.item_id
+      where item.id = floor_plan_item_placements.item_id
         and item.user_id = auth.uid()
     )
   );

@@ -2,7 +2,7 @@
 
 ## 概要
 
-保管場所写真に加えて、ユーザーがWeb上で2D間取りを作成し、在庫を間取り上で検索・配置できるようにする。
+保管場所写真に加えて、ユーザーがWeb上で家全体の共通2D間取りを1つ作成し、各保管場所と在庫を同じ間取り上で検索・配置できるようにする。
 3Dは2Dの意味モデルから生成する参照表示とし、初期版では3D空間の直接編集・保存は行わない。
 
 ## スコープ判断
@@ -11,7 +11,8 @@
 
 - フッター左から3番目のマップタブと `/map` ルート。
 - 保管場所横断の在庫検索。
-- 保管場所ごとの写真 / 2D / 3D表示切替。
+- 保管場所ごとの写真 / 共通2D / 3D表示切替。
+- 共通間取り上の保管場所マーカーの表示・編集。
 - 2Dのグリッド、線、矩形、ラベル、家具・収納の作成・移動・削除。
 - グリッド吸着、キーボード操作、Undo/Redo、保存競合検出。
 - 間取り上の在庫配置と配置済みアイテムの検索強調。
@@ -43,7 +44,7 @@
 ```
 
 写真マップは既存ルートに残し、同ルートで view search param を使って表示モードを切り替える。
-編集は別ルートに分け、誤操作で閲覧中の図面を変更しない。
+2D編集は保管場所ルートを入口としても、ユーザー共通の間取り本体を編集する。編集画面では保管場所を選択して、その位置を共通間取り上にマークできる。
 
 ### コンポーネント
 
@@ -63,7 +64,7 @@ atoms / molecules / organisms には対応する `.stories.tsx` とテストを�
 
 ### 状態管理
 
-- リモート状態: TanStack Query (`floor-plans`, `floor-plan-placements`, `items`)。
+- リモート状態: TanStack Query (`floor-plans`, `floor-plan-storage-location-markers`, `floor-plan-placements`, `items`)。
 - 編集中状態: `useReducer`による純粋なdraft reducer。
 - 履歴: reducerの過去状態と未来状態を保持するUndo/Redo。
 - 保存: `requireOnline()`、Zod parse、revision条件付きmutation。
@@ -82,8 +83,7 @@ atoms / molecules / organisms には対応する `.stories.tsx` とテストを�
 
 - `id uuid primary key`
 - `user_id uuid not null references auth.users(id) on delete cascade`
-- `storage_location_id uuid not null references storage_locations(id) on delete cascade`
-- `name text not null`
+- `name text not null`（ユーザーごとの共通間取り名）
 - `schema_version integer not null default 1`
 - `document jsonb not null`
 - `revision integer not null default 1`
@@ -101,7 +101,18 @@ atoms / molecules / organisms には対応する `.stories.tsx` とテストを�
 - `created_at`, `updated_at`
 - `unique(floor_plan_id, item_id)`
 
-RLSは行の `user_id` だけでなく、参照先の `floor_plans` と `items` も呼び出しユーザー所有であることを検証する。
+### floor_plan_storage_location_markers
+
+- `id uuid primary key`
+- `user_id uuid not null references auth.users(id) on delete cascade`
+- `floor_plan_id uuid not null references floor_plans(id) on delete cascade`
+- `storage_location_id uuid not null references storage_locations(id) on delete cascade`
+- `object_id text`
+- `x`, `y`, `z numeric`
+- `rotation numeric not null default 0`
+- `unique(floor_plan_id, storage_location_id)`
+
+`floor_plans` はユーザーごとに1件の共通間取りとし、保管場所の位置はマーカーとして別テーブルに保持する。RLSは行の `user_id` だけでなく、参照先の間取り・保管場所・アイテムも呼び出しユーザー所有であることを検証する。
 
 ## エラー
 
