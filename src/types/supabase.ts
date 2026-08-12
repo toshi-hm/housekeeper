@@ -6,12 +6,56 @@ export interface Database {
   __InternalSupabase: {
     PostgrestVersion: "14.5";
   };
+  graphql_public: {
+    Tables: {
+      [_ in never]: never;
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json;
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+        };
+        Returns: Json;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
   public: {
     Tables: {
+      barcode_rate_limits: {
+        Row: {
+          request_count: number;
+          user_id: string;
+          window_start: string;
+        };
+        Insert: {
+          request_count?: number;
+          user_id: string;
+          window_start?: string;
+        };
+        Update: {
+          request_count?: number;
+          user_id?: string;
+          window_start?: string;
+        };
+        Relationships: [];
+      };
       categories: {
         Row: {
           color: string | null;
           created_at: string;
+          days_use_after_opening: number | null;
           icon: string | null;
           id: string;
           name: string;
@@ -21,6 +65,7 @@ export interface Database {
         Insert: {
           color?: string | null;
           created_at?: string;
+          days_use_after_opening?: number | null;
           icon?: string | null;
           id?: string;
           name: string;
@@ -30,6 +75,7 @@ export interface Database {
         Update: {
           color?: string | null;
           created_at?: string;
+          days_use_after_opening?: number | null;
           icon?: string | null;
           id?: string;
           name?: string;
@@ -127,17 +173,294 @@ export interface Database {
         };
         Relationships: [];
       };
+      floor_plan_item_placements: {
+        Row: {
+          created_at: string;
+          floor_plan_id: string;
+          id: string;
+          item_id: string;
+          object_id: string | null;
+          rotation: number;
+          updated_at: string;
+          user_id: string;
+          x: number;
+          y: number;
+          z: number;
+        };
+        Insert: {
+          created_at?: string;
+          floor_plan_id: string;
+          id?: string;
+          item_id: string;
+          object_id?: string | null;
+          rotation?: number;
+          updated_at?: string;
+          user_id: string;
+          x: number;
+          y: number;
+          z?: number;
+        };
+        Update: {
+          created_at?: string;
+          floor_plan_id?: string;
+          id?: string;
+          item_id?: string;
+          object_id?: string | null;
+          rotation?: number;
+          updated_at?: string;
+          user_id?: string;
+          x?: number;
+          y?: number;
+          z?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "floor_plan_item_placements_shared_floor_plan_id_fkey";
+            columns: ["floor_plan_id"];
+            isOneToOne: false;
+            referencedRelation: "floor_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "floor_plan_item_placements_shared_item_id_fkey";
+            columns: ["item_id"];
+            isOneToOne: false;
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      floor_plan_storage_location_markers: {
+        Row: {
+          created_at: string;
+          floor_plan_id: string;
+          id: string;
+          object_id: string | null;
+          rotation: number;
+          storage_location_id: string;
+          updated_at: string;
+          user_id: string;
+          x: number;
+          y: number;
+          z: number;
+        };
+        Insert: {
+          created_at?: string;
+          floor_plan_id: string;
+          id?: string;
+          object_id?: string | null;
+          rotation?: number;
+          storage_location_id: string;
+          updated_at?: string;
+          user_id: string;
+          x: number;
+          y: number;
+          z?: number;
+        };
+        Update: {
+          created_at?: string;
+          floor_plan_id?: string;
+          id?: string;
+          object_id?: string | null;
+          rotation?: number;
+          storage_location_id?: string;
+          updated_at?: string;
+          user_id?: string;
+          x?: number;
+          y?: number;
+          z?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "floor_plan_storage_location_markers_floor_plan_id_fkey";
+            columns: ["floor_plan_id"];
+            isOneToOne: false;
+            referencedRelation: "floor_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "floor_plan_storage_location_markers_storage_location_id_fkey";
+            columns: ["storage_location_id"];
+            isOneToOne: false;
+            referencedRelation: "storage_locations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      floor_plans: {
+        Row: {
+          created_at: string;
+          document: Json;
+          id: string;
+          name: string;
+          revision: number;
+          schema_version: number;
+          storage_location_id: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          document: Json;
+          id?: string;
+          name: string;
+          revision?: number;
+          schema_version?: number;
+          storage_location_id?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          document?: Json;
+          id?: string;
+          name?: string;
+          revision?: number;
+          schema_version?: number;
+          storage_location_id?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "floor_plans_shared_storage_location_id_fkey";
+            columns: ["storage_location_id"];
+            isOneToOne: false;
+            referencedRelation: "storage_locations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      household_invite_attempts: {
+        Row: {
+          attempt_count: number;
+          first_attempt_at: string;
+          last_attempt_at: string;
+          locked_until: string | null;
+          user_id: string;
+        };
+        Insert: {
+          attempt_count?: number;
+          first_attempt_at?: string;
+          last_attempt_at?: string;
+          locked_until?: string | null;
+          user_id: string;
+        };
+        Update: {
+          attempt_count?: number;
+          first_attempt_at?: string;
+          last_attempt_at?: string;
+          locked_until?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      household_invites: {
+        Row: {
+          code: string;
+          created_at: string;
+          created_by: string;
+          expires_at: string;
+          household_id: string;
+          id: string;
+          redeemed_at: string | null;
+          redeemed_by: string | null;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          created_by: string;
+          expires_at: string;
+          household_id: string;
+          id?: string;
+          redeemed_at?: string | null;
+          redeemed_by?: string | null;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          created_by?: string;
+          expires_at?: string;
+          household_id?: string;
+          id?: string;
+          redeemed_at?: string | null;
+          redeemed_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "household_invites_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      household_members: {
+        Row: {
+          household_id: string;
+          joined_at: string;
+          role: Database["public"]["Enums"]["household_role"];
+          user_id: string;
+        };
+        Insert: {
+          household_id: string;
+          joined_at?: string;
+          role?: Database["public"]["Enums"]["household_role"];
+          user_id: string;
+        };
+        Update: {
+          household_id?: string;
+          joined_at?: string;
+          role?: Database["public"]["Enums"]["household_role"];
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "household_members_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      households: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       item_lots: {
         Row: {
           created_at: string;
           expiry_date: string | null;
           id: string;
           item_id: string;
+          opened_at: string | null;
           opened_remaining: number | null;
-          unit_price: number | null;
           purchase_date: string | null;
           purchased_units: number;
           store_name: string | null;
+          unit_price: number | null;
           units: number;
           updated_at: string;
           user_id: string;
@@ -147,11 +470,12 @@ export interface Database {
           expiry_date?: string | null;
           id?: string;
           item_id: string;
+          opened_at?: string | null;
           opened_remaining?: number | null;
-          unit_price?: number | null;
           purchase_date?: string | null;
-          purchased_units?: number;
+          purchased_units: number;
           store_name?: string | null;
+          unit_price?: number | null;
           units?: number;
           updated_at?: string;
           user_id: string;
@@ -161,11 +485,12 @@ export interface Database {
           expiry_date?: string | null;
           id?: string;
           item_id?: string;
+          opened_at?: string | null;
           opened_remaining?: number | null;
-          unit_price?: number | null;
           purchase_date?: string | null;
           purchased_units?: number;
           store_name?: string | null;
+          unit_price?: number | null;
           units?: number;
           updated_at?: string;
           user_id?: string;
@@ -180,6 +505,30 @@ export interface Database {
           },
         ];
       };
+      item_tags: {
+        Row: {
+          color: string | null;
+          created_at: string;
+          id: string;
+          name: string;
+          user_id: string;
+        };
+        Insert: {
+          color?: string | null;
+          created_at?: string;
+          id?: string;
+          name: string;
+          user_id: string;
+        };
+        Update: {
+          color?: string | null;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       items: {
         Row: {
           auto_reorder: boolean;
@@ -188,15 +537,21 @@ export interface Database {
           content_amount: number;
           content_unit: string;
           created_at: string | null;
+          days_use_after_opening: number | null;
           deleted_at: string | null;
           deletion_reason: string | null;
           expiry_date: string | null;
+          expiry_type: string | null;
           id: string;
           image_path: string | null;
           last_verified_at: string | null;
+          minimum_stock: number | null;
           name: string;
           notes: string | null;
+          opened_at: string | null;
           opened_remaining: number | null;
+          pin_x: number | null;
+          pin_y: number | null;
           purchase_date: string | null;
           reorder_threshold: number | null;
           storage_location_id: string | null;
@@ -211,15 +566,21 @@ export interface Database {
           content_amount?: number;
           content_unit?: string;
           created_at?: string | null;
+          days_use_after_opening?: number | null;
           deleted_at?: string | null;
           deletion_reason?: string | null;
           expiry_date?: string | null;
+          expiry_type?: string | null;
           id?: string;
           image_path?: string | null;
           last_verified_at?: string | null;
+          minimum_stock?: number | null;
           name: string;
           notes?: string | null;
+          opened_at?: string | null;
           opened_remaining?: number | null;
+          pin_x?: number | null;
+          pin_y?: number | null;
           purchase_date?: string | null;
           reorder_threshold?: number | null;
           storage_location_id?: string | null;
@@ -234,15 +595,21 @@ export interface Database {
           content_amount?: number;
           content_unit?: string;
           created_at?: string | null;
+          days_use_after_opening?: number | null;
           deleted_at?: string | null;
           deletion_reason?: string | null;
           expiry_date?: string | null;
+          expiry_type?: string | null;
           id?: string;
           image_path?: string | null;
           last_verified_at?: string | null;
+          minimum_stock?: number | null;
           name?: string;
           notes?: string | null;
+          opened_at?: string | null;
           opened_remaining?: number | null;
+          pin_x?: number | null;
+          pin_y?: number | null;
           purchase_date?: string | null;
           reorder_threshold?: number | null;
           storage_location_id?: string | null;
@@ -266,6 +633,104 @@ export interface Database {
             referencedColumns: ["id"];
           },
         ];
+      };
+      items_to_tags: {
+        Row: {
+          item_id: string;
+          tag_id: string;
+          user_id: string;
+        };
+        Insert: {
+          item_id: string;
+          tag_id: string;
+          user_id: string;
+        };
+        Update: {
+          item_id?: string;
+          tag_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "items_to_tags_item_id_fkey";
+            columns: ["item_id"];
+            isOneToOne: false;
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "items_to_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            isOneToOne: false;
+            referencedRelation: "item_tags";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      meal_plans: {
+        Row: {
+          created_at: string;
+          executed_at: string | null;
+          id: string;
+          note: string | null;
+          planned_date: string;
+          recipe_id: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          executed_at?: string | null;
+          id?: string;
+          note?: string | null;
+          planned_date: string;
+          recipe_id?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          executed_at?: string | null;
+          id?: string;
+          note?: string | null;
+          planned_date?: string;
+          recipe_id?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meal_plans_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notification_logs: {
+        Row: {
+          created_at: string;
+          id: string;
+          item_count: number;
+          sent_on: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          item_count?: number;
+          sent_on?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          item_count?: number;
+          sent_on?: string;
+          user_id?: string;
+        };
+        Relationships: [];
       };
       notification_preferences: {
         Row: {
@@ -369,6 +834,24 @@ export interface Database {
           },
         ];
       };
+      recipe_rate_limits: {
+        Row: {
+          request_count: number;
+          user_id: string;
+          window_start: string;
+        };
+        Insert: {
+          request_count?: number;
+          user_id: string;
+          window_start?: string;
+        };
+        Update: {
+          request_count?: number;
+          user_id?: string;
+          window_start?: string;
+        };
+        Relationships: [];
+      };
       recipes: {
         Row: {
           created_at: string;
@@ -390,6 +873,33 @@ export interface Database {
           name?: string;
           updated_at?: string;
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      security_reset_attempts: {
+        Row: {
+          attempt_count: number;
+          first_attempt_at: string;
+          identifier: string;
+          last_attempt_at: string;
+          locked_until: string | null;
+          scope: string;
+        };
+        Insert: {
+          attempt_count?: number;
+          first_attempt_at?: string;
+          identifier: string;
+          last_attempt_at?: string;
+          locked_until?: string | null;
+          scope: string;
+        };
+        Update: {
+          attempt_count?: number;
+          first_attempt_at?: string;
+          identifier?: string;
+          last_attempt_at?: string;
+          locked_until?: string | null;
+          scope?: string;
         };
         Relationships: [];
       };
@@ -422,12 +932,12 @@ export interface Database {
       };
       shopping_list_items: {
         Row: {
+          auto_added: boolean;
           created_at: string;
           created_item_id: string | null;
           desired_units: number;
           id: string;
           linked_item_id: string | null;
-          auto_added: boolean;
           name: string;
           note: string | null;
           purchased_at: string | null;
@@ -436,12 +946,12 @@ export interface Database {
           user_id: string;
         };
         Insert: {
+          auto_added?: boolean;
           created_at?: string;
           created_item_id?: string | null;
           desired_units?: number;
           id?: string;
           linked_item_id?: string | null;
-          auto_added?: boolean;
           name: string;
           note?: string | null;
           purchased_at?: string | null;
@@ -450,12 +960,12 @@ export interface Database {
           user_id: string;
         };
         Update: {
+          auto_added?: boolean;
           created_at?: string;
           created_item_id?: string | null;
           desired_units?: number;
           id?: string;
           linked_item_id?: string | null;
-          auto_added?: boolean;
           name?: string;
           note?: string | null;
           purchased_at?: string | null;
@@ -480,12 +990,72 @@ export interface Database {
           },
         ];
       };
+      shopping_list_template_items: {
+        Row: {
+          created_at: string;
+          desired_units: number;
+          id: string;
+          name: string;
+          template_id: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          desired_units?: number;
+          id?: string;
+          name: string;
+          template_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          desired_units?: number;
+          id?: string;
+          name?: string;
+          template_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_template_items_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "shopping_list_templates";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      shopping_list_templates: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       storage_locations: {
         Row: {
           created_at: string;
           icon: string | null;
           id: string;
           name: string;
+          photo_path: string | null;
           updated_at: string;
           user_id: string;
         };
@@ -494,6 +1064,7 @@ export interface Database {
           icon?: string | null;
           id?: string;
           name: string;
+          photo_path?: string | null;
           updated_at?: string;
           user_id: string;
         };
@@ -502,6 +1073,7 @@ export interface Database {
           icon?: string | null;
           id?: string;
           name?: string;
+          photo_path?: string | null;
           updated_at?: string;
           user_id?: string;
         };
@@ -578,27 +1150,231 @@ export interface Database {
       };
     };
     Views: {
-      [_ in never]: never;
+      pg_all_foreign_keys: {
+        Row: {
+          fk_columns: unknown[] | null;
+          fk_constraint_name: unknown;
+          fk_schema_name: unknown;
+          fk_table_name: unknown;
+          fk_table_oid: unknown;
+          is_deferrable: boolean | null;
+          is_deferred: boolean | null;
+          match_type: string | null;
+          on_delete: string | null;
+          on_update: string | null;
+          pk_columns: unknown[] | null;
+          pk_constraint_name: unknown;
+          pk_index_name: unknown;
+          pk_schema_name: unknown;
+          pk_table_name: unknown;
+          pk_table_oid: unknown;
+        };
+        Relationships: [];
+      };
+      tap_funky: {
+        Row: {
+          args: string | null;
+          is_definer: boolean | null;
+          is_strict: boolean | null;
+          is_visible: boolean | null;
+          kind: unknown;
+          langoid: unknown;
+          name: unknown;
+          oid: unknown;
+          owner: unknown;
+          returns: string | null;
+          returns_set: boolean | null;
+          schema: unknown;
+          volatility: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
+      _cleanup: { Args: never; Returns: boolean };
+      _contract_on: { Args: { "": string }; Returns: unknown };
+      _currtest: { Args: never; Returns: number };
+      _db_privs: { Args: never; Returns: unknown[] };
+      _extensions: { Args: never; Returns: unknown[] };
+      _get: { Args: { "": string }; Returns: number };
+      _get_latest: { Args: { "": string }; Returns: number[] };
+      _get_note: { Args: { "": string }; Returns: string };
+      _is_verbose: { Args: never; Returns: boolean };
+      _prokind: { Args: { p_oid: unknown }; Returns: unknown };
+      _query: { Args: { "": string }; Returns: string };
+      _refine_vol: { Args: { "": string }; Returns: string };
+      _retval: { Args: { "": string }; Returns: string };
+      _table_privs: { Args: never; Returns: unknown[] };
+      _temptypes: { Args: { "": string }; Returns: string };
+      _todo: { Args: never; Returns: string };
+      archive_purchased_shopping_items: { Args: never; Returns: number };
       auto_archive_expired_items: {
-        Args: Record<PropertyKey, never>;
-        Returns: Array<{ id: string; archived_at: string }>;
+        Args: never;
+        Returns: {
+          archived_at: string;
+          id: string;
+        }[];
       };
+      bulk_consume_items: { Args: { p_item_ids: string[] }; Returns: undefined };
+      check_barcode_rate_limit: {
+        Args: never;
+        Returns: {
+          allowed: boolean;
+          retry_after_seconds: number;
+        }[];
+      };
+      check_chat_rate_limit: {
+        Args: never;
+        Returns: {
+          allowed: boolean;
+          retry_after_seconds: number;
+        }[];
+      };
+      check_household_invite_rate_limit: {
+        Args: never;
+        Returns: {
+          allowed: boolean;
+          retry_after_seconds: number;
+        }[];
+      };
+      check_recipe_rate_limit: {
+        Args: never;
+        Returns: {
+          allowed: boolean;
+          retry_after_seconds: number;
+        }[];
+      };
+      check_security_reset_rate_limit: {
+        Args: {
+          p_base_lockout_minutes?: number;
+          p_identifier: string;
+          p_max_attempts?: number;
+          p_max_lockout_minutes?: number;
+          p_scope: string;
+          p_window_minutes?: number;
+        };
+        Returns: {
+          allowed: boolean;
+          retry_after_seconds: number;
+        }[];
+      };
+      col_is_null:
+        | {
+            Args: {
+              column_name: unknown;
+              description?: string;
+              schema_name: unknown;
+              table_name: unknown;
+            };
+            Returns: string;
+          }
+        | {
+            Args: {
+              column_name: unknown;
+              description?: string;
+              table_name: unknown;
+            };
+            Returns: string;
+          };
+      col_not_null:
+        | {
+            Args: {
+              column_name: unknown;
+              description?: string;
+              schema_name: unknown;
+              table_name: unknown;
+            };
+            Returns: string;
+          }
+        | {
+            Args: {
+              column_name: unknown;
+              description?: string;
+              table_name: unknown;
+            };
+            Returns: string;
+          };
+      create_household: { Args: { p_name: string }; Returns: string };
+      delete_category_if_unused: { Args: { p_id: string }; Returns: undefined };
+      delete_storage_location_if_unused: {
+        Args: { p_id: string };
+        Returns: undefined;
+      };
+      diag:
+        | {
+            Args: { msg: unknown };
+            Returns: {
+              error: true;
+            } & "Could not choose the best candidate function between: public.diag(msg => text), public.diag(msg => anyelement). Try renaming the parameters or the function itself in the database so function overloading can be resolved";
+          }
+        | {
+            Args: { msg: string };
+            Returns: {
+              error: true;
+            } & "Could not choose the best candidate function between: public.diag(msg => text), public.diag(msg => anyelement). Try renaming the parameters or the function itself in the database so function overloading can be resolved";
+          };
+      diag_test_name: { Args: { "": string }; Returns: string };
+      do_tap: { Args: never; Returns: string[] } | { Args: { "": string }; Returns: string[] };
+      fail: { Args: never; Returns: string } | { Args: { "": string }; Returns: string };
+      findfuncs: { Args: { "": string }; Returns: string[] };
+      finish: { Args: { exception_on_failure?: boolean }; Returns: string[] };
+      format_type_string: { Args: { "": string }; Returns: string };
+      has_unique: { Args: { "": string }; Returns: string };
+      import_items_batch: {
+        Args: { p_duplicate_strategy: string; p_items: Json };
+        Returns: {
+          action: string;
+          item_id: string;
+        }[];
+      };
+      in_todo: { Args: never; Returns: boolean };
+      is_empty: { Args: { "": string }; Returns: string };
+      isnt_empty: { Args: { "": string }; Returns: string };
+      lives_ok: { Args: { "": string }; Returns: string };
+      no_plan: { Args: never; Returns: boolean[] };
+      num_failed: { Args: never; Returns: number };
+      os_name: { Args: never; Returns: string };
+      pass: { Args: never; Returns: string } | { Args: { "": string }; Returns: string };
+      pg_version: { Args: never; Returns: string };
+      pg_version_num: { Args: never; Returns: number };
+      pgtap_version: { Args: never; Returns: number };
+      redeem_household_invite: {
+        Args: { p_code: string };
+        Returns: {
+          error_code: string;
+          household_id: string;
+        }[];
+      };
+      runtests: { Args: never; Returns: string[] } | { Args: { "": string }; Returns: string[] };
+      save_shopping_list_template: {
+        Args: { p_id: string; p_items: Json; p_name: string };
+        Returns: string;
+      };
+      skip:
+        | { Args: { "": string }; Returns: string }
+        | { Args: { how_many: number; why: string }; Returns: string };
+      throws_ok: { Args: { "": string }; Returns: string };
+      todo:
+        | { Args: { how_many: number }; Returns: boolean[] }
+        | { Args: { how_many: number; why: string }; Returns: boolean[] }
+        | { Args: { why: string }; Returns: boolean[] }
+        | { Args: { how_many: number; why: string }; Returns: boolean[] };
+      todo_end: { Args: never; Returns: boolean[] };
+      todo_start:
+        | { Args: never; Returns: boolean[] }
+        | { Args: { "": string }; Returns: boolean[] };
       undo_auto_archive: {
-        Args: { p_item_ids: string[]; p_archived_at: string };
-        Returns: number;
-      };
-      archive_purchased_shopping_items: {
-        Args: Record<PropertyKey, never>;
+        Args: { p_archived_at: string; p_item_ids: string[] };
         Returns: number;
       };
     };
     Enums: {
-      [_ in never]: never;
+      household_role: "owner" | "member";
     };
     CompositeTypes: {
-      [_ in never]: never;
+      _time_trial_type: {
+        a_time: number | null;
+      };
     };
   };
 }
@@ -719,7 +1495,12 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
-  public: {
+  graphql_public: {
     Enums: {},
+  },
+  public: {
+    Enums: {
+      household_role: ["owner", "member"],
+    },
   },
 } as const;
