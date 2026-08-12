@@ -8,7 +8,7 @@ import { createEmptyFloorPlanDocument } from "@/types/floorPlan";
 import { FloorPlanEditor } from "./FloorPlanEditor";
 
 describe("FloorPlanEditor", () => {
-  it("ドラッグ中は線のプレビューを表示し、離すと確定する", () => {
+  it("ドラッグ中は線のプレビューを表示し、同じツールで連続して確定できる", () => {
     const onSave = mock(() => undefined);
     const { getByRole, queryByTestId } = render(
       <I18nextProvider i18n={i18n}>
@@ -36,6 +36,10 @@ describe("FloorPlanEditor", () => {
     fireEvent.pointerUp(svg, { clientX: 300, clientY: 200, pointerId: 1 });
     expect(queryByTestId("floor-plan-drawing-preview")).toBeNull();
 
+    fireEvent.pointerDown(svg, { clientX: 200, clientY: 300, pointerId: 2 });
+    fireEvent.pointerMove(svg, { clientX: 400, clientY: 300, pointerId: 2 });
+    fireEvent.pointerUp(svg, { clientX: 400, clientY: 300, pointerId: 2 });
+
     fireEvent.click(getByRole("button", { name: i18n.t("common:save") }));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -43,6 +47,10 @@ describe("FloorPlanEditor", () => {
           expect.objectContaining({
             start: { x: 100, y: 100 },
             end: { x: 300, y: 200 },
+          }),
+          expect.objectContaining({
+            start: { x: 200, y: 300 },
+            end: { x: 400, y: 300 },
           }),
         ],
       }),

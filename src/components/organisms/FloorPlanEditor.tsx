@@ -114,7 +114,6 @@ export const FloorPlanEditor = ({
     }
     setStart(null);
     setCurrentPoint(null);
-    setTool("select");
   };
 
   const handlePointerCancel = () => {
