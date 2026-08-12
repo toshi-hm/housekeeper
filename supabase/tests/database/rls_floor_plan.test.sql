@@ -1,7 +1,7 @@
 -- RLS regression tests for shared floor plans and storage-location markers.
 begin;
 
-select plan(12);
+select plan(14);
 
 insert into auth.users (id, email)
 values
@@ -11,15 +11,23 @@ values
 insert into storage_locations (id, user_id, name)
 values
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Kitchen'),
-  ('aaaaaaaa-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'Bedroom');
+  ('aaaaaaaa-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'Bedroom'),
+  ('bbbbbbbb-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'Garage');
 
 insert into items (id, user_id, storage_location_id, name)
-values (
-  'aaaaaaaa-0000-0000-0000-000000000002',
-  '11111111-1111-1111-1111-111111111111',
-  'aaaaaaaa-0000-0000-0000-000000000001',
-  'Fridge'
-);
+values
+  (
+    'aaaaaaaa-0000-0000-0000-000000000002',
+    '11111111-1111-1111-1111-111111111111',
+    'aaaaaaaa-0000-0000-0000-000000000001',
+    'Fridge'
+  ),
+  (
+    'bbbbbbbb-0000-0000-0000-000000000002',
+    '22222222-2222-2222-2222-222222222222',
+    'bbbbbbbb-0000-0000-0000-000000000001',
+    'Toolbox'
+  );
 
 insert into floor_plans (id, user_id, name, document)
 values (
@@ -86,6 +94,28 @@ select throws_ok(
 );
 
 select set_config('request.jwt.claims', json_build_object('sub', '11111111-1111-1111-1111-111111111111', 'role', 'authenticated')::text, true);
+
+-- The plan owner (user A) can insert their own rows fine, but must not be
+-- able to attach a marker/placement on their own plan to a storage
+-- location or item that belongs to someone else (user B) — this is what
+-- the `with check` ownership joins on the referenced row are meant to stop,
+-- as opposed to the cross-user tests above which fail earlier on plan
+-- ownership and wouldn't catch a regression here.
+select throws_ok(
+  $$insert into floor_plan_storage_location_markers (user_id, floor_plan_id, storage_location_id, x, y)
+    values ('11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000003', 'bbbbbbbb-0000-0000-0000-000000000001', 1, 1)$$,
+  '42501',
+  'new row violates row-level security policy for table "floor_plan_storage_location_markers"',
+  'plan owner cannot create a marker referencing another user''s storage location'
+);
+
+select throws_ok(
+  $$insert into floor_plan_item_placements (user_id, floor_plan_id, item_id, x, y)
+    values ('11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000003', 'bbbbbbbb-0000-0000-0000-000000000002', 1, 1)$$,
+  '42501',
+  'new row violates row-level security policy for table "floor_plan_item_placements"',
+  'plan owner cannot create a placement referencing another user''s item'
+);
 
 with upd as (
   update floor_plan_item_placements set x = 160 where id = 'aaaaaaaa-0000-0000-0000-000000000004' returning 1
