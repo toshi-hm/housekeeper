@@ -73,9 +73,16 @@ const updateLot = async (
     expiry_date?: string | null;
     store_name?: string | null;
   },
+  expected: { units: number; opened_remaining: number | null },
 ): Promise<ItemLot> => {
   requireOnline();
-  const { data, error } = await supabase
+  // Optimistic concurrency: only apply the update if the lot still has the
+  // exact units/opened_remaining the caller's form was based on. Without this,
+  // a concurrent consumption (another device, dashboard quick-consume, ...)
+  // made while the edit form was open gets silently overwritten by this
+  // stale snapshot — same class of lost update as consumeLot/
+  // restoreLotConsumption guard against (#432, #762). See #825.
+  let query = supabase
     .from("item_lots")
     .update({
       units: values.units,
@@ -90,9 +97,15 @@ const updateLot = async (
       updated_at: new Date().toISOString(),
     })
     .eq("id", lotId)
-    .select()
-    .single();
+    .eq("units", expected.units);
+  query =
+    expected.opened_remaining === null
+      ? query.is("opened_remaining", null)
+      : query.eq("opened_remaining", expected.opened_remaining);
+
+  const { data, error } = await query.select().maybeSingle();
   if (error) throw error;
+  if (!data) throw new ConcurrentUpdateError();
   return data as ItemLot;
 };
 
@@ -502,6 +515,7 @@ export const useUpdateLot = () => {
       lotId,
       itemId,
       values,
+      expected,
     }: {
       lotId: string;
       itemId: string;
@@ -513,8 +527,11 @@ export const useUpdateLot = () => {
         expiry_date?: string | null;
         store_name?: string | null;
       };
+      /** #825: the lot's units/opened_remaining as read when the edit form was
+       *  opened, used as an optimistic-concurrency guard (see updateLot). */
+      expected: { units: number; opened_remaining: number | null };
     }) => {
-      const updated = await updateLot(lotId, values);
+      const updated = await updateLot(lotId, values, expected);
       await syncItemAggregate(itemId);
       return updated;
     },
@@ -526,6 +543,7 @@ export const useUpdateLot = () => {
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else if (error instanceof ConcurrentUpdateError) toast(t("lotConflictError"), "error");
       else toast(t("unknownError"), "error");
     },
   });

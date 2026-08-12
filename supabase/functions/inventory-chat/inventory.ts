@@ -49,7 +49,12 @@ export const fetchRecentlyConsumedItems = async (
   let data: Array<{
     item_id: string;
     occurred_at: string;
-    items: { name: string; units: number; deleted_at: string | null } | null;
+    items: {
+      name: string;
+      units: number;
+      opened_remaining: number | null;
+      deleted_at: string | null;
+    } | null;
   }>;
   try {
     // #669: a single unbounded select silently truncates once a user's
@@ -58,7 +63,7 @@ export const fetchRecentlyConsumedItems = async (
     data = await fetchAllPages(async (from, to) => {
       const { data, error } = await supabase
         .from("consumption_logs")
-        .select("item_id, occurred_at, items(name, units, deleted_at)")
+        .select("item_id, occurred_at, items(name, units, opened_remaining, deleted_at)")
         .gte("occurred_at", twoMonthsAgo.toISOString())
         .order("occurred_at", { ascending: false })
         .order("id", { ascending: true })
@@ -71,13 +76,17 @@ export const fetchRecentlyConsumedItems = async (
     return [];
   }
 
-  // Keep only items currently empty (deleted or units=0); dedupe to most recent.
+  // Keep only items currently empty (deleted, or units=0 with no opened
+  // remainder — mirrors src/types/item.ts's isAlreadyInStock so an item
+  // that's units=0 but still has an opened lot in progress isn't reported
+  // as both "in stock" and "recently consumed" at once); dedupe to most recent.
   const seen = new Set<string>();
   const result: RecentlyConsumedItem[] = [];
   for (const row of data) {
     const item = row.items;
     if (!item || seen.has(row.item_id)) continue;
-    if (item.deleted_at !== null || item.units === 0) {
+    const isInStock = item.units > 0 || (item.opened_remaining ?? 0) > 0;
+    if (item.deleted_at !== null || !isInStock) {
       seen.add(row.item_id);
       result.push({
         item_id: row.item_id,
