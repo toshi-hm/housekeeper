@@ -108,6 +108,7 @@ describe("NewItemPage - default content unit", () => {
   afterEach(() => {
     itemSpy.mockRestore();
     settingsSpy.mockRestore();
+    mock.restore();
     cleanup();
   });
 
@@ -174,6 +175,7 @@ describe("NewItemPage - existing item overwrite guard (#650)", () => {
     settingsSpy.mockRestore();
     setItemTagsSpy.mockRestore();
     uploadItemImageSpy.mockRestore();
+    mock.restore();
     cleanup();
   });
 
