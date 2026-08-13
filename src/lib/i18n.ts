@@ -10,6 +10,7 @@ import enItems from "@/locales/en/items.json";
 import enMealPlan from "@/locales/en/mealPlan.json";
 import enMfa from "@/locales/en/mfa.json";
 import enNotifications from "@/locales/en/notifications.json";
+import enReceiptScan from "@/locales/en/receiptScan.json";
 import enRecipes from "@/locales/en/recipes.json";
 import enSettings from "@/locales/en/settings.json";
 import enShopping from "@/locales/en/shopping.json";
@@ -22,6 +23,7 @@ import jaItems from "@/locales/ja/items.json";
 import jaMealPlan from "@/locales/ja/mealPlan.json";
 import jaMfa from "@/locales/ja/mfa.json";
 import jaNotifications from "@/locales/ja/notifications.json";
+import jaReceiptScan from "@/locales/ja/receiptScan.json";
 import jaRecipes from "@/locales/ja/recipes.json";
 import jaSettings from "@/locales/ja/settings.json";
 import jaShopping from "@/locales/ja/shopping.json";
@@ -46,6 +48,7 @@ void i18n
       "mfa",
       "recipes",
       "mealPlan",
+      "receiptScan",
     ],
     defaultNS: "common",
     interpolation: { escapeValue: false },
@@ -63,6 +66,7 @@ void i18n
         mfa: jaMfa,
         recipes: jaRecipes,
         mealPlan: jaMealPlan,
+        receiptScan: jaReceiptScan,
       },
       en: {
         common: enCommon,
@@ -77,6 +81,7 @@ void i18n
         mfa: enMfa,
         recipes: enRecipes,
         mealPlan: enMealPlan,
+        receiptScan: enReceiptScan,
       },
     },
   });

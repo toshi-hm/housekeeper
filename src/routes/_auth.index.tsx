@@ -6,6 +6,7 @@ import {
   CheckSquare,
   ChefHat,
   Plus,
+  Receipt,
   Search,
   ShoppingCart,
   SlidersHorizontal,
@@ -488,14 +489,22 @@ export const DashboardPage = () => {
                 </Button>
               )}
               <Link to="/recipes">
-                <Button size="sm" variant="outline">
-                  <ChefHat className="mr-1 h-4 w-4" />
-                  {t("recipes:recipesShortcut")}
+                <Button size="icon" variant="outline" aria-label={t("recipes:recipesShortcut")}>
+                  <ChefHat className="h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/meal-plan">
                 <Button size="icon" variant="outline" aria-label={t("mealPlan:mealPlanShortcut")}>
                   <CalendarDays className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to="/items/receipt-scan">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label={t("receiptScan:receiptScanShortcut")}
+                >
+                  <Receipt className="h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/items/new">

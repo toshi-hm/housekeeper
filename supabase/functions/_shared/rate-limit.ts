@@ -146,6 +146,45 @@ export const checkBarcodeRateLimit = async (
   return { allowed: data.allowed, retryAfterSeconds: data.retry_after_seconds };
 };
 
+/**
+ * Per-user rate limit for the receipt-scan Edge Function (#696), guarding
+ * Gemini Vision calls — which consume far more of the shared GEMINI_API_KEY
+ * free-tier quota per call than inventory-chat's text-only calls — against
+ * exhaustion from a valid session/access token.
+ *
+ * Backed by the `check_receipt_scan_rate_limit` Postgres function, which
+ * derives the user from the caller's own JWT (auth.uid()) rather than
+ * trusting a client-supplied identifier, and atomically tracks a
+ * fixed-window request count per user in `receipt_scan_rate_limits`
+ * (stricter window than the other limiters: 60s/5, see
+ * docs/specs/features/receipt-scan.md §4.1). Intended to be called with the
+ * user-scoped (anon key + JWT / RLS) Supabase client that receipt-scan
+ * already builds — no service-role key needed.
+ */
+export interface ReceiptScanRateLimitResult {
+  allowed: boolean;
+  retryAfterSeconds: number;
+}
+
+const RECEIPT_SCAN_RATE_LIMIT_RETRY_SECONDS = 60;
+
+export const checkReceiptScanRateLimit = async (
+  supabase: SupabaseClient,
+): Promise<ReceiptScanRateLimitResult> => {
+  const { data, error } = await supabase
+    .rpc("check_receipt_scan_rate_limit")
+    .single<{ allowed: boolean; retry_after_seconds: number }>();
+
+  if (error || !data) {
+    // Fail closed: if the rate-limit check itself is broken, don't let the
+    // request bypass throttling entirely.
+    console.error("[receipt-scan] rate limit check failed", error);
+    return { allowed: false, retryAfterSeconds: RECEIPT_SCAN_RATE_LIMIT_RETRY_SECONDS };
+  }
+
+  return { allowed: data.allowed, retryAfterSeconds: data.retry_after_seconds };
+};
+
 /** Constant-time string comparison to avoid leaking hash match info via timing. */
 export const timingSafeEqual = async (a: string, b: string): Promise<boolean> => {
   const { timingSafeEqual: nodeTimingSafeEqual } = await import("node:crypto");

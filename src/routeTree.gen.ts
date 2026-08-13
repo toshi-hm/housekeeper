@@ -22,6 +22,7 @@ import { Route as AuthShoppingRouteImport } from './routes/_auth.shopping'
 import { Route as AuthStatsRouteImport } from './routes/_auth.stats'
 import { Route as AuthItemsItemIdRouteImport } from './routes/_auth.items.$itemId'
 import { Route as AuthItemsNewRouteImport } from './routes/_auth.items.new'
+import { Route as AuthItemsReceiptScanRouteImport } from './routes/_auth.items.receipt-scan'
 import { Route as AuthLocationsLocationIdRouteImport } from './routes/_auth.locations.$locationId'
 import { Route as AuthSettingsArchivedItemsRouteImport } from './routes/_auth.settings.archived-items'
 import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
@@ -96,6 +97,11 @@ const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
   path: '/items/new',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthItemsReceiptScanRoute = AuthItemsReceiptScanRouteImport.update({
+  id: '/items/receipt-scan',
+  path: '/items/receipt-scan',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthLocationsLocationIdRoute = AuthLocationsLocationIdRouteImport.update({
   id: '/locations/$locationId',
   path: '/locations/$locationId',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/stats': typeof AuthStatsRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
+  '/items/receipt-scan': typeof AuthItemsReceiptScanRoute
   '/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthIndexRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
+  '/items/receipt-scan': typeof AuthItemsReceiptScanRoute
   '/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/_auth/': typeof AuthIndexRoute
   '/_auth/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/_auth/items/new': typeof AuthItemsNewRoute
+  '/_auth/items/receipt-scan': typeof AuthItemsReceiptScanRoute
   '/_auth/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/_auth/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/_auth/settings/categories': typeof AuthSettingsCategoriesRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/stats'
     | '/items/$itemId'
     | '/items/new'
+    | '/items/receipt-scan'
     | '/locations/$locationId'
     | '/settings/archived-items'
     | '/settings/categories'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/'
     | '/items/$itemId'
     | '/items/new'
+    | '/items/receipt-scan'
     | '/locations/$locationId'
     | '/settings/archived-items'
     | '/settings/categories'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/_auth/'
     | '/_auth/items/$itemId'
     | '/_auth/items/new'
+    | '/_auth/items/receipt-scan'
     | '/_auth/locations/$locationId'
     | '/_auth/settings/archived-items'
     | '/_auth/settings/categories'
@@ -386,6 +398,13 @@ declare module '@tanstack/react-router' {
       path: '/items/new'
       fullPath: '/items/new'
       preLoaderRoute: typeof AuthItemsNewRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/items/receipt-scan': {
+      id: '/_auth/items/receipt-scan'
+      path: '/items/receipt-scan'
+      fullPath: '/items/receipt-scan'
+      preLoaderRoute: typeof AuthItemsReceiptScanRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/locations/$locationId': {
@@ -513,6 +532,7 @@ interface AuthRouteChildren {
   AuthIndexRoute: typeof AuthIndexRoute
   AuthItemsItemIdRoute: typeof AuthItemsItemIdRouteWithChildren
   AuthItemsNewRoute: typeof AuthItemsNewRoute
+  AuthItemsReceiptScanRoute: typeof AuthItemsReceiptScanRoute
   AuthLocationsLocationIdRoute: typeof AuthLocationsLocationIdRouteWithChildren
 }
 
@@ -527,6 +547,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthIndexRoute: AuthIndexRoute,
   AuthItemsItemIdRoute: AuthItemsItemIdRouteWithChildren,
   AuthItemsNewRoute: AuthItemsNewRoute,
+  AuthItemsReceiptScanRoute: AuthItemsReceiptScanRoute,
   AuthLocationsLocationIdRoute: AuthLocationsLocationIdRouteWithChildren,
 }
 
