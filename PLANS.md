@@ -631,12 +631,12 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 設計: `docs/specs/features/receipt-scan.md`（親 Issue: #696）
 
-- [ ] Edge Function `receipt-scan` 新設（Gemini Vision / RLS スコープ / レート制限）
-- [ ] `useReceiptScan` hook + 型 / Zod
-- [ ] レビュー UI（`ReceiptLineItemRow` / `ReceiptReviewPanel` + Story）
-- [ ] `ReceiptScanPage` ルート追加 + ダッシュボードからのエントリーポイント
-- [ ] i18n `receiptScan` 名前空間
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [x] Edge Function `receipt-scan` 新設（Gemini Vision / RLS スコープ / レート制限）
+- [x] `useReceiptScan` hook + 型 / Zod
+- [x] レビュー UI（`ReceiptLineItemRow` / `ReceiptReviewPanel` + Story）
+- [x] `ReceiptScanPage` ルート追加 + ダッシュボードからのエントリーポイント
+- [x] i18n `receiptScan` 名前空間
+- [x] テスト / CI 整備と PR CI グリーン化
 
 ### v1.8 — 在庫優先の週間献立プランナー（Weekly Meal Planner）
 
