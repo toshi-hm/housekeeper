@@ -68,6 +68,7 @@
   "retry": "再試行",
   "save": "保存",
   "saveSuccess": "保存しました",
+  "schemaMismatchError": "データベースがアプリの新しい項目に対応していないため保存できません。管理者はマイグレーション（supabase db push）の適用を確認してください",
   "select": "選択",
   "undo": "元に戻す",
   "undoError": "元に戻せませんでした",

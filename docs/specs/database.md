@@ -607,3 +607,38 @@ create policy "item_images_owner_write"
   2. `update items set units = quantity`
   3. `quantity` を drop
      この順で安全に移行
+
+### 本番への適用（手動デプロイ手順）
+
+- マイグレーションを本番へ適用する CI は **無い**。フロントエンドは Cloudflare Pages が
+  自動デプロイするが、DB は `bun run db:push`（= `supabase db push`）を人が実行する必要がある
+- **フロントのデプロイより先に（または同時に）適用する**。逆順にすると、アプリが
+  マイグレーションで追加された列を送るのに DB 側に無く、PostgREST が `PGRST204` で
+  書き込みを拒否する（アイテムの保存が失敗する）
+- 未適用の確認: `bun run db:status`（= `supabase migration list`）
+- `db:status` はマイグレーション **履歴テーブル** の比較なので、履歴が誤った version で
+  記録されている場合はドリフトを見逃す。実スキーマとの突き合わせは
+  `bun run gen:types` 後の `src/types/supabase.ts` の差分で確認する
+- アプリ側は「DB にアプリの期待する列/RPC が無い」エラー（`PGRST204` / `PGRST202` /
+  `42703` / `42P01` / `42883`）を `isSchemaMismatchError`（`src/lib/supabaseErrors.ts`）で
+  判別し、汎用の「エラーが発生しました」ではなく適用漏れを示すメッセージを表示する
+
+### 拡張（extension）の置き場所
+
+- 拡張は **`public` ではなく `extensions` スキーマ**に入れる
+  （`create extension ... with schema extensions`）。`pgcrypto` / `uuid-ossp` /
+  `pg_stat_statements` はいずれも `extensions` にある
+- 理由: `public` は PostgREST の公開スキーマ（`supabase/config.toml` の
+  `schemas = ["public", "graphql_public"]`）なので、`public` に拡張を入れると
+  その拡張が持ち込む関数がすべて `/rest/v1/rpc/<関数名>` として外部から到達可能に
+  なる。拡張の関数は既定で PUBLIC に EXECUTE が付くため `anon` からも実行できる
+- 実例（#840）: `20260720000006_enable_pgtap.sql` がスキーマ指定なしで pgTAP を
+  入れており、`lives_ok(text)` / `throws_ok(text)` / `performs_ok(text, numeric)` /
+  `_query(text)` のような **引数の文字列を SQL として実行する**関数を含む1000個超が
+  anon から呼べる状態になっていた（security invoker なので権限昇格や RLS の
+  バイパスは起きないが、任意SQL実行・スキーマ情報の漏洩・CPU 消費の口になる）。
+  `20260812120000_move_pgtap_to_extensions.sql` で `extensions` へ移動済み
+- pgTAP は `supabase test db`（`supabase/tests/database/*.test.sql`）専用の
+  テスト依存で、アプリの実行時経路からは呼ばれない。`extensions` へ移しても
+  `postgres` ロールの `search_path`（`"$user", public, extensions`）に含まれるため、
+  テスト内の無修飾の `plan()` / `results_eq()` はそのまま解決される

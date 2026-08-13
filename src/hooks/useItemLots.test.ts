@@ -625,6 +625,7 @@ describe("useUpdateLot", () => {
         lotId: "lot-1",
         itemId: "item-1",
         values: { units: 5, expiry_date: "2026-03-01" },
+        expected: { units: 3, opened_remaining: null },
       });
     });
 
@@ -638,6 +639,13 @@ describe("useUpdateLot", () => {
       table: "item_lots",
       method: "eq",
       args: ["id", "lot-1"],
+    });
+    // Optimistic concurrency guard (#825): the update is scoped to the
+    // pre-edit units/opened_remaining snapshot, not just the lot id.
+    expect(lotEqCalls).toContainEqual({
+      table: "item_lots",
+      method: "eq",
+      args: ["units", 3],
     });
     expect(lotEqCalls).toContainEqual({
       table: "item_lots",
@@ -657,6 +665,73 @@ describe("useUpdateLot", () => {
     });
   });
 
+  test("expectedのopened_remainingがnullのとき、is()で絞り込む", async () => {
+    responseQueues.item_lots = [
+      {
+        data: {
+          id: "lot-1",
+          user_id: "user-1",
+          item_id: "item-1",
+          units: 5,
+          opened_remaining: 200,
+          purchase_date: null,
+          expiry_date: null,
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        },
+        error: null,
+      },
+      { data: [{ units: 5, expiry_date: null, opened_remaining: 200 }], error: null },
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: null, error: null },
+    ];
+
+    const { result } = renderHook(() => useUpdateLot(), { wrapper: makeWrapper() });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        lotId: "lot-1",
+        itemId: "item-1",
+        values: { opened_remaining: 200 },
+        expected: { units: 5, opened_remaining: null },
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const lotIsCalls = callLog.filter((c) => c.table === "item_lots" && c.method === "is");
+    expect(lotIsCalls).toContainEqual({
+      table: "item_lots",
+      method: "is",
+      args: ["opened_remaining", null],
+    });
+  });
+
+  test("ロットが expected の units/opened_remaining と一致しない場合（別リクエストによる競合更新）、ConcurrentUpdateError を投げる (#825)", async () => {
+    // No row matches the .eq("units", ...) / .is|eq("opened_remaining", ...)
+    // guard, so maybeSingle() resolves to no data — simulating a lot that was
+    // consumed elsewhere while this edit form was open.
+    responseQueues.item_lots = [{ data: null, error: null }];
+
+    const { result } = renderHook(() => useUpdateLot(), { wrapper: makeWrapper() });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          lotId: "lot-1",
+          itemId: "item-1",
+          values: { units: 5 },
+          expected: { units: 3, opened_remaining: null },
+        }),
+      ).rejects.toBeInstanceOf(ConcurrentUpdateError);
+    });
+
+    const itemsUpdateCall = callLog.find((c) => c.table === "items" && c.method === "update");
+    expect(itemsUpdateCall).toBeUndefined();
+  });
+
   test("item_lotsのupdateがエラーを返した場合、syncItemAggregateは呼ばれずエラーになる", async () => {
     responseQueues.item_lots = [{ data: null, error: { message: "update failed" } }];
 
@@ -668,6 +743,7 @@ describe("useUpdateLot", () => {
           lotId: "lot-1",
           itemId: "item-1",
           values: { units: 1 },
+          expected: { units: 3, opened_remaining: null },
         }),
       ).rejects.toMatchObject({ message: "update failed" });
     });

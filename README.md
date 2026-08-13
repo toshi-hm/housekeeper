@@ -28,10 +28,20 @@
 ### 1. Set up Supabase
 
 1. Create a new project at [supabase.com](https://supabase.com)
-2. Run the migration in the SQL Editor:
+2. Apply **all** migrations in `supabase/migrations/` to the project:
+
+   ```bash
+   supabase login
+   supabase link --project-ref your-project-ref
+   bun run db:push   # supabase db push
    ```
-   supabase/migrations/20240101000000_create_items.sql
-   ```
+
+   > ⚠️ Applying only the first migration by hand (or skipping this step on a
+   > later deploy) leaves the database behind the app. The frontend writes the
+   > columns the migrations add, so the database rejects those writes and
+   > saving an item fails. **Run `bun run db:push` whenever new migration files
+   > land, before deploying the frontend** — see
+   > [Deploying schema changes](#deploying-schema-changes).
 
 ### 2. Deploy Supabase Edge Function
 
@@ -79,6 +89,26 @@ Connect your GitHub repository to Cloudflare Pages with:
 - **Build command**: `bun run build`
 - **Build output directory**: `dist`
 - **Environment variables**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+
+### Deploying schema changes
+
+Cloudflare Pages deploys the frontend automatically, but **nothing applies
+`supabase/migrations/` for you** — there is no CI job for it. Migrations are a
+manual deploy step that has to happen _before_ (or together with) the frontend
+deploy that depends on them:
+
+```bash
+bun run db:status  # migrations in the repo that the project has not applied
+bun run db:push    # apply them
+```
+
+If the frontend ships first, the app sends columns the database does not have
+yet and Supabase rejects the write — item saves fail with "データベースが
+アプリの新しい項目に対応していないため保存できません". Running `bun run db:push`
+resolves it. `bun run db:status` is the quickest way to check for drift; note
+that it compares migration _history_, so a migration recorded under the wrong
+version can still hide real drift — `bun run gen:types` and a `git diff` on
+`src/types/supabase.ts` compares the actual schema.
 
 ## Development
 

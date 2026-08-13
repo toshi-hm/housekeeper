@@ -69,6 +69,7 @@
   "retry": "Retry",
   "save": "Save",
   "saveSuccess": "Saved",
+  "schemaMismatchError": "Cannot save: the database is missing fields this version of the app expects. An administrator should apply the pending migrations (supabase db push)",
   "select": "Select",
   "undo": "Undo",
   "undoError": "Failed to undo",
