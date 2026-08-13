@@ -501,6 +501,12 @@ export const useConsumeLot = () => {
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
       else if (error instanceof ConcurrentUpdateError) toast(t("lotConflictError"), "error");
+      // #832: consumeLot delegates to computeConsumption too, so a stale
+      // preview (e.g. concurrent consumption elsewhere) can still throw
+      // insufficientStock here even though callers normally pre-validate.
+      // Mirrors the same branch in useConsumeItem's onError.
+      else if (error instanceof Error && error.message === "insufficientStock")
+        toast(t("insufficientStockError"), "error");
       else toast(t("unknownError"), "error");
     },
   });

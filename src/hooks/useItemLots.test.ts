@@ -62,14 +62,20 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { consumeLot, createLot, restoreLotConsumption, syncItemAggregate, useUpdateLot } =
-  await import("@/hooks/useItemLots");
+const {
+  consumeLot,
+  createLot,
+  restoreLotConsumption,
+  syncItemAggregate,
+  useConsumeLot,
+  useUpdateLot,
+} = await import("@/hooks/useItemLots");
 const { ConcurrentUpdateError } = await import("@/lib/requireOnline");
 const { ToastContext } = await import("@/lib/toast-context");
 
-const makeWrapper = () => {
+const makeWrapper = (toastSpy?: (message: string, variant?: string) => void) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const stubToast = { toasts: [], toast: () => {}, dismiss: () => {} };
+  const stubToast = { toasts: [], toast: toastSpy ?? (() => {}), dismiss: () => {} };
   return ({ children }: { children: ReactNode }) =>
     createElement(
       QueryClientProvider,
@@ -331,6 +337,42 @@ describe("consumeLot", () => {
       method: "eq",
       args: ["opened_remaining", 0.3],
     });
+  });
+});
+
+describe("useConsumeLot", () => {
+  test("在庫不足エラーはunknownErrorではなく専用メッセージを表示する (#832)", async () => {
+    const toastSpy = mock(() => {});
+    const { result } = renderHook(() => useConsumeLot(), { wrapper: makeWrapper(toastSpy) });
+
+    // baseLot相当(units:3, content_amount:1) -> totalBefore is 3; requesting
+    // 10 exceeds it, mirroring useConsumeItem's equivalent test.
+    result.current.mutate({
+      lot: {
+        id: "lot-1",
+        user_id: "user-1",
+        item_id: "item-1",
+        units: 3,
+        opened_remaining: null,
+        purchase_date: null,
+        expiry_date: null,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+      item: { content_amount: 1, content_unit: "個" },
+      deltaAmount: 10,
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(toastSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/insufficientStockError|在庫が足りません|Not enough stock/),
+      "error",
+    );
+    expect(toastSpy).not.toHaveBeenCalledWith(
+      expect.stringMatching(/^(unknownError|An error occurred|エラーが発生しました)$/),
+      "error",
+    );
   });
 });
 
