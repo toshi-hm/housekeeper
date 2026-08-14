@@ -227,6 +227,12 @@ export const useConsumeItem = () => {
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
       else if (error instanceof ConcurrentUpdateError) toast(t("lotConflictError"), "error");
+      // #832: computeConsumption throws Error("insufficientStock") when the
+      // requested delta exceeds available stock (e.g. dashboard quick-consume
+      // on a partially-opened item). Surface this distinctly instead of the
+      // generic unknownError message.
+      else if (error instanceof Error && error.message === "insufficientStock")
+        toast(t("insufficientStockError"), "error");
       else toast(t("unknownError"), "error");
     },
   });
