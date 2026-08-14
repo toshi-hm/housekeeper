@@ -5,6 +5,7 @@ import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
 import { normalizeCreateValues } from "@/hooks/useItems";
 import { PURCHASE_HISTORY_KEY } from "@/hooks/usePurchaseHistory";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
+import { findDuplicatePlannedItem } from "@/lib/shoppingDuplicates";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
 import type { Item, ItemFormValues } from "@/types/item";
@@ -39,22 +40,7 @@ export const useShoppingList = (status: ShoppingStatus = "planned") => {
   });
 };
 
-/**
- * 新規追加しようとしている買い物リスト入力に対して、既存の planned 行の中から
- * 統合すべき重複行を探す。同一 linked_item_id、または同名（前後空白を無視し
- * 大文字小文字を区別しない）の行があれば重複とみなす (#522, #447)。
- */
-export const findDuplicatePlannedItem = (
-  plannedRows: readonly ShoppingItem[],
-  input: Pick<UpsertShoppingItemInput, "name" | "linked_item_id">,
-): ShoppingItem | undefined => {
-  const normalizedName = input.name.trim().toLowerCase();
-  return plannedRows.find(
-    (row) =>
-      (input.linked_item_id && row.linked_item_id === input.linked_item_id) ||
-      row.name.trim().toLowerCase() === normalizedName,
-  );
-};
+export { findDuplicatePlannedItem } from "@/lib/shoppingDuplicates";
 
 /**
  * 新規追加時の重複防止チェック: 同一 linked_item_id、または同名（前後空白を無視し

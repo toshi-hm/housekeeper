@@ -78,9 +78,12 @@
 - トリガー元: `consumeLot`（`src/hooks/useItemLots.ts`）・`bulkConsumeItems`（`src/hooks/useItems.ts` の全消費）
 - 判定: 消費後に対象アイテムを再取得し、`auto_reorder = true` かつ
   `units <= (reorder_threshold ?? 0)` なら追加対象
-- 重複防止: `planned` 行の `(user_id, linked_item_id)` 部分一意indexで、別端末や手動追加と
-  同時実行されても同じアイテムを重複追加しない。一意制約競合は追加済みとして扱う
-  （実装: `src/lib/autoReorder.ts` の `maybeAutoReorder`）
+- 重複防止: 追加前に既存 `planned` 行を `findDuplicatePlannedItem`（同一 `linked_item_id`、
+  または同名）で確認し、一致する行があれば新規行を作らず `desired_units` をインクリメントして
+  統合する（#829: 自由入力済みの同名手動行と別行に分裂していた問題の修正）。統合ロジックは
+  `src/lib/shoppingDuplicates.ts` に切り出し、手動追加（`upsertShoppingItem`）と共有する。
+  select と insert の間に別端末や手動追加が競合した場合の一意制約違反（23505）は、統合を
+  再試行することでカバーする（実装: `src/lib/autoReorder.ts` の `maybeAutoReorder`）
 - 失敗時は非致命（コンソール警告のみ）とし、消費操作自体は失敗させない
 - UI: 自動追加時に `shopping_list_items.auto_added = true` を保存し、その行だけに
   `ShoppingRow` の「🔁 自動追加」バッジを表示する。現在のitem設定から推測しないため、

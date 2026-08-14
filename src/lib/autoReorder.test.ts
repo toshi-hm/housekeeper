@@ -24,8 +24,13 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     eq: chainMethod("eq"),
     limit: chainMethod("limit"),
     insert: chainMethod("insert"),
+    update: chainMethod("update"),
     maybeSingle: () => {
       callLog.push({ table, method: "maybeSingle", args: [] });
+      return Promise.resolve(response);
+    },
+    single: () => {
+      callLog.push({ table, method: "single", args: [] });
       return Promise.resolve(response);
     },
     then: (resolve: (v: SupabaseResponse) => void, reject?: (e: unknown) => void) =>
@@ -79,11 +84,12 @@ describe("maybeAutoReorder", () => {
     expect(callLog.some((c) => c.table === "shopping_list_items")).toBe(false);
   });
 
-  test("reorder_threshold が null のときは units<=0 で追加する", async () => {
+  test("reorder_threshold が null のときは units<=0 で追加する（重複なし）", async () => {
     responseQueues.items = [
       { data: { ...baseItem, units: 0, reorder_threshold: null }, error: null },
     ];
     responseQueues.shopping_list_items = [
+      { data: [], error: null }, // duplicate lookup: no planned rows
       { data: null, error: null }, // insert
     ];
 
@@ -104,25 +110,126 @@ describe("maybeAutoReorder", () => {
 
   test("units が threshold ちょうどのときも追加する", async () => {
     responseQueues.items = [{ data: { ...baseItem, units: 2, reorder_threshold: 2 }, error: null }];
-    responseQueues.shopping_list_items = [{ data: null, error: null }];
+    responseQueues.shopping_list_items = [
+      { data: [], error: null },
+      { data: null, error: null },
+    ];
 
     const result = await maybeAutoReorder("item-1");
 
     expect(result).toBe(true);
   });
 
-  test("同じ linked_item_id の planned 行との一意制約競合は追加済みとして扱う", async () => {
+  // #829: 自由入力済みの同名 planned 行がある状態で自動追加が発火すると、
+  // 直接 insert していたため別行として二重に表示されていた。手動追加
+  // （upsertShoppingItem）と同じ findDuplicatePlannedItem 基準で統合する。
+  test("同名の手動追加 planned 行が既にある場合は insert せず desired_units を統合する (#829)", async () => {
     responseQueues.items = [{ data: { ...baseItem, units: 0 }, error: null }];
     responseQueues.shopping_list_items = [
-      { data: null, error: { code: "23505", message: "duplicate" } },
+      {
+        data: [
+          {
+            id: "shopping-1",
+            user_id: "user-1",
+            name: "牛乳",
+            desired_units: 1,
+            note: null,
+            linked_item_id: null,
+            auto_added: false,
+            status: "planned",
+            purchased_at: null,
+            created_item_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+        error: null,
+      },
+      { data: { id: "shopping-1", desired_units: 2 }, error: null }, // update
     ];
 
     const result = await maybeAutoReorder("item-1");
 
-    expect(result).toBe(false);
+    expect(result).toBe(true);
     expect(callLog.some((c) => c.table === "shopping_list_items" && c.method === "insert")).toBe(
-      true,
+      false,
     );
+    const updateCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "update",
+    );
+    expect(updateCall?.args[0]).toMatchObject({
+      desired_units: 2,
+      linked_item_id: "item-1",
+      auto_added: true,
+    });
+  });
+
+  test("同一 linked_item_id の planned 行が既にある場合も統合する", async () => {
+    responseQueues.items = [{ data: { ...baseItem, units: 0 }, error: null }];
+    responseQueues.shopping_list_items = [
+      {
+        data: [
+          {
+            id: "shopping-1",
+            user_id: "user-1",
+            name: "牛乳(1L)",
+            desired_units: 3,
+            note: null,
+            linked_item_id: "item-1",
+            auto_added: true,
+            status: "planned",
+            purchased_at: null,
+            created_item_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+        error: null,
+      },
+      { data: { id: "shopping-1", desired_units: 4 }, error: null },
+    ];
+
+    const result = await maybeAutoReorder("item-1");
+
+    expect(result).toBe(true);
+    expect(callLog.some((c) => c.table === "shopping_list_items" && c.method === "insert")).toBe(
+      false,
+    );
+  });
+
+  test("select と insert の間の競合(23505)時は統合をリトライする", async () => {
+    responseQueues.items = [{ data: { ...baseItem, units: 0 }, error: null }];
+    responseQueues.shopping_list_items = [
+      { data: [], error: null }, // first duplicate lookup: nothing yet
+      { data: null, error: { code: "23505", message: "duplicate" } }, // insert races and loses
+      {
+        data: [
+          {
+            id: "shopping-1",
+            user_id: "user-1",
+            name: "牛乳",
+            desired_units: 1,
+            note: null,
+            linked_item_id: "item-1",
+            auto_added: true,
+            status: "planned",
+            purchased_at: null,
+            created_item_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+        error: null,
+      }, // retry lookup: the concurrent insert is now visible
+      { data: { id: "shopping-1", desired_units: 2 }, error: null }, // retry merge succeeds
+    ];
+
+    const result = await maybeAutoReorder("item-1");
+
+    expect(result).toBe(true);
+    const calls = callLog.filter((c) => c.table === "shopping_list_items");
+    expect(calls.filter((c) => c.method === "insert")).toHaveLength(1);
+    expect(calls.filter((c) => c.method === "update")).toHaveLength(1);
   });
 
   test("アイテムが見つからない場合は何もしない", async () => {
@@ -145,6 +252,7 @@ describe("maybeAutoReorder", () => {
   test("insert 失敗時も例外を投げず false を返す", async () => {
     responseQueues.items = [{ data: { ...baseItem, units: 0 }, error: null }];
     responseQueues.shopping_list_items = [
+      { data: [], error: null }, // duplicate lookup: none
       { data: null, error: { message: "insert failed" } }, // insert fails
     ];
 
