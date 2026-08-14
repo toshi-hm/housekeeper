@@ -63,8 +63,16 @@ export const FloorPlanEditor = ({
     const scaleX = state.document.width / rect.width;
     const scaleY = state.document.height / rect.height;
     return {
-      x: snapToGrid((event.clientX - rect.left) * scaleX, state.document.gridSize),
-      y: snapToGrid((event.clientY - rect.top) * scaleY, state.document.gridSize),
+      x: snapToGrid(
+        (event.clientX - rect.left) * scaleX,
+        state.document.gridSize,
+        state.document.width,
+      ),
+      y: snapToGrid(
+        (event.clientY - rect.top) * scaleY,
+        state.document.gridSize,
+        state.document.height,
+      ),
     };
   };
 

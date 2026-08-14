@@ -15,6 +15,16 @@ describe("floorPlanEditor", () => {
     expect(snapToGrid(16, 10)).toBe(20);
   });
 
+  it("clamps snapped values to the nearest grid line at or below max, when given", () => {
+    // A pointer past the canvas edge (setPointerCapture keeps delivering
+    // events outside the element's bounds) must not produce a coordinate
+    // beyond the document — it would be clipped by the SVG viewBox and
+    // become unselectable.
+    expect(snapToGrid(595, 10, 500)).toBe(500);
+    expect(snapToGrid(505, 10, 500)).toBe(500);
+    expect(snapToGrid(120, 10, 500)).toBe(120);
+  });
+
   it("normalizes a rectangle drawn from bottom right to top left", () => {
     expect(normalizeRect({ x: 95, y: 85 }, { x: 15, y: 25 }, 10)).toEqual({
       x: 20,
@@ -44,5 +54,37 @@ describe("floorPlanEditor", () => {
     expect(undone.document.shapes).toHaveLength(0);
     const redone = floorPlanEditorReducer(undone, { type: "redo" });
     expect(redone.document.shapes).toHaveLength(1);
+  });
+
+  it("clears the selection after delete-selected, so repeated Delete presses are no-ops", () => {
+    const initial = createFloorPlanEditorState(createEmptyFloorPlanDocument());
+    const withShape = floorPlanEditorReducer(initial, {
+      type: "add-shape",
+      shape: {
+        id: "shape-1",
+        kind: "rectangle",
+        x: 10,
+        y: 10,
+        width: 20,
+        height: 20,
+        rotation: 0,
+        label: null,
+      },
+    });
+    const selected = floorPlanEditorReducer(withShape, {
+      type: "select",
+      id: "shape-1",
+      kind: "shape",
+    });
+    const deleted = floorPlanEditorReducer(selected, { type: "delete-selected" });
+    expect(deleted.document.shapes).toHaveLength(0);
+    expect(deleted.selectedId).toBeNull();
+    expect(deleted.selectedKind).toBeNull();
+
+    // With no selection left, a second delete-selected must not push another
+    // (no-op) entry onto the undo stack (#819 review) — otherwise Undo would
+    // restore this already-empty state instead of the shape.
+    const deletedAgain = floorPlanEditorReducer(deleted, { type: "delete-selected" });
+    expect(deletedAgain.undoStack).toHaveLength(deleted.undoStack.length);
   });
 });

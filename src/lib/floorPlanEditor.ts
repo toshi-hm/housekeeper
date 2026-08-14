@@ -68,11 +68,20 @@ export const floorPlanEditorReducer = (
         ),
       });
     case "delete-selected":
-      return withHistory(state, {
-        ...state.document,
-        walls: removeById(state.document.walls, state.selectedId),
-        shapes: removeById(state.document.shapes, state.selectedId),
-      });
+      // Also guard on selectedId here (not just clear it below): the
+      // Delete/Backspace key handler dispatches this unconditionally, so
+      // without the guard, pressing it with nothing selected would still
+      // push a content-identical entry onto undoStack and wipe redoStack.
+      if (!state.selectedId) return state;
+      return {
+        ...withHistory(state, {
+          ...state.document,
+          walls: removeById(state.document.walls, state.selectedId),
+          shapes: removeById(state.document.shapes, state.selectedId),
+        }),
+        selectedId: null,
+        selectedKind: null,
+      };
     case "undo": {
       const previous = state.undoStack.at(-1);
       if (!previous) return state;
@@ -102,16 +111,27 @@ export const floorPlanEditorReducer = (
   }
 };
 
-export const snapToGrid = (value: number, gridSize: number): number =>
-  Math.max(0, Math.round(value / gridSize) * gridSize);
+// `max`, when given, clamps the snapped value to the nearest grid line at or
+// below it — callers pass the document's width/height so a pointer position
+// outside the canvas (setPointerCapture keeps delivering move events past
+// its edges, e.g. while auto-scrolling a viewport narrower than the
+// editor's min-w-[480px]) can't produce a wall/shape/marker coordinate
+// beyond the document bounds. Out-of-bounds coordinates would be clipped by
+// the SVG's `viewBox="0 0 width height"` — invisible and, since nothing
+// on-canvas exists to click, unselectable/undeletable from the UI.
+export const snapToGrid = (value: number, gridSize: number, max?: number): number => {
+  const snapped = Math.max(0, Math.round(value / gridSize) * gridSize);
+  return max !== undefined ? Math.min(snapped, Math.floor(max / gridSize) * gridSize) : snapped;
+};
 
 export const normalizeRect = (
   start: { x: number; y: number },
   end: { x: number; y: number },
   gridSize: number,
+  bounds?: { width: number; height: number },
 ) => ({
-  x: snapToGrid(Math.min(start.x, end.x), gridSize),
-  y: snapToGrid(Math.min(start.y, end.y), gridSize),
-  width: snapToGrid(Math.abs(end.x - start.x), gridSize),
-  height: snapToGrid(Math.abs(end.y - start.y), gridSize),
+  x: snapToGrid(Math.min(start.x, end.x), gridSize, bounds?.width),
+  y: snapToGrid(Math.min(start.y, end.y), gridSize, bounds?.height),
+  width: snapToGrid(Math.abs(end.x - start.x), gridSize, bounds?.width),
+  height: snapToGrid(Math.abs(end.y - start.y), gridSize, bounds?.height),
 });
