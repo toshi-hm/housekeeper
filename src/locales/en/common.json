@@ -10,6 +10,7 @@
   "disabled": "Disabled",
   "enabled": "Enabled",
   "goHome": "Go home",
+  "insufficientStockError": "Not enough stock",
   "loading": "Loading...",
   "lotConflictError": "This item was changed by another update. Please refresh and try again",
   "navAddItem": "Add",

@@ -68,8 +68,8 @@ mock.module("@/lib/supabase", () => ({
 const { consumeItem, undoConsumeItem, useConsumeItem } = await import("@/hooks/useConsumeItem");
 const { ToastContext } = await import("@/lib/toast-context");
 
-const makeWrapper = (qc: QueryClient) => {
-  const stubToast = { toasts: [], toast: () => {}, dismiss: () => {} };
+const makeWrapper = (qc: QueryClient, toastSpy?: (message: string, variant?: string) => void) => {
+  const stubToast = { toasts: [], toast: toastSpy ?? (() => {}), dismiss: () => {} };
   return ({ children }: { children: ReactNode }) =>
     createElement(
       QueryClientProvider,
@@ -300,5 +300,31 @@ describe("useConsumeItem", () => {
       (call) => (call[0] as { queryKey: unknown[] }).queryKey,
     );
     expect(invalidatedKeys).toContainEqual(["shopping"]);
+  });
+
+  test("在庫不足エラーはunknownErrorではなく専用メッセージを表示する (#832)", async () => {
+    responseQueues.item_lots = [{ data: [], error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const toastSpy = mock(() => {});
+
+    const { result } = renderHook(() => useConsumeItem(), {
+      wrapper: makeWrapper(qc, toastSpy),
+    });
+    // content_amount: 1, units: 3 -> totalBefore is 3; requesting 10 exceeds it.
+    result.current.mutate({ item: makeItem(), deltaAmount: 10 });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    // t() may resolve to either the raw key or the translated string depending
+    // on whether "@/lib/i18n" has been initialized elsewhere in this test run.
+    expect(toastSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/insufficientStockError|在庫が足りません|Not enough stock/),
+      "error",
+    );
+    expect(toastSpy).not.toHaveBeenCalledWith(
+      expect.stringMatching(/^(unknownError|An error occurred|エラーが発生しました)$/),
+      "error",
+    );
   });
 });
