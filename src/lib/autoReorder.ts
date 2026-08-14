@@ -32,6 +32,7 @@ const mergeAutoReorderRow = async (
     .update({
       desired_units: duplicate.desired_units + 1,
       linked_item_id: duplicate.linked_item_id ?? itemId,
+      auto_added: true,
     })
     .eq("id", duplicate.id)
     .select()

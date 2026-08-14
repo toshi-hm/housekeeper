@@ -157,7 +157,11 @@ describe("maybeAutoReorder", () => {
     const updateCall = callLog.find(
       (c) => c.table === "shopping_list_items" && c.method === "update",
     );
-    expect(updateCall?.args[0]).toMatchObject({ desired_units: 2, linked_item_id: "item-1" });
+    expect(updateCall?.args[0]).toMatchObject({
+      desired_units: 2,
+      linked_item_id: "item-1",
+      auto_added: true,
+    });
   });
 
   test("同一 linked_item_id の planned 行が既にある場合も統合する", async () => {
