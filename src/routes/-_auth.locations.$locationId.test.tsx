@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Store } from "@tanstack/store";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 
@@ -18,7 +19,8 @@ const stubRouter = {
   navigate: () => Promise.resolve(),
   buildLocation: () => ({ href: "/" }),
   isServer: false,
-  options: {},
+  options: { defaultStructuralSharing: true },
+  stores: { __store: new Store({ matches: [] }) },
   state: { location: { href: "/", pathname: "/" }, matches: [], pendingMatches: [] },
 } as unknown as Parameters<typeof routerContext.Provider>[0]["value"];
 

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
@@ -12,7 +12,11 @@ import i18n from "@/lib/i18n";
 import { loadItemFormDraft, saveItemFormDraft } from "@/lib/itemFormDraft";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
 
-import { ItemForm } from "./ItemForm";
+// NewItemPage.test.tsx uses module mocks for ItemForm. Restore them before this
+// file dynamically imports the real component so test-file discovery order
+// cannot leak the stub into these tests.
+mock.restore();
+const { ItemForm } = await import("./ItemForm");
 
 const stubToast: ToastContextValue = { toasts: [], toast: () => {}, dismiss: () => {} };
 

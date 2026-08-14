@@ -16,7 +16,6 @@ create table if not exists public.floor_plans (
 );
 
 create index if not exists floor_plans_user_id_idx on public.floor_plans(user_id);
-
 create index if not exists floor_plans_location_idx on public.floor_plans(storage_location_id);
 
 alter table public.floor_plans enable row level security;
@@ -24,7 +23,6 @@ alter table public.floor_plans enable row level security;
 grant select, insert, update, delete on table public.floor_plans to authenticated;
 
 drop policy if exists "floor_plans_owner_all" on public.floor_plans;
-
 create policy "floor_plans_owner_all" on public.floor_plans for all
   using (auth.uid() = user_id)
   with check (
@@ -37,7 +35,6 @@ create policy "floor_plans_owner_all" on public.floor_plans for all
   );
 
 drop trigger if exists floor_plans_set_updated_at on public.floor_plans;
-
 create trigger floor_plans_set_updated_at
   before update on public.floor_plans
   for each row execute function public.set_updated_at();
@@ -59,14 +56,12 @@ create table if not exists public.floor_plan_item_placements (
 
 create index if not exists floor_plan_item_placements_plan_idx
   on public.floor_plan_item_placements(floor_plan_id);
-
 create index if not exists floor_plan_item_placements_item_idx
   on public.floor_plan_item_placements(item_id);
 
 alter table public.floor_plan_item_placements enable row level security;
 
 drop policy if exists "floor_plan_item_placements_owner_all" on public.floor_plan_item_placements;
-
 create policy "floor_plan_item_placements_owner_all"
   on public.floor_plan_item_placements for all
   using (
@@ -104,7 +99,6 @@ create policy "floor_plan_item_placements_owner_all"
 
 drop trigger if exists floor_plan_item_placements_set_updated_at
   on public.floor_plan_item_placements;
-
 create trigger floor_plan_item_placements_set_updated_at
   before update on public.floor_plan_item_placements
   for each row execute function public.set_updated_at();

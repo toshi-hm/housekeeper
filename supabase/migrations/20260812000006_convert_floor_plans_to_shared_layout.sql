@@ -151,31 +151,23 @@ order by
   placement.id;
 
 drop table public.floor_plan_item_placements;
-
 drop table public.floor_plans;
 
 alter table public.floor_plans_shared rename to floor_plans;
-
 alter table public.floor_plan_item_placements_shared rename to floor_plan_item_placements;
 
 create index floor_plans_user_id_idx on public.floor_plans(user_id);
-
 create index floor_plan_storage_location_markers_plan_idx
   on public.floor_plan_storage_location_markers(floor_plan_id);
-
 create index floor_plan_storage_location_markers_location_idx
   on public.floor_plan_storage_location_markers(storage_location_id);
-
 create index floor_plan_item_placements_plan_idx
   on public.floor_plan_item_placements(floor_plan_id);
-
 create index floor_plan_item_placements_item_idx
   on public.floor_plan_item_placements(item_id);
 
 alter table public.floor_plans enable row level security;
-
 alter table public.floor_plan_storage_location_markers enable row level security;
-
 alter table public.floor_plan_item_placements enable row level security;
 
 create policy "floor_plans_owner_all" on public.floor_plans
@@ -246,20 +238,16 @@ create policy "floor_plan_item_placements_owner_all"
 create trigger floor_plans_set_updated_at
   before update on public.floor_plans
   for each row execute function public.set_updated_at();
-
 create trigger floor_plan_storage_location_markers_set_updated_at
   before update on public.floor_plan_storage_location_markers
   for each row execute function public.set_updated_at();
-
 create trigger floor_plan_item_placements_set_updated_at
   before update on public.floor_plan_item_placements
   for each row execute function public.set_updated_at();
 
 grant select, insert, update, delete on table public.floor_plans to authenticated;
-
 grant select, insert, update, delete
   on table public.floor_plan_storage_location_markers to authenticated;
-
 grant select, insert, update, delete
   on table public.floor_plan_item_placements to authenticated;
 

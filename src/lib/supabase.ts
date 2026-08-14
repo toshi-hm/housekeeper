@@ -75,6 +75,123 @@ export interface Database {
         };
         Relationships: [];
       };
+      floor_plans: {
+        Row: {
+          id: string;
+          user_id: string;
+          storage_location_id: string | null;
+          name: string;
+          schema_version: number;
+          document: unknown;
+          revision: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          storage_location_id?: string | null;
+          name: string;
+          schema_version?: number;
+          document: unknown;
+          revision?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          storage_location_id?: string | null;
+          name?: string;
+          schema_version?: number;
+          document?: unknown;
+          revision?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      floor_plan_storage_location_markers: {
+        Row: {
+          id: string;
+          user_id: string;
+          floor_plan_id: string;
+          storage_location_id: string;
+          object_id: string | null;
+          x: number;
+          y: number;
+          z: number;
+          rotation: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          floor_plan_id: string;
+          storage_location_id: string;
+          object_id?: string | null;
+          x: number;
+          y: number;
+          z?: number;
+          rotation?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          floor_plan_id?: string;
+          storage_location_id?: string;
+          object_id?: string | null;
+          x?: number;
+          y?: number;
+          z?: number;
+          rotation?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      floor_plan_item_placements: {
+        Row: {
+          id: string;
+          user_id: string;
+          floor_plan_id: string;
+          item_id: string;
+          object_id: string | null;
+          x: number;
+          y: number;
+          z: number;
+          rotation: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          floor_plan_id: string;
+          item_id: string;
+          object_id?: string | null;
+          x: number;
+          y: number;
+          z?: number;
+          rotation?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          floor_plan_id?: string;
+          item_id?: string;
+          object_id?: string | null;
+          x?: number;
+          y?: number;
+          z?: number;
+          rotation?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       custom_units: {
         Row: {
           id: string;
