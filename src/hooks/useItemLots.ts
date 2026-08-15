@@ -512,6 +512,53 @@ export const useConsumeLot = () => {
   });
 };
 
+/**
+ * Creates a new lot for an item that currently has none, then resyncs the
+ * item aggregate from it. Used by EditItemPage when a user increases `units`
+ * on a lot-less item (units=0, no item_lots rows): writing units straight to
+ * `items` there would desync it from the lot-based consumption flow, since
+ * consume/undo and syncItemAggregate all operate on item_lots, not items
+ * (#824).
+ */
+export const useCreateLot = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
+  return useMutation({
+    mutationFn: async ({
+      itemId,
+      values,
+    }: {
+      itemId: string;
+      values: {
+        units: number;
+        opened_remaining?: number | null;
+        unit_price?: number | null;
+        purchase_date?: string | null;
+        expiry_date?: string | null;
+        store_name?: string | null;
+      };
+    }) => {
+      requireOnline();
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) throw new Error("Not authenticated");
+      const lot = await createLot(userData.user.id, itemId, values);
+      await syncItemAggregate(itemId);
+      return lot;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: LOTS_KEY }),
+        qc.invalidateQueries({ queryKey: ["items"] }),
+      ]);
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
+    },
+  });
+};
+
 export const useUpdateLot = () => {
   const qc = useQueryClient();
   const { toast } = useToast();

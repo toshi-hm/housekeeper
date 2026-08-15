@@ -15,7 +15,7 @@ import {
   removeItemImageFile,
   uploadItemImage,
 } from "@/hooks/useItemImage";
-import { useItemLots, useUpdateLot } from "@/hooks/useItemLots";
+import { useCreateLot, useItemLots, useUpdateLot } from "@/hooks/useItemLots";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
 import { setItemTags, useCreateTag, useItemTagIds, useTags } from "@/hooks/useTags";
 import { OfflineError } from "@/lib/requireOnline";
@@ -34,6 +34,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   const { data: lots = [] } = useItemLots(itemId);
   const updateItem = useUpdateItem(itemId);
   const updateLot = useUpdateLot();
+  const createLot = useCreateLot();
   const { toast } = useToast();
   const pendingFileRef = useRef<File | null>(null);
   const pendingImageUrlRef = useRef<string | null>(null);
@@ -72,8 +73,17 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
         "expiry_date",
         "store_name",
       ] as const;
+      // #824: an item with zero lots (e.g. fully consumed via
+      // bulk_consume_items) has no lot to write units/etc. onto. Writing
+      // them straight to `items` here would desync it from the lot-based
+      // consumption flow — the consume page and syncItemAggregate only ever
+      // look at item_lots, so that stock would show as "in stock" but be
+      // unconsumable, and silently vanish the next time a lot is added. Only
+      // fall back to writing them directly on items when the edit leaves the
+      // item lot-less with zero units too (nothing to back with a lot).
+      const needsNewLot = !selectedLot && values.units > 0;
       const itemLevelValues: Partial<ItemFormValues> = { ...values };
-      if (selectedLot) {
+      if (selectedLot || needsNewLot) {
         for (const key of lotOnlyKeys) delete itemLevelValues[key];
       }
       const updatePayload: Partial<ItemFormValues> = itemLevelValues;
@@ -107,6 +117,26 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
         } catch {
           // Item was updated but lot update failed — show warning and navigate
           toast(t("lotUpdateFailed"), "warning");
+          await qc.invalidateQueries({ queryKey: ["items"] });
+          void navigate({ to: "/items/$itemId", params: { itemId } });
+          return;
+        }
+      } else if (needsNewLot) {
+        try {
+          await createLot.mutateAsync({
+            itemId,
+            values: {
+              units: values.units,
+              opened_remaining: values.opened_remaining ?? null,
+              unit_price: values.unit_price ?? null,
+              purchase_date: values.purchase_date ?? null,
+              expiry_date: values.expiry_date ?? null,
+              store_name: values.store_name ?? null,
+            },
+          });
+        } catch {
+          // Item was updated but lot creation failed — show warning and navigate
+          toast(t("lotCreateFailed"), "warning");
           await qc.invalidateQueries({ queryKey: ["items"] });
           void navigate({ to: "/items/$itemId", params: { itemId } });
           return;
