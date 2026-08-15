@@ -145,6 +145,7 @@
   "loadError": "読み込みに失敗しました。再読み込みしてください。",
   "lookupFromHistory": "過去に登録した商品データから候補を見つけました",
   "lotCount_other": "{{count}}ロット",
+  "lotCreateFailed": "在庫情報は更新されましたが、個数の反映（ロット作成）に失敗しました",
   "lotLabel": "ロット{{index}}",
   "lots": "ロット一覧",
   "lotsLoadError": "在庫ロットの読み込みに失敗しました。時間をおいて再試行してください。",

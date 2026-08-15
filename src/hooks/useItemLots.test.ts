@@ -68,6 +68,7 @@ const {
   restoreLotConsumption,
   syncItemAggregate,
   useConsumeLot,
+  useCreateLot,
   useUpdateLot,
 } = await import("@/hooks/useItemLots");
 const { ConcurrentUpdateError } = await import("@/lib/requireOnline");
@@ -792,6 +793,72 @@ describe("useUpdateLot", () => {
 
     const itemsUpdateCall = callLog.find((c) => c.table === "items" && c.method === "update");
     expect(itemsUpdateCall).toBeUndefined();
+  });
+});
+
+// #824: EditItemPage uses this hook to back a units increase on a lot-less
+// item with a real item_lots row, instead of writing units straight onto
+// items (which would desync it from the lot-based consume flow).
+describe("useCreateLot", () => {
+  test("成功時、item_lotsへinsertしsyncItemAggregateでitemsも再集計する", async () => {
+    responseQueues.item_lots = [
+      {
+        data: {
+          id: "lot-new",
+          user_id: "user-1",
+          item_id: "item-1",
+          units: 2,
+          opened_remaining: null,
+          purchase_date: null,
+          expiry_date: null,
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        },
+        error: null,
+      }, // createLot's .insert().select().single()
+      { data: [{ units: 2, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate lots read
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate item read
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+
+    const { result } = renderHook(() => useCreateLot(), { wrapper: makeWrapper() });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        itemId: "item-1",
+        values: { units: 2 },
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const insertCall = callLog.find((c) => c.table === "item_lots" && c.method === "insert");
+    expect(insertCall?.args[0]).toMatchObject({ item_id: "item-1", units: 2 });
+
+    // syncItemAggregate must run after the insert so the item's aggregate
+    // units reflect the newly created lot instead of staying stale.
+    const itemsUpdateCall = callLog.find((c) => c.table === "items" && c.method === "update");
+    expect(itemsUpdateCall).toBeDefined();
+    expect(itemsUpdateCall?.args[0]).toMatchObject({ units: 2 });
+  });
+
+  test("item_lotsへのinsertがエラーを返した場合、syncItemAggregateは呼ばれずエラーになりトーストを表示する", async () => {
+    responseQueues.item_lots = [{ data: null, error: { message: "insert failed" } }];
+    const toastSpy = mock(() => {});
+
+    const { result } = renderHook(() => useCreateLot(), { wrapper: makeWrapper(toastSpy) });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ itemId: "item-1", values: { units: 1 } }),
+      ).rejects.toMatchObject({ message: "insert failed" });
+    });
+
+    const itemsUpdateCall = callLog.find((c) => c.table === "items" && c.method === "update");
+    expect(itemsUpdateCall).toBeUndefined();
+    expect(toastSpy).toHaveBeenCalled();
   });
 });
 

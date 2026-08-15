@@ -158,6 +158,7 @@
   "lookupFromHistory": "Found a match from your previously registered items",
   "lotCount_one": "1 lot",
   "lotCount_other": "{{count}} lots",
+  "lotCreateFailed": "Item was updated, but creating a lot for the new stock failed",
   "lotLabel": "Lot {{index}}",
   "lots": "Lots",
   "lotsLoadError": "Failed to load stock lots. Please try again later.",
