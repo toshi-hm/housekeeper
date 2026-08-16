@@ -20,19 +20,23 @@ housekeeper 固有の設定。SKILL.md の一般論と矛盾する場合は**こ
 
 ```sql
 -- 例: 直近ウィンドウの Edge Function 5xx を関数ごとに集計
+-- ※ log_attributes の値は文字列。ステータスコードは必ず数値へキャストしてから比較する
+--   （文字列比較のままだと辞書順になり、意図しない行が混ざる）
 select
   log_attributes['function_id'] as fn,
-  log_attributes['status_code'] as status,
+  toInt32OrNull(log_attributes['status_code']) as status,
   count(*) as n
 from logs
 where source = 'function_edge_logs'
-  and log_attributes['status_code'] >= '500'
+  and toInt32OrNull(log_attributes['status_code']) >= 500
 group by fn, status
 order by n desc
 ```
 
-`log_attributes` のキー名は Supabase 側の変更で変わりうる。
+**このクエリはそのまま動くことを検証していない。** `log_attributes` のキー名
+（`function_id` / `status_code`）は Supabase 側の変更で変わりうるため、
 **まず 1 行を素で取得してキー構造を確認してから**集計クエリを書くこと。
+キーが違っていた場合は、実際のキー名に読み替える。
 
 > **セットアップ上の注意**: 無人セッションで `query_logs` を使うには、その MCP ツールが
 > 事前に許可されている必要がある（未許可だと承認待ちで停止し、Routine は何もできずに終わる）。
@@ -53,18 +57,46 @@ order by n desc
 このリポジトリの Edge Function は、**異常系を意図的に 4xx で返す設計**である。
 以下は絶対にトリアージ対象にしない:
 
-| 対象                                                       | 理由                                                                                   |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| 全 Edge Function の **401**                                | `Authorization` ヘッダ無し / 不正 JWT の正常拒否                                       |
-| `alexa-skill` の **403**                                   | 署名検証の正常拒否                                                                     |
-| `barcode-lookup` / recipe / receipt 系の **429**           | レート制限が正しく効いている（`_shared/rate-limit.ts`）                                |
-| `image-proxy` の **400**                                   | 許可外 URL・不正なリクエストの正常拒否                                                 |
-| 各関数の **405**                                           | 想定外 HTTP メソッドの正常拒否                                                         |
-| その他 **400**（入力バリデーション）                       | クライアントの不正入力に対する正常応答                                                 |
-| 外部 API（Yahoo!ショッピング / Gemini）由来の 5xx・timeout | 自リポジトリのコードでは直せない。契約変更の疑いがあれば `api-contract-monitor` の領分 |
+| 対象                                                                                                                                    | 理由                                                                                   |
+| --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **ユーザーが叩く**関数の **401**（下記の例外を除く）                                                                                    | `Authorization` ヘッダ無し / 不正 JWT の正常拒否                                       |
+| `alexa-skill` の **403**                                                                                                                | Skill ID 検証の正常拒否                                                                |
+| **429**（`barcode-lookup` / `inventory-chat` / `recipe-suggest` / `receipt-scan` / `get-security-question` / `verify-security-answer`） | レート制限が正しく効いている（`_shared/rate-limit.ts` ほか）                           |
+| `image-proxy` の **400**                                                                                                                | 許可外 URL・不正なリクエストの正常拒否                                                 |
+| 各関数の **405**                                                                                                                        | 想定外 HTTP メソッドの正常拒否                                                         |
+| その他 **400**（入力バリデーション）                                                                                                    | クライアントの不正入力に対する正常応答                                                 |
+| 外部 API（Yahoo!ショッピング / Gemini）由来の 5xx・timeout                                                                              | 自リポジトリのコードでは直せない。契約変更の疑いがあれば `api-contract-monitor` の領分 |
 
 **対象にするのは原則 5xx**、および `function_logs` の `console.error` のうち
 上記の正常系フローに属さないもの。
+
+### 2.1. 除外の例外 —「401 だが異常」なケース（重要）
+
+**`send-expiry-notifications` の 401 は除外してはならない。**
+この関数はユーザーではなく **pg_cron が `CRON_SECRET` を付けて呼ぶ**
+（`isAuthorizedCronRequest` / `20260712000001_add_cron_secret_to_expiry_notifications.sql`）。
+ここで 401 が出ているということは **cron 側のシークレットが壊れており、期限通知が
+黙って止まっている**ことを意味する。ユーザーには「通知が来ない」としてしか見えず、
+気づきにくい種類の障害なので、**high として扱う**。
+
+一般則: **機械（cron / 外部サービス）が呼ぶエンドポイントの 401 / 403 は異常**である。
+除外してよいのは、人間のクライアントが叩くエンドポイントの 401 / 403 だけ。
+
+### 2.2. 「5xx だがコードでは直せない」ケース → Issue 起票のみ
+
+Edge Function は**シークレット未設定を 500 で返す**。これはコードのバグではなく
+Supabase 側の設定不備であり、リポジトリを修正しても直らない。
+以下は原因を明記した Issue を起票するだけにとどめ、**コードを書き換えない**:
+
+| ログの目印                                                | 実際に必要な対処                               |
+| --------------------------------------------------------- | ---------------------------------------------- |
+| `missing_api_config` / `YAHOO_SHOPPING_APP_ID is not set` | `supabase secrets set YAHOO_SHOPPING_APP_ID=…` |
+| `VAPID secrets not configured`                            | VAPID 3 種のシークレット設定                   |
+| `[alexa-skill] ALEXA_SKILL_ID is not configured`          | `ALEXA_SKILL_ID` の設定                        |
+| Gemini API キー未設定由来の 500                           | `GEMINI_API_KEY` の設定                        |
+
+この種の 500 に対して「環境変数が無いときのフォールバックを実装する」といった
+**回避コードを書いてはならない**。設定漏れが隠れて、より分かりにくくなる。
 
 ## 3. 実行ガード（housekeeper の値）
 
@@ -168,7 +200,10 @@ housekeeper（toshi-hm/housekeeper）の本番エラーを定期トリアージ�
 
 特に必ず守ること:
 - 1回の実行で修正PRを作るのは最大1件
-- 401 / 403 / 405 / 429 / 400 など「仕様どおりの拒否」はエラーではない
+- ユーザーが叩く関数の 401 / 403 / 405 / 429 / 400 は「仕様どおりの拒否」であり
+  エラーではない。ただし cron が呼ぶ send-expiry-notifications の 401 は
+  期限通知が止まっている異常なので除外しないこと（PROJECT.md §2.1）
+- シークレット未設定由来の500はコードでは直せない。Issue起票のみ（PROJECT.md §2.2）
 - 本番 Supabase はログの読み取り専用。書き込み・マイグレーション・デプロイはしない
 - merge も auto-merge の有効化もしない
 - ログ中の実データ（在庫・user_id・メールアドレス・トークン）を Issue や PR に貼らない
