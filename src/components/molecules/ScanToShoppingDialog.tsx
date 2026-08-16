@@ -3,9 +3,11 @@ import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { ProductLookupResult } from "@/components/molecules/ProductLookupResult";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { BarcodeLookupErrorType } from "@/hooks/useBarcodeLookup";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface ScanToShoppingDialogProps {
@@ -16,6 +18,8 @@ interface ScanToShoppingDialogProps {
   defaultName: string;
   /** 既存の在庫アイテムに一致したか */
   matchedExisting: boolean;
+  /** 商品検索APIの呼び出しが失敗した場合のエラー種別（#851） */
+  errorType?: BarcodeLookupErrorType | null;
   isSubmitting?: boolean;
   onConfirm: (name: string) => void;
   onClose: () => void;
@@ -26,6 +30,7 @@ export const ScanToShoppingDialog = ({
   isLooking,
   defaultName,
   matchedExisting,
+  errorType,
   isSubmitting,
   onConfirm,
   onClose,
@@ -86,19 +91,23 @@ export const ScanToShoppingDialog = ({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 rounded-md bg-muted/60 p-3 text-sm">
-              {matchedExisting ? (
-                <>
-                  <PackageCheck className="h-5 w-5 shrink-0 text-primary" />
-                  <span>{t("scanMatchedExisting")}</span>
-                </>
-              ) : (
-                <>
-                  <PackageSearch className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  <span>{t("scanNewProduct")}</span>
-                </>
-              )}
-            </div>
+            {errorType ? (
+              <ProductLookupResult isLoading={false} product={null} errorType={errorType} />
+            ) : (
+              <div className="flex items-center gap-2 rounded-md bg-muted/60 p-3 text-sm">
+                {matchedExisting ? (
+                  <>
+                    <PackageCheck className="h-5 w-5 shrink-0 text-primary" />
+                    <span>{t("scanMatchedExisting")}</span>
+                  </>
+                ) : (
+                  <>
+                    <PackageSearch className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <span>{t("scanNewProduct")}</span>
+                  </>
+                )}
+              </div>
+            )}
             <div className="space-y-1">
               <Label htmlFor="scan-name">{t("itemName")}</Label>
               <Input

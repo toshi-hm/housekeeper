@@ -128,7 +128,7 @@ const ShoppingPage = () => {
   const saveTemplate = useSaveShoppingTemplate();
   const deleteTemplate = useDeleteShoppingTemplate();
   const applyTemplate = useApplyShoppingTemplate();
-  const { lookup } = useBarcodeLookup();
+  const { lookup, error: lookupError } = useBarcodeLookup();
 
   // 買い物リストのアイテム削除の取り消し（#478）。shopping_list_items は
   // ソフトデリートを持たないため、Undo時は restoreShoppingItem で同じ内容を
@@ -518,6 +518,9 @@ const ShoppingPage = () => {
         isLooking={isLooking}
         defaultName={scanDraft?.defaultName ?? ""}
         matchedExisting={scanDraft?.matchedExisting ?? false}
+        // 在庫一致パスは lookup() を呼ばないため、直前の無関係な検索エラーが
+        // フックに残っていても matchedExisting 時は表示しない (#851)
+        errorType={scanDraft && !scanDraft.matchedExisting ? lookupError : null}
         isSubmitting={upsert.isPending}
         onConfirm={(name) => {
           void handleScanConfirm(name);
