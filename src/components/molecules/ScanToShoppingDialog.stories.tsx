@@ -54,3 +54,27 @@ export const NotFound: Story = {
     onClose: () => {},
   },
 };
+
+export const RateLimitedError: Story = {
+  args: {
+    open: true,
+    isLooking: false,
+    defaultName: "",
+    matchedExisting: false,
+    errorType: "rate_limited",
+    onConfirm: () => {},
+    onClose: () => {},
+  },
+};
+
+export const NetworkError: Story = {
+  args: {
+    open: true,
+    isLooking: false,
+    defaultName: "",
+    matchedExisting: false,
+    errorType: "network",
+    onConfirm: () => {},
+    onClose: () => {},
+  },
+};
