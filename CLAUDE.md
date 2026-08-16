@@ -93,6 +93,7 @@ Read the relevant spec file before implementing any feature.
 | `dependency-update` | dev     | 依存ライブラリの安全な更新（段階的 + 検証）                   |
 | `git-workflow`      | dev     | コミット整理・メッセージ・PR 説明の作成                       |
 | `graphify`          | dev     | コードベース・ドキュメントを知識グラフ化し、構造を調査する    |
+| `error-triage`      | dev     | 本番エラーの調査 → 修正 PR（定期 Routine からの無人実行前提） |
 | `recipe-from-stock` | life    | 在庫から献立・レシピ提案                                      |
 | `pantry-review`     | life    | 週次の在庫・期限・食品ロスレビュー                            |
 | `travel-planner`    | life    | 旅行・おでかけの行程・持ち物・予算プラン（完全汎用）          |
