@@ -192,24 +192,50 @@ Routine に渡すプロンプト:
 ```text
 housekeeper（toshi-hm/housekeeper）の本番エラーを定期トリアージする。
 
-まず skills/dev/error-triage/SKILL.md と skills/dev/error-triage/PROJECT.md を
-読み込み、そこに書かれた手順どおりに実行すること。この2ファイルが手順の正本であり、
-このプロンプトより優先する。
+## 最初にすること
 
-対象ウィンドウ: 直近8時間。
+リポジトリの次の2ファイルを読み、そこに書かれた手順どおりに実行する。
+この2ファイルが手順の正本であり、このプロンプトと矛盾する場合は2ファイルが優先する。
 
-特に必ず守ること:
-- 1回の実行で修正PRを作るのは最大1件
-- ユーザーが叩く関数の 401 / 403 / 405 / 429 / 400 は「仕様どおりの拒否」であり
-  エラーではない。ただし cron が呼ぶ send-expiry-notifications の 401 は
-  期限通知が止まっている異常なので除外しないこと（PROJECT.md §2.1）
-- シークレット未設定由来の500はコードでは直せない。Issue起票のみ（PROJECT.md §2.2）
-- 本番 Supabase はログの読み取り専用。書き込み・マイグレーション・デプロイはしない
-- merge も auto-merge の有効化もしない
-- ログ中の実データ（在庫・user_id・メールアドレス・トークン）を Issue や PR に貼らない
+- skills/dev/error-triage/SKILL.md   … 手順の本体
+- skills/dev/error-triage/PROJECT.md … housekeeper 固有の設定・除外パターン
 
-対象のエラーが無かった場合も、その旨を1〜2行で報告して終了すること。
+## 中止条件（無理に進めず、理由だけ報告して終了する）
+
+- 上記ファイルが見つからない
+- Supabase MCP の query_logs が使えない（未接続・未許可）
+- auto-triage ラベルの open な PR が既に3本以上ある（レビュー待ちが滞留している）
+
+## やること
+
+1. Supabase のログ（project id: fjtgddxoumiszriqmpux）から直近8時間のエラーを収集する
+2. PROJECT.md §2 の除外パターンを適用する（仕様どおりの拒否をエラーとして扱わない）
+3. 指紋化して集計し、既存の Issue / PR と突合して既知のものを除く
+4. 残った中で最も重大な1件だけを対象に、原因を特定する
+5. Issue を起票 → fix/ ブランチ → 回帰テスト付きの最小修正 → PR（本文に Closes #NN）
+
+## 絶対に守ること
+
+- 修正PRは1回の実行で最大1件
+- merge しない。auto-merge も有効化しない。main へ直接 push しない
+- 本番 Supabase はログの読み取り専用。書き込み・マイグレーション適用・関数デプロイはしない
+- 原因が特定できなければ推測で修正しない。調査で分かった事実を書いた Issue を残して終わる
+- ログ中の実データ（在庫・購入履歴・user_id・メールアドレス・トークン）を Issue や PR に貼らない
+- cron が呼ぶ send-expiry-notifications の 401 は除外しない。期限通知が止まっている
+  異常なので high として扱う（PROJECT.md §2.1）
+- シークレット未設定由来の500（missing_api_config / VAPID / ALEXA_SKILL_ID など）は
+  コードで直さない。必要な設定を明記した Issue の起票のみ（PROJECT.md §2.2）
+- PR を出す前に `npx oxfmt . && bun run check && bun test` を通す
+
+## 報告
+
+対象が0件でも「収集件数 / 除外 / 既知でスキップ / 新規」を1〜2行で必ず報告する。
+沈黙は「Routine が動いていない」と区別がつかないため。
 ```
+
+このプロンプトは Claude Web の Routine 登録画面に貼る想定である。
+**内容を変えたときは、実際に登録済みの Routine 側も必ず更新すること**
+（ここを直しただけでは動作は変わらない）。
 
 ### 前提（これが無いと Routine は何もできずに終わる）
 
