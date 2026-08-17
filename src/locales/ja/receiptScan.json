@@ -4,6 +4,7 @@
   "bulkRegister_other": "{{count}}件を一括登録",
   "doneTitle_other": "{{count}}件のアイテムを登録しました",
   "idleHint": "レシート全体が写るように撮影してください。金額や商品名は登録前に確認・修正できます。",
+  "imageTooLarge": "画像サイズが大きすぎます。別の写真でお試しください",
   "includeRow": "この行を登録対象にする",
   "itemNamePlaceholder": "商品名",
   "lowConfidenceHint": "読み取りに自信がありません。内容を確認してください。",

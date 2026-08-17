@@ -6,6 +6,7 @@
   "doneTitle_one": "Registered {{count}} item",
   "doneTitle_other": "Registered {{count}} items",
   "idleHint": "Frame the whole receipt in the photo. You can review and correct names and prices before registering.",
+  "imageTooLarge": "The image is too large. Please try a different photo.",
   "includeRow": "Include this row",
   "itemNamePlaceholder": "Item name",
   "lowConfidenceHint": "Low confidence in this reading. Please double-check it.",
