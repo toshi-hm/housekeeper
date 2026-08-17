@@ -1,6 +1,7 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useMutation } from "@tanstack/react-query";
 
+import { compressImageForUpload } from "@/lib/imageCompress";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import type { ReceiptLineItem } from "@/types/receipt";
@@ -17,7 +18,12 @@ interface ReceiptScanSuccess {
 
 /** `receipt-scan` が特定のエラー種別を返した場合に、UIが専用メッセージを
  *  出し分けられるようにする（`useBarcodeLookup`/`useInventoryChat` と同じ方針）。 */
-export type ReceiptScanErrorKind = "unsupported_type" | "rate_limited" | "timeout" | "server_error";
+export type ReceiptScanErrorKind =
+  | "unsupported_type"
+  | "rate_limited"
+  | "timeout"
+  | "image_too_large"
+  | "server_error";
 
 export class ReceiptScanError extends Error {
   readonly kind: ReceiptScanErrorKind;
@@ -52,15 +58,21 @@ export const scanReceipt = async (file: File): Promise<ReceiptLineItem[]> => {
     throw new ReceiptScanError("unsupported_type");
   }
 
-  const image = await fileToBase64(file);
+  // #858: uploadItemImage always compresses before upload; receipt-scan reused
+  // ImageUploader (which only guards against pathologically large picks) without
+  // ever shrinking the file, so ordinary 6-15MB phone photos exceeded the Edge
+  // Function's 8MB payload limit and failed with a generic error.
+  const compressed = await compressImageForUpload(file);
+  const image = await fileToBase64(compressed);
   const { data, error } = await supabase.functions.invoke<ReceiptScanSuccess>("receipt-scan", {
-    body: { image, mimeType: file.type },
+    body: { image, mimeType: compressed.type },
   });
 
   if (error) {
     if (error instanceof FunctionsHttpError) {
       if (error.context?.status === 429) throw new ReceiptScanError("rate_limited");
       if (error.context?.status === 504) throw new ReceiptScanError("timeout");
+      if (error.context?.status === 413) throw new ReceiptScanError("image_too_large");
     }
     throw new ReceiptScanError("server_error");
   }
@@ -76,7 +88,13 @@ export const useReceiptScan = () => {
 
 export const receiptScanErrorMessageKey = (
   error: unknown,
-): "offlineError" | "unsupportedType" | "rateLimited" | "timeout" | "scanError" => {
+):
+  | "offlineError"
+  | "unsupportedType"
+  | "rateLimited"
+  | "timeout"
+  | "imageTooLarge"
+  | "scanError" => {
   if (error instanceof OfflineError) return "offlineError";
   if (error instanceof ReceiptScanError) {
     switch (error.kind) {
@@ -86,6 +104,8 @@ export const receiptScanErrorMessageKey = (
         return "rateLimited";
       case "timeout":
         return "timeout";
+      case "image_too_large":
+        return "imageTooLarge";
       default:
         return "scanError";
     }

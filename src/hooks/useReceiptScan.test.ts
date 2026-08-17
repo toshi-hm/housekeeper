@@ -81,6 +81,16 @@ describe("scanReceipt", () => {
     });
   });
 
+  test("maps a 413 response to an image_too_large ReceiptScanError", async () => {
+    invokeMock.mockClear();
+    invokeResponse = { data: null, error: new FunctionsHttpError({ status: 413 }) };
+
+    await expect(scanReceipt(makeFile("image/jpeg"))).rejects.toMatchObject({
+      name: "ReceiptScanError",
+      kind: "image_too_large",
+    });
+  });
+
   test("maps any other error to a server_error ReceiptScanError", async () => {
     invokeMock.mockClear();
     invokeResponse = { data: null, error: new FunctionsHttpError({ status: 500 }) };
@@ -103,6 +113,9 @@ describe("receiptScanErrorMessageKey", () => {
     );
     expect(receiptScanErrorMessageKey(new ReceiptScanError("rate_limited"))).toBe("rateLimited");
     expect(receiptScanErrorMessageKey(new ReceiptScanError("timeout"))).toBe("timeout");
+    expect(receiptScanErrorMessageKey(new ReceiptScanError("image_too_large"))).toBe(
+      "imageTooLarge",
+    );
     expect(receiptScanErrorMessageKey(new ReceiptScanError("server_error"))).toBe("scanError");
   });
 
