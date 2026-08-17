@@ -41,16 +41,83 @@ order by n desc
 > **セットアップ上の注意**: 無人セッションで `query_logs` を使うには、その MCP ツールが
 > 事前に許可されている必要がある（未許可だと承認待ちで停止し、Routine は何もできずに終わる）。
 
-### 1.2. クライアント（React アプリ）
+### 1.2. クライアント（React アプリ）— Sentry
 
-`VITE_SENTRY_DSN` が設定されている場合のみ Sentry にエラーが送られる
+**Sentry MCP コネクタ**を使う。
+
+| 項目         | 値                     |
+| ------------ | ---------------------- |
+| organization | `mayabase-gh`          |
+| project      | `housekeeper`          |
+| regionUrl    | `https://us.sentry.io` |
+
+`VITE_SENTRY_DSN` が設定されたビルドからのみエラーが送られる
 （`src/lib/sentry.ts` — DSN 未設定時は全 export が no-op）。
+Sentry コネクタがセッションで使えない場合は、Supabase 側のみを対象とし、
+「クライアント側は未観測」と報告に明記する。
 
-- **DSN 未設定なら、クライアント側の観測ソースは存在しない。**
-  その場合は Supabase 側のみを対象とし、「クライアント側は未観測」と報告に明記する
-- Sentry を見る手段（MCP / API トークン）がセッションに無い場合も同様に明記する
-- Sentry に送られるのはメッセージ・スタックトレース・最小限のメタデータのみ
-  （`sanitizeSentryEvent` が許可リスト方式で再構築している）。在庫データは含まれない
+**Sentry に送られるのはメッセージ・スタックトレース・最小限のメタデータのみ。**
+`sanitizeSentryEvent` が許可リスト方式でイベントを再構築しているため、
+在庫・購入履歴などのアプリデータは含まれない（`tracesSampleRate: 0`、
+`sendDefaultPii: false`、breadcrumb も無効）。
+
+### 1.3. 2 つの観測ソースの守備範囲（取り違えない）
+
+**Sentry は Supabase ログの代わりにはならない。両方見ること。**
+
+| 層                              | 観測ソース              | 備考                                                 |
+| ------------------------------- | ----------------------- | ---------------------------------------------------- |
+| React クライアント              | **Sentry**              | スタックトレース付き。原因究明はこちらが圧倒的に速い |
+| Edge Functions (Deno)           | **Supabase query_logs** | Sentry 未計装（`@sentry/react` はクライアント専用）  |
+| PostgREST / Auth / Storage / DB | **Supabase query_logs** | Sentry には一切上がらない                            |
+
+Edge Function のエラーを Sentry で探しても**永遠に見つからない**。
+逆にクライアントの例外は Supabase のログには出ない（`console.error` は
+ブラウザ内で完結する）。片方だけ見て「エラーなし」と報告してはならない。
+
+### 1.4. Sentry の使い方
+
+#### 収集クエリ
+
+```
+search_issues(organizationSlug='mayabase-gh', projectSlugOrId='housekeeper',
+              regionUrl='https://us.sentry.io',
+              query='is:unresolved lastSeen:-3h', sort='freq', period='24h')
+```
+
+- 新規だけに絞りたいときは `is:new` / `firstSeen:-3h`
+- **`is:regressed` を別途必ず確認する。** 一度 resolve されたものの再発であり、
+  SKILL.md の「回帰」に相当する。優先度は高い
+
+#### 指紋は Sentry の Issue ID をそのまま使う
+
+Sentry は同一原因のイベントを Issue として**すでにグルーピングしている**。
+自前でメッセージを正規化してハッシュを取る必要はない。
+Sentry 由来のエラーは、短縮 ID（例 `HOUSEKEEPER-1A2B`）を指紋として扱い、
+GitHub Issue 本文に `<!-- fingerprint:HOUSEKEEPER-1A2B -->` と埋める。
+
+自前の指紋計算は **Supabase ログ由来のエラーにのみ**適用する。
+
+#### 重大度の判定材料
+
+Sentry は生ログより良い判定材料を持っている: **影響ユーザー数（userCount）**、
+イベント件数、`level`、初回発生。ユーザー影響が出ているものを優先する。
+
+#### Seer（`analyze_issue_with_seer`）
+
+根本原因の分析に使ってよい。ただし **Seer の出力は仮説であって事実ではない**。
+
+- Seer が示したファイル・行を**自分でコードを読んで裏取りする**
+- **Seer が提案したパッチをそのまま貼らない。** このリポジトリの規約
+  （アロー関数 / `interface` / `import type` / i18n キー）に沿って自分で書く
+- 裏取りできなければ、Seer が何を言ったかに関わらず「原因未特定」として扱う
+
+#### Sentry への書き込みは禁止
+
+`update_issue` などで Sentry の Issue を **resolve / ignore / assign しない。**
+このスキルは PR を出すだけで、修正はまだマージも本番反映もされていない。
+resolve すると「直っていないのに直った」状態になり、次回以降の再発検知
+（`is:regressed`）まで壊れる。Sentry は**読み取り専用**で扱う。
 
 ## 2. 除外パターン（＝仕様どおりの動作。エラーではない）
 
@@ -69,6 +136,23 @@ order by n desc
 
 **対象にするのは原則 5xx**、および `function_logs` の `console.error` のうち
 上記の正常系フローに属さないもの。
+
+### 2.0. Sentry（クライアント）側の除外パターン
+
+ブラウザから上がるエラーには、アプリのバグではないものが大量に混ざる。
+以下はトリアージ対象にしない:
+
+| 対象                                                           | 理由                                                     |
+| -------------------------------------------------------------- | -------------------------------------------------------- |
+| `ResizeObserver loop ...`                                      | ブラウザ実装由来の既知ノイズ。実害がない                 |
+| ブラウザ拡張由来（`chrome-extension://` などがフレームに出る） | ユーザーの拡張機能の問題。こちらでは直せない             |
+| `Failed to fetch` / `Load failed` / `NetworkError` 単発        | ユーザーの通信断・タブクローズ。PWA なので日常的に起きる |
+| 認証セッション期限切れに伴う 401 と、その後の再ログイン        | 設計どおりの挙動                                         |
+| 古いキャッシュされた Service Worker 由来の `ChunkLoadError`    | デプロイ直後に起きる。SW 更新で自然に解消する            |
+
+ただし**同じものが継続的に大量発生している場合は別**。
+`Failed to fetch` が特定のエンドポイントに集中しているなら、それは通信断ではなく
+こちら側の障害である。件数と集中度を見て判断すること。
 
 ### 2.1. 除外の例外 —「401 だが異常」なケース（重要）
 
@@ -217,13 +301,22 @@ housekeeper（toshi-hm/housekeeper）の本番エラーを定期トリアージ�
 ## 中止条件（無理に進めず、理由だけ報告して終了する）
 
 - 上記ファイルが見つからない
-- Supabase MCP の query_logs が使えない（未接続・未許可）
+- Supabase MCP と Sentry コネクタの**両方**が使えない
+  （片方だけ使える場合は、使える方を見たうえで「もう片方は未観測」と明記して続行する）
 
 ## やること
 
-1. Supabase のログ（project id: fjtgddxoumiszriqmpux）から直近3時間のエラーを収集する
-2. PROJECT.md §2 の除外パターンを適用する（仕様どおりの拒否をエラーとして扱わない）
-3. 指紋化して集計し、既存の Issue / PR と突合して既知のものを除く
+1. エラーを2つのソースから収集する。**両方必ず見ること。片方だけで「エラーなし」と
+   報告しない**
+   - **Sentry**（org: mayabase-gh / project: housekeeper / regionUrl: https://us.sentry.io）
+     … React クライアントの例外。`is:unresolved lastSeen:-3h` と `is:regressed`
+   - **Supabase query_logs**（project id: fjtgddxoumiszriqmpux）から直近3時間
+     … Edge Functions / API / DB の 5xx。Edge Function は Sentry 未計装なので
+     ここでしか見えない
+2. PROJECT.md §2 の除外パターンを適用する（仕様どおりの拒否や、ブラウザ由来の
+   ノイズをエラーとして扱わない）
+3. 指紋で集計し、既存の Issue / PR と突合して既知のものを除く。
+   Sentry 由来は Sentry の Issue ID（例 HOUSEKEEPER-1A2B）をそのまま指紋にする
 4. **新規の指紋は全件 Issue を起票する**（修正するかどうかに関わらず。
    バグの存在を早く知ることが目的なので、ここは絞らない）
 5. そのうち重大な順に **最大3件** まで、原因を特定して修正 PR を作る。
@@ -239,6 +332,10 @@ housekeeper（toshi-hm/housekeeper）の本番エラーを定期トリアージ�
 - 各PRは必ず最新の main から切る。自分が直前に作ったブランチに積み上げない
 - auto-triage の open な PR が既に5本ある場合は、修正は行わず Issue 起票だけ続ける
 - merge しない。auto-merge も有効化しない。main へ直接 push しない
+- **Sentry は読み取り専用。** Issue を resolve / ignore / assign しない。
+  PRはまだマージも本番反映もされておらず、resolve すると再発検知が壊れる
+- Seer で原因分析してもよいが、その出力は仮説である。自分でコードを読んで裏取りし、
+  提案パッチをそのまま貼らずリポジトリの規約に沿って書く
 - 本番 Supabase はログの読み取り専用。書き込み・マイグレーション適用・関数デプロイはしない
 - 原因が特定できなければ推測で修正しない。調査で分かった事実を書いた Issue を残して終わる
 - ログ中の実データ（在庫・購入履歴・user_id・メールアドレス・トークン）を Issue や PR に貼らない
@@ -250,8 +347,9 @@ housekeeper（toshi-hm/housekeeper）の本番エラーを定期トリアージ�
 
 ## 報告
 
-対象が0件でも「収集件数 / 除外 / 既知でスキップ / 新規」を1〜2行で必ず報告する。
-沈黙は「Routine が動いていない」と区別がつかないため。
+対象が0件でも必ず報告する。沈黙は「Routine が動いていない」と区別がつかないため。
+**Sentry 側と Supabase 側を分けて**「収集件数 / 除外 / 既知でスキップ / 新規」を書き、
+どちらかが見られなかった場合はその旨を明記する。
 ```
 
 このプロンプトは Claude Web の Routine 登録画面に貼る想定である。
@@ -262,9 +360,18 @@ housekeeper（toshi-hm/housekeeper）の本番エラーを定期トリアージ�
 
 1. **Supabase MCP の `query_logs` が事前許可されていること。**
    無人セッションは承認プロンプトに応答できないため、未許可だと停止する
-2. **GitHub の Issue / PR 作成手段**（`gh` CLI 認証済み、または GitHub MCP）が使えること
-3. このスキルが **main にマージ済み**であること（Routine のセッションは既定ブランチを
+2. **Sentry コネクタが Routine のセッションで有効になっていること。**
+   Routine 作成時に使用コネクタとして Sentry を指定する。これが無いと
+   クライアント側は永久に未観測のまま「エラーなし」と報告され続ける
+3. **GitHub の Issue / PR 作成手段**（`gh` CLI 認証済み、または GitHub MCP）が使えること
+4. このスキルが **main にマージ済み**であること（Routine のセッションは既定ブランチを
    チェックアウトするため、未マージだとスキル本体が存在しない）
+5. **`VITE_SENTRY_DSN` が本番ビルドに設定されていること。**
+   未設定のビルドが動いている限り Sentry には何も届かない（`src/lib/sentry.ts` が no-op）。
+   これは **Vite のビルド時変数**であり、Cloudflare のランタイムシークレットではない
+   （`import.meta.env` はビルド時に JS へ埋め込まれる）。
+   Cloudflare の**ビルド設定側**の環境変数に入れ、**設定後に再デプロイする**こと。
+   `wrangler secret put` で入れても反映されない
 
 ## 8. このプロジェクトで特にやってはいけないこと
 
