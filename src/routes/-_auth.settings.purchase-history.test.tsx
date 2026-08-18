@@ -77,6 +77,11 @@ describe("PurchaseHistoryPage", () => {
     cleanup();
   });
 
+  it("戻るボタンにaria-labelが付与されている(#862)", () => {
+    const { getByRole } = renderPage();
+    expect(getByRole("button", { name: /^back$|戻る|^Back$/i })).toBeDefined();
+  });
+
   it("shows the empty message when the query succeeds with no history (#783: not the error state)", () => {
     const { getByText, queryByText } = renderPage();
     expect(getByText(EMPTY_TEXT)).toBeDefined();

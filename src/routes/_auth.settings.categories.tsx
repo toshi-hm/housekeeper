@@ -22,7 +22,7 @@ import { useToast } from "@/lib/toast-context";
 
 const DEFAULT_COLOR = "#6b7280";
 
-const CategoriesPage = () => {
+export const CategoriesPage = () => {
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
@@ -141,6 +141,7 @@ const CategoriesPage = () => {
           variant="ghost"
           size="icon"
           className="lg:hidden"
+          aria-label={tc("back")}
           onClick={() => void navigate({ to: "/settings" })}
         >
           <ArrowLeft className="h-5 w-5" />
@@ -168,6 +169,7 @@ const CategoriesPage = () => {
             }}
             disabled={createCategory.isPending || !newName.trim()}
             size="icon"
+            aria-label={tc("add")}
           >
             <Plus className="h-4 w-4" />
           </Button>

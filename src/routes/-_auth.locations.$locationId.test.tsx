@@ -102,6 +102,11 @@ describe("LocationMapPage", () => {
     cleanup();
   });
 
+  it("戻るボタンにaria-labelが付与されている(#862)", () => {
+    const { getByRole } = renderPage();
+    expect(getByRole("button", { name: /^back$|戻る|^Back$/i })).toBeDefined();
+  });
+
   it("shows spinner while locations are loading", () => {
     locationsspy.mockReturnValue({
       data: [],

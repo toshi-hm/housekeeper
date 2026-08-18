@@ -78,7 +78,7 @@ const LocationPhotoSection = ({ location }: { location: StorageLocation }) => {
   );
 };
 
-const LocationsPage = () => {
+export const LocationsPage = () => {
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
@@ -166,6 +166,7 @@ const LocationsPage = () => {
           variant="ghost"
           size="icon"
           className="lg:hidden"
+          aria-label={tc("back")}
           onClick={() => void navigate({ to: "/settings" })}
         >
           <ArrowLeft className="h-5 w-5" />
@@ -191,6 +192,7 @@ const LocationsPage = () => {
           }}
           disabled={createLocation.isPending || !newName.trim()}
           size="icon"
+          aria-label={tc("add")}
         >
           <Plus className="h-4 w-4" />
         </Button>

@@ -72,7 +72,7 @@ const tabSchema = z.object({
   tab: z.enum(["info", "lots", "history"]).optional().default("info"),
 });
 
-const ItemDetailPage = () => {
+export const ItemDetailPage = () => {
   const { t, i18n } = useTranslation("items");
   const { t: tc } = useTranslation("common");
   const { itemId } = Route.useParams();
@@ -213,7 +213,12 @@ const ItemDetailPage = () => {
   if (error || !item) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="icon" onClick={() => void navigate({ to: "/" })}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={tc("back")}
+          onClick={() => void navigate({ to: "/" })}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="space-y-3 rounded-lg border border-destructive p-4 text-destructive">

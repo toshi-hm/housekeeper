@@ -143,6 +143,11 @@ describe("ItemConsumePage", () => {
     cleanup();
   });
 
+  it("戻るボタンにaria-labelが付与されている(#862)", () => {
+    const { getByRole } = renderPage();
+    expect(getByRole("button", { name: /^back$|戻る|^Back$/i })).toBeDefined();
+  });
+
   it("shows spinner while item is loading", () => {
     itemspy.mockReturnValue({ data: undefined, isLoading: true } as ReturnType<
       typeof useItemsModule.useItem

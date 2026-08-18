@@ -236,6 +236,7 @@ export const SettingsPage = () => {
           variant="ghost"
           size="icon"
           className="lg:hidden"
+          aria-label={t("common:back")}
           onClick={() => void navigate({ to: "/" })}
         >
           <ArrowLeft className="h-5 w-5" />
@@ -367,6 +368,7 @@ export const SettingsPage = () => {
                   }}
                   disabled={createCustomUnit.isPending || !newUnitName.trim()}
                   size="icon"
+                  aria-label={t("common:add")}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
