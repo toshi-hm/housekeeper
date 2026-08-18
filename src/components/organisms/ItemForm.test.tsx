@@ -442,6 +442,86 @@ describe("ItemForm — 下書き保存/復元 (#672)", () => {
   });
 });
 
+describe("ItemForm — 保管場所クイック追加時のpin座標クリア (#861)", () => {
+  beforeEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [{ id: "loc-old", name: "旧保管場所", icon: null, photo_url: null }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+    spyOn(useMasterDataModule, "useCreateStorageLocation").mockReturnValue({
+      mutateAsync: async ({ name }: { name: string }) => ({
+        id: "loc-new",
+        name,
+        icon: null,
+        photo_url: null,
+      }),
+    } as unknown as ReturnType<typeof useMasterDataModule.useCreateStorageLocation>);
+  });
+
+  afterEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockRestore();
+    spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
+    spyOn(useMasterDataModule, "useCreateStorageLocation").mockRestore();
+  });
+
+  it("保管場所をその場で新規作成すると、既存のpin_x/pin_yがクリアされる", async () => {
+    const user = userEvent.setup();
+    const handleSubmit = mock(() => {});
+    const { container } = render(
+      <ItemForm
+        onSubmit={handleSubmit}
+        defaultValues={{
+          name: "既存アイテム",
+          storage_location_id: "loc-old",
+          pin_x: 0.3,
+          pin_y: 0.4,
+        }}
+      />,
+      { wrapper },
+    );
+
+    const trigger = container.querySelector("#storage_location_id") as HTMLButtonElement;
+    await user.click(trigger);
+
+    const addButton = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes(i18n.t("items:addStorageLocation")),
+    ) as HTMLButtonElement;
+    await user.click(addButton);
+
+    const nameInput = container.querySelector(
+      'input[placeholder="' + i18n.t("items:addStorageLocation") + '"]',
+    ) as HTMLInputElement;
+    await user.type(nameInput, "新しい保管場所");
+
+    const confirmButton = container.querySelector(
+      `button[aria-label="${i18n.t("common:confirm")}"]`,
+    ) as HTMLButtonElement;
+    await user.click(confirmButton);
+
+    const form = container.querySelector("form") as HTMLFormElement;
+    fireEvent.submit(form);
+
+    expect(handleSubmit).toHaveBeenCalledTimes(1);
+    const submitted = handleSubmit.mock.calls[0]?.[0] as { pin_x: unknown; pin_y: unknown };
+    expect(submitted.pin_x).toBeNull();
+    expect(submitted.pin_y).toBeNull();
+  });
+});
+
 const emptyValues = () => ({
   name: "",
   barcode: "",

@@ -224,6 +224,8 @@ export const ItemForm = ({
 
   const handleAddLocation = async (name: string) => {
     const location = await addLocation({ name });
+    set("pin_x", null);
+    set("pin_y", null);
     set("storage_location_id", location.id);
   };
 
