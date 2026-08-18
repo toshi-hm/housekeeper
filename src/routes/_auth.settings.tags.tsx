@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { useCreateTag, useDeleteTag, useTags, useUpdateTag } from "@/hooks/useTags";
 import { useToast } from "@/lib/toast-context";
 
-const TagsPage = () => {
+export const TagsPage = () => {
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
@@ -82,6 +82,7 @@ const TagsPage = () => {
           variant="ghost"
           size="icon"
           className="lg:hidden"
+          aria-label={tc("back")}
           onClick={() => void navigate({ to: "/settings" })}
         >
           <ArrowLeft className="h-5 w-5" />
@@ -107,6 +108,7 @@ const TagsPage = () => {
             }}
             disabled={createTag.isPending || !newName.trim()}
             size="icon"
+            aria-label={tc("add")}
           >
             <Plus className="h-4 w-4" />
           </Button>

@@ -173,6 +173,14 @@ describe("SettingsPage - expiryWarningDays validation", () => {
     cleanup();
   });
 
+  it("戻るボタン・カスタム単位追加ボタンにaria-labelが付与されている(#862)", () => {
+    const { stub } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    expect(getAllByRole("button", { name: /戻る|Back/ }).length).toBeGreaterThan(0);
+    expect(getAllByRole("button", { name: /追加|Add/ }).length).toBeGreaterThan(0);
+  });
+
   it("shows error toast when value is above 30", () => {
     const { stub, toastFn } = makeToastStub();
     const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });

@@ -74,6 +74,7 @@ export const LocationMapPage = () => {
         <Button
           variant="ghost"
           size="icon"
+          aria-label={t("back")}
           onClick={() => void navigate({ to: "/settings/locations" })}
         >
           <ArrowLeft className="h-5 w-5" />

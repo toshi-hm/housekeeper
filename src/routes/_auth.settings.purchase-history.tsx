@@ -48,6 +48,7 @@ export const PurchaseHistoryPage = () => {
           variant="ghost"
           size="icon"
           className="lg:hidden"
+          aria-label={tc("back")}
           onClick={() => void navigate({ to: "/settings" })}
         >
           <ArrowLeft className="h-5 w-5" />
