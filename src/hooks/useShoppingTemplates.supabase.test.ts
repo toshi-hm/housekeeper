@@ -6,11 +6,15 @@ mock.module("@/lib/supabase", () => ({
   supabase: { rpc: rpcMock },
 }));
 
-// requireOnline() は navigator.onLine を見るため、テスト環境ではオンライン扱いにしておく
+// requireOnline() は navigator.onLine を見るため、テスト環境ではオンライン扱いにしておく。
+// ConcurrentUpdateError は useShoppingTemplates.ts が import する useShoppingList.ts 経由で
+// useItemLots.ts (createLot/syncItemAggregate) が同モジュールから import するため、ここで
+// スタブしておかないとモジュール解決エラーになる。
 mock.module("@/lib/requireOnline", () => ({
   OfflineError: class OfflineError extends Error {
     readonly isOffline = true;
   },
+  ConcurrentUpdateError: class ConcurrentUpdateError extends Error {},
   requireOnline: () => undefined,
 }));
 

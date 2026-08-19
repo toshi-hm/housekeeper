@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
+import { upsertShoppingItem } from "@/hooks/useShoppingList";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -112,41 +113,44 @@ interface ApplyTemplateResult {
   skipped: number;
 }
 
-/** テンプレートのアイテムを買い物リスト（planned）へ一括追加する。既存アイテムは重複追加しない。 */
+/**
+ * `useApplyShoppingTemplate` の実処理。単体テストのため素の関数として切り出している。
+ * テンプレートのアイテムを買い物リスト（planned）へ一括追加する。既存アイテムは重複追加しない。
+ */
+export const applyShoppingTemplate = async (
+  template: ShoppingTemplateWithItems,
+): Promise<ApplyTemplateResult> => {
+  requireOnline();
+
+  const { data: planned, error } = await supabase
+    .from("shopping_list_items")
+    .select("name")
+    .eq("status", "planned");
+  if (error) throw new Error(error.message);
+
+  const existingNames = (planned ?? []).map((row) => row.name);
+  const newItems = filterNewTemplateItems(template.items, existingNames);
+  if (newItems.length === 0) {
+    return { added: 0, skipped: template.items.length };
+  }
+
+  // #852: 複数行をまとめて1回のinsertで送ると、SELECTとINSERTの間に別経路で
+  // 同名アイテムが追加された場合の一意制約違反(23505)を、無関係な行も巻き込んで
+  // 全体失敗させてしまう。1件ずつ upsertShoppingItem のリトライロジックを再利用し、
+  // 個々の競合は既存行への統合にフォールバックさせる。
+  for (const item of newItems) {
+    await upsertShoppingItem({ name: item.name, desired_units: item.desired_units });
+  }
+
+  return { added: newItems.length, skipped: template.items.length - newItems.length };
+};
+
 export const useApplyShoppingTemplate = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("common");
   return useMutation<ApplyTemplateResult, Error, ShoppingTemplateWithItems>({
-    mutationFn: async (template) => {
-      requireOnline();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { data: planned, error } = await supabase
-        .from("shopping_list_items")
-        .select("name")
-        .eq("status", "planned");
-      if (error) throw new Error(error.message);
-
-      const existingNames = (planned ?? []).map((row) => row.name);
-      const newItems = filterNewTemplateItems(template.items, existingNames);
-      if (newItems.length === 0) {
-        return { added: 0, skipped: template.items.length };
-      }
-
-      const rows = newItems.map((item) => ({
-        user_id: user.id,
-        name: item.name,
-        desired_units: item.desired_units,
-      }));
-      const { error: insertError } = await supabase.from("shopping_list_items").insert(rows);
-      if (insertError) throw new Error(insertError.message);
-
-      return { added: newItems.length, skipped: template.items.length - newItems.length };
-    },
+    mutationFn: applyShoppingTemplate,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: SHOPPING_KEY });
     },

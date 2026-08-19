@@ -3,6 +3,7 @@ import webpush from "npm:web-push@3";
 import { fetchAllPages } from "../_shared/pagination.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { zonedDateString, zonedNow } from "./date.ts";
+import { shouldClaimNotificationSlot, wasAnyPushDelivered } from "./deliveryClaim.ts";
 import { buildNotificationTargetUrl } from "./notificationUrl.ts";
 
 const corsHeaders = {
@@ -192,17 +193,20 @@ Deno.serve(async (req: Request) => {
       const language = isSupportedLanguage(userSettings?.language) ? userSettings.language : "ja";
       const text = EXPIRY_NOTIFICATION_TEXT[language];
 
-      // 定期実行時は notification_logs で当日分の送信枠を確保（重複送信防止）。
-      // ignoreDuplicates のため、既に当日送信済みなら空配列が返る → スキップ。
+      // 定期実行時は notification_logs を見て、当日分が既に確定済み（＝実送信に
+      // 成功済み）ならスキップする（重複送信防止）。
+      // #827: 送信枠のクレームは実送信の成否が判明した後（このブロックの末尾）に
+      // 行う。ここで先にクレームを確定してしまうと、VAPID環境変数未設定や
+      // Resend API障害等で実送信自体が失敗した場合でもクレームだけが消費され、
+      // その日は二度とリトライされなくなる。
       if (scheduled) {
-        const { data: claimed } = await supabase
+        const { data: existingLog } = await supabase
           .from("notification_logs")
-          .upsert(
-            { user_id: pref.user_id, sent_on: zoned.date, item_count: count },
-            { onConflict: "user_id,sent_on", ignoreDuplicates: true },
-          )
-          .select();
-        if (!claimed || claimed.length === 0) return;
+          .select("user_id")
+          .eq("user_id", pref.user_id)
+          .eq("sent_on", zoned.date)
+          .maybeSingle();
+        if (existingLog) return;
       }
 
       // #714: 消費期限（use_by）または区別未設定（null, 既存アイテム互換）の item が
@@ -217,6 +221,7 @@ Deno.serve(async (req: Request) => {
       const notificationUrl = buildNotificationTargetUrl(items);
 
       // Send push notifications
+      let pushDelivered = false;
       if (pref.push_enabled) {
         const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
         const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
@@ -232,19 +237,18 @@ Deno.serve(async (req: Request) => {
 
           if (subsError) {
             // #760: don't let a transient push_subscriptions read failure
-            // throw here — the notification_logs slot for today is already
-            // claimed (see the upsert above), so an uncaught error would
-            // skip the email fallback below and leave the user with zero
-            // notifications for the day with no retry until tomorrow.
+            // throw here — an uncaught error would skip the email fallback
+            // below and leave the user with zero notifications for the day.
             console.error("Failed to fetch push_subscriptions:", subsError);
           } else {
-            await Promise.allSettled(
+            const outcomes = await Promise.all(
               (subs as PushSubscription[]).map(async (sub) => {
                 try {
                   await webpush.sendNotification(
                     { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
                     JSON.stringify({ title, body, data: { url: notificationUrl } }),
                   );
+                  return true;
                 } catch (err: unknown) {
                   const status = (err as { statusCode?: number }).statusCode;
                   if (status === 410 || status === 404) {
@@ -252,9 +256,11 @@ Deno.serve(async (req: Request) => {
                     await supabase.from("push_subscriptions").delete().eq("id", sub.id);
                   }
                   console.error("Push failed:", err);
+                  return false;
                 }
               }),
             );
+            pushDelivered = wasAnyPushDelivered(outcomes);
           }
         } else {
           console.warn("VAPID secrets not configured, skipping push for user", pref.user_id);
@@ -262,6 +268,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Send email notifications via Resend
+      let emailDelivered = false;
       if (pref.email_enabled && pref.email_address && resendApiKey) {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
@@ -276,9 +283,31 @@ Deno.serve(async (req: Request) => {
             text: `${text.emailIntro}\n${items.map((i) => `- ${text.itemLine(i.name, i.expiry_date, i.expiry_type)}`).join("\n")}`,
           }),
         });
-        if (!res.ok) {
+        if (res.ok) {
+          emailDelivered = true;
+        } else {
           console.error("Email send failed:", await res.text());
         }
+      }
+
+      // #827: 実送信の成否が判明した後、少なくとも1チャネルが実際に配信できた
+      // 場合のみ当日分の送信枠を確定する。どのチャネルも配信できなかった場合は
+      // 確定せず、次回実行時にリトライできるようにする。
+      if (
+        scheduled &&
+        shouldClaimNotificationSlot({
+          pushEnabled: pref.push_enabled,
+          pushDelivered,
+          emailEnabled: pref.email_enabled,
+          emailDelivered,
+        })
+      ) {
+        await supabase
+          .from("notification_logs")
+          .upsert(
+            { user_id: pref.user_id, sent_on: zoned.date, item_count: count },
+            { onConflict: "user_id,sent_on", ignoreDuplicates: true },
+          );
       }
     }),
   );
