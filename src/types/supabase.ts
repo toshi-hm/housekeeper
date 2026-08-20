@@ -553,6 +553,7 @@ export interface Database {
           pin_x: number | null;
           pin_y: number | null;
           purchase_date: string | null;
+          reorder_lead_days: number | null;
           reorder_threshold: number | null;
           storage_location_id: string | null;
           units: number;
@@ -582,6 +583,7 @@ export interface Database {
           pin_x?: number | null;
           pin_y?: number | null;
           purchase_date?: string | null;
+          reorder_lead_days?: number | null;
           reorder_threshold?: number | null;
           storage_location_id?: string | null;
           units?: number;
@@ -611,6 +613,7 @@ export interface Database {
           pin_x?: number | null;
           pin_y?: number | null;
           purchase_date?: string | null;
+          reorder_lead_days?: number | null;
           reorder_threshold?: number | null;
           storage_location_id?: string | null;
           units?: number;

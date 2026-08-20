@@ -231,6 +231,7 @@ export interface Database {
           minimum_stock: number | null;
           auto_reorder: boolean;
           reorder_threshold: number | null;
+          reorder_lead_days: number | null;
           last_verified_at: string | null;
           deleted_at: string | null;
           deletion_reason: "consumed" | "expired_waste" | "other" | null;
@@ -264,6 +265,7 @@ export interface Database {
           minimum_stock?: number | null;
           auto_reorder?: boolean;
           reorder_threshold?: number | null;
+          reorder_lead_days?: number | null;
           last_verified_at?: string | null;
           deleted_at?: string | null;
           deletion_reason?: "consumed" | "expired_waste" | "other" | null;
@@ -293,6 +295,7 @@ export interface Database {
           minimum_stock?: number | null;
           auto_reorder?: boolean;
           reorder_threshold?: number | null;
+          reorder_lead_days?: number | null;
           last_verified_at?: string | null;
           deleted_at?: string | null;
           deletion_reason?: "consumed" | "expired_waste" | "other" | null;

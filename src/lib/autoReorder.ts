@@ -1,6 +1,8 @@
 import { findDuplicatePlannedItem } from "@/lib/shoppingDuplicates";
 import { supabase } from "@/lib/supabase";
+import { getLotRemainingAmount } from "@/types/item";
 import type { ShoppingItem } from "@/types/shopping";
+import { computeConsumptionPaceForecast } from "@/types/stats";
 
 /**
  * 対象アイテムの既存 planned 行の中から `findDuplicatePlannedItem` と同じ基準
@@ -42,10 +44,50 @@ const mergeAutoReorderRow = async (
 };
 
 /**
+ * 対象アイテムの `reorder_lead_days` が設定されている場合、直近の消費ログから
+ * `computeConsumptionPaceForecast` で予測残日数を算出し、`reorder_lead_days`
+ * 以内かどうかを返す（#853）。`reorder_lead_days` が未設定（null）なら
+ * ログを取得するまでもなく false（＝個数しきい値のみで判定する既存挙動）。
+ */
+const isPaceBasedReorderDue = async (item: {
+  id: string;
+  units: number;
+  content_amount: number;
+  content_unit: string;
+  opened_remaining: number | null;
+  reorder_lead_days: number | null | undefined;
+}): Promise<boolean> => {
+  if (item.reorder_lead_days === null || item.reorder_lead_days === undefined) return false;
+
+  const { data: logs, error: logsError } = await supabase
+    .from("consumption_logs")
+    .select("delta_amount, delta_unit, occurred_at")
+    .eq("item_id", item.id)
+    .order("occurred_at", { ascending: false });
+  if (logsError) throw logsError;
+
+  const currentStock = getLotRemainingAmount(
+    item.units,
+    item.content_amount,
+    item.opened_remaining,
+  );
+  const forecast = computeConsumptionPaceForecast(logs ?? [], currentStock, item.content_unit);
+  return (
+    forecast.predictedRemainingDays !== null &&
+    forecast.predictedRemainingDays <= item.reorder_lead_days
+  );
+};
+
+/**
  * 消費・廃棄操作（consumeLot / bulkConsumeItems）の後に呼び出す。
- * 対象アイテムが `auto_reorder = true` かつ在庫数が `reorder_threshold`
- * （未設定の場合は 0）以下になっていれば、`shopping_list_items` に
- * planned 行を自動追加する（#353）。
+ * 対象アイテムが `auto_reorder = true` で、かつ次の**いずれか**を満たせば
+ * `shopping_list_items` に planned 行を自動追加する（#353, #853）。
+ *
+ * 1. 在庫数が `reorder_threshold`（未設定の場合は 0）以下（個数しきい値、#353）
+ * 2. `reorder_lead_days` が設定されていて、`computeConsumptionPaceForecast` の
+ *    予測残日数がその値以下（消費ペース予測、#853）。個数はまだ残っていても
+ *    減りが速いアイテムを取りこぼさないための補完条件。`reorder_lead_days` が
+ *    未設定のアイテムは従来通り 1. のみで判定する。
  *
  * 追加前に `mergeAutoReorderRow` で同名/同一linked_item_idのplanned行が
  * 既にないか確認し、あれば新規行を作らず統合する（#829: 自由入力済みの
@@ -59,14 +101,18 @@ export const maybeAutoReorder = async (itemId: string): Promise<boolean> => {
   try {
     const { data: item, error: itemError } = await supabase
       .from("items")
-      .select("id, user_id, name, units, auto_reorder, reorder_threshold")
+      .select(
+        "id, user_id, name, units, content_amount, content_unit, opened_remaining, auto_reorder, reorder_threshold, reorder_lead_days",
+      )
       .eq("id", itemId)
       .maybeSingle();
     if (itemError) throw itemError;
     if (!item || !item.auto_reorder) return false;
 
     const threshold = item.reorder_threshold ?? 0;
-    if (item.units > threshold) return false;
+    const thresholdDue = item.units <= threshold;
+    const paceDue = thresholdDue ? false : await isPaceBasedReorderDue(item);
+    if (!thresholdDue && !paceDue) return false;
 
     const merged = await mergeAutoReorderRow(item.user_id, item.id, item.name);
     if (merged) return true;
