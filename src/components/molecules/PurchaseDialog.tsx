@@ -5,11 +5,19 @@ import { useTranslation } from "react-i18next";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
-import type { ItemFormValues } from "@/types/item";
+import type { Item, ItemFormValues } from "@/types/item";
 
 interface PurchaseDialogProps {
   open: boolean;
   itemName?: string;
+  /**
+   * #830: `linked_item_id` 一致で既存アイテムへ統合されることが事前に分かって
+   * いる場合の、その既存アイテムの現在値。渡された場合、フォームの初期値を
+   * この値で埋めて既存値を確認できるようにし、送信時の入力（カテゴリ/保管場所/
+   * メモ等）が items 行へ反映されることをバナーで明示する。
+   * バーコード一致による統合は購入完了時にしか判明しないため対象外。
+   */
+  existingItem?: Item | null;
   onSubmit: (values: ItemFormValues) => void;
   onClose: () => void;
   isSubmitting?: boolean;
@@ -20,6 +28,7 @@ interface PurchaseDialogProps {
 export const PurchaseDialog = ({
   open,
   itemName,
+  existingItem,
   onSubmit,
   onClose,
   isSubmitting = false,
@@ -36,6 +45,23 @@ export const PurchaseDialog = ({
   });
 
   if (!open) return null;
+
+  // #830: 既存アイテムへ統合される場合、フォームの初期値をそのアイテムの現在値で
+  // 埋める。空欄のまま保存すると入力済みの値が消えたように見えるのを防ぐ。
+  const defaultValues: Partial<ItemFormValues> = existingItem
+    ? {
+        name: itemName ?? existingItem.name,
+        category_id: existingItem.category_id ?? null,
+        storage_location_id: existingItem.storage_location_id ?? null,
+        notes: existingItem.notes ?? "",
+        minimum_stock: existingItem.minimum_stock ?? null,
+        auto_reorder: existingItem.auto_reorder ?? false,
+        reorder_threshold: existingItem.reorder_threshold ?? null,
+        expiry_type: existingItem.expiry_type ?? null,
+        image_path: existingItem.image_path ?? "",
+        units: 1,
+      }
+    : { name: itemName ?? "", units: 1 };
 
   return (
     <div
@@ -65,8 +91,13 @@ export const PurchaseDialog = ({
             <X className="h-5 w-5" />
           </Button>
         </div>
+        {existingItem && (
+          <p className="mb-4 rounded-md bg-muted p-2 text-sm text-muted-foreground">
+            {t("mergeIntoExistingItem", { name: existingItem.name })}
+          </p>
+        )}
         <ItemForm
-          defaultValues={{ name: itemName ?? "", units: 1 }}
+          defaultValues={defaultValues}
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
           submitLabel={t("createItemFromPurchase")}

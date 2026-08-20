@@ -343,6 +343,10 @@ const ShoppingPage = () => {
     }
   };
 
+  // #830: 購入ダイアログを開いている対象の shopping_list_items 行（名前・
+  // linked_item_id の参照に使う）
+  const pendingPurchaseShoppingItem = plannedItems.find((i) => i.id === pendingPurchaseId);
+
   // linked_item_id → カテゴリを解決するためのマップを構築する
   const itemCategoryIdMap = new Map(inventoryItems.map((i) => [i.id, i.category_id ?? null]));
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
@@ -415,7 +419,17 @@ const ShoppingPage = () => {
       {pendingPurchaseId && (
         <PurchaseDialog
           open={!!pendingPurchaseId}
-          itemName={plannedItems.find((i) => i.id === pendingPurchaseId)?.name}
+          itemName={pendingPurchaseShoppingItem?.name}
+          // #830: linked_item_id（「補充」等で紐付いた行）で既存アイテムへ統合される
+          // ことが事前に分かる場合、フォームに既存値を初期表示する。inventoryItems は
+          // アクティブなアイテムのみを保持している（ソフトデリート済みへの復活統合は
+          // このページで未取得のため対象外、この場合はフォームは従来通り空欄で始まる）。
+          existingItem={
+            pendingPurchaseShoppingItem?.linked_item_id
+              ? (inventoryItems.find((i) => i.id === pendingPurchaseShoppingItem.linked_item_id) ??
+                null)
+              : null
+          }
           onSubmit={(values) => {
             void handlePurchase(values);
           }}
