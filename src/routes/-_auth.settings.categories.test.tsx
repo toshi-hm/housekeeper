@@ -37,6 +37,7 @@ const renderPage = () => render(<CategoriesPage />, { wrapper: Wrapper as React.
 
 describe("CategoriesPage — アイコンのみボタンのaria-label (#862)", () => {
   let categoriesSpy: ReturnType<typeof spyOn>;
+  let usageCountsSpy: ReturnType<typeof spyOn>;
   let createSpy: ReturnType<typeof spyOn>;
   let updateSpy: ReturnType<typeof spyOn>;
   let deleteSpy: ReturnType<typeof spyOn>;
@@ -46,6 +47,10 @@ describe("CategoriesPage — アイコンのみボタンのaria-label (#862)", (
       data: [],
       isLoading: false,
     } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    usageCountsSpy = spyOn(useMasterDataModule, "useCategoryUsageCounts").mockReturnValue({
+      data: {},
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategoryUsageCounts>);
     createSpy = spyOn(useMasterDataModule, "useCreateCategory").mockReturnValue({
       mutateAsync: mock(async () => ({ id: "cat-1", name: "" })),
       isPending: false,
@@ -62,6 +67,7 @@ describe("CategoriesPage — アイコンのみボタンのaria-label (#862)", (
 
   afterEach(() => {
     categoriesSpy.mockRestore();
+    usageCountsSpy.mockRestore();
     createSpy.mockRestore();
     updateSpy.mockRestore();
     deleteSpy.mockRestore();
@@ -72,5 +78,73 @@ describe("CategoriesPage — アイコンのみボタンのaria-label (#862)", (
     const { getByRole } = renderPage();
     expect(getByRole("button", { name: /^back$|戻る|^Back$/i })).toBeDefined();
     expect(getByRole("button", { name: /^add$|追加|^Add$/i })).toBeDefined();
+  });
+});
+
+describe("CategoriesPage — 削除ボタンの使用中バッジ・disabled事前表示 (#863)", () => {
+  let categoriesSpy: ReturnType<typeof spyOn>;
+  let usageCountsSpy: ReturnType<typeof spyOn>;
+  let createSpy: ReturnType<typeof spyOn>;
+  let updateSpy: ReturnType<typeof spyOn>;
+  let deleteSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    createSpy = spyOn(useMasterDataModule, "useCreateCategory").mockReturnValue({
+      mutateAsync: mock(async () => ({ id: "cat-1", name: "" })),
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCreateCategory>);
+    updateSpy = spyOn(useMasterDataModule, "useUpdateCategory").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useUpdateCategory>);
+    deleteSpy = spyOn(useMasterDataModule, "useDeleteCategory").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useDeleteCategory>);
+  });
+
+  afterEach(() => {
+    categoriesSpy.mockRestore();
+    usageCountsSpy.mockRestore();
+    createSpy.mockRestore();
+    updateSpy.mockRestore();
+    deleteSpy.mockRestore();
+    cleanup();
+  });
+
+  it("使用中件数が0件のカテゴリでは、バッジは出ず削除ボタンは有効", () => {
+    categoriesSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [{ id: "cat-1", name: "冷蔵庫", color: null, icon: null }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    usageCountsSpy = spyOn(useMasterDataModule, "useCategoryUsageCounts").mockReturnValue({
+      data: {},
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategoryUsageCounts>);
+
+    const { getByRole, queryByText } = renderPage();
+    expect(queryByText(/使用中|used by/i)).toBeNull();
+    const deleteButton = getByRole("button", { name: /^delete$|削除|^Delete$/i });
+    expect(deleteButton.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("使用中件数が1件以上のカテゴリでは、バッジが表示され削除ボタンがdisabledになる", () => {
+    categoriesSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [{ id: "cat-1", name: "冷蔵庫", color: null, icon: null }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    usageCountsSpy = spyOn(useMasterDataModule, "useCategoryUsageCounts").mockReturnValue({
+      data: { "cat-1": 3 },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategoryUsageCounts>);
+
+    // This test file renders without an I18nextProvider (see Wrapper above),
+    // so t() falls back to returning the raw key instead of interpolating
+    // {{count}} — assert on the badge's presence/key rather than "3".
+    const { getByRole, getByText } = renderPage();
+    expect(getByText(/usedByCount|使用中|used by/i)).toBeDefined();
+    const deleteButton = getByRole("button", { name: /^delete$|削除|^Delete$/i });
+    expect(deleteButton.hasAttribute("disabled")).toBe(true);
+    expect(deleteButton.getAttribute("title")).not.toBeNull();
   });
 });

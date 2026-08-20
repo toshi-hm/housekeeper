@@ -77,6 +77,8 @@
   "undoError": "Failed to undo",
   "undoSuccess": "Restored",
   "unknownError": "An error occurred",
+  "usedByCount_one": "Used by {{count}} item",
+  "usedByCount_other": "Used by {{count}} items",
   "voiceInput": "Voice input",
   "voiceInputListening": "Listening..."
 }

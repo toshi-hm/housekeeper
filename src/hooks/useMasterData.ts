@@ -8,6 +8,11 @@ import type { Category, StorageLocation } from "@/types/item";
 
 const CATEGORIES_KEY = ["categories"] as const;
 const LOCATIONS_KEY = ["locations"] as const;
+/** items配下のキーにしておくと、アイテムのCRUD側で行われる
+ *  `invalidateQueries({ queryKey: ["items"] })` がprefix一致で自動的に
+ *  この使用件数キャッシュも無効化してくれる（#863）。 */
+const CATEGORY_USAGE_COUNTS_KEY = ["items", "category-usage-counts"] as const;
+const LOCATION_USAGE_COUNTS_KEY = ["items", "location-usage-counts"] as const;
 
 const MAX_NAME_LENGTH = 40;
 
@@ -143,6 +148,33 @@ export const checkCategoryUsage = async (id: string): Promise<number> => {
   if (error) throw error;
   return count ?? 0;
 };
+
+/** カテゴリごとの使用中アイテム数を一括取得する（#863）。一覧表示時に削除可否の
+ *  目安をバッジ表示するための事前チェックで、N+1を避けるため単一クエリで
+ *  取得したアイテムの `category_id` をクライアント側で集計する。あくまで
+ *  UI上のヒントであり、削除実行時は `checkCategoryUsage`（クリック時の
+ *  レースコンディション対策込みの正式チェック）を引き続き使用する。 */
+export const fetchCategoryUsageCounts = async (): Promise<Record<string, number>> => {
+  const { data, error } = await supabase
+    .from("items")
+    .select("category_id")
+    .not("category_id", "is", null)
+    .is("deleted_at", null);
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { category_id: string | null }[]) {
+    if (!row.category_id) continue;
+    counts[row.category_id] = (counts[row.category_id] ?? 0) + 1;
+  }
+  return counts;
+};
+
+export const useCategoryUsageCounts = () =>
+  useQuery({
+    queryKey: CATEGORY_USAGE_COUNTS_KEY,
+    queryFn: fetchCategoryUsageCounts,
+    staleTime: 30_000,
+  });
 
 export const useCategories = () =>
   useQuery({
@@ -311,6 +343,30 @@ export const checkLocationUsage = async (id: string): Promise<number> => {
   if (error) throw error;
   return count ?? 0;
 };
+
+/** 保管場所ごとの使用中アイテム数を一括取得する（#863）。詳細は
+ *  `fetchCategoryUsageCounts` のコメントを参照。 */
+export const fetchLocationUsageCounts = async (): Promise<Record<string, number>> => {
+  const { data, error } = await supabase
+    .from("items")
+    .select("storage_location_id")
+    .not("storage_location_id", "is", null)
+    .is("deleted_at", null);
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { storage_location_id: string | null }[]) {
+    if (!row.storage_location_id) continue;
+    counts[row.storage_location_id] = (counts[row.storage_location_id] ?? 0) + 1;
+  }
+  return counts;
+};
+
+export const useStorageLocationUsageCounts = () =>
+  useQuery({
+    queryKey: LOCATION_USAGE_COUNTS_KEY,
+    queryFn: fetchLocationUsageCounts,
+    staleTime: 30_000,
+  });
 
 export const useStorageLocations = () =>
   useQuery({
