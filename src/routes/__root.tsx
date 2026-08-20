@@ -5,6 +5,7 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { useTranslation } from "react-i18next";
 
 import { useSwUpdatePrompt } from "@/hooks/useSwUpdatePrompt";
+import { AuthProvider } from "@/lib/AuthProvider";
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -16,7 +17,7 @@ const RootLayout = () => {
   useSwUpdatePrompt();
 
   return (
-    <>
+    <AuthProvider>
       <Outlet />
       {import.meta.env.DEV && (
         <>
@@ -24,7 +25,7 @@ const RootLayout = () => {
           <ReactQueryDevtools />
         </>
       )}
-    </>
+    </AuthProvider>
   );
 };
 
