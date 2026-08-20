@@ -73,7 +73,8 @@ export const Expired: Story = {
 
 - 起動: bun run storybook
 - ビルド: bun run build-storybook
-- アクセシビリティチェック: bun run test-storybook（ビルド済みStorybookに対して実行。詳細は下記）
+- アクセシビリティチェック + Visual Regression Testing: bun run test-storybook（ビルド済み
+  Storybookに対して実行。同一コマンドで両方をチェックする。詳細は下記）
 
 ## package.json scripts（追加分）
 
@@ -117,3 +118,60 @@ Originating issue: [#497](https://github.com/toshi-hm/housekeeper/issues/497)。
 - baselineのエントリは違反を修正したら削除する（残数を増やさない）。
 
 個々の規約・既知のギャップは`docs/specs/accessibility.md`を参照。
+
+## Visual Regression Testing (VRT)
+
+Originating issue: [#807](https://github.com/toshi-hm/housekeeper/issues/807)。
+タップターゲットサイズ・余白・色などの意図しない見た目の回帰を、レビュー前にPRで
+機械検知する。axe-coreと同じ`@storybook/test-runner`のテストパス
+（`.storybook/test-runner.ts`の`postVisit`）内で、各Storyのスクリーンショットを
+`jest-image-snapshot`でcommitted baselineと比較する（`@storybook/test-runner`公式README
+「Image snapshot」節のレシピに準拠）。a11yチェックと同一のStorybookビルド・サーブ・
+テスト実行を共有し、専用のCIジョブ/ワークフローを別に追加していない
+（`.github/workflows/_a11y.yml`に統合、#835のビルド重複回避方針に合わせている）。
+
+### ツール選定
+
+セルフホスト方針（本プロダクトはサーバー未使用のクライアントサイドのみの構成）との
+整合、および外部SaaSアカウント（Chromatic等）への依存を避けるため、Chromatic等の
+ホスティング型VRTではなく、既存の`@storybook/test-runner` + Playwrightで完結する
+`jest-image-snapshot`を採用した。baseline画像はリポジトリに直接コミットする
+（現状256枚・約4MB、Git LFS等の追加インフラは導入していない。将来Story数が大きく
+増えてリポジトリサイズが問題になった場合に検討する）。
+
+### 仕組み
+
+- `.storybook/test-runner.ts`: `setup()`で`expect.extend({ toMatchImageSnapshot })`し、
+  `postVisit`で`waitForPageReady`（フォント読み込み等の完了待ち）の後に
+  `page.screenshot()`を撮り、`.storybook/__image_snapshots__/`のbaselineと比較する。
+- 差分の許容: `failureThreshold: 0.02`（`failureThresholdType: "percent"`、差分ピクセル
+  比率2%まで許容）。マシン間のフォントレンダリング・アンチエイリアシングの誤差を
+  吸収するための閾値で、ピクセル完全一致は要求しない。
+- 個別Storyの除外: `parameters.vrt.disable = true` を指定すると、そのStoryはVRT対象外
+  になる（`parameters.a11y.disable`と同じパターン）。乱数・現在時刻依存など、本質的に
+  非決定的な見た目を持つStoryのための逃げ道。
+- ローカルでのbaseline生成/更新手順:
+  1. `bun run build-storybook`
+  2. ビルド成果物を静的サーバで配信（例: `npx serve storybook-static -l 6006`）
+  3. `bun run test-storybook -- --url http://127.0.0.1:6006`（`--ci`を付けない）で
+     実行すると、baselineが無いStoryのbaselineを新規作成し、既存baselineと差分がある
+     Storyのbaselineを上書きする
+  4. 生成/更新された`.storybook/__image_snapshots__/**/*.png`の差分をレビューし、
+     意図した変更であることを確認してからコミットする
+  5. `bun run test-storybook -- --ci --url http://127.0.0.1:6006`（`--ci`付き）で
+     再実行し、クリーンにpassすることを確認する（`--ci`はbaseline未生成時に失敗させる
+     モードで、CIと同じ動作を再現できる）
+- CI失敗時: 差分が出たテストの`__diff_output__/`配下の画像（before/after/diff）を
+  `.github/workflows/_a11y.yml`の`Upload visual regression diffs`ステップでartifact
+  としてアップロードする。
+
+### 既知の制約
+
+- このサンドボックス環境ではPlaywrightのブラウザキャッシュと`@storybook/test-runner`が
+  要求するバージョンにずれがあり、baseline生成時のみローカルの
+  `executablePath`上書き（一時的なeject configで対応、コミットには含めない）が必要
+  だった。GitHub Actions上の実CIでは`bunx playwright install --with-deps chromium`で
+  毎回バージョンが揃うため、この問題は発生しない想定（既存のa11yチェックと同じCI
+  ステップを共有しているため）。
+- スクリーンショットは各Storyの初期表示状態のみを対象とする（`play`関数によるインタ
+  ラクション後の状態や、ホバー/フォーカス状態のスクリーンショットは対象外）。
