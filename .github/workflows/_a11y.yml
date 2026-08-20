@@ -1,10 +1,14 @@
-name: Accessibility
+name: Storybook Checks
 
-# axe-core によるアクセシビリティ回帰自動検出 (#497)。
-# 全 .stories.tsx をビルドし、@storybook/test-runner + axe-playwright で
-# 各Storyにaxe-coreのルールチェックをかける。既知の違反は
-# .storybook/a11y-baseline.ts でスキップし、新規Story追加分から厳格化する
-# 段階導入方針（docs/specs/storybook.md参照）。
+# axe-core によるアクセシビリティ回帰自動検出 (#497) と、Storyのスクリーン
+# ショットを committed baseline と比較するVisual Regression Testing (#807)。
+# 全 .stories.tsx をビルドし、@storybook/test-runner の同一パス
+# （.storybook/test-runner.ts の postVisit）で両方をチェックする。
+# a11yの既知の違反は .storybook/a11y-baseline.ts でスキップし、新規Story
+# 追加分から厳格化する段階導入方針（docs/specs/storybook.md参照）。
+# VRTのbaseline画像は .storybook/__image_snapshots__/ にコミットする。
+# ビルドを1回にまとめて#835の重複を避けるため、a11yとVRTを別ジョブ/別
+# ワークフローに分けず同一ジョブ内で完結させている。
 
 on:
   workflow_call:
@@ -13,8 +17,8 @@ permissions:
   contents: read
 
 jobs:
-  a11y:
-    name: Storybook Accessibility (axe-core)
+  storybook-checks:
+    name: Storybook Checks (a11y + visual regression)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -39,5 +43,19 @@ jobs:
       - name: Wait for Storybook
         run: npx wait-on http://127.0.0.1:6006
 
-      - name: Run accessibility checks (axe-core)
+      - name: Run Storybook checks (accessibility + visual regression)
         run: bun run test-storybook -- --ci --url http://127.0.0.1:6006
+
+      # VRT差分（意図しない見た目変更 or 意図的な変更のベースライン未更新）
+      # が発生した場合、diff/actual画像をjest-image-snapshotがカレント
+      # ディレクトリ直下に書き出すので、レビュー用にアーティファクトとして
+      # 保存する（#807）。ベースライン更新方法は docs/specs/storybook.md 参照。
+      - name: Upload visual regression diffs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vrt-diffs
+          path: |
+            **/__diff_output__/**
+          retention-days: 7
+          if-no-files-found: ignore
