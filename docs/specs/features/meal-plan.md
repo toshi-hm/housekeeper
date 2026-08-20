@@ -162,6 +162,22 @@ create trigger meal_plans_set_updated_at before update on meal_plans
 - メモのみの枠（`recipe_id` が null）は実行ボタン自体を表示しない（消費対象のレシピが
   存在しないため）
 
+### 実行済み枠の解除・変更ガード（#872）
+
+- 実行済み（`executed_at` セット済み）の枠は、`item_lots` / `consumption_logs` に
+  消費実績が既に反映されている。この状態の枠を割り当て解除（`onUnassign`）したり
+  別レシピへ変更（`onStartEdit` → 別レシピで再割当）したりしても、**その消費実績自体は
+  取り消されない**（`useExecuteMealPlan` に取り消しロジックは無い）。確認なしに操作
+  させると、実行記録（`meal_plans` 行）だけが消費実績と食い違ったまま失われるため、
+  `MealSlot` は `plan.executed_at` が truthy な枠でのみ、割り当て解除・変更ボタン
+  （`SlotEditActions` の X / 鉛筆アイコン）の押下を `ConfirmDialog`（既存の在庫不足
+  確認と同じ molecule）で一段止める。ダイアログの本文で「消費実績は取り消されず実行
+  記録だけが失われる」ことを明示し、確定して初めて元の `onUnassign` / `onStartEdit`
+  を呼ぶ。未実行の枠は従来通り確認なしに即時実行する
+- この確認は `MealSlot` 内で完結させ（枠ごとに独立した状態）、`useUpsertMealPlan` /
+  `upsertMealPlan` 自体の削除・upsert ロジックは変更しない（削除で行こと消える挙動は
+  「割当解除」の既存仕様のまま）
+
 ## 空き枠のレコメンド（期限間近消費）
 
 レシピ未割当の日には、期限間近の在庫を多く消費できるレシピ・アイデアを提示する。

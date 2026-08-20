@@ -1,6 +1,8 @@
 import { Check, Pencil, Play, X } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { MealPlanExpiryRecommendation } from "@/components/molecules/MealPlanExpiryRecommendation";
 import { MealPlanStockWarning } from "@/components/molecules/MealPlanStockWarning";
 import {
@@ -105,6 +107,34 @@ export const MealSlot = ({
     weekday: "short",
   });
 
+  // 実行済み（executed_at セット済み）枠は、消費実績（item_lots/consumption_logs）が
+  // 既に反映されている。確認なしに解除・変更させると、実行記録だけが消費実績と
+  // 食い違ったまま残ってしまう（#872）ため、実行済み枠の解除・変更操作にのみ
+  // 確認ダイアログを挟む。未実行の枠は従来通り即時実行する。
+  const [pendingGuardedAction, setPendingGuardedAction] = useState<"unassign" | "edit" | null>(
+    null,
+  );
+  const isExecuted = !!plan?.executed_at;
+  const handleUnassign = () => {
+    if (isExecuted) {
+      setPendingGuardedAction("unassign");
+      return;
+    }
+    onUnassign();
+  };
+  const handleStartEdit = () => {
+    if (isExecuted) {
+      setPendingGuardedAction("edit");
+      return;
+    }
+    onStartEdit();
+  };
+  const confirmGuardedAction = () => {
+    if (pendingGuardedAction === "unassign") onUnassign();
+    else if (pendingGuardedAction === "edit") onStartEdit();
+    setPendingGuardedAction(null);
+  };
+
   return (
     <div
       className={`space-y-2 rounded-lg border p-3 ${isToday ? "border-primary ring-1 ring-primary" : ""}`}
@@ -132,7 +162,7 @@ export const MealSlot = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="min-w-0 truncate font-medium">{plan.recipe.name}</p>
-            <SlotEditActions onStartEdit={onStartEdit} onUnassign={onUnassign} />
+            <SlotEditActions onStartEdit={handleStartEdit} onUnassign={handleUnassign} />
           </div>
           <MealPlanStockWarning
             shortages={stockCheck?.shortages ?? []}
@@ -153,7 +183,7 @@ export const MealSlot = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="min-w-0 truncate text-sm">{plan.note}</p>
-            <SlotEditActions onStartEdit={onStartEdit} onUnassign={onUnassign} />
+            <SlotEditActions onStartEdit={handleStartEdit} onUnassign={handleUnassign} />
           </div>
         </div>
       ) : (
@@ -175,6 +205,15 @@ export const MealSlot = ({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingGuardedAction !== null}
+        title={t("executedGuardTitle")}
+        message={t("executedGuardMessage")}
+        confirmLabel={pendingGuardedAction === "unassign" ? t("unassign") : t("changeRecipe")}
+        onConfirm={confirmGuardedAction}
+        onCancel={() => setPendingGuardedAction(null)}
+      />
     </div>
   );
 };
