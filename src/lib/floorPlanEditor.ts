@@ -16,6 +16,12 @@ export type FloorPlanEditorAction =
   | { type: "add-wall"; wall: FloorPlanWall }
   | { type: "add-shape"; shape: FloorPlanShape }
   | { type: "move-shape"; id: string; x: number; y: number }
+  | {
+      type: "move-wall";
+      id: string;
+      start: { x: number; y: number };
+      end: { x: number; y: number };
+    }
   | { type: "delete-selected" }
   | { type: "undo" }
   | { type: "redo" };
@@ -65,6 +71,13 @@ export const floorPlanEditorReducer = (
         ...state.document,
         shapes: state.document.shapes.map((shape) =>
           shape.id === action.id ? { ...shape, x: action.x, y: action.y } : shape,
+        ),
+      });
+    case "move-wall":
+      return withHistory(state, {
+        ...state.document,
+        walls: state.document.walls.map((wall) =>
+          wall.id === action.id ? { ...wall, start: action.start, end: action.end } : wall,
         ),
       });
     case "delete-selected":

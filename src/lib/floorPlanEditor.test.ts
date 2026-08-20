@@ -87,4 +87,60 @@ describe("floorPlanEditor", () => {
     const deletedAgain = floorPlanEditorReducer(deleted, { type: "delete-selected" });
     expect(deletedAgain.undoStack).toHaveLength(deleted.undoStack.length);
   });
+
+  it("moves a shape to new coordinates and supports undoing the move (#870)", () => {
+    const initial = createFloorPlanEditorState(createEmptyFloorPlanDocument());
+    const withShape = floorPlanEditorReducer(initial, {
+      type: "add-shape",
+      shape: {
+        id: "shape-1",
+        kind: "rectangle",
+        x: 10,
+        y: 10,
+        width: 20,
+        height: 20,
+        rotation: 0,
+        label: null,
+      },
+    });
+    const moved = floorPlanEditorReducer(withShape, {
+      type: "move-shape",
+      id: "shape-1",
+      x: 50,
+      y: 60,
+    });
+    expect(moved.document.shapes).toEqual([
+      expect.objectContaining({ id: "shape-1", x: 50, y: 60 }),
+    ]);
+    // Other shapes are left untouched, and a move is a normal history entry.
+    const undone = floorPlanEditorReducer(moved, { type: "undo" });
+    expect(undone.document.shapes).toEqual([
+      expect.objectContaining({ id: "shape-1", x: 10, y: 10 }),
+    ]);
+  });
+
+  it("moves a wall's endpoints and supports undoing the move (#870)", () => {
+    const initial = createFloorPlanEditorState(createEmptyFloorPlanDocument());
+    const withWall = floorPlanEditorReducer(initial, {
+      type: "add-wall",
+      wall: { id: "wall-1", start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, thickness: 8 },
+    });
+    const moved = floorPlanEditorReducer(withWall, {
+      type: "move-wall",
+      id: "wall-1",
+      start: { x: 20, y: 40 },
+      end: { x: 120, y: 40 },
+    });
+    expect(moved.document.walls).toEqual([
+      expect.objectContaining({
+        id: "wall-1",
+        start: { x: 20, y: 40 },
+        end: { x: 120, y: 40 },
+      }),
+    ]);
+    const undone = floorPlanEditorReducer(moved, { type: "undo" });
+    expect(undone.document.walls).toEqual([
+      expect.objectContaining({ id: "wall-1", start: { x: 0, y: 0 }, end: { x: 100, y: 0 } }),
+    ]);
+  });
 });
