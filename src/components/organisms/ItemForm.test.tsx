@@ -8,6 +8,7 @@ import { I18nextProvider } from "react-i18next";
 import * as useCustomUnitsModule from "@/hooks/useCustomUnits";
 import * as useItemLotsModule from "@/hooks/useItemLots";
 import * as useMasterDataModule from "@/hooks/useMasterData";
+import * as useSuggestedLocationModule from "@/hooks/useSuggestedLocation";
 import i18n from "@/lib/i18n";
 import { loadItemFormDraft, saveItemFormDraft } from "@/lib/itemFormDraft";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
@@ -519,6 +520,122 @@ describe("ItemForm — 保管場所クイック追加時のpin座標クリア (#
     const submitted = handleSubmit.mock.calls[0]?.[0] as { pin_x: unknown; pin_y: unknown };
     expect(submitted.pin_x).toBeNull();
     expect(submitted.pin_y).toBeNull();
+  });
+});
+
+describe("ItemForm — 保管場所の自動サジェスト (#814)", () => {
+  beforeEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [
+        { id: "loc-fridge", name: "冷蔵庫", icon: null, photo_url: null },
+        { id: "loc-pantry", name: "パントリー", icon: null, photo_url: null },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+    spyOn(useSuggestedLocationModule, "useSuggestedLocation").mockReturnValue({
+      data: "loc-fridge",
+      isLoading: false,
+    } as unknown as ReturnType<typeof useSuggestedLocationModule.useSuggestedLocation>);
+  });
+
+  afterEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockRestore();
+    spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
+    spyOn(useSuggestedLocationModule, "useSuggestedLocation").mockRestore();
+  });
+
+  it("enableLocationSuggestion=trueかつ保管場所未選択なら、サジェストされた保管場所を事前選択しヒントを表示する", () => {
+    const { container, getByText } = render(
+      <ItemForm onSubmit={() => {}} enableLocationSuggestion defaultValues={{ name: "牛乳" }} />,
+      { wrapper },
+    );
+    const trigger = container.querySelector("#storage_location_id") as HTMLButtonElement;
+    expect(trigger.textContent).toContain("冷蔵庫");
+    expect(getByText(i18n.t("items:suggestedLocationHint"))).toBeDefined();
+  });
+
+  it("enableLocationSuggestion=falseなら、サジェストを事前選択しない", () => {
+    const { container, queryByText } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "牛乳" }} />,
+      { wrapper },
+    );
+    const trigger = container.querySelector("#storage_location_id") as HTMLButtonElement;
+    expect(trigger.textContent).not.toContain("冷蔵庫");
+    expect(queryByText(i18n.t("items:suggestedLocationHint"))).toBeNull();
+  });
+
+  it("既にdefaultValuesで保管場所が指定されている場合は、サジェストで上書きしない", () => {
+    const { container, queryByText } = render(
+      <ItemForm
+        onSubmit={() => {}}
+        enableLocationSuggestion
+        defaultValues={{ name: "牛乳", storage_location_id: "loc-pantry" }}
+      />,
+      { wrapper },
+    );
+    const trigger = container.querySelector("#storage_location_id") as HTMLButtonElement;
+    expect(trigger.textContent).toContain("パントリー");
+    expect(queryByText(i18n.t("items:suggestedLocationHint"))).toBeNull();
+  });
+
+  it("ユーザーが手動で保管場所を選択すると、サジェストのヒントは消え送信値も手動選択が使われる", async () => {
+    const user = userEvent.setup();
+    const handleSubmit = mock(() => {});
+    const { container, queryByText } = render(
+      <ItemForm
+        onSubmit={handleSubmit}
+        enableLocationSuggestion
+        defaultValues={{ name: "牛乳" }}
+      />,
+      { wrapper },
+    );
+
+    const trigger = container.querySelector("#storage_location_id") as HTMLButtonElement;
+    await user.click(trigger);
+    const pantryOption = Array.from(container.querySelectorAll('[role="option"]')).find((el) =>
+      el.textContent?.includes("パントリー"),
+    ) as HTMLElement;
+    await user.click(pantryOption);
+
+    expect(queryByText(i18n.t("items:suggestedLocationHint"))).toBeNull();
+    expect(trigger.textContent).toContain("パントリー");
+
+    const form = container.querySelector("form") as HTMLFormElement;
+    fireEvent.submit(form);
+    expect(handleSubmit).toHaveBeenCalledTimes(1);
+    const submitted = handleSubmit.mock.calls[0]?.[0] as { storage_location_id: unknown };
+    expect(submitted.storage_location_id).toBe("loc-pantry");
+  });
+
+  it("送信時、サジェストされた値がまだ未確定でもstorage_location_idとして送信される", () => {
+    const handleSubmit = mock(() => {});
+    const { container } = render(
+      <ItemForm
+        onSubmit={handleSubmit}
+        enableLocationSuggestion
+        defaultValues={{ name: "牛乳" }}
+      />,
+      { wrapper },
+    );
+    const form = container.querySelector("form") as HTMLFormElement;
+    fireEvent.submit(form);
+    expect(handleSubmit).toHaveBeenCalledTimes(1);
+    const submitted = handleSubmit.mock.calls[0]?.[0] as { storage_location_id: unknown };
+    expect(submitted.storage_location_id).toBe("loc-fridge");
   });
 });
 
