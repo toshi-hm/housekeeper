@@ -88,6 +88,10 @@
 - UI: 自動追加時に `shopping_list_items.auto_added = true` を保存し、その行だけに
   `ShoppingRow` の「🔁 自動追加」バッジを表示する。現在のitem設定から推測しないため、
   手動補充の誤表示や設定変更後の表示変化を起こさない
+- 店舗別価格ヒント: `linked_item_id` を持つ行について、店舗別価格比較（`useStorePriceComparisons`、
+  #697、`docs/specs/features/stats.md`）に2店舗以上のデータがあれば `ShoppingRow` に
+  「◯◯店が最安（¥X）」を小さく表示する。新規テーブル・Edge Functionは追加せず、既存の集計を
+  買い物リスト画面から参照するのみ（#854）
 
 ## バリデーション
 

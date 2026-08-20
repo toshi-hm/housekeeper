@@ -38,6 +38,7 @@ import {
   useShoppingTemplates,
 } from "@/hooks/useShoppingTemplates";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
+import { useStorePriceComparisons } from "@/hooks/useStats";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { OfflineError } from "@/lib/requireOnline";
 import {
@@ -346,6 +347,18 @@ const ShoppingPage = () => {
   // linked_item_id → カテゴリを解決するためのマップを構築する
   const itemCategoryIdMap = new Map(inventoryItems.map((i) => [i.id, i.category_id ?? null]));
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
+  // linked_item_id → 最安店舗（#697の集計を再利用、#854）。stores は安い順に
+  // ソート済みのため先頭が最安値。
+  const { data: storePriceComparisons = [] } = useStorePriceComparisons();
+  const cheapestStoreByItemId = new Map(
+    storePriceComparisons
+      .filter((c) => c.stores.length > 0)
+      .map((c) => [c.itemId, c.stores[0]] as const),
+  );
+  const resolveCheapestStore = (shoppingItem: ShoppingItem) =>
+    shoppingItem.linked_item_id
+      ? (cheapestStoreByItemId.get(shoppingItem.linked_item_id) ?? null)
+      : null;
   const resolveCategory: CategoryResolver = (shoppingItem) => {
     if (!shoppingItem.linked_item_id) return null;
     const categoryId = itemCategoryIdMap.get(shoppingItem.linked_item_id);
@@ -367,6 +380,7 @@ const ShoppingPage = () => {
       note={item.note}
       isPurchased={item.status === "purchased"}
       isAutoAdded={item.auto_added}
+      cheapestStore={resolveCheapestStore(item)}
       isEditing={editId === item.id}
       isSaving={savingId === item.id}
       onPurchase={
