@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { InventoryChatPanel } from "@/components/organisms/InventoryChatPanel";
+import { SecurityQuestionReminderBanner } from "@/components/organisms/SecurityQuestionReminderBanner";
 import { Button } from "@/components/ui/button";
 import { useAppBadge } from "@/hooks/useAppBadge";
 import { useRealtimeItems } from "@/hooks/useRealtimeItems";
@@ -138,6 +139,8 @@ const AuthLayout = () => {
       {/* Page content */}
       <main className="flex-1 lg:pl-64">
         <div className="mx-auto max-w-4xl px-4 pt-6 pb-24 lg:py-6">
+          {/* メール確認必須設定でサインアップした場合の秘密の質問未登録を検知して促す（#850） */}
+          <SecurityQuestionReminderBanner />
           <Outlet />
         </div>
       </main>

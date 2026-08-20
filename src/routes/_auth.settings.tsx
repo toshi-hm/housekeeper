@@ -9,6 +9,7 @@ import {
   Download,
   Globe,
   History,
+  KeyRound,
   ListPlus,
   MapPin,
   Moon,
@@ -30,6 +31,7 @@ import { ThemeToggle } from "@/components/atoms/ThemeToggle";
 import { DataExportPanel } from "@/components/organisms/DataExportPanel";
 import { DataImportPanel } from "@/components/organisms/DataImportPanel";
 import { NotificationSettings } from "@/components/organisms/NotificationSettings";
+import { SecurityQuestionSettings } from "@/components/organisms/SecurityQuestionSettings";
 import { SecuritySettings } from "@/components/organisms/SecuritySettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -478,6 +480,15 @@ export const SettingsPage = () => {
               {t("importDataSection")}
             </h2>
             <DataImportPanel />
+          </section>
+
+          {/* Security question (password recovery, #850) */}
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <KeyRound className="h-4 w-4" />
+              {t("auth:securityQuestion")}
+            </h2>
+            <SecurityQuestionSettings />
           </section>
 
           {/* Security (MFA) */}
