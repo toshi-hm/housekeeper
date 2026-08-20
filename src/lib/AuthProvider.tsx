@@ -27,12 +27,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<AuthContextValue["session"]>(null);
 
   useEffect(() => {
-    let active = true;
-
-    void supabase.auth.getSession().then(({ data }) => {
-      if (active) setSession(data.session);
-    });
-
+    // supabase-jsはsubscribe直後に現在のsessionを"INITIAL_SESSION"イベントとして
+    // 発火するため、getSession()を別途呼ぶと非同期処理が競合し、TOKEN_REFRESHED等が
+    // 間に挟まった場合に古いsessionで上書きしてしまう。このリスナーのみに一本化する。
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
@@ -44,7 +41,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => {
-      active = false;
       subscription.unsubscribe();
     };
   }, [router]);

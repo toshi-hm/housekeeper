@@ -9,7 +9,6 @@ type AuthChangeCallback = (event: string, session: unknown) => void;
 
 let authChangeCallback: AuthChangeCallback | null = null;
 const unsubscribeMock = mock(() => {});
-const getSessionMock = mock(() => Promise.resolve({ data: { session: null } }));
 const onAuthStateChangeMock = mock((callback: AuthChangeCallback) => {
   authChangeCallback = callback;
   return { data: { subscription: { unsubscribe: unsubscribeMock } } };
@@ -18,7 +17,6 @@ const onAuthStateChangeMock = mock((callback: AuthChangeCallback) => {
 mock.module("@/lib/supabase", () => ({
   supabase: {
     auth: {
-      getSession: getSessionMock,
       onAuthStateChange: onAuthStateChangeMock,
     },
   },
@@ -63,8 +61,6 @@ const SessionProbe = () => {
 
 beforeEach(() => {
   authChangeCallback = null;
-  getSessionMock.mockReset();
-  getSessionMock.mockResolvedValue({ data: { session: null } });
   onAuthStateChangeMock.mockClear();
   unsubscribeMock.mockClear();
   navigateMock.mockClear();
@@ -76,14 +72,15 @@ afterEach(() => {
 
 describe("AuthProvider", () => {
   test("provides the current session via useAuthSession", async () => {
-    getSessionMock.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
-
     const { getByTestId } = renderWithRouter(
       "/",
       <AuthProvider>
         <SessionProbe />
       </AuthProvider>,
     );
+
+    await waitFor(() => expect(authChangeCallback).not.toBeNull());
+    authChangeCallback?.("INITIAL_SESSION", { user: { id: "u1" } });
 
     await waitFor(() => expect(getByTestId("session").textContent).toBe("signed-in"));
   });
