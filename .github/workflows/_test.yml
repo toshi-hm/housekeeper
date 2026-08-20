@@ -33,7 +33,7 @@ jobs:
 
       - name: Test Edge Functions
         run: |
-          deno test --no-check $(find supabase/functions -name '*.test.ts' | sort)
+          deno test --no-check --allow-env=CRON_SECRET --coverage=coverage/deno $(find supabase/functions -name '*.test.ts' | sort)
 
   pgtap:
     name: RLS Policy Tests (pgTAP)
