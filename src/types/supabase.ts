@@ -1113,6 +1113,7 @@ export interface Database {
           default_unit: string;
           expiry_warning_days: number;
           language: string;
+          last_backup_export_at: string | null;
           low_stock_forecast_days: number;
           notify_at: string;
           stocktake_alert_days: number;
@@ -1126,6 +1127,7 @@ export interface Database {
           default_unit?: string;
           expiry_warning_days?: number;
           language?: string;
+          last_backup_export_at?: string | null;
           low_stock_forecast_days?: number;
           notify_at?: string;
           stocktake_alert_days?: number;
@@ -1139,6 +1141,7 @@ export interface Database {
           default_unit?: string;
           expiry_warning_days?: number;
           language?: string;
+          last_backup_export_at?: string | null;
           low_stock_forecast_days?: number;
           notify_at?: string;
           stocktake_alert_days?: number;

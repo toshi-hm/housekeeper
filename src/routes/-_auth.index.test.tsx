@@ -382,4 +382,28 @@ describe("DashboardPage", () => {
     );
     expect(document.activeElement).toBe(searchInput);
   });
+
+  it("JSONバックアップの未実行が続いている場合、リマインダーバナーを表示する (#815)", async () => {
+    settingsspy.mockReturnValue({
+      data: {
+        last_backup_export_at: null,
+        created_at: "2000-01-01T00:00:00Z",
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+    const { queryByText } = await renderPage();
+    expect(queryByText(/JSON.*バックアップ|JSON backup/i)).not.toBeNull();
+  });
+
+  it("最近JSONバックアップをエクスポート済みなら、リマインダーバナーを表示しない (#815)", async () => {
+    settingsspy.mockReturnValue({
+      data: {
+        last_backup_export_at: new Date().toISOString(),
+        created_at: "2000-01-01T00:00:00Z",
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+    const { queryByText } = await renderPage();
+    expect(queryByText(/JSON.*バックアップ|JSON backup/i)).toBeNull();
+  });
 });

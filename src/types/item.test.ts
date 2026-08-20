@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  BACKUP_EXPORT_REMINDER_DAYS,
   computeConsumption,
   DEFAULT_EXPIRY_WARNING_DAYS,
   DEFAULT_STOCKTAKE_ALERT_DAYS,
@@ -10,6 +11,7 @@ import {
   getExpiryStatus,
   getLotRemainingAmount,
   isAlreadyInStock,
+  isBackupExportOverdue,
   isItemUnverified,
   isOpenedAlertDue,
   itemFormSchema,
@@ -452,6 +454,61 @@ describe("isItemUnverified", () => {
     expect(isItemUnverified(item, undefined, now)).toBe(true);
     const notYet = { last_verified_at: daysAgo(89), created_at: daysAgo(400) };
     expect(isItemUnverified(notYet, undefined, now)).toBe(false);
+  });
+});
+
+// --- isBackupExportOverdue (#815) ---
+
+describe("isBackupExportOverdue", () => {
+  const now = new Date("2026-07-20T00:00:00Z");
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000).toISOString();
+
+  describe("never exported (last_backup_export_at = null)", () => {
+    test("account created less than reminder period ago => not overdue", () => {
+      const settings = {
+        last_backup_export_at: null,
+        created_at: daysAgo(BACKUP_EXPORT_REMINDER_DAYS - 1),
+      };
+      expect(isBackupExportOverdue(settings, BACKUP_EXPORT_REMINDER_DAYS, now)).toBe(false);
+    });
+
+    test("account created exactly at reminder period => overdue", () => {
+      const settings = {
+        last_backup_export_at: null,
+        created_at: daysAgo(BACKUP_EXPORT_REMINDER_DAYS),
+      };
+      expect(isBackupExportOverdue(settings, BACKUP_EXPORT_REMINDER_DAYS, now)).toBe(true);
+    });
+
+    test("account created well beyond reminder period => overdue", () => {
+      const settings = { last_backup_export_at: null, created_at: daysAgo(365) };
+      expect(isBackupExportOverdue(settings, BACKUP_EXPORT_REMINDER_DAYS, now)).toBe(true);
+    });
+  });
+
+  describe("previously exported", () => {
+    test("exported recently => not overdue even if account is old", () => {
+      const settings = { last_backup_export_at: daysAgo(1), created_at: daysAgo(400) };
+      expect(isBackupExportOverdue(settings, BACKUP_EXPORT_REMINDER_DAYS, now)).toBe(false);
+    });
+
+    test("exported beyond reminder period ago => overdue", () => {
+      const settings = { last_backup_export_at: daysAgo(31), created_at: daysAgo(400) };
+      expect(isBackupExportOverdue(settings, 30, now)).toBe(true);
+    });
+
+    test("custom reminderDays is respected", () => {
+      const settings = { last_backup_export_at: daysAgo(31), created_at: daysAgo(400) };
+      expect(isBackupExportOverdue(settings, 30, now)).toBe(true);
+      expect(isBackupExportOverdue(settings, 60, now)).toBe(false);
+    });
+  });
+
+  test("defaults reminderDays to BACKUP_EXPORT_REMINDER_DAYS (30) when omitted", () => {
+    const settings = { last_backup_export_at: daysAgo(31), created_at: daysAgo(400) };
+    expect(isBackupExportOverdue(settings, undefined, now)).toBe(true);
+    const notYet = { last_backup_export_at: daysAgo(29), created_at: daysAgo(400) };
+    expect(isBackupExportOverdue(notYet, undefined, now)).toBe(false);
   });
 });
 
