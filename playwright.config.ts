@@ -14,7 +14,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? "github" : "list",
+  // CI では github reporter に加えて json reporter も出力する。
+  // 後者は scripts/report-flaky-specs.ts がリトライ発生specの検出に使う (#816)。
+  reporter: process.env.CI
+    ? [["github"], ["json", { outputFile: "playwright-report/results.json" }]]
+    : "list",
   use: {
     baseURL,
     trace: "on-first-retry",
