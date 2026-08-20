@@ -58,7 +58,11 @@ supabase.auth.mfa.listFactors()
 supabase.auth.mfa.getAuthenticatorAssuranceLevel()
 ```
 
-`AuthProvider`（`src/lib/auth.tsx`）が session を Context で提供し、`_auth.tsx` が判定する。
+`AuthProvider`（`src/lib/AuthProvider.tsx`）がルート（`__root.tsx`）に常時マウントされ、
+session を Context で提供する。`_auth.tsx` の `beforeLoad`（ルート遷移時のガード）とは別に、
+`onAuthStateChange` で `SIGNED_OUT` イベント（ユーザー自身のサインアウトに加え、リフレッシュ
+トークン失効時にsupabase-jsが自動発火するケースを含む）を検知し、`/login`・`/forgot-password`
+以外のパスにいる場合は能動的に `/login` へリダイレクトする（#828）。
 
 ## パスワードリセット（秘密の質問、#449）
 
