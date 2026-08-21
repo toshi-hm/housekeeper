@@ -58,6 +58,16 @@ test.describe("メイン認証フロー（追加 → 消費 → 買い物リス�
     await page.waitForURL(/\/items\/[^/]+$/);
 
     // --- Shopping list ---
+    // #850 review: the new SecurityQuestionReminderBanner adds an extra
+    // in-flight query (useSecurityQuestionStatus) right after this page's
+    // own data settles. On mobile-chromium, clicking the bottom nav while
+    // that query (and whatever re-render it triggers) is still in flight
+    // was found to reliably land on the dev-only TanStack Router Devtools
+    // badge instead of the nav link underneath it — confirmed via a
+    // bisection: identical DOM/coordinates on `main` vs. this branch,
+    // except `main`'s click always won the race and this branch's never
+    // did. Waiting for the network to go idle first removes the race.
+    await page.waitForLoadState("networkidle");
     await page.getByRole("link", { name: "Shopping" }).click();
     await page.waitForURL(/\/shopping$/);
     const shoppingItemName = `E2E Shopping Item ${Date.now()}`;

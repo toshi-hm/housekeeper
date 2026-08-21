@@ -25,9 +25,9 @@ export const upsertSecurityQuestion = async (params: {
   if (error) throw error;
 };
 
-export const SECURITY_QUESTION_STATUS_KEY = ["security-question-status"] as const;
+const SECURITY_QUESTION_STATUS_KEY = ["security-question-status"] as const;
 
-export interface SecurityQuestionStatus {
+interface SecurityQuestionStatus {
   hasSecurityQuestion: boolean;
   /** 設定済みの質問文言（サインアップ/設定画面で選択した時点の言語）。未設定ならnull。 */
   question: string | null;

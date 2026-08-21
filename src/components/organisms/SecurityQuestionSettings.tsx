@@ -25,7 +25,7 @@ import { useToast } from "@/lib/toast-context";
 export const SecurityQuestionSettings = () => {
   const { t } = useTranslation("auth");
   const { toast } = useToast();
-  const { data: status, isLoading } = useSecurityQuestionStatus();
+  const { data: status, isLoading, isError, refetch } = useSecurityQuestionStatus();
   const upsert = useUpsertSecurityQuestion();
 
   const [editing, setEditing] = useState(false);
@@ -79,6 +79,13 @@ export const SecurityQuestionSettings = () => {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">{t("common:loading")}</p>
+      ) : isError ? (
+        <div className="space-y-2">
+          <p className="text-sm text-destructive">{t("common:unknownError")}</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+            {t("common:retry")}
+          </Button>
+        </div>
       ) : !editing ? (
         <>
           <p className="text-sm">

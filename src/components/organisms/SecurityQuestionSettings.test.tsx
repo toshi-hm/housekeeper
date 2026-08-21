@@ -66,6 +66,22 @@ describe("SecurityQuestionSettings (#850)", () => {
     expect(getByRole("button", { name: /変更する|Change/i })).not.toBeNull();
   });
 
+  it("shows an error message and retry button when the status query fails, instead of silently showing 'not set'", () => {
+    const refetchMock = mock(() => Promise.resolve());
+    statusSpy.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: refetchMock,
+    } as unknown as ReturnType<typeof useSecurityQuestionModule.useSecurityQuestionStatus>);
+
+    const { getByRole, queryByText } = render(<SecurityQuestionSettings />, { wrapper });
+
+    expect(queryByText(/未設定です|Not set/i)).toBeNull();
+    fireEvent.click(getByRole("button", { name: /再試行|Retry/i }));
+    expect(refetchMock).toHaveBeenCalled();
+  });
+
   it("rejects saving without selecting a question or entering an answer", async () => {
     const { getByRole, findByText } = render(<SecurityQuestionSettings />, { wrapper });
 

@@ -44,6 +44,11 @@ test.describe("PWA オフライン挙動", () => {
     // the page's "not found" branch instead of the cached detail (#658).
     await page.getByRole("link", { name: itemName }).click();
     await page.waitForURL(/\/items\/[^/]+$/);
+    // #850 review: see the matching comment in main-flow.spec.ts — waiting
+    // for the network to go idle avoids a race between the new
+    // SecurityQuestionReminderBanner's query settling and the bottom nav
+    // click landing on the dev-only TanStack Router Devtools badge instead.
+    await page.waitForLoadState("networkidle");
     await page.getByRole("link", { name: "Home" }).click();
     await page.waitForURL(/\/(\?.*)?$/);
 
