@@ -6,7 +6,9 @@ const meta = {
   component: ReceiptReviewPanel,
   tags: ["autodocs"],
   args: {
+    storeName: null,
     onDraftsChange: () => {},
+    onStoreNameChange: () => {},
     onDone: () => {},
   },
 } satisfies Meta<typeof ReceiptReviewPanel>;
@@ -38,6 +40,25 @@ export const WithDrafts: Story = {
         quantity: 3,
         unitPrice: null,
         confidence: "low",
+        categoryId: null,
+        storageLocationId: null,
+        expiryDate: null,
+        included: true,
+      },
+    ],
+  },
+};
+
+export const WithStoreName: Story = {
+  args: {
+    storeName: "○○スーパー",
+    drafts: [
+      {
+        id: "d1",
+        name: "牛乳",
+        quantity: 1,
+        unitPrice: 248,
+        confidence: "high",
         categoryId: null,
         storageLocationId: null,
         expiryDate: null,

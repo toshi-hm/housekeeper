@@ -7,6 +7,7 @@ import {
   isValidReceiptScanResult,
   MAX_IMAGE_BASE64_LENGTH,
   normalizeLineItem,
+  normalizeStoreName,
 } from "./validation.ts";
 
 // isValidMimeType
@@ -53,12 +54,40 @@ Deno.test("isValidReceiptScanResult - accepts a valid result", () => {
   assert.ok(
     isValidReceiptScanResult({
       items: [{ name: "牛乳", quantity: 1, unitPrice: 200, confidence: "high" }],
+      storeName: "○○スーパー",
     }),
   );
 });
 
 Deno.test("isValidReceiptScanResult - accepts an empty items array", () => {
-  assert.ok(isValidReceiptScanResult({ items: [] }));
+  assert.ok(isValidReceiptScanResult({ items: [], storeName: null }));
+});
+
+Deno.test("isValidReceiptScanResult - accepts a null storeName", () => {
+  assert.ok(
+    isValidReceiptScanResult({
+      items: [{ name: "牛乳", quantity: 1, unitPrice: 200, confidence: "high" }],
+      storeName: null,
+    }),
+  );
+});
+
+Deno.test("isValidReceiptScanResult - accepts a missing storeName field", () => {
+  assert.ok(
+    isValidReceiptScanResult({
+      items: [{ name: "牛乳", quantity: 1, unitPrice: 200, confidence: "high" }],
+    }),
+  );
+});
+
+Deno.test("isValidReceiptScanResult - rejects a non-string, non-null storeName", () => {
+  assert.equal(
+    isValidReceiptScanResult({
+      items: [{ name: "牛乳", quantity: 1, unitPrice: 200, confidence: "high" }],
+      storeName: 123,
+    }),
+    false,
+  );
 });
 
 Deno.test("isValidReceiptScanResult - accepts null unitPrice", () => {
@@ -149,6 +178,24 @@ Deno.test("normalizeLineItem - keeps a null unitPrice as null", () => {
   );
 });
 
+// normalizeStoreName
+
+Deno.test("normalizeStoreName - trims the store name", () => {
+  assert.equal(normalizeStoreName("  ○○スーパー  "), "○○スーパー");
+});
+
+Deno.test("normalizeStoreName - treats a whitespace-only string as null", () => {
+  assert.equal(normalizeStoreName("   "), null);
+});
+
+Deno.test("normalizeStoreName - keeps null as null", () => {
+  assert.equal(normalizeStoreName(null), null);
+});
+
+Deno.test("normalizeStoreName - treats undefined as null", () => {
+  assert.equal(normalizeStoreName(undefined), null);
+});
+
 // buildGeminiRequestBody
 
 Deno.test("buildGeminiRequestBody - embeds the image as inlineData with the given mimeType", () => {
@@ -166,4 +213,14 @@ Deno.test("buildGeminiRequestBody - requests a JSON schema response with low tem
   assert.equal(body.generationConfig.responseMimeType, "application/json");
   assert.equal(body.generationConfig.temperature, 0.1);
   assert.ok(body.generationConfig.responseSchema);
+});
+
+Deno.test("buildGeminiRequestBody - response schema requires a top-level storeName", () => {
+  const body = buildGeminiRequestBody("BASE64DATA", "image/jpeg");
+  const schema = body.generationConfig.responseSchema as {
+    properties: { storeName: unknown };
+    required: string[];
+  };
+  assert.ok(schema.properties.storeName);
+  assert.ok(schema.required.includes("storeName"));
 });
