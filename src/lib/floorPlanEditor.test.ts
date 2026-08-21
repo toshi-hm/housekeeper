@@ -3,6 +3,7 @@ import { describe, expect, it } from "bun:test";
 import { createEmptyFloorPlanDocument } from "@/types/floorPlan";
 
 import {
+  clampWallTranslation,
   createFloorPlanEditorState,
   floorPlanEditorReducer,
   normalizeRect,
@@ -142,5 +143,30 @@ describe("floorPlanEditor", () => {
     expect(undone.document.walls).toEqual([
       expect.objectContaining({ id: "wall-1", start: { x: 0, y: 0 }, end: { x: 100, y: 0 } }),
     ]);
+  });
+
+  it("clampWallTranslation moves both endpoints together within bounds (#870)", () => {
+    const origin = { start: { x: 10, y: 10 }, end: { x: 30, y: 10 } };
+    expect(clampWallTranslation(origin, 5, 0, 100, 100)).toEqual({ dx: 5, dy: 0 });
+  });
+
+  it("clampWallTranslation clamps dx so neither endpoint crosses the left/top edge, without distorting the wall", () => {
+    const origin = { start: { x: 10, y: 10 }, end: { x: 30, y: 10 } };
+    // Moving left by 20 would push start.x to -10; the clamp must stop the
+    // whole wall at start.x === 0 rather than only clamping that endpoint.
+    const clamped = clampWallTranslation(origin, -20, 0, 100, 100);
+    expect(clamped.dx).toBe(-10);
+    expect(origin.start.x + clamped.dx).toBe(0);
+    expect(origin.end.x + clamped.dx).toBe(20);
+  });
+
+  it("clampWallTranslation clamps dx so neither endpoint crosses the right/bottom edge", () => {
+    const origin = { start: { x: 10, y: 10 }, end: { x: 30, y: 10 } };
+    // Moving right by 90 would push end.x to 120 (> width 100); the clamp
+    // must stop the whole wall at end.x === 100.
+    const clamped = clampWallTranslation(origin, 90, 0, 100, 100);
+    expect(clamped.dx).toBe(70);
+    expect(origin.end.x + clamped.dx).toBe(100);
+    expect(origin.start.x + clamped.dx).toBe(80);
   });
 });

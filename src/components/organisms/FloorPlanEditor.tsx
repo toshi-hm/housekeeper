@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import {
+  clampWallTranslation,
   createFloorPlanEditorState,
   floorPlanEditorReducer,
   type FloorPlanTool,
@@ -176,24 +177,23 @@ export const FloorPlanEditor = ({
             y: snapToGrid(drag.origin.y + dy, state.document.gridSize, maxY),
           });
         } else {
+          const clamped = clampWallTranslation(
+            drag.origin,
+            dx,
+            dy,
+            state.document.width,
+            state.document.height,
+          );
           dispatch({
             type: "move-wall",
             id: drag.id,
             start: {
-              x: snapToGrid(
-                drag.origin.start.x + dx,
-                state.document.gridSize,
-                state.document.width,
-              ),
-              y: snapToGrid(
-                drag.origin.start.y + dy,
-                state.document.gridSize,
-                state.document.height,
-              ),
+              x: snapToGrid(drag.origin.start.x + clamped.dx, state.document.gridSize),
+              y: snapToGrid(drag.origin.start.y + clamped.dy, state.document.gridSize),
             },
             end: {
-              x: snapToGrid(drag.origin.end.x + dx, state.document.gridSize, state.document.width),
-              y: snapToGrid(drag.origin.end.y + dy, state.document.gridSize, state.document.height),
+              x: snapToGrid(drag.origin.end.x + clamped.dx, state.document.gridSize),
+              y: snapToGrid(drag.origin.end.y + clamped.dy, state.document.gridSize),
             },
           });
         }
@@ -278,16 +278,23 @@ export const FloorPlanEditor = ({
       } else {
         const wall = state.document.walls.find((candidate) => candidate.id === state.selectedId);
         if (wall) {
+          const clamped = clampWallTranslation(
+            wall,
+            dx,
+            dy,
+            state.document.width,
+            state.document.height,
+          );
           dispatch({
             type: "move-wall",
             id: wall.id,
             start: {
-              x: snapToGrid(wall.start.x + dx, step, state.document.width),
-              y: snapToGrid(wall.start.y + dy, step, state.document.height),
+              x: snapToGrid(wall.start.x + clamped.dx, step),
+              y: snapToGrid(wall.start.y + clamped.dy, step),
             },
             end: {
-              x: snapToGrid(wall.end.x + dx, step, state.document.width),
-              y: snapToGrid(wall.end.y + dy, step, state.document.height),
+              x: snapToGrid(wall.end.x + clamped.dx, step),
+              y: snapToGrid(wall.end.y + clamped.dy, step),
             },
           });
         }
@@ -365,12 +372,15 @@ export const FloorPlanEditor = ({
           ref={svgRef}
           viewBox={`0 0 ${state.document.width} ${state.document.height}`}
           // Only opt out of native touch scrolling while a gesture on the
-          // canvas actually means something (drawing a wall/shape or placing
-          // a marker). In "select" mode, `touch-none` unconditionally here
+          // canvas actually means something (drawing a wall/shape, placing
+          // a marker, or dragging an existing wall/shape). In "select" mode
+          // with nothing being dragged, `touch-none` unconditionally here
           // blocked the only way to pan this min-w-[480px] canvas into view
-          // on phones narrower than that (#819 review).
+          // on phones narrower than that (#819 review). While `drag` is set,
+          // touch-none is required or the browser's own pan gesture fights
+          // the JS-driven drag on touch devices (#870 review).
           className={`h-auto min-h-80 w-full min-w-[480px] ${
-            tool === "select" && !isMarkerMode ? "touch-auto" : "touch-none"
+            tool === "select" && !isMarkerMode && !drag ? "touch-auto" : "touch-none"
           }`}
           role="application"
           tabIndex={0}
@@ -409,34 +419,27 @@ export const FloorPlanEditor = ({
             // move-wall dispatch will be) instead of its committed
             // position — the reducer itself isn't touched until pointer up.
             const isDragging = drag?.kind === "wall" && drag.id === wall.id && currentPoint;
-            const dx = isDragging ? currentPoint.x - drag.pointerStart.x : 0;
-            const dy = isDragging ? currentPoint.y - drag.pointerStart.y : 0;
+            const rawDx = isDragging ? currentPoint.x - drag.pointerStart.x : 0;
+            const rawDy = isDragging ? currentPoint.y - drag.pointerStart.y : 0;
+            const clamped = isDragging
+              ? clampWallTranslation(
+                  drag.origin,
+                  rawDx,
+                  rawDy,
+                  state.document.width,
+                  state.document.height,
+                )
+              : { dx: 0, dy: 0 };
             const wallStart = isDragging
               ? {
-                  x: snapToGrid(
-                    drag.origin.start.x + dx,
-                    state.document.gridSize,
-                    state.document.width,
-                  ),
-                  y: snapToGrid(
-                    drag.origin.start.y + dy,
-                    state.document.gridSize,
-                    state.document.height,
-                  ),
+                  x: snapToGrid(drag.origin.start.x + clamped.dx, state.document.gridSize),
+                  y: snapToGrid(drag.origin.start.y + clamped.dy, state.document.gridSize),
                 }
               : wall.start;
             const wallEnd = isDragging
               ? {
-                  x: snapToGrid(
-                    drag.origin.end.x + dx,
-                    state.document.gridSize,
-                    state.document.width,
-                  ),
-                  y: snapToGrid(
-                    drag.origin.end.y + dy,
-                    state.document.gridSize,
-                    state.document.height,
-                  ),
+                  x: snapToGrid(drag.origin.end.x + clamped.dx, state.document.gridSize),
+                  y: snapToGrid(drag.origin.end.y + clamped.dy, state.document.gridSize),
                 }
               : wall.end;
             return (

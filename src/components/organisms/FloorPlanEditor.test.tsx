@@ -141,4 +141,91 @@ describe("FloorPlanEditor", () => {
       }),
     );
   });
+
+  it("選択中の図形を矢印キーでグリッド1マス分移動できる (#870)", () => {
+    const onSave = mock(() => undefined);
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      shapes: [
+        {
+          id: "shape-1",
+          kind: "rectangle" as const,
+          x: 50,
+          y: 60,
+          width: 40,
+          height: 30,
+          rotation: 0,
+          label: null,
+        },
+      ],
+    };
+    const { getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={onSave} />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+
+    const shapeGroup = container.querySelector("g rect")?.parentElement;
+    // pointerdown selects without moving (no pointermove), leaving the
+    // shape at its committed position but focused for keyboard input.
+    fireEvent.pointerDown(shapeGroup as Element, { clientX: 70, clientY: 75, pointerId: 7 });
+    fireEvent.pointerUp(svg, { clientX: 70, clientY: 75, pointerId: 7 });
+
+    fireEvent.keyDown(svg, { key: "ArrowRight" });
+
+    const rect = container.querySelector("g rect");
+    expect(rect?.getAttribute("x")).toBe(String(50 + initialDocument.gridSize));
+    expect(rect?.getAttribute("y")).toBe("60");
+
+    fireEvent.click(getByRole("button", { name: i18n.t("common:save") }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shapes: [
+          expect.objectContaining({ id: "shape-1", x: 50 + initialDocument.gridSize, y: 60 }),
+        ],
+      }),
+    );
+  });
+
+  it("選択中の壁を矢印キーで移動すると両端が同じ量だけ動く (#870)", () => {
+    const onSave = mock(() => undefined);
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      walls: [{ id: "wall-1", start: { x: 10, y: 10 }, end: { x: 110, y: 10 }, thickness: 8 }],
+    };
+    const { getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={onSave} />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+
+    const line = container.querySelector("line");
+    fireEvent.pointerDown(line as Element, { clientX: 10, clientY: 10, pointerId: 8 });
+    fireEvent.pointerUp(svg, { clientX: 10, clientY: 10, pointerId: 8 });
+
+    fireEvent.keyDown(svg, { key: "ArrowDown" });
+
+    fireEvent.click(getByRole("button", { name: i18n.t("common:save") }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        walls: [
+          expect.objectContaining({
+            id: "wall-1",
+            start: { x: 10, y: 10 + initialDocument.gridSize },
+            end: { x: 110, y: 10 + initialDocument.gridSize },
+          }),
+        ],
+      }),
+    );
+  });
 });

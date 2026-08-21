@@ -137,6 +137,30 @@ export const snapToGrid = (value: number, gridSize: number, max?: number): numbe
   return max !== undefined ? Math.min(snapped, Math.floor(max / gridSize) * gridSize) : snapped;
 };
 
+// A wall has two independent endpoints, so clamping each one to
+// [0, width]/[0, height] separately (as snapToGrid alone would) can distort
+// the wall's length/angle when a drag or keyboard nudge pushes only one
+// endpoint past a document edge — the other keeps moving by the full delta
+// while the clamped one stops short. Clamping the shared dx/dy instead keeps
+// both endpoints moving together as a rigid translation, so the wall only
+// ever stops moving (never stretches) at the boundary (#870 review).
+export const clampWallTranslation = (
+  origin: { start: { x: number; y: number }; end: { x: number; y: number } },
+  dx: number,
+  dy: number,
+  width: number,
+  height: number,
+): { dx: number; dy: number } => {
+  const minX = Math.min(origin.start.x, origin.end.x);
+  const maxX = Math.max(origin.start.x, origin.end.x);
+  const minY = Math.min(origin.start.y, origin.end.y);
+  const maxY = Math.max(origin.start.y, origin.end.y);
+  return {
+    dx: Math.min(Math.max(dx, -minX), width - maxX),
+    dy: Math.min(Math.max(dy, -minY), height - maxY),
+  };
+};
+
 export const normalizeRect = (
   start: { x: number; y: number },
   end: { x: number; y: number },
