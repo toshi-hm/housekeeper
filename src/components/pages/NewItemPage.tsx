@@ -246,7 +246,6 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         defaultValues={cloneDefaultValues}
         draftKey={cloneFrom ? undefined : "new-item"}
         enableLocationSuggestion
-
         extraFields={
           <div className="space-y-2">
             <Label>{t("tags")}</Label>

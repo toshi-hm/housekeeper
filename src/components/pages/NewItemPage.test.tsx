@@ -185,6 +185,40 @@ describe("NewItemPage - default content unit", () => {
   });
 });
 
+describe("NewItemPage - location suggestion wiring (#814)", () => {
+  let itemSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+
+    spyOn(useItemsModule, "useCreateItem").mockReturnValue({
+      mutateAsync: async () => ({}) as Item,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useCreateItem>);
+
+    spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+  });
+
+  afterEach(() => {
+    itemSpy.mockRestore();
+    cleanup();
+  });
+
+  it("enables location suggestion on the new-item form", () => {
+    render(<NewItemPage />, { wrapper: Wrapper });
+
+    expect(itemFormSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ enableLocationSuggestion: true }),
+    );
+  });
+});
+
 // #650: a revived (un-soft-deleted) item is an *existing* item, just like a
 // stacked one — selecting a new image/tag on the form must not overwrite the
 // values it already had before it was deleted.

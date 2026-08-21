@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { escapeIlikeWildcards } from "@/hooks/useItems";
 import { supabase } from "@/lib/supabase";
 
-export const SUGGESTED_LOCATION_KEY = ["suggested-location"] as const;
+const SUGGESTED_LOCATION_KEY = ["suggested-location"] as const;
 
 export interface SuggestedLocationCandidate {
   /** バーコード一致（完全一致）。指定があれば名前一致より優先する。 */

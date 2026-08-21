@@ -574,7 +574,9 @@ export const ItemForm = ({
             addErrorMessage={t("addError")}
           />
           {isLocationSuggested && (
-            <p className="text-xs text-muted-foreground">{t("suggestedLocationHint")}</p>
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {t("suggestedLocationHint")}
+            </p>
           )}
           {selectedLocationPhotoUrl && (
             <LocationPinPicker
