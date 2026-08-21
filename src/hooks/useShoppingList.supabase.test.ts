@@ -204,9 +204,10 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
     expect(lotInsert?.args[0]).toMatchObject({ unit_price: 298 });
   });
 
-  // #830: 既存アイテムへ統合するパス（linked_item_id一致 / バーコード一致）でも
-  // フォーム入力のカテゴリ/保管場所/メモ等が items テーブルへ反映されることを検証する。
-  test("linked_item_id一致でアクティブな既存アイテムへ統合する際、フォーム入力が items の update に含まれる", async () => {
+  // #830: linked_item_id一致でアクティブアイテムへ統合するパスは、購入ダイアログが
+  // 事前に既存値でプリフィルされているため（`applyMergeFields: true`）、フォーム
+  // 入力のカテゴリ/保管場所/メモ等を items テーブルへ反映してよい。
+  test("linked_item_id一致 + applyMergeFields:trueの場合、フォーム入力が items の update に含まれる", async () => {
     responseQueues.shopping_list_items = [
       { data: { linked_item_id: "item-1" }, error: null }, // shoppingRowForLink
       { data: null, error: null }, // markShoppingItemPurchased
@@ -227,6 +228,7 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
 
     const result = await purchaseShoppingItem({
       shoppingItemId: "shopping-1",
+      applyMergeFields: true,
       itemValues: makeFormValues({
         category_id: "cat-1",
         notes: "スーパーで購入",
@@ -257,17 +259,65 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
     expect(result).toMatchObject({ id: "item-1", category_id: "cat-1" });
   });
 
-  test("バーコード一致でアクティブな既存アイテムへ統合する際、フォーム入力が items の update に含まれる", async () => {
+  // #879セルフレビュー: applyMergeFieldsを立てずに呼ぶと(=購入ダイアログが
+  // プリフィルされていない場合の実際の呼び出され方)、items側は一切updateされず
+  // 既存のカテゴリ/保管場所/メモ等が保持される（フォームの空欄で上書きされない）。
+  test("linked_item_id一致でもapplyMergeFields未指定なら items をupdateしない(既存値を保持)", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: "item-1" }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // markShoppingItemPurchased
+    ];
+    responseQueues.items = [
+      {
+        data: {
+          id: "item-1",
+          name: "牛乳",
+          category_id: "existing-cat",
+          storage_location_id: "existing-loc",
+        },
+        error: null,
+      }, // linkedActiveItem検索
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+    responseQueues.item_lots = [
+      { data: { id: "lot-1" }, error: null }, // createLot insert
+      { data: [], error: null }, // syncItemAggregateのロット取得
+    ];
+
+    const result = await purchaseShoppingItem({
+      shoppingItemId: "shopping-1",
+      // ダイアログがプリフィルされていない実際のケースを模して、フォームは
+      // 空欄のまま（category_id/storage_location_id指定なし）で呼ぶ。
+      itemValues: makeFormValues({}),
+    });
+
+    // items へのupdateはsyncItemAggregate分(units/expiry_date等の集計)のみで、
+    // category_id/storage_location_id等のマージフィールドを含むupdateは無いはず。
+    const mergeUpdate = callLog.find(
+      (c) =>
+        c.table === "items" &&
+        c.method === "update" &&
+        "category_id" in (c.args[0] as Record<string, unknown>),
+    );
+    expect(mergeUpdate).toBeUndefined();
+    // 既存値がそのまま(空欄で上書きされず)返る
+    expect(result).toMatchObject({ id: "item-1", category_id: "existing-cat" });
+  });
+
+  // #879セルフレビュー: バーコード一致は購入完了時にしか対象が判明せずダイアログを
+  // プリフィルできないため、フォーム入力を items へ反映すると空欄で既存値を消して
+  // しまう(#879で発見されたデータ損失バグ)。items は一切updateしないことを検証する。
+  test("バーコード一致でアクティブな既存アイテムへ統合する際、items をupdateせず既存値を保持する", async () => {
     responseQueues.shopping_list_items = [
       { data: { linked_item_id: null }, error: null }, // shoppingRowForLink
       { data: null, error: null }, // markShoppingItemPurchased
     ];
     responseQueues.items = [
-      { data: { id: "item-2", name: "洗剤" }, error: null }, // activeItem検索(barcode一致)
       {
-        data: { id: "item-2", name: "洗剤", storage_location_id: "loc-1" },
+        data: { id: "item-2", name: "洗剤", storage_location_id: "existing-loc" },
         error: null,
-      }, // マージ用update
+      }, // activeItem検索(barcode一致)
       { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
       { data: null, error: null }, // syncItemAggregate update
     ];
@@ -278,20 +328,23 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
 
     const result = await purchaseShoppingItem({
       shoppingItemId: "shopping-1",
-      itemValues: makeFormValues({
-        barcode: "123456",
-        storage_location_id: "loc-1",
-      }),
+      // ダイアログはプリフィルされない(barcode一致は購入完了時にしか判明しない)
+      // ため、フォームは空欄のまま(storage_location_id指定なし)で呼ぶ。
+      itemValues: makeFormValues({ barcode: "123456" }),
     });
 
     const mergeUpdate = callLog.find(
       (c) =>
         c.table === "items" &&
         c.method === "update" &&
-        (c.args[0] as Record<string, unknown>).storage_location_id === "loc-1",
+        "storage_location_id" in (c.args[0] as Record<string, unknown>),
     );
-    expect(mergeUpdate?.args[0]).toMatchObject({ storage_location_id: "loc-1" });
-    expect(result).toMatchObject({ id: "item-2", _stacked: true });
+    expect(mergeUpdate).toBeUndefined();
+    expect(result).toMatchObject({
+      id: "item-2",
+      storage_location_id: "existing-loc",
+      _stacked: true,
+    });
   });
 });
 

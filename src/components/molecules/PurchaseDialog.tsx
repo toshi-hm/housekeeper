@@ -92,7 +92,7 @@ export const PurchaseDialog = ({
           </Button>
         </div>
         {existingItem && (
-          <p className="mb-4 rounded-md bg-muted p-2 text-sm text-muted-foreground">
+          <p className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-2 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
             {t("mergeIntoExistingItem", { name: existingItem.name })}
           </p>
         )}

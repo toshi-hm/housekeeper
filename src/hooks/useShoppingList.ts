@@ -228,7 +228,7 @@ const markShoppingItemPurchased = async (shoppingItemId: string, itemId: string)
  * `normalizeUpdateValues` を使うことで null 正規化のルールを
  * `useItems.ts`（通常の編集パス）と揃える。
  */
-export const mergeableItemFieldsFromForm = (itemValues: ItemFormValues) =>
+const mergeableItemFieldsFromForm = (itemValues: ItemFormValues) =>
   normalizeUpdateValues({
     category_id: itemValues.category_id,
     storage_location_id: itemValues.storage_location_id,
@@ -286,6 +286,7 @@ export const useDeleteAllPurchasedItems = () => {
 export const purchaseShoppingItem = async ({
   shoppingItemId,
   itemValues,
+  applyMergeFields = false,
 }: PurchaseInput): Promise<Item & { _stacked?: boolean; _revived?: boolean }> => {
   requireOnline();
   const {
@@ -316,17 +317,25 @@ export const purchaseShoppingItem = async ({
 
     if (linkedActiveItem) {
       // #830: フォームで入力されたカテゴリ/保管場所/メモ等を、ロット追加だけでなく
-      // 統合先の items 行にも反映する。
-      const { data: updatedLinkedItem, error: updateLinkedItemError } = await supabase
-        .from("items")
-        .update({
-          ...mergeableItemFieldsFromForm(itemValues),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", linkedActiveItem.id)
-        .select()
-        .single();
-      if (updateLinkedItemError) throw updateLinkedItemError;
+      // 統合先の items 行にも反映する。ただし、フォームが実際にこのアイテムの
+      // 既存値でプリフィルされていた場合（`applyMergeFields`）に限る — でなければ
+      // 空欄の入力項目をそのまま書き込み、ユーザーに見せていない既存の
+      // カテゴリ/保管場所/メモ等を消してしまう（#879セルフレビュー）。
+      const updatedLinkedItem = applyMergeFields
+        ? await (async () => {
+            const { data, error } = await supabase
+              .from("items")
+              .update({
+                ...mergeableItemFieldsFromForm(itemValues),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", linkedActiveItem.id)
+              .select()
+              .single();
+            if (error) throw error;
+            return data as Item;
+          })()
+        : linkedActiveItem;
       await createLot(user.id, linkedActiveItem.id, lotValuesFromForm(itemValues));
       await syncItemAggregate(linkedActiveItem.id);
       await markShoppingItemPurchased(shoppingItemId, linkedActiveItem.id);
@@ -343,13 +352,14 @@ export const purchaseShoppingItem = async ({
     if (linkedDeletedItemError) throw linkedDeletedItemError;
 
     if (linkedDeletedItem) {
-      // #830: 復活と同じ update でフォーム入力のカテゴリ/保管場所/メモ等も反映する。
+      // このパスはフォームがプリフィルされない（#879セルフレビュー、
+      // PurchaseInput.applyMergeFields のコメント参照）ため、items 側の
+      // フィールドは復活(deleted_at解除)のみで、フォーム入力は反映しない。
       const { data: revivedLinked, error: reviveLinkedError } = await supabase
         .from("items")
         .update({
           deleted_at: null,
           updated_at: new Date().toISOString(),
-          ...mergeableItemFieldsFromForm(itemValues),
         })
         .eq("id", linkedDeletedItem.id)
         .select()
@@ -376,24 +386,15 @@ export const purchaseShoppingItem = async ({
     if (activeItemError) throw activeItemError;
 
     if (activeItem) {
-      // #830: フォームで入力されたカテゴリ/保管場所/メモ等を、ロット追加だけでなく
-      // 統合先の items 行にも反映する。
-      const { data: updatedActiveItem, error: updateActiveItemError } = await supabase
-        .from("items")
-        .update({
-          ...mergeableItemFieldsFromForm(itemValues),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", activeItem.id)
-        .select()
-        .single();
-      if (updateActiveItemError) throw updateActiveItemError;
+      // バーコード一致は購入完了時にしか対象アイテムが判明せず、フォームは
+      // プリフィルされない（#879セルフレビュー）ため、items 側のフィールド
+      // は反映しない。ロット追加・集計のみ行う。
       await createLot(user.id, activeItem.id, lotValuesFromForm(itemValues));
       await syncItemAggregate(activeItem.id);
       await markShoppingItemPurchased(shoppingItemId, activeItem.id);
       // 既存アイテムへのスタック。呼び出し側が画像アップロードで既存画像を
       // 上書きしないよう _stacked を立てる（NewItemPage と同じ規約）。
-      return { ...(updatedActiveItem as Item), _stacked: true };
+      return { ...(activeItem as Item), _stacked: true };
     }
 
     // Fix #212: ソフトデリート済みアイテムを復活
@@ -408,13 +409,14 @@ export const purchaseShoppingItem = async ({
     if (deletedItemError) throw deletedItemError;
 
     if (deletedItem) {
-      // #830: 復活と同じ update でフォーム入力のカテゴリ/保管場所/メモ等も反映する。
+      // バーコード一致による復活も購入完了時にしか対象が判明せずプリフィル
+      // されない（#879セルフレビュー）ため、items 側は復活のみでフォーム
+      // 入力は反映しない。
       const { data: revived, error: reviveError } = await supabase
         .from("items")
         .update({
           deleted_at: null,
           updated_at: new Date().toISOString(),
-          ...mergeableItemFieldsFromForm(itemValues),
         })
         .eq("id", deletedItem.id)
         .select()
