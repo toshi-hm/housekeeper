@@ -211,6 +211,7 @@ export const MealSlot = ({
         title={t("executedGuardTitle")}
         message={t("executedGuardMessage")}
         confirmLabel={pendingGuardedAction === "unassign" ? t("unassign") : t("changeRecipe")}
+        isConfirming={pendingGuardedAction === "unassign" && isSaving}
         onConfirm={confirmGuardedAction}
         onCancel={() => setPendingGuardedAction(null)}
       />
