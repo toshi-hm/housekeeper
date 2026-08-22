@@ -151,6 +151,8 @@ export interface UserSettings {
   low_stock_forecast_days: number;
   stocktake_alert_enabled: boolean;
   stocktake_alert_days: number;
+  /** 手動JSONエクスポート（唯一のバックアップ導線）が最後に成功した日時。null = 未実行 (#815) */
+  last_backup_export_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -365,6 +367,27 @@ export const isItemUnverified = (
 
   const createdMs = new Date(item.created_at).getTime();
   return (nowMs - createdMs) / msPerDay >= STOCKTAKE_NEW_ITEM_GRACE_DAYS;
+};
+
+/** JSONエクスポート（唯一のバックアップ導線）の未実行リマインダーの猶予日数 (#815)。 */
+export const BACKUP_EXPORT_REMINDER_DAYS = 30;
+
+/**
+ * JSONエクスポート（唯一のバックアップ/リカバリー導線、`DataExportPanel`）が長期間
+ * 未実行かどうかを判定する純関数 (#815)。
+ *
+ * - `last_backup_export_at` が設定されていればそこから、未設定（一度もエクスポート
+ *   していない）ならアカウント作成日（`user_settings.created_at`）からの経過日数で判定する。
+ */
+export const isBackupExportOverdue = (
+  settings: Pick<UserSettings, "last_backup_export_at" | "created_at">,
+  reminderDays: number = BACKUP_EXPORT_REMINDER_DAYS,
+  now: Date = new Date(),
+): boolean => {
+  const nowMs = now.getTime();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const baseline = settings.last_backup_export_at ?? settings.created_at;
+  return (nowMs - new Date(baseline).getTime()) / msPerDay >= reminderDays;
 };
 
 /** ロット（またはアイテム）1件の実残量を計算する。opened_remaining がある場合は

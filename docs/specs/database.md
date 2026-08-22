@@ -358,6 +358,7 @@ create table user_settings (
   low_stock_forecast_days int not null default 7 check (low_stock_forecast_days >= 0), -- #68, #392: 消費ペースからの予測残日数の警告閾値
   stocktake_alert_enabled boolean not null default false,   -- 棚卸し未確認アラート ON/OFF (#375)
   stocktake_alert_days int not null default 90 check (stocktake_alert_days between 1 and 365), -- 未確認とみなすまでの日数
+  last_backup_export_at timestamptz, -- JSONエクスポート(唯一のバックアップ導線)の最終成功日時 (#815)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

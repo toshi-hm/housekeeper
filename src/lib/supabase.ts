@@ -371,6 +371,7 @@ export interface Database {
           low_stock_forecast_days: number;
           stocktake_alert_enabled: boolean;
           stocktake_alert_days: number;
+          last_backup_export_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -384,6 +385,7 @@ export interface Database {
           low_stock_forecast_days?: number;
           stocktake_alert_enabled?: boolean;
           stocktake_alert_days?: number;
+          last_backup_export_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -397,6 +399,7 @@ export interface Database {
           low_stock_forecast_days?: number;
           stocktake_alert_enabled?: boolean;
           stocktake_alert_days?: number;
+          last_backup_export_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
