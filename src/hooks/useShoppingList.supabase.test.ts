@@ -204,6 +204,58 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
     expect(lotInsert?.args[0]).toMatchObject({ unit_price: 298 });
   });
 
+  test("linked_item_id一致のアクティブな既存アイテムに統合した場合、_stackedを立てて呼び出し側の画像上書きを防ぐ (#894)", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: "item-1" }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // markShoppingItemPurchased
+    ];
+    responseQueues.items = [
+      { data: { id: "item-1", image_path: "existing.jpg" }, error: null }, // linkedActiveItem
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+    responseQueues.item_lots = [
+      { data: { id: "lot-1" }, error: null }, // createLot insert
+      { data: [], error: null }, // syncItemAggregateのロット取得
+    ];
+
+    const result = await purchaseShoppingItem({
+      shoppingItemId: "shopping-1",
+      itemValues: makeFormValues({ image_path: "new-photo.jpg" }),
+    });
+
+    expect(result._stacked).toBe(true);
+    expect(result.image_path).toBe("existing.jpg");
+    // linked_item_id一致経路では新規itemの作成(upsert)は発生しない
+    expect(callLog.filter((c) => c.table === "items" && c.method === "upsert")).toHaveLength(0);
+  });
+
+  test("linked_item_idがソフトデリート済みアイテムを指す場合、復活させ_revivedを立てて呼び出し側の画像上書きを防ぐ (#894)", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: "item-2" }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // markShoppingItemPurchased
+    ];
+    responseQueues.items = [
+      { data: null, error: null }, // linkedActiveItem: 見つからない
+      { data: { id: "item-2", image_path: "existing.jpg" }, error: null }, // linkedDeletedItem
+      { data: { id: "item-2", image_path: "existing.jpg", deleted_at: null }, error: null }, // revive update
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+    responseQueues.item_lots = [
+      { data: { id: "lot-1" }, error: null }, // createLot insert
+      { data: [], error: null }, // syncItemAggregateのロット取得
+    ];
+
+    const result = await purchaseShoppingItem({
+      shoppingItemId: "shopping-1",
+      itemValues: makeFormValues({ image_path: "new-photo.jpg" }),
+    });
+
+    expect(result._revived).toBe(true);
+    expect(result.image_path).toBe("existing.jpg");
+  });
+
   // #830: linked_item_id一致でアクティブアイテムへ統合するパスは、購入ダイアログが
   // 事前に既存値でプリフィルされているため（`applyMergeFields: true`）、フォーム
   // 入力のカテゴリ/保管場所/メモ等を items テーブルへ反映してよい。
@@ -256,7 +308,8 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
     // 購入数量(units)や content_amount 等ロット固有の値は items 側の update に含めない
     expect(mergeUpdate?.args[0]).not.toHaveProperty("units");
     expect(mergeUpdate?.args[0]).not.toHaveProperty("content_amount");
-    expect(result).toMatchObject({ id: "item-1", category_id: "cat-1" });
+    // マージパスでも呼び出し側の画像上書き防止フラグは立つ (#894)
+    expect(result).toMatchObject({ id: "item-1", category_id: "cat-1", _stacked: true });
   });
 
   // #879セルフレビュー: applyMergeFieldsを立てずに呼ぶと(=購入ダイアログが
