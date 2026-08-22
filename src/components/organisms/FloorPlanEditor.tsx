@@ -1,8 +1,9 @@
-import { useReducer, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import {
+  clampWallTranslation,
   createFloorPlanEditorState,
   floorPlanEditorReducer,
   type FloorPlanTool,
@@ -27,6 +28,27 @@ interface Point {
   x: number;
   y: number;
 }
+
+// Tracks an in-progress drag-to-move of an already-placed wall or shape.
+// `pointerStart`/origin coordinates let us compute a delta on every pointer
+// move without dispatching on each frame — the reducer action (and its undo
+// entry) only fires once, on pointer up, matching how new-shape drawing
+// commits once instead of on every move.
+type DragState =
+  | {
+      kind: "shape";
+      id: string;
+      pointerId: number;
+      pointerStart: Point;
+      origin: Point;
+    }
+  | {
+      kind: "wall";
+      id: string;
+      pointerId: number;
+      pointerStart: Point;
+      origin: { start: Point; end: Point };
+    };
 
 const newId = (): string => crypto.randomUUID();
 
@@ -57,51 +79,131 @@ export const FloorPlanEditor = ({
   const [start, setStart] = useState<Point | null>(null);
   const [currentPoint, setCurrentPoint] = useState<Point | null>(null);
   const [isMarkerMode, setIsMarkerMode] = useState(false);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
-  const getPoint = (event: React.PointerEvent<SVGSVGElement>): Point => {
-    const rect = event.currentTarget.getBoundingClientRect();
+  // Reads a client-space pointer position off the current svgRef rather than
+  // event.currentTarget, so it works both for handlers bound to the <svg>
+  // itself (drawing) and for handlers bound to a nested wall/shape element
+  // (dragging an existing one) without picking up that element's own,
+  // much smaller, bounding rect.
+  const getPoint = (clientX: number, clientY: number): Point => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
     const scaleX = state.document.width / rect.width;
     const scaleY = state.document.height / rect.height;
     return {
-      x: snapToGrid(
-        (event.clientX - rect.left) * scaleX,
-        state.document.gridSize,
-        state.document.width,
-      ),
-      y: snapToGrid(
-        (event.clientY - rect.top) * scaleY,
-        state.document.gridSize,
-        state.document.height,
-      ),
+      x: snapToGrid((clientX - rect.left) * scaleX, state.document.gridSize, state.document.width),
+      y: snapToGrid((clientY - rect.top) * scaleY, state.document.gridSize, state.document.height),
     };
   };
 
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
     if (isMarkerMode) {
       event.currentTarget.setPointerCapture?.(event.pointerId);
-      setCurrentPoint(getPoint(event));
+      setCurrentPoint(getPoint(event.clientX, event.clientY));
       return;
     }
     if (tool === "select") return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    const point = getPoint(event);
+    const point = getPoint(event.clientX, event.clientY);
     setStart(point);
     setCurrentPoint(point);
   };
 
+  const handleShapePointerDown = (event: React.PointerEvent<SVGGElement>, shapeId: string) => {
+    dispatch({ type: "select", id: shapeId, kind: "shape" });
+    if (tool !== "select" || isMarkerMode) return;
+    const shape = state.document.shapes.find((candidate) => candidate.id === shapeId);
+    if (!shape) return;
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setDrag({
+      kind: "shape",
+      id: shapeId,
+      pointerId: event.pointerId,
+      pointerStart: getPoint(event.clientX, event.clientY),
+      origin: { x: shape.x, y: shape.y },
+    });
+  };
+
+  const handleWallPointerDown = (event: React.PointerEvent<SVGLineElement>, wallId: string) => {
+    dispatch({ type: "select", id: wallId, kind: "wall" });
+    if (tool !== "select" || isMarkerMode) return;
+    const wall = state.document.walls.find((candidate) => candidate.id === wallId);
+    if (!wall) return;
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setDrag({
+      kind: "wall",
+      id: wallId,
+      pointerId: event.pointerId,
+      pointerStart: getPoint(event.clientX, event.clientY),
+      origin: { start: wall.start, end: wall.end },
+    });
+  };
+
   const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
-    if (isMarkerMode || start) setCurrentPoint(getPoint(event));
+    if (isMarkerMode || start) setCurrentPoint(getPoint(event.clientX, event.clientY));
+    if (drag && event.pointerId === drag.pointerId) {
+      setCurrentPoint(getPoint(event.clientX, event.clientY));
+    }
   };
 
   const handlePointerUp = (event: React.PointerEvent<SVGSVGElement>) => {
     if (isMarkerMode) {
-      onStorageLocationMarkerChange?.(getPoint(event));
+      onStorageLocationMarkerChange?.(getPoint(event.clientX, event.clientY));
       setIsMarkerMode(false);
       setCurrentPoint(null);
       return;
     }
+    if (drag && event.pointerId === drag.pointerId) {
+      const point = getPoint(event.clientX, event.clientY);
+      const dx = point.x - drag.pointerStart.x;
+      const dy = point.y - drag.pointerStart.y;
+      if (dx !== 0 || dy !== 0) {
+        if (drag.kind === "shape") {
+          const shape = state.document.shapes.find((candidate) => candidate.id === drag.id);
+          const maxX = shape
+            ? Math.max(0, state.document.width - shape.width)
+            : state.document.width;
+          const maxY = shape
+            ? Math.max(0, state.document.height - shape.height)
+            : state.document.height;
+          dispatch({
+            type: "move-shape",
+            id: drag.id,
+            x: snapToGrid(drag.origin.x + dx, state.document.gridSize, maxX),
+            y: snapToGrid(drag.origin.y + dy, state.document.gridSize, maxY),
+          });
+        } else {
+          const clamped = clampWallTranslation(
+            drag.origin,
+            dx,
+            dy,
+            state.document.width,
+            state.document.height,
+          );
+          dispatch({
+            type: "move-wall",
+            id: drag.id,
+            start: {
+              x: snapToGrid(drag.origin.start.x + clamped.dx, state.document.gridSize),
+              y: snapToGrid(drag.origin.start.y + clamped.dy, state.document.gridSize),
+            },
+            end: {
+              x: snapToGrid(drag.origin.end.x + clamped.dx, state.document.gridSize),
+              y: snapToGrid(drag.origin.end.y + clamped.dy, state.document.gridSize),
+            },
+          });
+        }
+      }
+      setDrag(null);
+      setCurrentPoint(null);
+      return;
+    }
     if (!start || tool === "select") return;
-    const end = getPoint(event);
+    const end = getPoint(event.clientX, event.clientY);
     if (tool === "wall") {
       dispatch({
         type: "add-wall",
@@ -127,6 +229,7 @@ export const FloorPlanEditor = ({
   const handlePointerCancel = () => {
     setStart(null);
     setCurrentPoint(null);
+    setDrag(null);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<SVGSVGElement>) => {
@@ -145,6 +248,57 @@ export const FloorPlanEditor = ({
       setStart(null);
       setCurrentPoint(null);
       dispatch({ type: "select", id: null, kind: null });
+    } else if (
+      (event.key === "ArrowUp" ||
+        event.key === "ArrowDown" ||
+        event.key === "ArrowLeft" ||
+        event.key === "ArrowRight") &&
+      state.selectedId &&
+      state.selectedKind
+    ) {
+      // Keyboard alternative to pointer drag, for shapes/walls that are
+      // hard to nudge precisely (or reach at all) with a pointer — moves
+      // by one grid step per press.
+      event.preventDefault();
+      const step = state.document.gridSize;
+      const dx = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
+      const dy = event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0;
+      if (state.selectedKind === "shape") {
+        const shape = state.document.shapes.find((candidate) => candidate.id === state.selectedId);
+        if (shape) {
+          const maxX = Math.max(0, state.document.width - shape.width);
+          const maxY = Math.max(0, state.document.height - shape.height);
+          dispatch({
+            type: "move-shape",
+            id: shape.id,
+            x: snapToGrid(shape.x + dx, step, maxX),
+            y: snapToGrid(shape.y + dy, step, maxY),
+          });
+        }
+      } else {
+        const wall = state.document.walls.find((candidate) => candidate.id === state.selectedId);
+        if (wall) {
+          const clamped = clampWallTranslation(
+            wall,
+            dx,
+            dy,
+            state.document.width,
+            state.document.height,
+          );
+          dispatch({
+            type: "move-wall",
+            id: wall.id,
+            start: {
+              x: snapToGrid(wall.start.x + clamped.dx, step),
+              y: snapToGrid(wall.start.y + clamped.dy, step),
+            },
+            end: {
+              x: snapToGrid(wall.end.x + clamped.dx, step),
+              y: snapToGrid(wall.end.y + clamped.dy, step),
+            },
+          });
+        }
+      }
     }
   };
 
@@ -215,14 +369,18 @@ export const FloorPlanEditor = ({
       )}
       <div className="overflow-auto rounded-lg border bg-muted/20 p-2">
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${state.document.width} ${state.document.height}`}
           // Only opt out of native touch scrolling while a gesture on the
-          // canvas actually means something (drawing a wall/shape or placing
-          // a marker). In "select" mode, `touch-none` unconditionally here
+          // canvas actually means something (drawing a wall/shape, placing
+          // a marker, or dragging an existing wall/shape). In "select" mode
+          // with nothing being dragged, `touch-none` unconditionally here
           // blocked the only way to pan this min-w-[480px] canvas into view
-          // on phones narrower than that (#819 review).
+          // on phones narrower than that (#819 review). While `drag` is set,
+          // touch-none is required or the browser's own pan gesture fights
+          // the JS-driven drag on touch devices (#870 review).
           className={`h-auto min-h-80 w-full min-w-[480px] ${
-            tool === "select" && !isMarkerMode ? "touch-auto" : "touch-none"
+            tool === "select" && !isMarkerMode && !drag ? "touch-auto" : "touch-none"
           }`}
           role="application"
           tabIndex={0}
@@ -255,54 +413,97 @@ export const FloorPlanEditor = ({
             height={state.document.height}
             fill="url(#floor-plan-editor-grid)"
           />
-          {state.document.walls.map((wall) => (
-            <line
-              key={wall.id}
-              x1={wall.start.x}
-              y1={wall.start.y}
-              x2={wall.end.x}
-              y2={wall.end.y}
-              stroke={state.selectedId === wall.id ? "hsl(var(--destructive))" : "currentColor"}
-              strokeWidth={wall.thickness}
-              strokeLinecap="round"
-              onClick={(event) => {
-                event.stopPropagation();
-                dispatch({ type: "select", id: wall.id, kind: "wall" });
-              }}
-            />
-          ))}
-          {state.document.shapes.map((shape) => (
-            <g
-              key={shape.id}
-              transform={`rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})`}
-              onClick={(event) => {
-                event.stopPropagation();
-                dispatch({ type: "select", id: shape.id, kind: "shape" });
-              }}
-            >
-              <rect
-                x={shape.x}
-                y={shape.y}
-                width={shape.width}
-                height={shape.height}
-                rx="4"
-                fill={
-                  state.selectedId === shape.id
-                    ? "hsl(var(--destructive) / 0.16)"
-                    : "hsl(var(--primary) / 0.12)"
+          {state.document.walls.map((wall) => {
+            // While this wall is being dragged, render it at the live
+            // pointer offset (clamped/snapped the same way the eventual
+            // move-wall dispatch will be) instead of its committed
+            // position — the reducer itself isn't touched until pointer up.
+            const isDragging = drag?.kind === "wall" && drag.id === wall.id && currentPoint;
+            const rawDx = isDragging ? currentPoint.x - drag.pointerStart.x : 0;
+            const rawDy = isDragging ? currentPoint.y - drag.pointerStart.y : 0;
+            const clamped = isDragging
+              ? clampWallTranslation(
+                  drag.origin,
+                  rawDx,
+                  rawDy,
+                  state.document.width,
+                  state.document.height,
+                )
+              : { dx: 0, dy: 0 };
+            const wallStart = isDragging
+              ? {
+                  x: snapToGrid(drag.origin.start.x + clamped.dx, state.document.gridSize),
+                  y: snapToGrid(drag.origin.start.y + clamped.dy, state.document.gridSize),
                 }
-                stroke={
-                  state.selectedId === shape.id ? "hsl(var(--destructive))" : "hsl(var(--primary))"
+              : wall.start;
+            const wallEnd = isDragging
+              ? {
+                  x: snapToGrid(drag.origin.end.x + clamped.dx, state.document.gridSize),
+                  y: snapToGrid(drag.origin.end.y + clamped.dy, state.document.gridSize),
                 }
-                strokeWidth="2"
+              : wall.end;
+            return (
+              <line
+                key={wall.id}
+                x1={wallStart.x}
+                y1={wallStart.y}
+                x2={wallEnd.x}
+                y2={wallEnd.y}
+                stroke={state.selectedId === wall.id ? "hsl(var(--destructive))" : "currentColor"}
+                strokeWidth={wall.thickness}
+                strokeLinecap="round"
+                className={tool === "select" ? "cursor-move" : undefined}
+                onPointerDown={(event) => handleWallPointerDown(event, wall.id)}
               />
-              {shape.label && (
-                <text x={shape.x + 4} y={shape.y + 16} fontSize="12" fill="currentColor">
-                  {shape.label}
-                </text>
-              )}
-            </g>
-          ))}
+            );
+          })}
+          {state.document.shapes.map((shape) => {
+            // Same live-preview treatment as walls, for the shape being
+            // dragged (rectangle/circle/label all share x/y/width/height).
+            const isDragging = drag?.kind === "shape" && drag.id === shape.id && currentPoint;
+            const dx = isDragging ? currentPoint.x - drag.pointerStart.x : 0;
+            const dy = isDragging ? currentPoint.y - drag.pointerStart.y : 0;
+            const maxX = Math.max(0, state.document.width - shape.width);
+            const maxY = Math.max(0, state.document.height - shape.height);
+            const shapeX = isDragging
+              ? snapToGrid(drag.origin.x + dx, state.document.gridSize, maxX)
+              : shape.x;
+            const shapeY = isDragging
+              ? snapToGrid(drag.origin.y + dy, state.document.gridSize, maxY)
+              : shape.y;
+            return (
+              <g
+                key={shape.id}
+                transform={`rotate(${shape.rotation} ${shapeX + shape.width / 2} ${shapeY + shape.height / 2})`}
+                className={tool === "select" ? "cursor-move" : undefined}
+                onPointerDown={(event) => handleShapePointerDown(event, shape.id)}
+              >
+                <rect
+                  x={shapeX}
+                  y={shapeY}
+                  width={shape.width}
+                  height={shape.height}
+                  rx="4"
+                  fill={
+                    state.selectedId === shape.id
+                      ? "hsl(var(--destructive) / 0.16)"
+                      : "hsl(var(--primary) / 0.12)"
+                  }
+                  stroke={
+                    state.selectedId === shape.id
+                      ? "hsl(var(--destructive))"
+                      : "hsl(var(--primary))"
+                  }
+                  strokeWidth="2"
+                />
+                {shape.label && (
+                  <text x={shapeX + 4} y={shapeY + 16} fontSize="12" fill="currentColor">
+                    {shape.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
           {start && currentPoint && tool !== "select" && (
             <g data-testid="floor-plan-drawing-preview" pointerEvents="none">
               {tool === "wall" ? (
