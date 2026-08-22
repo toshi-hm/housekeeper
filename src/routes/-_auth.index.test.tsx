@@ -207,6 +207,19 @@ describe("DashboardPage", () => {
     expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
   });
 
+  it("フィルターパネルの各セレクトがlabelから参照できる (#900)", async () => {
+    const { getByLabelText } = await renderPage();
+
+    const filterBtn = getByLabelText(/filter|絞り込み/i);
+    await act(async () => {
+      fireEvent.click(filterBtn);
+    });
+
+    expect(getByLabelText(/filter by category|カテゴリで絞り込み/i)).toBeDefined();
+    expect(getByLabelText(/filter by location|保管場所で絞り込み/i)).toBeDefined();
+    expect(getByLabelText(/filter by expiry|期限で絞り込み/i)).toBeDefined();
+  });
+
   it("hideEmpty=false のとき、期限切れ在庫0個アイテムはバナー見出しの件数にも含まれない (#450)", async () => {
     itemsspy.mockReturnValue({
       data: [
@@ -381,5 +394,24 @@ describe("DashboardPage", () => {
       { timeout: 2000 },
     );
     expect(document.activeElement).toBe(searchInput);
+  });
+
+  it("クイックフィルターチップの選択状態がaria-pressedで伝わる (#901)", async () => {
+    itemsspy.mockReturnValue({
+      data: [makeItem({ id: "expired", expiry_date: "2000-01-01", units: 1 })],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useItemsModule.useItems>);
+    const { getByRole } = await renderPage();
+
+    getByRole("button", { name: /すべて|all/i, pressed: true });
+    const expiredChip = getByRole("button", { name: /期限切れ|expired/i, pressed: false });
+
+    await act(async () => {
+      fireEvent.click(expiredChip);
+    });
+
+    getByRole("button", { name: /期限切れ|expired/i, pressed: true });
+    getByRole("button", { name: /すべて|all/i, pressed: false });
   });
 });

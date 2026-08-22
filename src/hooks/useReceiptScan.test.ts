@@ -33,14 +33,20 @@ describe("scanReceipt", () => {
   test("sends the file as base64 (without the data-URL prefix) and the file's mimeType", async () => {
     invokeMock.mockClear();
     invokeResponse = {
-      data: { items: [{ name: "牛乳", quantity: 1, unitPrice: 200, confidence: "high" }] },
+      data: {
+        items: [{ name: "牛乳", quantity: 1, unitPrice: 200, confidence: "high" }],
+        storeName: "○○スーパー",
+      },
       error: null,
     };
     const file = makeFile("image/png");
 
     const result = await scanReceipt(file);
 
-    expect(result).toEqual([{ name: "牛乳", quantity: 1, unitPrice: 200, confidence: "high" }]);
+    expect(result).toEqual({
+      items: [{ name: "牛乳", quantity: 1, unitPrice: 200, confidence: "high" }],
+      storeName: "○○スーパー",
+    });
     expect(invokeMock).toHaveBeenCalledTimes(1);
     const call = invokeMock.mock.calls[0] as unknown as [
       string,
@@ -53,12 +59,23 @@ describe("scanReceipt", () => {
     expect(call[1].body.image.length).toBeGreaterThan(0);
   });
 
-  test("returns an empty array when the response has no items", async () => {
+  test("returns an empty array and null store name when the response is empty", async () => {
     invokeMock.mockClear();
     invokeResponse = { data: null, error: null };
 
     const result = await scanReceipt(makeFile("image/jpeg"));
-    expect(result).toEqual([]);
+    expect(result).toEqual({ items: [], storeName: null });
+  });
+
+  test("defaults storeName to null when the response omits it", async () => {
+    invokeMock.mockClear();
+    invokeResponse = {
+      data: { items: [{ name: "牛乳", quantity: 1, unitPrice: 200, confidence: "high" }] },
+      error: null,
+    };
+
+    const result = await scanReceipt(makeFile("image/jpeg"));
+    expect(result.storeName).toBeNull();
   });
 
   test("maps a 429 response to a rate_limited ReceiptScanError", async () => {

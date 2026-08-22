@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { LOTS_KEY, restoreLotConsumption, syncItemAggregate } from "@/hooks/useItemLots";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
+import { maybeAutoReorder } from "@/lib/autoReorder";
 import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -133,7 +134,12 @@ export const useCalendarConsume = () => {
       }
 
       await syncItemAggregate(item.id);
+      // 他の消費経路(consumeLot/no-lotsフォールバック)と同様、閾値以下になった
+      // 場合は買い物リストへ自動追加する (#895: カレンダー経由の消費だけ
+      // maybeAutoReorder が呼ばれておらず auto_reorder が発火していなかった)。
+      await maybeAutoReorder(item.id);
       await invalidateCalendarQueries(qc, item.id);
+      await qc.invalidateQueries({ queryKey: ["shopping"] });
 
       // Keyed by lotId (not itemId) so that checking multiple lots of the
       // same item in a row keeps every removal independently undo-able
