@@ -16,6 +16,12 @@ export type FloorPlanEditorAction =
   | { type: "add-wall"; wall: FloorPlanWall }
   | { type: "add-shape"; shape: FloorPlanShape }
   | { type: "move-shape"; id: string; x: number; y: number }
+  | {
+      type: "move-wall";
+      id: string;
+      start: { x: number; y: number };
+      end: { x: number; y: number };
+    }
   | { type: "delete-selected" }
   | { type: "undo" }
   | { type: "redo" };
@@ -65,6 +71,13 @@ export const floorPlanEditorReducer = (
         ...state.document,
         shapes: state.document.shapes.map((shape) =>
           shape.id === action.id ? { ...shape, x: action.x, y: action.y } : shape,
+        ),
+      });
+    case "move-wall":
+      return withHistory(state, {
+        ...state.document,
+        walls: state.document.walls.map((wall) =>
+          wall.id === action.id ? { ...wall, start: action.start, end: action.end } : wall,
         ),
       });
     case "delete-selected":
@@ -122,6 +135,30 @@ export const floorPlanEditorReducer = (
 export const snapToGrid = (value: number, gridSize: number, max?: number): number => {
   const snapped = Math.max(0, Math.round(value / gridSize) * gridSize);
   return max !== undefined ? Math.min(snapped, Math.floor(max / gridSize) * gridSize) : snapped;
+};
+
+// A wall has two independent endpoints, so clamping each one to
+// [0, width]/[0, height] separately (as snapToGrid alone would) can distort
+// the wall's length/angle when a drag or keyboard nudge pushes only one
+// endpoint past a document edge — the other keeps moving by the full delta
+// while the clamped one stops short. Clamping the shared dx/dy instead keeps
+// both endpoints moving together as a rigid translation, so the wall only
+// ever stops moving (never stretches) at the boundary (#870 review).
+export const clampWallTranslation = (
+  origin: { start: { x: number; y: number }; end: { x: number; y: number } },
+  dx: number,
+  dy: number,
+  width: number,
+  height: number,
+): { dx: number; dy: number } => {
+  const minX = Math.min(origin.start.x, origin.end.x);
+  const maxX = Math.max(origin.start.x, origin.end.x);
+  const minY = Math.min(origin.start.y, origin.end.y);
+  const maxY = Math.max(origin.start.y, origin.end.y);
+  return {
+    dx: Math.min(Math.max(dx, -minX), width - maxX),
+    dy: Math.min(Math.max(dy, -minY), height - maxY),
+  };
 };
 
 export const normalizeRect = (

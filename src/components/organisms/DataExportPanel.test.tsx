@@ -7,6 +7,7 @@ import * as useConsumptionLogsModule from "@/hooks/useConsumptionLogs";
 import * as useItemLotsModule from "@/hooks/useItemLots";
 import * as useItemsModule from "@/hooks/useItems";
 import * as useMasterDataModule from "@/hooks/useMasterData";
+import * as useUserSettingsModule from "@/hooks/useUserSettings";
 import * as exportLib from "@/lib/export";
 import i18n from "@/lib/i18n";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
@@ -100,6 +101,9 @@ describe("DataExportPanel", () => {
     } as unknown as ReturnType<typeof useItemLotsModule.useAllItemLotsFull>);
 
     downloadSpy = spyOn(exportLib, "downloadTextFile").mockImplementation(() => {});
+    spyOn(useUserSettingsModule, "useUpdateUserSettings").mockReturnValue({
+      mutate: () => {},
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
   });
 
   afterEach(() => {
@@ -130,6 +134,20 @@ describe("DataExportPanel", () => {
     expect(parsed.items).toHaveLength(1);
     expect(filename).toMatch(/^items-\d{8}\.json$/);
     expect(mimeType).toBe("application/json");
+  });
+
+  it("clicking the items JSON button records last_backup_export_at (#815)", () => {
+    const mutate = mock(() => {});
+    spyOn(useUserSettingsModule, "useUpdateUserSettings").mockReturnValue({
+      mutate,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
+
+    const { getByRole } = render(<DataExportPanel />, { wrapper });
+    fireEvent.click(getByRole("button", { name: /JSON/i }));
+
+    expect(mutate).toHaveBeenCalledTimes(1);
+    const [payload] = mutate.mock.calls[0] as [{ last_backup_export_at: string }];
+    expect(typeof payload.last_backup_export_at).toBe("string");
   });
 
   it("clicking the history CSV button includes both consumption and purchase rows by default", () => {

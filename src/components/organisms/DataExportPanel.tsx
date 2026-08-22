@@ -9,6 +9,7 @@ import { useAllConsumptionLogs } from "@/hooks/useConsumptionLogs";
 import { useAllItemLots, useAllItemLotsFull } from "@/hooks/useItemLots";
 import { useItems, useItemsForExport } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useUpdateUserSettings } from "@/hooks/useUserSettings";
 import {
   buildConsumptionHistoryRows,
   buildExportFilename,
@@ -49,6 +50,7 @@ export const DataExportPanel = () => {
 
   const [period, setPeriod] = useState<ExportPeriod>("30d");
   const [target, setTarget] = useState<HistoryTarget>("both");
+  const updateUserSettings = useUpdateUserSettings();
 
   const itemLookupMap = useMemo(() => new Map(itemLookups.map((i) => [i.id, i])), [itemLookups]);
   const categoryNameMap = useMemo(
@@ -112,6 +114,10 @@ export const DataExportPanel = () => {
     const json = itemsToJSON(items, lotsByItemId);
     downloadTextFile(json, buildExportFilename("items", "json"), "application/json");
     toast(t("exportSuccess"), "success");
+    // #815: このJSONエクスポートが唯一のバックアップ/リカバリー導線（DataImportPanel が
+    // 読み込めるのはJSONのみ、CSVエクスポートは対象外）。成功時刻を記録し、ダッシュボードの
+    // 未実行リマインダーバナーが参照する。
+    updateUserSettings.mutate({ last_backup_export_at: new Date().toISOString() });
   };
 
   const handleExportHistoryCsv = () => {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "bun:test";
 import { createEmptyFloorPlanDocument } from "@/types/floorPlan";
 
 import {
+  clampWallTranslation,
   createFloorPlanEditorState,
   floorPlanEditorReducer,
   normalizeRect,
@@ -86,5 +87,86 @@ describe("floorPlanEditor", () => {
     // restore this already-empty state instead of the shape.
     const deletedAgain = floorPlanEditorReducer(deleted, { type: "delete-selected" });
     expect(deletedAgain.undoStack).toHaveLength(deleted.undoStack.length);
+  });
+
+  it("moves a shape to new coordinates and supports undoing the move (#870)", () => {
+    const initial = createFloorPlanEditorState(createEmptyFloorPlanDocument());
+    const withShape = floorPlanEditorReducer(initial, {
+      type: "add-shape",
+      shape: {
+        id: "shape-1",
+        kind: "rectangle",
+        x: 10,
+        y: 10,
+        width: 20,
+        height: 20,
+        rotation: 0,
+        label: null,
+      },
+    });
+    const moved = floorPlanEditorReducer(withShape, {
+      type: "move-shape",
+      id: "shape-1",
+      x: 50,
+      y: 60,
+    });
+    expect(moved.document.shapes).toEqual([
+      expect.objectContaining({ id: "shape-1", x: 50, y: 60 }),
+    ]);
+    // Other shapes are left untouched, and a move is a normal history entry.
+    const undone = floorPlanEditorReducer(moved, { type: "undo" });
+    expect(undone.document.shapes).toEqual([
+      expect.objectContaining({ id: "shape-1", x: 10, y: 10 }),
+    ]);
+  });
+
+  it("moves a wall's endpoints and supports undoing the move (#870)", () => {
+    const initial = createFloorPlanEditorState(createEmptyFloorPlanDocument());
+    const withWall = floorPlanEditorReducer(initial, {
+      type: "add-wall",
+      wall: { id: "wall-1", start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, thickness: 8 },
+    });
+    const moved = floorPlanEditorReducer(withWall, {
+      type: "move-wall",
+      id: "wall-1",
+      start: { x: 20, y: 40 },
+      end: { x: 120, y: 40 },
+    });
+    expect(moved.document.walls).toEqual([
+      expect.objectContaining({
+        id: "wall-1",
+        start: { x: 20, y: 40 },
+        end: { x: 120, y: 40 },
+      }),
+    ]);
+    const undone = floorPlanEditorReducer(moved, { type: "undo" });
+    expect(undone.document.walls).toEqual([
+      expect.objectContaining({ id: "wall-1", start: { x: 0, y: 0 }, end: { x: 100, y: 0 } }),
+    ]);
+  });
+
+  it("clampWallTranslation moves both endpoints together within bounds (#870)", () => {
+    const origin = { start: { x: 10, y: 10 }, end: { x: 30, y: 10 } };
+    expect(clampWallTranslation(origin, 5, 0, 100, 100)).toEqual({ dx: 5, dy: 0 });
+  });
+
+  it("clampWallTranslation clamps dx so neither endpoint crosses the left/top edge, without distorting the wall", () => {
+    const origin = { start: { x: 10, y: 10 }, end: { x: 30, y: 10 } };
+    // Moving left by 20 would push start.x to -10; the clamp must stop the
+    // whole wall at start.x === 0 rather than only clamping that endpoint.
+    const clamped = clampWallTranslation(origin, -20, 0, 100, 100);
+    expect(clamped.dx).toBe(-10);
+    expect(origin.start.x + clamped.dx).toBe(0);
+    expect(origin.end.x + clamped.dx).toBe(20);
+  });
+
+  it("clampWallTranslation clamps dx so neither endpoint crosses the right/bottom edge", () => {
+    const origin = { start: { x: 10, y: 10 }, end: { x: 30, y: 10 } };
+    // Moving right by 90 would push end.x to 120 (> width 100); the clamp
+    // must stop the whole wall at end.x === 100.
+    const clamped = clampWallTranslation(origin, 90, 0, 100, 100);
+    expect(clamped.dx).toBe(70);
+    expect(origin.end.x + clamped.dx).toBe(100);
+    expect(origin.start.x + clamped.dx).toBe(80);
   });
 });
