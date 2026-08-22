@@ -14,7 +14,7 @@ import { type ReceiptDraftItem, receiptLineItemToDraft } from "@/types/receipt";
 type WizardStep =
   | { kind: "idle" }
   | { kind: "scanning" }
-  | { kind: "review"; drafts: ReceiptDraftItem[] }
+  | { kind: "review"; drafts: ReceiptDraftItem[]; storeName: string | null }
   | { kind: "done"; succeeded: number };
 
 /** 撮影/選択 → 解析中 → レビュー編集 → 完了、の3ステップを管理する新規ルート
@@ -30,11 +30,11 @@ const ReceiptScanPage = () => {
   const handleFile = async (file: File) => {
     setStep({ kind: "scanning" });
     try {
-      const items = await scanReceipt.mutateAsync(file);
+      const { items, storeName } = await scanReceipt.mutateAsync(file);
       if (items.length === 0) {
         toast(t("noItemsFound"), "warning");
       }
-      setStep({ kind: "review", drafts: items.map(receiptLineItemToDraft) });
+      setStep({ kind: "review", drafts: items.map(receiptLineItemToDraft), storeName });
     } catch (err) {
       toast(t(receiptScanErrorMessageKey(err)), "error");
       setStep({ kind: "idle" });
@@ -75,7 +75,9 @@ const ReceiptScanPage = () => {
       {step.kind === "review" && (
         <ReceiptReviewPanel
           drafts={step.drafts}
-          onDraftsChange={(drafts) => setStep({ kind: "review", drafts })}
+          storeName={step.storeName}
+          onDraftsChange={(drafts) => setStep({ ...step, drafts })}
+          onStoreNameChange={(storeName) => setStep({ ...step, storeName })}
           onDone={({ succeeded }) => setStep({ kind: "done", succeeded })}
         />
       )}

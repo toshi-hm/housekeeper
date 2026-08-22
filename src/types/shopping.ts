@@ -28,6 +28,14 @@ export interface UpsertShoppingItemInput {
 export interface PurchaseInput {
   shoppingItemId: string;
   itemValues: ItemFormValues;
+  /**
+   * #879セルフレビュー: 統合先アイテムの既存値でフォームがプリフィルされて
+   * いた場合（linked_item_id で事前に対象が判明する場合）にのみ true にする。
+   * バーコード一致・ソフトデリート復活はプリフィルできない（購入完了時にしか
+   * 対象が判明しない）ため、フォーム入力を items 側の update へ反映しない
+   * ——反映すると、ユーザーに見せていない既存値を空欄で上書きしてしまう。
+   */
+  applyMergeFields?: boolean;
 }
 
 /** 「購入済みをクリア」時に shopping_list_archive へ保存される購入履歴行 (#365) */

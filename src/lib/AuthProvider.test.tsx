@@ -1,5 +1,5 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -24,6 +24,14 @@ mock.module("@/lib/supabase", () => ({
 
 const { AuthProvider } = await import("./AuthProvider");
 const { useAuthSession } = await import("./auth-context");
+const { persister, queryClient } = await import("./queryClient");
+
+// mock.module replaces the module for the entire bun:test process (leaks across
+// files), so spy on the real queryClient/persister instances instead.
+const queryClientClearSpy = spyOn(queryClient, "clear").mockImplementation(() => {});
+const removeClientSpy = spyOn(persister, "removeClient").mockImplementation(() =>
+  Promise.resolve(),
+);
 
 const makeStore = <S,>(state: S) => ({
   state,
@@ -64,6 +72,8 @@ beforeEach(() => {
   onAuthStateChangeMock.mockClear();
   unsubscribeMock.mockClear();
   navigateMock.mockClear();
+  queryClientClearSpy.mockClear();
+  removeClientSpy.mockClear();
 });
 
 afterEach(() => {
@@ -97,6 +107,37 @@ describe("AuthProvider", () => {
     authChangeCallback?.("SIGNED_OUT", null);
 
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: "/login" }));
+  });
+
+  test("clears the query cache (including IndexedDB persistence) on SIGNED_OUT", async () => {
+    renderWithRouter(
+      "/",
+      <AuthProvider>
+        <SessionProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(authChangeCallback).not.toBeNull());
+    authChangeCallback?.("SIGNED_OUT", null);
+
+    await waitFor(() => expect(queryClientClearSpy).toHaveBeenCalled());
+    expect(removeClientSpy).toHaveBeenCalled();
+  });
+
+  test("does not clear the query cache on non-SIGNED_OUT events", async () => {
+    renderWithRouter(
+      "/",
+      <AuthProvider>
+        <SessionProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(authChangeCallback).not.toBeNull());
+    authChangeCallback?.("TOKEN_REFRESHED", { user: { id: "u1" } });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(queryClientClearSpy).not.toHaveBeenCalled();
+    expect(removeClientSpy).not.toHaveBeenCalled();
   });
 
   test("does not redirect on SIGNED_OUT while already on /login", async () => {
