@@ -109,6 +109,7 @@ describe("upsertMealPlan", () => {
       planned_date: "2026-08-12",
       recipe_id: "r1",
       note: null,
+      executed_at: null,
     });
     expect(upsertCall?.args[1]).toEqual({ onConflict: "user_id,planned_date" });
   });
@@ -138,6 +139,7 @@ describe("upsertMealPlan", () => {
       planned_date: "2026-08-12",
       recipe_id: null,
       note: "外食予定",
+      executed_at: null,
     });
   });
 });
