@@ -449,7 +449,14 @@ export const ItemForm = ({
             <Input
               id="barcode"
               value={values.barcode ?? ""}
-              onChange={(e) => set("barcode", e.target.value)}
+              onChange={(e) => {
+                set("barcode", e.target.value);
+                // #814: 手動編集でバーコード値が確定スキャン時点と食い違ったら、古い
+                // バーコードに紐づいた保管場所サジェストの照会対象をクリアする。でないと
+                // バーコードを消して商品名だけで入力し直しても、名前ベースのフォール
+                // バックが一生ブロックされたままになる。
+                setBarcodeForSuggestion(null);
+              }}
               placeholder={t("barcodePlaceholder")}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
