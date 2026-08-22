@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
-import { normalizeCreateValues } from "@/hooks/useItems";
+import { normalizeCreateValues, normalizeUpdateValues } from "@/hooks/useItems";
 import { PURCHASE_HISTORY_KEY } from "@/hooks/usePurchaseHistory";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { findDuplicatePlannedItem } from "@/lib/shoppingDuplicates";
@@ -217,6 +217,29 @@ const markShoppingItemPurchased = async (shoppingItemId: string, itemId: string)
   if (error) throw new Error(error.message);
 };
 
+/**
+ * 既存アイテムへ統合する購入パス（linked_item_id一致 / バーコード一致）で、
+ * フォーム入力を items テーブルへ反映するためのフィールド抽出 (#830)。
+ *
+ * `units`/`content_amount`/`content_unit`/`barcode` 等は含めない —
+ * これらはロット（`lotValuesFromForm`）または `syncItemAggregate` が
+ * 別途扱う値であり、購入フォームの `units`（今回購入した数量）を
+ * そのまま item 側の `units` に書くと在庫数が壊れるため。
+ * `normalizeUpdateValues` を使うことで null 正規化のルールを
+ * `useItems.ts`（通常の編集パス）と揃える。
+ */
+const mergeableItemFieldsFromForm = (itemValues: ItemFormValues) =>
+  normalizeUpdateValues({
+    category_id: itemValues.category_id,
+    storage_location_id: itemValues.storage_location_id,
+    notes: itemValues.notes,
+    minimum_stock: itemValues.minimum_stock,
+    auto_reorder: itemValues.auto_reorder,
+    reorder_threshold: itemValues.reorder_threshold,
+    expiry_type: itemValues.expiry_type,
+    image_path: itemValues.image_path,
+  });
+
 export const lotValuesFromForm = (itemValues: ItemFormValues) => ({
   units: itemValues.units ?? 1,
   opened_remaining: itemValues.opened_remaining ?? null,
@@ -263,6 +286,7 @@ export const useDeleteAllPurchasedItems = () => {
 export const purchaseShoppingItem = async ({
   shoppingItemId,
   itemValues,
+  applyMergeFields = false,
 }: PurchaseInput): Promise<Item & { _stacked?: boolean; _revived?: boolean }> => {
   requireOnline();
   const {
@@ -292,12 +316,32 @@ export const purchaseShoppingItem = async ({
     if (linkedActiveItemError) throw linkedActiveItemError;
 
     if (linkedActiveItem) {
+      // #830: フォームで入力されたカテゴリ/保管場所/メモ等を、ロット追加だけでなく
+      // 統合先の items 行にも反映する。ただし、フォームが実際にこのアイテムの
+      // 既存値でプリフィルされていた場合（`applyMergeFields`）に限る — でなければ
+      // 空欄の入力項目をそのまま書き込み、ユーザーに見せていない既存の
+      // カテゴリ/保管場所/メモ等を消してしまう（#879セルフレビュー）。
+      const updatedLinkedItem = applyMergeFields
+        ? await (async () => {
+            const { data, error } = await supabase
+              .from("items")
+              .update({
+                ...mergeableItemFieldsFromForm(itemValues),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", linkedActiveItem.id)
+              .select()
+              .single();
+            if (error) throw error;
+            return data as Item;
+          })()
+        : linkedActiveItem;
       await createLot(user.id, linkedActiveItem.id, lotValuesFromForm(itemValues));
       await syncItemAggregate(linkedActiveItem.id);
       await markShoppingItemPurchased(shoppingItemId, linkedActiveItem.id);
       // 既存アイテムへのスタック。呼び出し側が画像アップロードで既存画像を
       // 上書きしないよう _stacked を立てる（バーコード一致経路と同じ規約、#894）。
-      return { ...(linkedActiveItem as Item), _stacked: true };
+      return { ...(updatedLinkedItem as Item), _stacked: true };
     }
 
     const { data: linkedDeletedItem, error: linkedDeletedItemError } = await supabase
@@ -310,9 +354,15 @@ export const purchaseShoppingItem = async ({
     if (linkedDeletedItemError) throw linkedDeletedItemError;
 
     if (linkedDeletedItem) {
+      // このパスはフォームがプリフィルされない（#879セルフレビュー、
+      // PurchaseInput.applyMergeFields のコメント参照）ため、items 側の
+      // フィールドは復活(deleted_at解除)のみで、フォーム入力は反映しない。
       const { data: revivedLinked, error: reviveLinkedError } = await supabase
         .from("items")
-        .update({ deleted_at: null, updated_at: new Date().toISOString() })
+        .update({
+          deleted_at: null,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", linkedDeletedItem.id)
         .select()
         .single();
@@ -340,6 +390,9 @@ export const purchaseShoppingItem = async ({
     if (activeItemError) throw activeItemError;
 
     if (activeItem) {
+      // バーコード一致は購入完了時にしか対象アイテムが判明せず、フォームは
+      // プリフィルされない（#879セルフレビュー）ため、items 側のフィールド
+      // は反映しない。ロット追加・集計のみ行う。
       await createLot(user.id, activeItem.id, lotValuesFromForm(itemValues));
       await syncItemAggregate(activeItem.id);
       await markShoppingItemPurchased(shoppingItemId, activeItem.id);
@@ -360,9 +413,15 @@ export const purchaseShoppingItem = async ({
     if (deletedItemError) throw deletedItemError;
 
     if (deletedItem) {
+      // バーコード一致による復活も購入完了時にしか対象が判明せずプリフィル
+      // されない（#879セルフレビュー）ため、items 側は復活のみでフォーム
+      // 入力は反映しない。
       const { data: revived, error: reviveError } = await supabase
         .from("items")
-        .update({ deleted_at: null, updated_at: new Date().toISOString() })
+        .update({
+          deleted_at: null,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", deletedItem.id)
         .select()
         .single();
