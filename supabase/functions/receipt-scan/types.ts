@@ -16,6 +16,9 @@ export interface ReceiptLineItem {
 
 export interface ReceiptScanResponse {
   items: ReceiptLineItem[];
+  /** レシート全体から抽出した店舗名（品目ごとではなく1レシート1店舗）。
+   *  読み取れない場合は null（#859）。 */
+  storeName: string | null;
 }
 
 export interface GeminiPart {

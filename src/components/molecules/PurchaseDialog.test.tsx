@@ -7,6 +7,7 @@ import { I18nextProvider } from "react-i18next";
 import * as useMasterDataModule from "../../hooks/useMasterData";
 import i18n from "../../lib/i18n";
 import { ToastContext, type ToastContextValue } from "../../lib/toast-context";
+import type { Item } from "../../types/item";
 import { PurchaseDialog } from "./PurchaseDialog";
 
 const stubToast: ToastContextValue = { toasts: [], toast: () => {}, dismiss: () => {} };
@@ -183,5 +184,104 @@ describe("PurchaseDialog", () => {
 
     catSpy.mockRestore();
     locSpy.mockRestore();
+  });
+
+  // #830: 既存アイテムへ統合される場合、フォームの初期値が空欄のまま（＝既存値が
+  // 見えない）ままだと、入力しても保存後に消えたように見える。
+  describe("existingItem が渡された場合 (#830)", () => {
+    const existingItem: Item = {
+      id: "item-1",
+      user_id: "user-1",
+      name: "有機牛乳",
+      category_id: null,
+      storage_location_id: null,
+      units: 0,
+      content_amount: 1000,
+      content_unit: "mL",
+      notes: "いつものスーパーで購入",
+      minimum_stock: 1,
+      auto_reorder: true,
+      reorder_threshold: 1,
+      expiry_type: "best_before",
+      image_path: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+
+    it("統合先アイテム名を知らせるバナーを表示する", () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const catSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useCategories>);
+      const locSpy = spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+
+      const { getByText } = render(
+        <PurchaseDialog
+          open={true}
+          itemName="有機牛乳"
+          existingItem={existingItem}
+          onSubmit={() => {}}
+          onClose={() => {}}
+        />,
+        { wrapper: makeWrapper(qc) },
+      );
+
+      expect(
+        getByText(i18n.t("shopping:mergeIntoExistingItem", { name: "有機牛乳" })),
+      ).toBeDefined();
+
+      catSpy.mockRestore();
+      locSpy.mockRestore();
+    });
+
+    it("メモ欄に既存アイテムの notes を初期表示する", () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const catSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useCategories>);
+      const locSpy = spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+
+      const { getByLabelText } = render(
+        <PurchaseDialog
+          open={true}
+          itemName="有機牛乳"
+          existingItem={existingItem}
+          onSubmit={() => {}}
+          onClose={() => {}}
+        />,
+        { wrapper: makeWrapper(qc) },
+      );
+
+      expect((getByLabelText(i18n.t("items:notes")) as HTMLTextAreaElement).value).toBe(
+        "いつものスーパーで購入",
+      );
+
+      catSpy.mockRestore();
+      locSpy.mockRestore();
+    });
+
+    it("existingItem が無い通常の購入では既存値バナーを表示しない", () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const catSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useCategories>);
+      const locSpy = spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+
+      const { queryByText } = render(
+        <PurchaseDialog open={true} itemName="牛乳" onSubmit={() => {}} onClose={() => {}} />,
+        { wrapper: makeWrapper(qc) },
+      );
+
+      expect(queryByText(i18n.t("shopping:mergeIntoExistingItem", { name: "牛乳" }))).toBeNull();
+
+      catSpy.mockRestore();
+      locSpy.mockRestore();
+    });
   });
 });
