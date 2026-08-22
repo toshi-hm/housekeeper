@@ -13,7 +13,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
@@ -163,6 +163,10 @@ const SearchInput = ({
 export const DashboardPage = () => {
   const { t } = useTranslation("items");
   const { t: tc } = useTranslation("common");
+  const categoryFilterId = useId();
+  const locationFilterId = useId();
+  const expiryFilterId = useId();
+  const sortFilterId = useId();
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
   const { data: userSettings } = useUserSettings();
@@ -781,6 +785,7 @@ export const DashboardPage = () => {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setExpiryFilter("")}
+            aria-pressed={!expiryFilter || expiryFilter === "all"}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               !expiryFilter || expiryFilter === "all"
                 ? "border-primary bg-primary text-primary-foreground"
@@ -792,6 +797,7 @@ export const DashboardPage = () => {
           {expiredCount > 0 && (
             <button
               onClick={() => setExpiryFilter(expiryFilter === "expired" ? "" : "expired")}
+              aria-pressed={expiryFilter === "expired"}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 expiryFilter === "expired"
                   ? "border-destructive bg-destructive text-destructive-foreground"
@@ -806,6 +812,7 @@ export const DashboardPage = () => {
               onClick={() =>
                 setExpiryFilter(expiryFilter === "expiring-soon" ? "" : "expiring-soon")
               }
+              aria-pressed={expiryFilter === "expiring-soon"}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 expiryFilter === "expiring-soon"
                   ? "border-yellow-600 bg-yellow-500 text-white"
@@ -823,10 +830,17 @@ export const DashboardPage = () => {
         <div className="space-y-3 rounded-lg border p-3">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
+              <label
+                htmlFor={categoryFilterId}
+                className="mb-1 block text-xs text-muted-foreground"
+              >
                 {t("filterByCategory")}
               </label>
-              <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <Select
+                id={categoryFilterId}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
                 <option value="">{tc("all")}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -836,10 +850,17 @@ export const DashboardPage = () => {
               </Select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
+              <label
+                htmlFor={locationFilterId}
+                className="mb-1 block text-xs text-muted-foreground"
+              >
                 {t("filterByLocation")}
               </label>
-              <Select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+              <Select
+                id={locationFilterId}
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+              >
                 <option value="">{tc("all")}</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
@@ -849,10 +870,14 @@ export const DashboardPage = () => {
               </Select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
+              <label htmlFor={expiryFilterId} className="mb-1 block text-xs text-muted-foreground">
                 {t("filterByExpiry")}
               </label>
-              <Select value={expiryFilter} onChange={(e) => setExpiryFilter(e.target.value)}>
+              <Select
+                id={expiryFilterId}
+                value={expiryFilter}
+                onChange={(e) => setExpiryFilter(e.target.value)}
+              >
                 <option value="">{tc("all")}</option>
                 <option value="expired">{t("expiryStatus.expired")}</option>
                 <option value="expiring-soon">{t("expiryStatus.expiring-soon")}</option>
@@ -861,8 +886,11 @@ export const DashboardPage = () => {
               </Select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">{tc("sort")}</label>
+              <label htmlFor={sortFilterId} className="mb-1 block text-xs text-muted-foreground">
+                {tc("sort")}
+              </label>
               <Select
+                id={sortFilterId}
                 value={sort}
                 onChange={(e) => {
                   const v = e.target.value as ItemSortKey;

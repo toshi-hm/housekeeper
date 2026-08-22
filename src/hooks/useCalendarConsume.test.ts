@@ -143,6 +143,7 @@ describe("useCalendarConsume.check", () => {
     responseQueues.items = [
       { data: { content_amount: 1 }, error: null }, // syncItemAggregate item read
       { data: null, error: null }, // syncItemAggregate update
+      { data: null, error: null }, // maybeAutoReorder item select (見つからず何もしない)
     ];
     responseQueues.consumption_logs = [{ data: { id: "log-1" }, error: null }];
 
@@ -228,6 +229,7 @@ describe("useCalendarConsume.check", () => {
     responseQueues.items = [
       { data: { content_amount: 1 }, error: null },
       { data: null, error: null },
+      { data: null, error: null }, // maybeAutoReorder item select (見つからず何もしない)
     ];
     responseQueues.consumption_logs = [{ data: null, error: { message: "insert failed" } }];
 
@@ -247,6 +249,54 @@ describe("useCalendarConsume.check", () => {
         itemName: "テスト商品",
       }),
     );
+  });
+
+  test("消費後にauto_reorderの閾値を満たすと、買い物リストへ自動追加する (#895)", async () => {
+    const targetLot = {
+      id: "lot-1",
+      units: 1,
+      opened_remaining: null,
+      expiry_date: todayStr,
+    };
+    responseQueues.item_lots = [
+      { data: [targetLot], error: null }, // FEFO select
+      { data: { id: "lot-1" }, error: null }, // conditional zero-out update
+      { data: [{ units: 0, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate read
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate item read
+      { data: null, error: null }, // syncItemAggregate update
+      {
+        data: {
+          id: "item-1",
+          user_id: "user-1",
+          name: "テスト商品",
+          units: 0,
+          auto_reorder: true,
+          reorder_threshold: 1,
+        },
+        error: null,
+      }, // maybeAutoReorder item select
+    ];
+    responseQueues.shopping_list_items = [
+      { data: [], error: null }, // mergeAutoReorderRow: 重複planned行なし
+      { data: null, error: null }, // 自動追加のinsert
+    ];
+    responseQueues.consumption_logs = [{ data: { id: "log-1" }, error: null }];
+
+    const { result } = renderHook(() => useCalendarConsume(), { wrapper: makeWrapper() });
+
+    await act(async () => {
+      await result.current.check(makeItem({ units: 1 }));
+    });
+
+    const shoppingInsertCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "insert",
+    );
+    expect(shoppingInsertCall?.args[0]).toMatchObject({
+      linked_item_id: "item-1",
+      auto_added: true,
+    });
   });
 
   test("今月中に期限が来る有効なロットが無い場合、在庫更新をせずに終了する", async () => {
@@ -314,6 +364,7 @@ describe("useCalendarConsume.undo", () => {
     responseQueues.items = [
       { data: { content_amount: 1 }, error: null }, // syncItemAggregate (check)
       { data: null, error: null }, // syncItemAggregate update (check)
+      { data: null, error: null }, // maybeAutoReorder item select (check、見つからず何もしない)
       { data: { content_amount: 1 }, error: null }, // syncItemAggregate (undo)
       { data: null, error: null }, // syncItemAggregate update (undo)
     ];
@@ -364,6 +415,7 @@ describe("useCalendarConsume.undo", () => {
     responseQueues.items = [
       { data: { content_amount: 1 }, error: null },
       { data: null, error: null },
+      { data: null, error: null }, // maybeAutoReorder item select (見つからず何もしない)
     ];
     responseQueues.consumption_logs = [{ data: { id: "log-1" }, error: null }];
 

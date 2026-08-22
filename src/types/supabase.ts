@@ -795,6 +795,24 @@ export interface Database {
         };
         Relationships: [];
       };
+      receipt_scan_rate_limits: {
+        Row: {
+          request_count: number;
+          user_id: string;
+          window_start: string;
+        };
+        Insert: {
+          request_count?: number;
+          user_id: string;
+          window_start?: string;
+        };
+        Update: {
+          request_count?: number;
+          user_id?: string;
+          window_start?: string;
+        };
+        Relationships: [];
+      };
       recipe_items: {
         Row: {
           amount: number;
@@ -1180,6 +1198,13 @@ export interface Database {
         }[];
       };
       check_household_invite_rate_limit: {
+        Args: never;
+        Returns: {
+          allowed: boolean;
+          retry_after_seconds: number;
+        }[];
+      };
+      check_receipt_scan_rate_limit: {
         Args: never;
         Returns: {
           allowed: boolean;
