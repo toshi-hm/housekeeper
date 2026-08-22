@@ -28,6 +28,10 @@ jobs:
         run: |
           echo "## bun audit" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          bun audit | tee -a "$GITHUB_STEP_SUMMARY"
+          set +e
+          bun audit 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          exit_code=${PIPESTATUS[0]}
+          set -e
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "$exit_code"
         continue-on-error: true
