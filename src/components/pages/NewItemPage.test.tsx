@@ -185,6 +185,46 @@ describe("NewItemPage - default content unit", () => {
   });
 });
 
+describe("NewItemPage - location suggestion wiring (#814)", () => {
+  let itemSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+
+    spyOn(useItemsModule, "useCreateItem").mockReturnValue({
+      mutateAsync: async () => ({}) as Item,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useCreateItem>);
+
+    spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+  });
+
+  afterEach(() => {
+    itemSpy.mockRestore();
+    cleanup();
+  });
+
+  it("enables location suggestion on the new-item form", () => {
+    render(<NewItemPage />, { wrapper: Wrapper });
+
+    // #814: toHaveBeenCalledWith(expect.objectContaining(...)) against the
+    // full ItemForm props object (which includes React elements, refs, and
+    // closures via extraFields/onSubmit/etc.) makes bun:test's matcher hang
+    // while formatting/diffing the call — read the one prop we care about
+    // directly from the mock's recorded call args instead.
+    const lastCallProps = itemFormSpy.mock.calls.at(-1)?.[0] as
+      | { enableLocationSuggestion?: boolean }
+      | undefined;
+    expect(lastCallProps?.enableLocationSuggestion).toBe(true);
+  });
+});
+
 // #650: a revived (un-soft-deleted) item is an *existing* item, just like a
 // stacked one — selecting a new image/tag on the form must not overwrite the
 // values it already had before it was deleted.

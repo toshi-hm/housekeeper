@@ -30,6 +30,7 @@ import {
   useStorageLocations,
 } from "@/hooks/useMasterData";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
+import { useSuggestedLocation } from "@/hooks/useSuggestedLocation";
 import { clearItemFormDraft, loadItemFormDraft, saveItemFormDraft } from "@/lib/itemFormDraft";
 import { useToast } from "@/lib/toast-context";
 import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
@@ -63,6 +64,12 @@ interface ItemFormProps {
    * defaultValuesに実データが入っているため対象外）。
    */
   draftKey?: string;
+  /**
+   * #814: バーコード一致 or 商品名一致で過去に登録した同一商品があれば、
+   * その直近の保管場所を保管場所セレクトに事前選択する（「再登録」の手間削減）。
+   * 既存アイテムの編集画面では実データが既にあるため対象外、省略時はfalse。
+   */
+  enableLocationSuggestion?: boolean;
 }
 
 export const ItemForm = ({
@@ -77,6 +84,7 @@ export const ItemForm = ({
   extraFields,
   disableContentAmount = false,
   draftKey,
+  enableLocationSuggestion = false,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
   const { t: tc } = useTranslation("common");
@@ -173,11 +181,32 @@ export const ItemForm = ({
     };
   }, [localPreviewUrl]);
 
+  // #814: バーコード一致 or 商品名一致で見つかった過去の保管場所を、ユーザーが
+  // まだ何も選んでいない間だけ保管場所セレクトの実効値として使う（setState を
+  // effect 内から呼ばず、`values.storage_location_id` が空の間だけ描画・送信時に
+  // フォールバックとして参照する派生値にする）。ユーザーが手動で保管場所を変更
+  // したら (locationSuggestionDismissed) それ以降は提案を使わない。
+  const [barcodeForSuggestion, setBarcodeForSuggestion] = useState<string | null>(null);
+  const [nameForSuggestion, setNameForSuggestion] = useState<string | null>(null);
+  const [locationSuggestionDismissed, setLocationSuggestionDismissed] = useState(false);
+  const { data: suggestedLocationId } = useSuggestedLocation(
+    { barcode: barcodeForSuggestion, name: barcodeForSuggestion ? null : nameForSuggestion },
+    enableLocationSuggestion && !locationSuggestionDismissed && !values.storage_location_id,
+  );
+  const isLocationSuggested =
+    enableLocationSuggestion &&
+    !locationSuggestionDismissed &&
+    !values.storage_location_id &&
+    !!suggestedLocationId;
+  const effectiveStorageLocationId = isLocationSuggested
+    ? (suggestedLocationId ?? null)
+    : values.storage_location_id;
+
   const { data: existingImageUrl } = useSignedItemImage(
     localPreviewUrl ? null : values.image_path || null,
   );
 
-  const selectedLocation = locations.find((l) => l.id === values.storage_location_id);
+  const selectedLocation = locations.find((l) => l.id === effectiveStorageLocationId);
   const { data: selectedLocationPhotoUrl } = useSignedLocationPhoto(selectedLocation?.photo_path);
 
   const set = <K extends keyof ItemFormValues>(field: K, value: ItemFormValues[K]) => {
@@ -196,6 +225,7 @@ export const ItemForm = ({
   const handleBarcodeScan = async (barcode: string) => {
     setShowScanner(false);
     set("barcode", barcode);
+    setBarcodeForSuggestion(barcode);
     setLookupResult(undefined);
     setLookupSource(null);
     if (navigator.vibrate) navigator.vibrate(100);
@@ -229,6 +259,7 @@ export const ItemForm = ({
     set("pin_x", null);
     set("pin_y", null);
     set("storage_location_id", location.id);
+    setLocationSuggestionDismissed(true);
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
@@ -363,6 +394,7 @@ export const ItemForm = ({
       ...values,
       units: parsedUnits,
       content_amount: parsedContentAmount,
+      storage_location_id: effectiveStorageLocationId,
       barcode: values.barcode || undefined,
       purchase_date: values.purchase_date || undefined,
       expiry_date: values.expiry_date || undefined,
@@ -417,7 +449,14 @@ export const ItemForm = ({
             <Input
               id="barcode"
               value={values.barcode ?? ""}
-              onChange={(e) => set("barcode", e.target.value)}
+              onChange={(e) => {
+                set("barcode", e.target.value);
+                // #814: 手動編集でバーコード値が確定スキャン時点と食い違ったら、古い
+                // バーコードに紐づいた保管場所サジェストの照会対象をクリアする。でないと
+                // バーコードを消して商品名だけで入力し直しても、名前ベースのフォール
+                // バックが一生ブロックされたままになる。
+                setBarcodeForSuggestion(null);
+              }}
               placeholder={t("barcodePlaceholder")}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -484,7 +523,11 @@ export const ItemForm = ({
                 value={values.name}
                 onChange={(e) => set("name", e.target.value)}
                 onBlur={(e) => {
-                  if (e.target.value.trim()) onNameBlur?.(e.target.value);
+                  const trimmed = e.target.value.trim();
+                  if (trimmed) {
+                    onNameBlur?.(e.target.value);
+                    setNameForSuggestion(trimmed);
+                  }
                 }}
                 placeholder={t("namePlaceholder")}
                 aria-invalid={!!nameError}
@@ -529,13 +572,14 @@ export const ItemForm = ({
           <Label htmlFor="storage_location_id">{t("storageLocation")}</Label>
           <QuickAddSelect
             id="storage_location_id"
-            value={values.storage_location_id ?? ""}
+            value={effectiveStorageLocationId ?? ""}
             onChange={(value) => {
-              if (value !== values.storage_location_id) {
+              if (value !== effectiveStorageLocationId) {
                 set("pin_x", null);
                 set("pin_y", null);
               }
               set("storage_location_id", value || null);
+              setLocationSuggestionDismissed(true);
             }}
             options={locations.map((l) => ({ value: l.id, label: l.name, icon: l.icon }))}
             placeholder={t("storageLocationPlaceholder")}
@@ -546,6 +590,11 @@ export const ItemForm = ({
             cancelLabel={t("common:cancel")}
             addErrorMessage={t("addError")}
           />
+          {isLocationSuggested && (
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {t("suggestedLocationHint")}
+            </p>
+          )}
           {selectedLocationPhotoUrl && (
             <LocationPinPicker
               photoUrl={selectedLocationPhotoUrl}

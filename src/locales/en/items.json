@@ -255,6 +255,7 @@
   "storageLocationPlaceholder": "Select location",
   "storeName": "Store name",
   "storeNamePlaceholder": "e.g. Acme Supermarket",
+  "suggestedLocationHint": "Suggested based on where you stored this last time",
   "tagPlaceholder": "New tag name",
   "tags": "Tags",
   "tagsEmpty": "No tags selected",
