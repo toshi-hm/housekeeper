@@ -32,6 +32,11 @@ const NAV_ROUTES = [
   { to: "/calendar" as const, icon: CalendarDays, labelKey: "navCalendar" as const },
 ];
 
+// モバイル下部ナビの各リンクに最低44×44pxのタップ領域を確保する共通クラス。
+// 7箇所で同一の文字列を複製すると将来の変更で一部だけ更新漏れになりやすいため定数化する。
+const BOTTOM_NAV_LINK_CLASS =
+  "flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-xs text-muted-foreground [&.active]:text-primary";
+
 const AuthLayout = () => {
   const router = useRouter();
   const { t } = useTranslation("common");
@@ -148,54 +153,33 @@ const AuthLayout = () => {
       {/* Mobile bottom navigation — Map is the third item from the left. */}
       <nav className="sticky bottom-0 border-t bg-background lg:hidden">
         <div className="mx-auto flex max-w-2xl items-center justify-around gap-1 px-2 py-2">
-          <Link
-            to="/"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
-          >
+          <Link to="/" className={BOTTOM_NAV_LINK_CLASS}>
             <Home className="h-5 w-5" />
             <span>{t("navHome")}</span>
           </Link>
-          <Link
-            to="/shopping"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
-          >
+          <Link to="/shopping" className={BOTTOM_NAV_LINK_CLASS}>
             <ShoppingCart className="h-5 w-5" />
             <span>{t("navShopping")}</span>
           </Link>
-          <Link
-            to="/map"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
-          >
+          <Link to="/map" className={BOTTOM_NAV_LINK_CLASS}>
             <MapIcon className="h-5 w-5" />
             <span>{t("navMap")}</span>
           </Link>
-          <Link
-            to="/items/new"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
-          >
+          <Link to="/items/new" className={BOTTOM_NAV_LINK_CLASS}>
             <div className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg">
               <Plus className="h-6 w-6 text-primary-foreground" />
             </div>
             <span>{t("navAddItem")}</span>
           </Link>
-          <Link
-            to="/stats"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
-          >
+          <Link to="/stats" className={BOTTOM_NAV_LINK_CLASS}>
             <BarChart2 className="h-5 w-5" />
             <span>{t("navStats")}</span>
           </Link>
-          <Link
-            to="/calendar"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
-          >
+          <Link to="/calendar" className={BOTTOM_NAV_LINK_CLASS}>
             <CalendarDays className="h-5 w-5" />
             <span>{t("navCalendar")}</span>
           </Link>
-          <Link
-            to="/settings"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
-          >
+          <Link to="/settings" className={BOTTOM_NAV_LINK_CLASS}>
             <Settings className="h-5 w-5" />
             <span>{t("navSettings")}</span>
           </Link>
