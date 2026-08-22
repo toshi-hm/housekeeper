@@ -749,6 +749,7 @@ export const DashboardPage = () => {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setExpiryFilter("")}
+            aria-pressed={!expiryFilter || expiryFilter === "all"}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               !expiryFilter || expiryFilter === "all"
                 ? "border-primary bg-primary text-primary-foreground"
@@ -760,6 +761,7 @@ export const DashboardPage = () => {
           {expiredCount > 0 && (
             <button
               onClick={() => setExpiryFilter(expiryFilter === "expired" ? "" : "expired")}
+              aria-pressed={expiryFilter === "expired"}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 expiryFilter === "expired"
                   ? "border-destructive bg-destructive text-destructive-foreground"
@@ -774,6 +776,7 @@ export const DashboardPage = () => {
               onClick={() =>
                 setExpiryFilter(expiryFilter === "expiring-soon" ? "" : "expiring-soon")
               }
+              aria-pressed={expiryFilter === "expiring-soon"}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 expiryFilter === "expiring-soon"
                   ? "border-yellow-600 bg-yellow-500 text-white"
