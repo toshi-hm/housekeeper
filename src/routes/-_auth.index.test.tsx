@@ -207,6 +207,19 @@ describe("DashboardPage", () => {
     expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
   });
 
+  it("フィルターパネルの各セレクトがlabelから参照できる (#900)", async () => {
+    const { getByLabelText } = await renderPage();
+
+    const filterBtn = getByLabelText(/filter|絞り込み/i);
+    await act(async () => {
+      fireEvent.click(filterBtn);
+    });
+
+    expect(getByLabelText(/filter by category|カテゴリで絞り込み/i)).toBeDefined();
+    expect(getByLabelText(/filter by location|保管場所で絞り込み/i)).toBeDefined();
+    expect(getByLabelText(/filter by expiry|期限で絞り込み/i)).toBeDefined();
+  });
+
   it("hideEmpty=false のとき、期限切れ在庫0個アイテムはバナー見出しの件数にも含まれない (#450)", async () => {
     itemsspy.mockReturnValue({
       data: [
