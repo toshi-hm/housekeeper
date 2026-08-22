@@ -147,28 +147,28 @@ const AuthLayout = () => {
         <div className="mx-auto flex max-w-2xl items-center justify-around gap-1 px-2 py-2">
           <Link
             to="/"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+            className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <Home className="h-5 w-5" />
             <span>{t("navHome")}</span>
           </Link>
           <Link
             to="/shopping"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+            className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <ShoppingCart className="h-5 w-5" />
             <span>{t("navShopping")}</span>
           </Link>
           <Link
             to="/map"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+            className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <MapIcon className="h-5 w-5" />
             <span>{t("navMap")}</span>
           </Link>
           <Link
             to="/items/new"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+            className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <div className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg">
               <Plus className="h-6 w-6 text-primary-foreground" />
@@ -177,21 +177,21 @@ const AuthLayout = () => {
           </Link>
           <Link
             to="/stats"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+            className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <BarChart2 className="h-5 w-5" />
             <span>{t("navStats")}</span>
           </Link>
           <Link
             to="/calendar"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+            className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <CalendarDays className="h-5 w-5" />
             <span>{t("navCalendar")}</span>
           </Link>
           <Link
             to="/settings"
-            className="flex flex-col items-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
+            className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-xs text-muted-foreground [&.active]:text-primary"
           >
             <Settings className="h-5 w-5" />
             <span>{t("navSettings")}</span>
