@@ -75,6 +75,11 @@ export interface Item {
   minimum_stock?: number | null;
   auto_reorder?: boolean;
   reorder_threshold?: number | null;
+  /** 消費ペース予測（`computeConsumptionPaceForecast`）に基づく自動追加のしきい値（日数）。
+   *  `auto_reorder = true` のアイテムで、予測残日数がこの値以下になったら
+   *  `reorder_threshold` の判定とは独立に自動的に買い物リストへ追加する。
+   *  null = 予測残日数による自動追加を使わない（既存の個数しきい値のみ、#853）。 */
+  reorder_lead_days?: number | null;
   last_verified_at?: string | null;
   deleted_at?: string | null;
   deletion_reason?: ItemDeletionReason | null;
@@ -116,6 +121,8 @@ export const itemFormSchema = z.object({
   store_name: z.string().nullable().optional(),
   auto_reorder: z.boolean().default(false),
   reorder_threshold: z.coerce.number().int().min(0).nullable().optional(),
+  /** 予測残日数ベースの自動追加しきい値（日数）。未設定 = null（#853）。 */
+  reorder_lead_days: z.coerce.number().int().min(0).nullable().optional(),
   pin_x: z.coerce.number().min(0).max(1).nullable().optional(),
   pin_y: z.coerce.number().min(0).max(1).nullable().optional(),
 });
@@ -151,6 +158,8 @@ export interface UserSettings {
   low_stock_forecast_days: number;
   stocktake_alert_enabled: boolean;
   stocktake_alert_days: number;
+  /** 手動JSONエクスポート（唯一のバックアップ導線）が最後に成功した日時。null = 未実行 (#815) */
+  last_backup_export_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -365,6 +374,27 @@ export const isItemUnverified = (
 
   const createdMs = new Date(item.created_at).getTime();
   return (nowMs - createdMs) / msPerDay >= STOCKTAKE_NEW_ITEM_GRACE_DAYS;
+};
+
+/** JSONエクスポート（唯一のバックアップ導線）の未実行リマインダーの猶予日数 (#815)。 */
+export const BACKUP_EXPORT_REMINDER_DAYS = 30;
+
+/**
+ * JSONエクスポート（唯一のバックアップ/リカバリー導線、`DataExportPanel`）が長期間
+ * 未実行かどうかを判定する純関数 (#815)。
+ *
+ * - `last_backup_export_at` が設定されていればそこから、未設定（一度もエクスポート
+ *   していない）ならアカウント作成日（`user_settings.created_at`）からの経過日数で判定する。
+ */
+export const isBackupExportOverdue = (
+  settings: Pick<UserSettings, "last_backup_export_at" | "created_at">,
+  reminderDays: number = BACKUP_EXPORT_REMINDER_DAYS,
+  now: Date = new Date(),
+): boolean => {
+  const nowMs = now.getTime();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const baseline = settings.last_backup_export_at ?? settings.created_at;
+  return (nowMs - new Date(baseline).getTime()) / msPerDay >= reminderDays;
 };
 
 /** ロット（またはアイテム）1件の実残量を計算する。opened_remaining がある場合は
