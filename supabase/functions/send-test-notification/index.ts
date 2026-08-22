@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import webpush from "npm:web-push@3";
 import { summarizeResults } from "./result.ts";
 
 const corsHeaders = {
@@ -28,7 +26,7 @@ const NOTIFICATION_TEXT: Record<"ja" | "en", { title: string; body: string }> = 
 const isSupportedLanguage = (value: unknown): value is "ja" | "en" =>
   value === "ja" || value === "en";
 
-Deno.serve(async (req: Request) => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -52,6 +50,11 @@ Deno.serve(async (req: Request) => {
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   // Authenticate as the calling user via their own JWT (never the service
   // role) so a test send can only ever target that user's own subscriptions.
+  // #834: lazy dynamic import (not a static top-level import) so importing
+  // this module in tests doesn't require network access to esm.sh just to
+  // resolve a handler that never reaches this line (e.g. preflight/auth
+  // tests) — matches the pattern already used by subscribe-push/image-proxy.
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -106,6 +109,12 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // #834: lazy dynamic import — this package (via http_ece) reads
+  // process.env.ECE_KEYLOG at module top level, which would require
+  // --allow-env just to import this module in tests (e.g. preflight/auth
+  // tests that never reach this line). A static top-level import would fail
+  // in real CI too, since `deno test` there runs without --allow-env.
+  const { default: webpush } = await import("npm:web-push@3");
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
   const results = await Promise.allSettled(
@@ -145,4 +154,6 @@ Deno.serve(async (req: Request) => {
   return new Response(JSON.stringify({ ok: true, sent: summary.sent, failed: summary.failed }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-});
+};
+
+if (import.meta.main) Deno.serve(handler);

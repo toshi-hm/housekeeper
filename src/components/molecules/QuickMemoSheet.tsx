@@ -34,12 +34,25 @@ export const QuickMemoSheet = ({
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const onCloseRef = useRef(onClose);
+  const isSubmittingRef = useRef(isSubmitting);
 
   // シートが開くたびに、その時点の item.notes を初期値としてリセットする（prop 変化時の state 調整）
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) setNotes(initialNotes);
   }
+
+  // 最新のonClose/isSubmittingをrefに保持する（#898）。下のフォーカストラップ
+  // 用useEffectの依存配列を[open]のみにするための同期で、呼び出し側が毎レンダー
+  // 新しいonCloseを渡しても（React Queryのバックグラウンド再取得起因の親再レンダー
+  // 等）フォーカストラップが不要に再実行されフォーカスを奪い直すことがなくなる
+  // （useDialogA11yと同じ手法、docs/specs/accessibility.md「Focus trap / modal
+  // dialogs」参照）。
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    isSubmittingRef.current = isSubmitting;
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -67,7 +80,7 @@ export const QuickMemoSheet = ({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isSubmitting) onClose();
+      if (e.key === "Escape" && !isSubmittingRef.current) onCloseRef.current();
       if (e.key !== "Tab") return;
 
       const focusable = Array.from(
@@ -97,7 +110,7 @@ export const QuickMemoSheet = ({
       }
       previouslyFocused?.focus();
     };
-  }, [open, isSubmitting, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

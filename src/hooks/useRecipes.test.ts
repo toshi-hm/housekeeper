@@ -266,6 +266,58 @@ describe("executeRecipe", () => {
     // Blocked before ever calling consumeItem.
     expect(callLog.some((c) => c.method === "limit")).toBe(false);
   });
+
+  test("ロット未作成アイテムが同一item_idで複数行にある場合、2行目は1行目の消費結果を踏まえて計算する(#896)", async () => {
+    // 醤油(units=5, ロット無し=no-lotsフォールバック経路)が同一レシピに
+    // amount=2 / amount=1 の2行で登場するケース。2行目は「開始時点のスナップ
+    // ショット(units=5)」ではなく「1行目消費後の状態(units=3)」を起点に計算
+    // されなければならない: 5 -> (2消費) -> 3 -> (1消費) -> 2。
+    // 起点を誤ると 5 -> (2消費) -> 3 のはずが古い5から計算され units=4 になり、
+    // 1行目分の消費が2行目の更新で上書きされて消えてしまう。
+    const recipe = makeRecipe({
+      items: [
+        { id: "ri-1", recipe_id: "recipe-1", item_id: "item-1", amount: 2, created_at: "" },
+        { id: "ri-2", recipe_id: "recipe-1", item_id: "item-1", amount: 1, created_at: "" },
+      ],
+    });
+    const itemsById = {
+      "item-1": makeItem({ id: "item-1", units: 5, content_amount: 1, opened_remaining: null }),
+    };
+    responseQueues.item_lots = [
+      { data: [], error: null }, // pre-check FEFO fetch (合算required=3として判定)
+      { data: [], error: null }, // 1行目 consumeItem の item_lots select
+      { data: [], error: null }, // 2行目 consumeItem の item_lots select
+    ];
+    // no-lotsフォールバック経路は update の後、maybeAutoReorder (#733) が
+    // items.select(...).maybeSingle() を挟んでから最終 re-select を行う。
+    // auto_reorder が無い(falsy)行を返せば、maybeAutoReorder はそれ以上
+    // クエリを発行せず早期returnする。
+    responseQueues.items = [
+      { data: null, error: null }, // 1行目 update
+      { data: null, error: null }, // 1行目 maybeAutoReorder select (auto_reorder無し→即return)
+      { data: makeItem({ id: "item-1", units: 3 }), error: null }, // 1行目 re-select
+      { data: null, error: null }, // 2行目 update
+      { data: null, error: null }, // 2行目 maybeAutoReorder select
+      { data: makeItem({ id: "item-1", units: 2 }), error: null }, // 2行目 re-select
+    ];
+    responseQueues.consumption_logs = [
+      { data: null, error: null },
+      { data: null, error: null },
+    ];
+
+    const result = await executeRecipe({ recipe, itemsById });
+
+    expect(result.status).toBe("executed");
+    expect(result.consumedItemIds).toEqual(["item-1", "item-1"]);
+    expect(result.failedItemIds).toEqual([]);
+
+    const itemUpdates = callLog.filter((c) => c.table === "items" && c.method === "update");
+    expect(itemUpdates).toHaveLength(2);
+    expect((itemUpdates[0]!.args[0] as { units: number }).units).toBe(3);
+    // 2行目の更新は1行目消費後の units=3 を起点にした結果(units=2)である必要が
+    // ある。ここが古いスナップショット(units=5)から計算されていると4になる。
+    expect((itemUpdates[1]!.args[0] as { units: number }).units).toBe(2);
+  });
 });
 
 describe("useExecuteRecipe", () => {

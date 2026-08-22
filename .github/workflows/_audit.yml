@@ -19,5 +19,19 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run bun audit
-        run: bun audit
+        id: audit
+        # #836: `bun audit` currently exits 0 even when it finds vulnerabilities
+        # (only network/parse failures make it non-zero), so continue-on-error
+        # here is mainly a guard against those. The important part is that the
+        # findings themselves were previously only visible in raw step logs —
+        # write them to the Job Summary too so they're not silently missed.
+        run: |
+          echo "## bun audit" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          set +e
+          bun audit 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          exit_code=${PIPESTATUS[0]}
+          set -e
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "$exit_code"
         continue-on-error: true

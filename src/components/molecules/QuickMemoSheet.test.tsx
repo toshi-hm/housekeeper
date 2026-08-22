@@ -170,4 +170,35 @@ describe("QuickMemoSheet", () => {
     expect(document.activeElement).toBe(trigger);
     trigger.remove();
   });
+
+  it("does not re-run the focus trap (and steal focus back) when the parent re-renders with a new onClose while open stays true (#898)", () => {
+    const { getByRole, rerender } = render(
+      <QuickMemoSheet
+        open={true}
+        itemName="牛乳"
+        initialNotes=""
+        onSave={() => {}}
+        onClose={() => {}}
+      />,
+      { wrapper },
+    );
+    const cancelButton = getByRole("button", { name: CANCEL_NAME });
+    cancelButton.focus();
+    expect(document.activeElement).toBe(cancelButton);
+
+    // React QueryのバックグラウンドrefetchなどによるQuickMemoSheet自体とは無関係な
+    // 親の再レンダーを模倣: open は変わらないが onClose は新しいクロージャになる。
+    rerender(
+      <QuickMemoSheet
+        open={true}
+        itemName="牛乳"
+        initialNotes=""
+        onSave={() => {}}
+        onClose={() => {}}
+      />,
+    );
+
+    // フォーカストラップが不要に再実行されていれば textarea へ再フォーカスされてしまう
+    expect(document.activeElement).toBe(cancelButton);
+  });
 });

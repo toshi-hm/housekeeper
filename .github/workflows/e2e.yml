@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   e2e:
@@ -39,3 +40,31 @@ jobs:
           name: playwright-report-${{ github.sha }}
           path: playwright-report/
           retention-days: 7
+
+      # #816: playwright.config.ts の json reporter 出力からリトライが
+      # 発生した(または最終的に失敗した) specを抽出し、傾向を可視化する。
+      - name: Extract flaky spec report
+        id: flaky
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "comment<<FLAKY_REPORT_EOF"
+            bun run report:flaky
+            echo "FLAKY_REPORT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post or update flaky spec comment
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.flaky.outputs.comment != '' }}
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: e2e-flaky-report
+          message: ${{ steps.flaky.outputs.comment }}
+
+      # 前回の実行でリトライが発生していても、今回無ければ古いレポートを
+      # 残さず消す（貼りっぱなしで古い結果を誤読させないため）。
+      - name: Remove stale flaky spec comment
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.flaky.outputs.comment == '' }}
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: e2e-flaky-report
+          delete: true
