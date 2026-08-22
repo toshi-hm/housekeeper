@@ -34,6 +34,18 @@ export const AutoAdded: Story = {
   },
 };
 
+export const WithCheapestStoreHint: Story = {
+  args: {
+    id: "1c",
+    name: "牛乳",
+    desiredUnits: 1,
+    cheapestStore: { storeName: "○○スーパー", unitPrice: 248 },
+    onPurchase: () => {},
+    onDelete: () => {},
+    onEdit: () => {},
+  },
+};
+
 export const WithNote: Story = {
   args: {
     id: "2",

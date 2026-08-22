@@ -6,6 +6,11 @@ import { Spinner } from "@/components/atoms/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+interface CheapestStoreHint {
+  storeName: string;
+  unitPrice: number;
+}
+
 interface ShoppingRowProps {
   id: string;
   name: string;
@@ -14,6 +19,9 @@ interface ShoppingRowProps {
   isPurchased?: boolean;
   /** auto_reorder が有効なアイテムの消費によって自動追加された行かどうか (#353) */
   isAutoAdded?: boolean;
+  /** 過去に複数店舗で購入履歴がある場合の最安店舗・単価（#697の集計を再利用、#854）。
+   *  比較対象データが無い場合は表示しない。 */
+  cheapestStore?: CheapestStoreHint | null;
   isEditing?: boolean;
   isSaving?: boolean;
   onPurchase?: (id: string) => void;
@@ -33,6 +41,7 @@ export const ShoppingRow = ({
   note,
   isPurchased,
   isAutoAdded,
+  cheapestStore,
   isEditing,
   isSaving,
   onPurchase,
@@ -168,6 +177,14 @@ export const ShoppingRow = ({
           {t("desiredUnits")}: {desiredUnits}
           {note && ` · ${note}`}
         </p>
+        {cheapestStore && (
+          <p className="text-xs text-muted-foreground">
+            {t("cheapestStoreHint", {
+              storeName: cheapestStore.storeName,
+              price: cheapestStore.unitPrice.toLocaleString(),
+            })}
+          </p>
+        )}
       </div>
       <div className="flex shrink-0 gap-1">
         {!isPurchased && onPurchase && (
