@@ -88,6 +88,11 @@ export const upsertMealPlan = async (input: UpsertMealPlanInput): Promise<MealPl
     return null;
   }
 
+  // #872: 実行済み枠の割当（レシピ/メモ）を変更する場合、変更後の内容は
+  // 実際に消費した内容と食い違うため、executed_at は一緒にクリアする
+  // （確認ダイアログの「実行記録だけが失われます」という案内を、解除だけで
+  // なく変更でも実態と一致させる）。新規割当・未実行枠では executed_at は
+  // 元々 null のため、常にクリアしても副作用はない。
   const { data, error } = await supabase
     .from("meal_plans")
     .upsert(
@@ -96,6 +101,7 @@ export const upsertMealPlan = async (input: UpsertMealPlanInput): Promise<MealPl
         planned_date: input.planned_date,
         recipe_id: input.recipe_id ?? null,
         note: input.note ?? null,
+        executed_at: null,
       },
       { onConflict: "user_id,planned_date" },
     )

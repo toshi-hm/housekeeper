@@ -178,6 +178,12 @@ end $$;
 設定ページの「データのエクスポート」の隣に「データのインポート（復元）」
 セクションを設ける。
 
+- 未実行リマインダー（#815）: `user_settings.last_backup_export_at`（JSONエクスポート成功時に
+  更新）が `BACKUP_EXPORT_REMINDER_DAYS`（30日、`src/types/item.ts`）以上未実行（一度も
+  実行していない場合はアカウント作成日 `user_settings.created_at` を起点）の場合、
+  ダッシュボードにリマインダーバナーを表示し設定画面へ誘導する（`isBackupExportOverdue`
+  純関数、CSVエクスポートは対象外・インポート可能なJSONエクスポートのみが対象）。
+
 - 入力は `itemsToJSON` が生成した JSON のみ受け付ける（Zod でパース・検証。
   壊れたJSON/想定外の形式は理由別のエラートーストで拒否する）。現行の
   version 2（アイテムごとに `lots` 配列を持つ）を優先してパースし、失敗したら

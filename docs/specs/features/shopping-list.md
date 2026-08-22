@@ -7,7 +7,12 @@
 
 `items.auto_reorder = true` のアイテムは、消費操作（`consumeLot` / 全消費）の結果
 `units` が `reorder_threshold`（NULL の場合は 0）以下になったタイミングで、
-重複がなければ自動的に shopping list へ追加される（#353）。
+重複がなければ自動的に shopping list へ追加される（#353）。加えて、
+`items.reorder_lead_days` を設定したアイテムは、個数がしきい値を超えていても
+消費ペース予測（`computeConsumptionPaceForecast`）の予測残日数がこの日数以下に
+なった時点でも自動追加される（`reorder_threshold` とは独立したOR条件、#853。
+減りが速いアイテムを個数の減りを待たずに拾うための補完で、未設定なら従来通り
+個数しきい値のみで判定する）。
 
 ## ユーザーストーリー
 
@@ -76,8 +81,12 @@
 
 - `items.auto_reorder`（boolean, default false）と `items.reorder_threshold`（int, nullable）で制御する
 - トリガー元: `consumeLot`（`src/hooks/useItemLots.ts`）・`bulkConsumeItems`（`src/hooks/useItems.ts` の全消費）
-- 判定: 消費後に対象アイテムを再取得し、`auto_reorder = true` かつ
-  `units <= (reorder_threshold ?? 0)` なら追加対象
+- 判定: 消費後に対象アイテムを再取得し、`auto_reorder = true` かつ次の**いずれか**を満たせば追加対象
+  1. `units <= (reorder_threshold ?? 0)`（個数しきい値）
+  2. `items.reorder_lead_days`（int, nullable、#853）が設定されていて、直近30日の
+     `consumption_logs` から `computeConsumptionPaceForecast`（`src/types/stats.ts`）で
+     算出した予測残日数がその値以下（消費ペース予測。個数条件を満たしている場合は
+     ログ取得自体を行わない）
 - 重複防止: 追加前に既存 `planned` 行を `findDuplicatePlannedItem`（同一 `linked_item_id`、
   または同名）で確認し、一致する行があれば新規行を作らず `desired_units` をインクリメントして
   統合する（#829: 自由入力済みの同名手動行と別行に分裂していた問題の修正）。統合ロジックは
@@ -88,6 +97,10 @@
 - UI: 自動追加時に `shopping_list_items.auto_added = true` を保存し、その行だけに
   `ShoppingRow` の「🔁 自動追加」バッジを表示する。現在のitem設定から推測しないため、
   手動補充の誤表示や設定変更後の表示変化を起こさない
+- 店舗別価格ヒント: `linked_item_id` を持つ行について、店舗別価格比較（`useStorePriceComparisons`、
+  #697、`docs/specs/features/stats.md`）に2店舗以上のデータがあれば `ShoppingRow` に
+  「◯◯店が最安（¥X）」を小さく表示する。新規テーブル・Edge Functionは追加せず、既存の集計を
+  買い物リスト画面から参照するのみ（#854）
 
 ## バリデーション
 

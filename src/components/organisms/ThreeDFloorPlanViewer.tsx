@@ -2,16 +2,33 @@ import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useTranslation } from "react-i18next";
 
-import type { FloorPlanDocument, FloorPlanStorageLocationMarker } from "@/types/floorPlan";
-import type { StorageLocation } from "@/types/item";
+import type {
+  FloorPlanDocument,
+  FloorPlanItemPlacement,
+  FloorPlanStorageLocationMarker,
+} from "@/types/floorPlan";
+import type { Item, StorageLocation } from "@/types/item";
 
 interface ThreeDFloorPlanViewerProps {
   document: FloorPlanDocument;
   storageLocationMarkers?: FloorPlanStorageLocationMarker[];
   storageLocations?: StorageLocation[];
+  placements?: FloorPlanItemPlacement[];
+  items?: Item[];
+  highlightedItemId?: string | null;
+  onItemClick?: (itemId: string) => void;
 }
 
-const FloorPlanScene = ({ document, storageLocationMarkers = [] }: ThreeDFloorPlanViewerProps) => (
+const itemById = (items: Item[]): Map<string, Item> =>
+  new Map(items.map((item) => [item.id, item]));
+
+const FloorPlanScene = ({
+  document,
+  storageLocationMarkers = [],
+  placements = [],
+  highlightedItemId = null,
+  onItemClick,
+}: ThreeDFloorPlanViewerProps) => (
   <>
     <ambientLight intensity={1.5} />
     <directionalLight position={[200, 400, 200]} intensity={2} />
@@ -55,6 +72,26 @@ const FloorPlanScene = ({ document, storageLocationMarkers = [] }: ThreeDFloorPl
         <meshStandardMaterial color="#f97316" />
       </mesh>
     ))}
+    {placements.map((placement) => {
+      const isHighlighted = placement.item_id === highlightedItemId;
+      return (
+        <mesh
+          key={placement.id}
+          position={[placement.x, 16, placement.y]}
+          onClick={
+            onItemClick
+              ? (event) => {
+                  event.stopPropagation();
+                  onItemClick(placement.item_id);
+                }
+              : undefined
+          }
+        >
+          <coneGeometry args={[14, 32, 16]} />
+          <meshStandardMaterial color={isHighlighted ? "#dc2626" : "#2563eb"} />
+        </mesh>
+      );
+    })}
     <OrbitControls target={[document.width / 2, 0, document.height / 2]} />
   </>
 );
@@ -63,8 +100,13 @@ export const ThreeDFloorPlanViewer = ({
   document,
   storageLocationMarkers = [],
   storageLocations = [],
+  placements = [],
+  items = [],
+  highlightedItemId = null,
+  onItemClick,
 }: ThreeDFloorPlanViewerProps) => {
   const { t } = useTranslation("common");
+  const itemsById = itemById(items);
   return (
     <div className="space-y-2">
       <div className="h-[min(70vh,32rem)] min-h-72 overflow-hidden rounded-lg border bg-slate-100">
@@ -72,7 +114,13 @@ export const ThreeDFloorPlanViewer = ({
           camera={{ position: [document.width / 2, document.height, document.height], fov: 45 }}
           fallback={<p className="p-4 text-sm text-muted-foreground">{t("map3dFallback")}</p>}
         >
-          <FloorPlanScene document={document} storageLocationMarkers={storageLocationMarkers} />
+          <FloorPlanScene
+            document={document}
+            storageLocationMarkers={storageLocationMarkers}
+            placements={placements}
+            highlightedItemId={highlightedItemId}
+            onItemClick={onItemClick}
+          />
         </Canvas>
       </div>
       {storageLocationMarkers.length > 0 && (
@@ -83,6 +131,24 @@ export const ThreeDFloorPlanViewer = ({
                 ?.name ?? t("mapUnknownStorageLocation")}
             </li>
           ))}
+        </ul>
+      )}
+      {placements.length > 0 && (
+        <ul className="divide-y rounded-lg border" aria-label={t("mapPlacedItems")}>
+          {placements.map((placement) => {
+            const item = itemsById.get(placement.item_id);
+            return (
+              <li key={placement.id}>
+                <button
+                  type="button"
+                  className="w-full p-3 text-left text-sm hover:bg-muted/50"
+                  onClick={onItemClick ? () => onItemClick(placement.item_id) : undefined}
+                >
+                  {item?.name ?? t("mapUnknownItem")}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
       <p className="text-xs text-muted-foreground">{t("map3dHelp")}</p>

@@ -38,6 +38,7 @@ import {
   useShoppingTemplates,
 } from "@/hooks/useShoppingTemplates";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
+import { useStorePriceComparisons } from "@/hooks/useStats";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { OfflineError } from "@/lib/requireOnline";
 import {
@@ -224,11 +225,15 @@ const ShoppingPage = () => {
     pendingPurchaseImageUrlRef.current = null;
   };
 
-  const handlePurchase = async (values: ItemFormValues) => {
+  const handlePurchase = async (values: ItemFormValues, applyMergeFields: boolean) => {
     if (!pendingPurchaseId) return;
     const id = pendingPurchaseId;
     try {
-      const newItem = await purchase.mutateAsync({ shoppingItemId: id, itemValues: values });
+      const newItem = await purchase.mutateAsync({
+        shoppingItemId: id,
+        itemValues: values,
+        applyMergeFields,
+      });
 
       // 購入で作成したアイテムに、ダイアログで選択された画像をアップロードする (#453)。
       // NewItemPage と同じく、アイテム作成後に itemId 指定で uploadItemImage する。
@@ -343,9 +348,36 @@ const ShoppingPage = () => {
     }
   };
 
+  // #830: 購入ダイアログを開いている対象の shopping_list_items 行（名前・
+  // linked_item_id の参照に使う）
+  const pendingPurchaseShoppingItem = plannedItems.find((i) => i.id === pendingPurchaseId);
+  // #830 / #879セルフレビュー: linked_item_id で既存アイテムへ統合されることが
+  // 事前に分かる場合のみ、フォームに既存値を初期表示する。inventoryItems は
+  // アクティブなアイテムのみを保持している（ソフトデリート済みへの復活統合は
+  // このページで未取得のため対象外、この場合はフォームは従来通り空欄で始まる）。
+  // バーコード一致による統合は購入完了時にしか判明しないため同様に対象外。
+  // この値が non-null のときだけ items 側の update へフォーム入力を反映する
+  // (`applyMergeFields`)。プリフィルされていないパスで反映すると、空欄を
+  // そのまま書き込んで既存のカテゴリ/保管場所/メモ等を消してしまうため。
+  const pendingPurchaseExistingItem = pendingPurchaseShoppingItem?.linked_item_id
+    ? (inventoryItems.find((i) => i.id === pendingPurchaseShoppingItem.linked_item_id) ?? null)
+    : null;
+
   // linked_item_id → カテゴリを解決するためのマップを構築する
   const itemCategoryIdMap = new Map(inventoryItems.map((i) => [i.id, i.category_id ?? null]));
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
+  // linked_item_id → 最安店舗（#697の集計を再利用、#854）。stores は安い順に
+  // ソート済みのため先頭が最安値。
+  const { data: storePriceComparisons = [] } = useStorePriceComparisons();
+  const cheapestStoreByItemId = new Map(
+    storePriceComparisons
+      .filter((c) => c.stores.length > 0)
+      .map((c) => [c.itemId, c.stores[0]] as const),
+  );
+  const resolveCheapestStore = (shoppingItem: ShoppingItem) =>
+    shoppingItem.linked_item_id
+      ? (cheapestStoreByItemId.get(shoppingItem.linked_item_id) ?? null)
+      : null;
   const resolveCategory: CategoryResolver = (shoppingItem) => {
     if (!shoppingItem.linked_item_id) return null;
     const categoryId = itemCategoryIdMap.get(shoppingItem.linked_item_id);
@@ -367,6 +399,7 @@ const ShoppingPage = () => {
       note={item.note}
       isPurchased={item.status === "purchased"}
       isAutoAdded={item.auto_added}
+      cheapestStore={resolveCheapestStore(item)}
       isEditing={editId === item.id}
       isSaving={savingId === item.id}
       onPurchase={
@@ -415,9 +448,10 @@ const ShoppingPage = () => {
       {pendingPurchaseId && (
         <PurchaseDialog
           open={!!pendingPurchaseId}
-          itemName={plannedItems.find((i) => i.id === pendingPurchaseId)?.name}
+          itemName={pendingPurchaseShoppingItem?.name}
+          existingItem={pendingPurchaseExistingItem}
           onSubmit={(values) => {
-            void handlePurchase(values);
+            void handlePurchase(values, !!pendingPurchaseExistingItem);
           }}
           onClose={() => {
             if (!purchase.isPending) {

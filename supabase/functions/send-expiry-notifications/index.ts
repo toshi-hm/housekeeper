@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import webpush from "npm:web-push@3";
 import { fetchAllPages } from "../_shared/pagination.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { zonedDateString, zonedNow } from "./date.ts";
@@ -86,7 +84,7 @@ const EXPIRY_NOTIFICATION_TEXT: Record<
 const isSupportedLanguage = (value: unknown): value is "ja" | "en" =>
   value === "ja" || value === "en";
 
-Deno.serve(async (req: Request) => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -103,6 +101,11 @@ Deno.serve(async (req: Request) => {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const resendFrom = Deno.env.get("RESEND_FROM_ADDRESS") ?? "housekeeper <noreply@example.com>";
 
+  // #834: lazy dynamic import (not a static top-level import) so importing
+  // this module in tests doesn't require network access to esm.sh just to
+  // resolve a handler that never reaches this line (e.g. preflight/cron-auth
+  // tests) — matches the pattern already used by subscribe-push/image-proxy.
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   // pg_cron からの定期実行（?scheduled=true）では、ユーザーごとの notify_at を
@@ -228,6 +231,13 @@ Deno.serve(async (req: Request) => {
         const vapidSubject = Deno.env.get("VAPID_SUBJECT");
 
         if (vapidPublicKey && vapidPrivateKey && vapidSubject) {
+          // #834: lazy dynamic import — this package (via http_ece) reads
+          // process.env.ECE_KEYLOG at module top level, which would require
+          // --allow-env just to import this module in tests (e.g.
+          // preflight/cron-auth tests that never reach this line). A static
+          // top-level import would fail in real CI too, since `deno test`
+          // there runs without --allow-env.
+          const { default: webpush } = await import("npm:web-push@3");
           webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
           const { data: subs, error: subsError } = await supabase
@@ -324,4 +334,6 @@ Deno.serve(async (req: Request) => {
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
-});
+};
+
+if (import.meta.main) Deno.serve(handler);
