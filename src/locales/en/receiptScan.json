@@ -20,6 +20,7 @@
   "reviewEmpty": "No rows to register",
   "scanError": "Couldn't recognize the receipt. Please add items manually.",
   "scanning": "Analyzing the receipt…",
+  "storeNameHint": "The store name read from the receipt. It applies to every registered item. Edit it if needed.",
   "subtitle": "Take a photo of your receipt to register the purchased items in bulk",
   "timeout": "The scan timed out. Please try again.",
   "title": "Register from Receipt",
