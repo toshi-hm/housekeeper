@@ -13,6 +13,7 @@
     "check": "bun run lint && bun run typecheck",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "report:flaky": "bun run scripts/report-flaky-specs.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test-storybook": "test-storybook",
