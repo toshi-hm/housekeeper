@@ -257,6 +257,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           minimum_stock: item.minimum_stock ?? null,
           auto_reorder: item.auto_reorder ?? false,
           reorder_threshold: item.reorder_threshold ?? null,
+          reorder_lead_days: item.reorder_lead_days ?? null,
         }}
         onSubmit={(values) => {
           void handleSubmit(values);
