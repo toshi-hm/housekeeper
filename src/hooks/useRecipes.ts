@@ -219,6 +219,16 @@ export const executeRecipe = async ({
   const failedItemIds: string[] = [];
   let logInsertFailed = false;
 
+  // consumeItem の戻り値（消費後の最新item）で都度更新していく作業用コピー。
+  // #896: 同一 item_id がレシピ内に複数回登場する場合、2行目以降は呼び出し開始時
+  // の itemsById スナップショットではなく、1行目の消費結果を踏まえた最新状態を
+  // 起点に計算しないと、no-lots フォールバック（consumeItem内の直接 items.update
+  // 経路）で1行目分の減算が2行目の更新に上書きされてしまう。ロットベース経路は
+  // consumeLotFn が毎回 item_lots を再取得するため元々この問題は起きないが、
+  // consumeItem は両経路とも最終的に最新の items 行を再取得して返すため、ここで
+  // 一律に更新しても害はない。
+  const currentItemsById: Record<string, Item | undefined> = { ...itemsById };
+
   // 1件ずつ順番に処理する（同一アイテムが複数回登場するケースでもロット競合を
   // 起こさず、テストからも呼び出し順を検証しやすいため並列化しない）。
   for (const recipeItem of recipe.items) {
@@ -226,7 +236,7 @@ export const executeRecipe = async ({
       skippedItemIds.push(recipeItem.item_id);
       continue;
     }
-    const item = itemsById[recipeItem.item_id];
+    const item = currentItemsById[recipeItem.item_id];
     if (!item) {
       skippedItemIds.push(recipeItem.item_id);
       continue;
@@ -234,6 +244,7 @@ export const executeRecipe = async ({
     try {
       requireOnline();
       const result = await consumeItem({ item, deltaAmount: recipeItem.amount });
+      currentItemsById[recipeItem.item_id] = result;
       consumedItemIds.push(recipeItem.item_id);
       if (result._logInsertFailed) logInsertFailed = true;
     } catch {
