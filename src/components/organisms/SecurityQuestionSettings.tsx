@@ -11,6 +11,7 @@ import {
   SECURITY_QUESTION_IDS,
   securityQuestionFormSchema,
   securityQuestionLabelKey,
+  zodIssuesToFieldErrors,
 } from "@/lib/auth";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
@@ -46,9 +47,7 @@ export const SecurityQuestionSettings = () => {
       securityAnswer: answer,
     });
     if (!result.success) {
-      const errs: Record<string, string> = {};
-      for (const issue of result.error.issues) errs[issue.path[0] as string] = t(issue.message);
-      setFieldErrors(errs);
+      setFieldErrors(zodIssuesToFieldErrors(result.error.issues, t));
       return;
     }
 

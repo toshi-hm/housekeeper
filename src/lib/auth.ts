@@ -80,6 +80,24 @@ export const signupSchema = z
 // Utilities
 // ---------------------------------------------------------------------------
 
+/**
+ * `schema.safeParse()` が失敗した際の `ZodError.issues` を、フォームの
+ * `fieldErrors`（`Record<フィールド名, 表示用メッセージ>`）へ変換する。
+ * `SecurityQuestionSettings`（#850）のフォームエラー変換に使う。
+ * `LoginPage` にも同型のインライン実装が残っている（ログイン/サインアップ）。
+ *
+ * `issue.message` にはi18nキーが入っている（各スキーマの `min()`/`refine()`
+ * 参照）ので、呼び出し側の `t` に通してから格納する。
+ */
+export const zodIssuesToFieldErrors = (
+  issues: readonly { path: PropertyKey[]; message: string }[],
+  t: (key: string) => string,
+): Record<string, string> => {
+  const errs: Record<string, string> = {};
+  for (const issue of issues) errs[issue.path[0] as string] = t(issue.message);
+  return errs;
+};
+
 export const sha256hex = async (text: string): Promise<string> => {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf))
