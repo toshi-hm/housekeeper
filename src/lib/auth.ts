@@ -57,14 +57,20 @@ export const loginSchema = z.object({
   password: z.string().min(1, "passwordRequired"),
 });
 
+// サインアップフォームと設定画面（秘密の質問の後付け設定、#850）の両方から使う
+// 質問・答えのバリデーション。
+export const securityQuestionFormSchema = z.object({
+  securityQuestion: z.string().min(1, "securityQuestionRequired"),
+  securityAnswer: z.string().min(1, "answerRequired"),
+});
+
 export const signupSchema = z
   .object({
     email: z.string().email("emailInvalid"),
     password: passwordSchema,
     confirmPassword: z.string(),
-    securityQuestion: z.string().min(1, "securityQuestionRequired"),
-    securityAnswer: z.string().min(1, "answerRequired"),
   })
+  .merge(securityQuestionFormSchema)
   .refine((d) => d.password === d.confirmPassword, {
     message: "confirmPasswordMismatch",
     path: ["confirmPassword"],
@@ -73,6 +79,24 @@ export const signupSchema = z
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
+
+/**
+ * `schema.safeParse()` が失敗した際の `ZodError.issues` を、フォームの
+ * `fieldErrors`（`Record<フィールド名, 表示用メッセージ>`）へ変換する。
+ * `SecurityQuestionSettings`（#850）のフォームエラー変換に使う。
+ * `LoginPage` にも同型のインライン実装が残っている（ログイン/サインアップ）。
+ *
+ * `issue.message` にはi18nキーが入っている（各スキーマの `min()`/`refine()`
+ * 参照）ので、呼び出し側の `t` に通してから格納する。
+ */
+export const zodIssuesToFieldErrors = (
+  issues: readonly { path: PropertyKey[]; message: string }[],
+  t: (key: string) => string,
+): Record<string, string> => {
+  const errs: Record<string, string> = {};
+  for (const issue of issues) errs[issue.path[0] as string] = t(issue.message);
+  return errs;
+};
 
 export const sha256hex = async (text: string): Promise<string> => {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
