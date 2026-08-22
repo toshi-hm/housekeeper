@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { compressImageForUpload } from "@/lib/imageCompress";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
-import type { ReceiptLineItem } from "@/types/receipt";
+import type { ReceiptLineItem, ReceiptScanResult } from "@/types/receipt";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 type ReceiptMimeType = (typeof ALLOWED_MIME_TYPES)[number];
@@ -14,6 +14,7 @@ const isReceiptMimeType = (type: string): type is ReceiptMimeType =>
 
 interface ReceiptScanSuccess {
   items: ReceiptLineItem[];
+  storeName: string | null;
 }
 
 /** `receipt-scan` が特定のエラー種別を返した場合に、UIが専用メッセージを
@@ -52,7 +53,7 @@ const fileToBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
-export const scanReceipt = async (file: File): Promise<ReceiptLineItem[]> => {
+export const scanReceipt = async (file: File): Promise<ReceiptScanResult> => {
   requireOnline();
   if (!isReceiptMimeType(file.type)) {
     throw new ReceiptScanError("unsupported_type");
@@ -77,7 +78,7 @@ export const scanReceipt = async (file: File): Promise<ReceiptLineItem[]> => {
     throw new ReceiptScanError("server_error");
   }
 
-  return data?.items ?? [];
+  return { items: data?.items ?? [], storeName: data?.storeName ?? null };
 };
 
 export const useReceiptScan = () => {

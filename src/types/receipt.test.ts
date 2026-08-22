@@ -122,4 +122,29 @@ describe("draftItemToFormValues", () => {
     const values = draftItemToFormValues(makeDraft({ quantity: 0.4 }));
     expect(values.units).toBe(1);
   });
+
+  test("carries the receipt-level store name into store_name", () => {
+    const values = draftItemToFormValues(makeDraft(), "○○スーパー");
+    expect(values.store_name).toBe("○○スーパー");
+  });
+
+  test("trims the store name", () => {
+    const values = draftItemToFormValues(makeDraft(), "  ○○スーパー  ");
+    expect(values.store_name).toBe("○○スーパー");
+  });
+
+  test("maps a whitespace-only store name to null", () => {
+    const values = draftItemToFormValues(makeDraft(), "   ");
+    expect(values.store_name).toBeNull();
+  });
+
+  test("maps a null store name to null", () => {
+    const values = draftItemToFormValues(makeDraft(), null);
+    expect(values.store_name).toBeNull();
+  });
+
+  test("maps an omitted store name to null", () => {
+    const values = draftItemToFormValues(makeDraft());
+    expect(values.store_name).toBeNull();
+  });
 });

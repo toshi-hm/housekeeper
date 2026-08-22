@@ -77,6 +77,7 @@ interface ReceiptScanRequest {
 // Response body
 interface ReceiptScanResponse {
   items: ReceiptLineItem[];
+  storeName: string | null; // レシート全体から抽出した店舗名（品目ごとではなく1レシート1店舗、#859）
 }
 
 interface ReceiptLineItem {
@@ -86,6 +87,9 @@ interface ReceiptLineItem {
   confidence: "high" | "low"; // 抽出信頼度。low の行はレビュー画面で強調表示する
 }
 ```
+
+- `storeName` はレシート上部のヘッダー（店名・ロゴ・チェーン名）から読み取る。品目ごとではなく
+  画像1枚（＝1レシート）につき1つだけ抽出し、読み取れない場合は `null` にする（#859）。
 
 - 画像1枚に対して1回のGemini呼び出し（複数レシートの合成・複数画像対応はスコープ外）。
 - 小計・合計・割引行・非商品行（ポイント表記等）はプロンプトで除外を指示する。完全な除外を
@@ -103,15 +107,18 @@ interface ReceiptLineItem {
 
 ### 3.2 フロントエンド（Atomic Design）
 
-| 区分     | コンポーネント       | 役割                                                                          |
-| -------- | -------------------- | ----------------------------------------------------------------------------- |
-| hook     | `useReceiptScan`     | `receipt-scan` を invoke、ローディング/エラー管理                             |
-| molecule | `ReceiptLineItemRow` | 抽出1行の編集UI（名前・数量・単価・カテゴリ・保管場所・期限日・除外チェック） |
-| organism | `ReceiptReviewPanel` | レビュー一覧全体（読み込み中/エラー/空状態、フッター固定の一括登録ボタン）    |
-| page     | `ReceiptScanPage`    | 撮影/選択 → 解析中 → レビュー、の3ステップを管理する新規ルート                |
+| 区分     | コンポーネント       | 役割                                                                                         |
+| -------- | -------------------- | -------------------------------------------------------------------------------------------- |
+| hook     | `useReceiptScan`     | `receipt-scan` を invoke、ローディング/エラー管理                                            |
+| molecule | `ReceiptLineItemRow` | 抽出1行の編集UI（名前・数量・単価・カテゴリ・保管場所・期限日・除外チェック）                |
+| organism | `ReceiptReviewPanel` | レビュー一覧全体（読み込み中/エラー/空状態、店舗名ヘッダー欄、フッター固定の一括登録ボタン） |
+| page     | `ReceiptScanPage`    | 撮影/選択 → 解析中 → レビュー、の3ステップを管理する新規ルート                               |
 
 - ルート: `/_auth/items/receipt-scan`（ダッシュボードの「追加」導線からエントリーポイントを
   1つ追加する。既存の「新規登録」「バーコード」と並ぶ第3の入口）。
+- `storeName` はレビュー画面の共通ヘッダー欄（品目ごとではない）として表示し、`ItemForm` の
+  店舗名入力欄と同じサジェスト（`useStoreNameSuggestions`）付きテキスト入力で編集できる。
+  一括登録時、この値を全行の `item_lots.store_name` に反映する（#859）。
 - 画像選択は既存 `ImageUploader` molecule のカメラ撮影パターンを流用（`capture="environment"`）。
 - 状態: Idle(撮影待ち) → Scanning(解析中、ローディング) → Review(編集) → Submitting(登録中) →
   Done（成功件数を表示して一覧に戻る）。
@@ -153,12 +160,12 @@ interface ReceiptLineItem {
   `useItemLots.ts`）をそのまま呼ぶ。バーコードは読み取らないため `barcode: null` で作成し、
   ユーザーは後から手動でバーコードを追加できる（既存動線をそのまま利用）。
 - 抽出した `unitPrice` は新規ロットの `unit_price` にそのまま渡す。
+- 抽出/編集した `storeName` は一括登録される全行の `item_lots.store_name` にそのまま渡す
+  （#697 の店舗別価格比較機能に、手入力なしでデータが貯まるようにする。#859）。
 
 ## 6. やらないこと（スコープ外）
 
 - レシート画像の永続保存・後からの再閲覧
-- 店舗名の自動抽出（店舗名手入力は #697 のスコープ。将来 #697 が実装されたら
-  レビュー画面に店舗名フィールドを追加する形で統合できる）
 - 複数レシート/複数画像のバッチ解析
 - 抽出精度のユーザー訂正を学習に反映する仕組み（本プロジェクトはGemini API利用のみで
   独自モデル学習は行わない）

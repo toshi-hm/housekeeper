@@ -2,6 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { AuthContext, type AuthContextValue } from "@/lib/auth-context";
+import { persister, queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 
 // #828: リフレッシュトークンの失効時、supabase-jsは自動的にセッションを破棄して
@@ -35,8 +36,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
 
-      if (event === "SIGNED_OUT" && !isPublicPath(router.state.location.pathname)) {
-        void router.navigate({ to: "/login" });
+      if (event === "SIGNED_OUT") {
+        // 前ユーザーの在庫・個人情報がTanStack Queryのキャッシュ、および
+        // IndexedDBへ永続化された分（24h保持、src/lib/queryClient.ts）に
+        // 残ったまま次のログインユーザーへ表示されるのを防ぐ。
+        queryClient.clear();
+        void persister.removeClient();
+
+        if (!isPublicPath(router.state.location.pathname)) {
+          void router.navigate({ to: "/login" });
+        }
       }
     });
 
