@@ -1,4 +1,4 @@
-import { normalizeLineItem, isValidReceiptScanResult } from "./validation.ts";
+import { normalizeLineItem, normalizeStoreName, isValidReceiptScanResult } from "./validation.ts";
 import type {
   GeminiReceiptResult,
   GeminiRequest,
@@ -24,6 +24,9 @@ const SYSTEM_PROMPT = `あなたはレシート画像から購入品目を抽出
 - confidenceは、商品名・価格の読み取りに自信がある場合は"high"、文字が不鮮明・レシートの
   一部が欠けている等で自信が無い場合は"low"にする。
 - レシートが読み取れない、または商品行が1つも無い場合は items を空配列にする。
+- storeNameは、レシート上部のヘッダー（店名・ロゴ・チェーン名の記載）から読み取れる
+  店舗名を1つだけ返す。品目ごとではなくレシート全体で1つ。読み取れない・記載が無い場合は
+  nullにする。
 - 必ず指定のJSONスキーマで返し、それ以外のテキストは含めないこと。`;
 
 const RESPONSE_SCHEMA = {
@@ -42,8 +45,9 @@ const RESPONSE_SCHEMA = {
         required: ["name", "quantity", "unitPrice", "confidence"],
       },
     },
+    storeName: { type: "string", nullable: true },
   },
-  required: ["items"],
+  required: ["items", "storeName"],
 };
 
 export const buildGeminiRequestBody = (
@@ -124,7 +128,10 @@ export const queryGeminiReceiptScan = async (
       return { kind: "error" };
     }
 
-    const response: ReceiptScanResponse = { items: parsed.items.map(normalizeLineItem) };
+    const response: ReceiptScanResponse = {
+      items: parsed.items.map(normalizeLineItem),
+      storeName: normalizeStoreName(parsed.storeName),
+    };
     console.log("[receipt-scan] Gemini success:", GEMINI_MODEL, "items:", response.items.length);
     return { kind: "ok", data: response };
   } catch (err) {
