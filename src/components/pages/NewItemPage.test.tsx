@@ -213,9 +213,15 @@ describe("NewItemPage - location suggestion wiring (#814)", () => {
   it("enables location suggestion on the new-item form", () => {
     render(<NewItemPage />, { wrapper: Wrapper });
 
-    expect(itemFormSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ enableLocationSuggestion: true }),
-    );
+    // #814: toHaveBeenCalledWith(expect.objectContaining(...)) against the
+    // full ItemForm props object (which includes React elements, refs, and
+    // closures via extraFields/onSubmit/etc.) makes bun:test's matcher hang
+    // while formatting/diffing the call — read the one prop we care about
+    // directly from the mock's recorded call args instead.
+    const lastCallProps = itemFormSpy.mock.calls.at(-1)?.[0] as
+      | { enableLocationSuggestion?: boolean }
+      | undefined;
+    expect(lastCallProps?.enableLocationSuggestion).toBe(true);
   });
 });
 
