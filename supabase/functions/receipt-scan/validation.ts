@@ -28,10 +28,16 @@ const isValidLineItem = (item: unknown): item is ReceiptLineItem => {
   );
 };
 
-export const isValidReceiptScanResult = (data: unknown): data is { items: ReceiptLineItem[] } => {
+export const isValidReceiptScanResult = (
+  data: unknown,
+): data is { items: ReceiptLineItem[]; storeName: string | null } => {
   if (!data || typeof data !== "object") return false;
   const d = data as Record<string, unknown>;
-  return Array.isArray(d.items) && d.items.every(isValidLineItem);
+  return (
+    Array.isArray(d.items) &&
+    d.items.every(isValidLineItem) &&
+    (d.storeName === null || d.storeName === undefined || typeof d.storeName === "string")
+  );
 };
 
 /**
@@ -45,3 +51,13 @@ export const normalizeLineItem = (item: ReceiptLineItem): ReceiptLineItem => ({
   unitPrice: item.unitPrice !== null && item.unitPrice >= 0 ? Math.round(item.unitPrice) : null,
   confidence: item.confidence,
 });
+
+/**
+ * 店舗名はレシート全体で1つ（品目ごとではない）。空白のみ・未読み取りは
+ * null に正規化する（#859）。
+ */
+export const normalizeStoreName = (storeName: string | null | undefined): string | null => {
+  if (typeof storeName !== "string") return null;
+  const trimmed = storeName.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};

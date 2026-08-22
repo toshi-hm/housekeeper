@@ -443,15 +443,22 @@ create table notification_preferences (
 create table push_subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  endpoint text not null unique,
+  endpoint text not null,
   p256dh text not null,
   auth text not null,
   user_agent text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (user_id, endpoint)
 );
 
 create index push_subscriptions_user_idx on push_subscriptions(user_id);
 ```
+
+`endpoint` は `user_id` との複合ユニーク（グローバルユニークではない）。同一端末・同一ブラウザを
+複数ユーザーが共用する場合、`registration.pushManager.subscribe()` は同じ `endpoint` を返すため、
+別ユーザーがそのendpointで再購読すると `subscribe-push` Edge Function が旧ユーザーの行を削除してから
+自分の行をupsertする（同一デバイスの購読先は実質1ユーザーに紐づくため、旧ユーザー側は死んだ購読として
+扱う。#826）。
 
 ## recipes / recipe_items（v1.3）
 

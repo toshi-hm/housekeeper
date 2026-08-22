@@ -36,6 +36,13 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
 
+      - name: Upload Storybook build
+        uses: actions/upload-artifact@v7
+        with:
+          name: storybook-static
+          path: storybook-static
+          retention-days: 1
+
       - name: i18n key check
         run: |
           bunx i18next-parser --config i18next-parser.config.ts
