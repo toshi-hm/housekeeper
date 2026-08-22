@@ -181,6 +181,11 @@ export const LocationMapPage = () => {
                   document={floorPlan.document}
                   storageLocationMarkers={storageLocationMarkers}
                   storageLocations={locations}
+                  placements={placements}
+                  items={items}
+                  onItemClick={(itemId) =>
+                    void navigate({ to: "/items/$itemId", params: { itemId } })
+                  }
                 />
               </Suspense>
             ) : (
