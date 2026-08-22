@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { IconPicker } from "@/components/atoms/IconPicker";
 import { MasterDataIcon } from "@/components/atoms/MasterDataIcon";
 import { Spinner } from "@/components/atoms/Spinner";
+import { UsageCountBadge } from "@/components/atoms/UsageCountBadge";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import {
   useCreateStorageLocation,
   useDeleteStorageLocation,
   useStorageLocations,
+  useStorageLocationUsageCounts,
   useUpdateStorageLocation,
 } from "@/hooks/useMasterData";
 import { useToast } from "@/lib/toast-context";
@@ -83,6 +85,10 @@ export const LocationsPage = () => {
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const { data: locations = [], isLoading } = useStorageLocations();
+  /** #863: 一覧表示の時点で使用中件数を取得し、削除ボタンの事前ヒントに使う。
+   *  実際の削除可否は handleDeleteClick 内の checkLocationUsage
+   *  （クリック時のレースコンディション対策込みチェック）で改めて判定する。 */
+  const { data: usageCounts = {} } = useStorageLocationUsageCounts();
   const createLocation = useCreateStorageLocation();
   const updateLocation = useUpdateStorageLocation();
   const deleteLocation = useDeleteStorageLocation();
@@ -244,6 +250,7 @@ export const LocationsPage = () => {
                   <div className="flex items-center gap-3">
                     <MasterDataIcon icon={l.icon} />
                     <span className="flex-1">{l.name}</span>
+                    <UsageCountBadge count={usageCounts[l.id] ?? 0} />
                     <Button
                       size="icon"
                       variant="ghost"
@@ -269,7 +276,8 @@ export const LocationsPage = () => {
                       variant="ghost"
                       className="text-destructive"
                       aria-label={tc("delete")}
-                      disabled={checkingId === l.id}
+                      title={(usageCounts[l.id] ?? 0) > 0 ? t("locationInUse") : undefined}
+                      disabled={checkingId === l.id || (usageCounts[l.id] ?? 0) > 0}
                       onClick={() => {
                         void handleDeleteClick(l.id);
                       }}

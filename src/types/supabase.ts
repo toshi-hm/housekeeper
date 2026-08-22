@@ -553,6 +553,7 @@ export interface Database {
           pin_x: number | null;
           pin_y: number | null;
           purchase_date: string | null;
+          reorder_lead_days: number | null;
           reorder_threshold: number | null;
           storage_location_id: string | null;
           units: number;
@@ -582,6 +583,7 @@ export interface Database {
           pin_x?: number | null;
           pin_y?: number | null;
           purchase_date?: string | null;
+          reorder_lead_days?: number | null;
           reorder_threshold?: number | null;
           storage_location_id?: string | null;
           units?: number;
@@ -611,6 +613,7 @@ export interface Database {
           pin_x?: number | null;
           pin_y?: number | null;
           purchase_date?: string | null;
+          reorder_lead_days?: number | null;
           reorder_threshold?: number | null;
           storage_location_id?: string | null;
           units?: number;
@@ -1131,6 +1134,7 @@ export interface Database {
           default_unit: string;
           expiry_warning_days: number;
           language: string;
+          last_backup_export_at: string | null;
           low_stock_forecast_days: number;
           notify_at: string;
           stocktake_alert_days: number;
@@ -1144,6 +1148,7 @@ export interface Database {
           default_unit?: string;
           expiry_warning_days?: number;
           language?: string;
+          last_backup_export_at?: string | null;
           low_stock_forecast_days?: number;
           notify_at?: string;
           stocktake_alert_days?: number;
@@ -1157,6 +1162,7 @@ export interface Database {
           default_unit?: string;
           expiry_warning_days?: number;
           language?: string;
+          last_backup_export_at?: string | null;
           low_stock_forecast_days?: number;
           notify_at?: string;
           stocktake_alert_days?: number;

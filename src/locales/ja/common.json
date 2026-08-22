@@ -76,6 +76,7 @@
   "undoError": "元に戻せませんでした",
   "undoSuccess": "元に戻しました",
   "unknownError": "エラーが発生しました",
+  "usedByCount_other": "{{count}}件で使用中",
   "voiceInput": "音声入力",
   "voiceInputListening": "音声を認識中..."
 }
