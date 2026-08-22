@@ -10,6 +10,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// 外部URL(placehold.co)への依存はVRT(#807)のスクリーンショットをネットワーク疎通に
+// 応じて不安定にするため、他のStory(StorageLocationMap/LocationPinPicker/ImageUploader)
+// と同じdata URIのプレースホルダーに統一する。
+const recipeImageDataUrl = (label: string) =>
+  `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='144' height='144'%3E%3Crect width='144' height='144' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='16'%3E${label}%3C/text%3E%3C/svg%3E`;
+
 export const Loading: Story = {
   args: { isLoading: true, suggestions: [] },
 };
@@ -22,13 +28,13 @@ export const WithSuggestions: Story = {
         id: "1",
         title: "牛乳と卵のフレンチトースト",
         url: "https://recipe.rakuten.co.jp/recipe/1/",
-        imageUrl: "https://placehold.co/144x144?text=Recipe1",
+        imageUrl: recipeImageDataUrl("Recipe1"),
       },
       {
         id: "2",
         title: "余った野菜のポトフ",
         url: "https://recipe.rakuten.co.jp/recipe/2/",
-        imageUrl: "https://placehold.co/144x144?text=Recipe2",
+        imageUrl: recipeImageDataUrl("Recipe2"),
       },
       {
         id: "3",
