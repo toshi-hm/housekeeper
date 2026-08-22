@@ -19,7 +19,11 @@ const RootLayout = () => {
   return (
     <AuthProvider>
       <Outlet />
-      {import.meta.env.DEV && (
+      {/* #850: E2E runs the dev server with `--mode test` (import.meta.env.DEV is still
+          true there, only `vite build` sets it false), so also exclude MODE==="test" —
+          otherwise the devtools' floating badge genuinely overlaps the bottom nav and
+          intercepts Playwright's clicks on mobile viewports. */}
+      {import.meta.env.DEV && import.meta.env.MODE !== "test" && (
         <>
           <TanStackRouterDevtools />
           <ReactQueryDevtools />

@@ -82,9 +82,15 @@ Supabase Auth 標準のメールリンク方式ではなく、**秘密の質問�
 
 RLS: `auth.uid() = user_id` の owner-only ポリシー。ただし読み書きは主に `SUPABASE_SERVICE_ROLE_KEY` を使う Edge Function 経由で行われる（未認証状態からの呼び出しのため）。
 
-### 登録フロー（サインアップ時）
+### 登録フロー（サインアップ時 / 設定画面から後付け）
 
 `LoginPage`（`src/components/pages/LoginPage.tsx`）のサインアップフォームで秘密の質問（`SECURITY_QUESTION_IDS` からの選択式、表示ラベルは `t()` 経由）と答えを入力させ、サインアップ成功直後にクライアントから直接 `user_security_questions` に `upsert`する（答えは `sha256(user_id + ":" + answer)` としてハッシュ化してから保存、平文は送信元に残らない）。
+
+Supabaseプロジェクトでメール確認（Confirm email）が有効な場合、サインアップ直後は `data.session` が `null` になり上記の即時 `upsert` ができない（メール確認完了までユーザーIDに対して認証済みの書き込みができないため）。この場合、入力済みの質問・回答は保存されずに破棄される（#850）。この状態のユーザーを救済するため、以下を用意している:
+
+- `useSecurityQuestionStatus`（`src/hooks/useSecurityQuestion.ts`）: ログイン中ユーザーが `user_security_questions` を登録済みかを取得する
+- `SecurityQuestionReminderBanner`（`src/components/organisms/`）: 未登録を検知した場合、認証済み全画面（`AuthLayout`、`src/routes/_auth.tsx`）に案内バナーを表示する（現在のセッション内でのみ閉じられる、次回サインイン時には未設定である限り再表示）
+- `SecurityQuestionSettings`（`src/components/organisms/`）: 設定画面（`/settings`）から、ログイン中の任意のタイミングで秘密の質問・回答を設定/変更できる（`useUpsertSecurityQuestion` 経由、ハッシュ化ロジックはサインアップ時と同一）
 
 ### リセットフロー（`/forgot-password`、未認証）
 
