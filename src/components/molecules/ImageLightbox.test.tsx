@@ -174,4 +174,34 @@ describe("ImageLightbox", () => {
     expect(background.inert).toBe(true);
     expect(background.getAttribute("aria-hidden")).toBe("true");
   });
+
+  it("does not re-run the focus trap (and steal focus back) when the parent re-renders with a new onClose while open/imageUrl stay the same (#898)", () => {
+    const { getByRole, rerender } = render(
+      <ImageLightbox
+        open={true}
+        imageUrl="https://example.com/photo.jpg"
+        alt="牛乳"
+        onClose={() => {}}
+      />,
+      { wrapper },
+    );
+    const closeButton = getByRole("button", { name: i18n.t("common:close") });
+    expect(document.activeElement).toBe(closeButton);
+    closeButton.blur();
+    expect(document.activeElement).not.toBe(closeButton);
+
+    // React QueryのバックグラウンドrefetchなどによるImageLightbox自体とは無関係な
+    // 親の再レンダーを模倣: open/imageUrl は変わらないが onClose は新しいクロージャになる。
+    rerender(
+      <ImageLightbox
+        open={true}
+        imageUrl="https://example.com/photo.jpg"
+        alt="牛乳"
+        onClose={() => {}}
+      />,
+    );
+
+    // フォーカストラップが不要に再実行されていれば closeButton へ再フォーカスされてしまう
+    expect(document.activeElement).not.toBe(closeButton);
+  });
 });

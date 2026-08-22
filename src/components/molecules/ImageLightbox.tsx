@@ -13,6 +13,17 @@ export const ImageLightbox = ({ open, imageUrl, alt = "", onClose }: ImageLightb
   const { t } = useTranslation("common");
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  // 最新のonCloseをrefに保持する（#898）。下のフォーカストラップ用useEffectの
+  // 依存配列からonCloseを外すための同期で、呼び出し側が毎レンダー新しいonClose
+  // を渡しても（React Queryのバックグラウンド再取得起因の親再レンダー等）
+  // フォーカストラップが不要に再実行されフォーカスを奪い直すことがなくなる
+  // （useDialogA11yと同じ手法、docs/specs/accessibility.md「Focus trap / modal
+  // dialogs」参照）。
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open || !imageUrl) return;
@@ -40,7 +51,7 @@ export const ImageLightbox = ({ open, imageUrl, alt = "", onClose }: ImageLightb
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
       if (e.key === "Tab") {
         e.preventDefault();
         closeButtonRef.current?.focus();
@@ -57,7 +68,7 @@ export const ImageLightbox = ({ open, imageUrl, alt = "", onClose }: ImageLightb
       }
       previouslyFocused?.focus();
     };
-  }, [imageUrl, onClose, open]);
+  }, [imageUrl, open]);
 
   // 画像がない場合は何も表示しない（ガード）
   if (!open || !imageUrl) return null;
