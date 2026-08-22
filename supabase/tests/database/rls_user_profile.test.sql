@@ -3,7 +3,7 @@
 -- user_security_questions.
 begin;
 
-select plan(16);
+select plan(18);
 
 insert into auth.users (id, email)
 values
@@ -87,6 +87,23 @@ with del as (
   delete from push_subscriptions where id = 'dddddddd-0000-0000-0000-000000000001' returning 1
 )
 select is((select count(*)::int from del), 0, 'other user cannot DELETE another user''s push_subscriptions row');
+
+-- push_subscriptions.endpoint uniqueness is scoped to (user_id, endpoint),
+-- not global (#826): a shared device can hand the same physical `endpoint`
+-- to more than one user, so a different user must be able to hold a row for
+-- an endpoint another user already has, while the same user still cannot
+-- hold two rows for the same endpoint.
+select lives_ok(
+  $$insert into push_subscriptions (id, user_id, endpoint, p256dh, auth) values ('dddddddd-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'https://push.example.com/a', 'p256dh-key-b', 'auth-key-b')$$,
+  'a different user can hold the same endpoint another user already holds (shared device, #826)'
+);
+
+select throws_ok(
+  $$insert into push_subscriptions (id, user_id, endpoint, p256dh, auth) values ('dddddddd-0000-0000-0000-000000000003', '22222222-2222-2222-2222-222222222222', 'https://push.example.com/a', 'p256dh-key-b2', 'auth-key-b2')$$,
+  '23505',
+  'duplicate key value violates unique constraint "push_subscriptions_user_id_endpoint_key"',
+  'the same user cannot hold two rows for the same endpoint'
+);
 
 -- ===== user_security_questions =====
 

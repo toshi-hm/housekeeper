@@ -8,6 +8,13 @@ export interface ReceiptLineItem {
   confidence: "high" | "low";
 }
 
+/** `receipt-scan` Edge Function のレスポンス全体。店舗名は品目ごとではなく
+ *  レシート全体で1つ（#859）。 */
+export interface ReceiptScanResult {
+  items: ReceiptLineItem[];
+  storeName: string | null;
+}
+
 /** レビュー画面（`ReceiptReviewPanel`）で編集する1行分の状態。
  *  `id` は行の同一性を保つためのクライアント側の一時ID（登録には使わない）。 */
 export interface ReceiptDraftItem {
@@ -62,27 +69,36 @@ export const isReceiptDraftValid = (draft: ReceiptDraftItem): boolean =>
  * （receipt-scan.md「データへの影響」節）。内容量は単位不明のため
  * `content_amount: 1` / `content_unit: "個"`（`itemFormSchema` の既定値と同じ）
  * とし、ユーザーは登録後に必要なら手動で調整する。
+ *
+ * `storeName` はレシート全体で1つ（品目ごとではない、#859）のレビュー画面
+ * ヘッダー欄の値。トリムして空になる場合は未入力として `null` を渡す。
  */
-export const draftItemToFormValues = (draft: ReceiptDraftItem): ItemFormValues => ({
-  name: draft.name.trim(),
-  barcode: undefined,
-  category_id: draft.categoryId,
-  storage_location_id: draft.storageLocationId,
-  units: Math.max(1, Math.round(draft.quantity)),
-  content_amount: 1,
-  content_unit: "個",
-  opened_remaining: null,
-  purchase_date: undefined,
-  expiry_date: draft.expiryDate ?? undefined,
-  expiry_type: null,
-  notes: undefined,
-  image_path: undefined,
-  minimum_stock: null,
-  days_use_after_opening: null,
-  unit_price: draft.unitPrice,
-  store_name: undefined,
-  auto_reorder: false,
-  reorder_threshold: null,
-  pin_x: null,
-  pin_y: null,
-});
+export const draftItemToFormValues = (
+  draft: ReceiptDraftItem,
+  storeName?: string | null,
+): ItemFormValues => {
+  const trimmedStoreName = storeName?.trim();
+  return {
+    name: draft.name.trim(),
+    barcode: undefined,
+    category_id: draft.categoryId,
+    storage_location_id: draft.storageLocationId,
+    units: Math.max(1, Math.round(draft.quantity)),
+    content_amount: 1,
+    content_unit: "個",
+    opened_remaining: null,
+    purchase_date: undefined,
+    expiry_date: draft.expiryDate ?? undefined,
+    expiry_type: null,
+    notes: undefined,
+    image_path: undefined,
+    minimum_stock: null,
+    days_use_after_opening: null,
+    unit_price: draft.unitPrice,
+    store_name: trimmedStoreName ? trimmedStoreName : null,
+    auto_reorder: false,
+    reorder_threshold: null,
+    pin_x: null,
+    pin_y: null,
+  };
+};

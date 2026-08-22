@@ -7,6 +7,9 @@ import {
   type ReceiptRowStatus,
 } from "@/components/molecules/ReceiptLineItemRow";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useStoreNameSuggestions } from "@/hooks/useItemLots";
 import { useCreateItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
 import {
@@ -23,17 +26,28 @@ interface BulkRegisterResult {
 
 interface ReceiptReviewPanelProps {
   drafts: ReceiptDraftItem[];
+  /** レシート全体から抽出した店舗名（品目ごとではない、#859）。 */
+  storeName: string | null;
   onDraftsChange: (drafts: ReceiptDraftItem[]) => void;
+  onStoreNameChange: (storeName: string | null) => void;
   onDone: (result: BulkRegisterResult) => void;
 }
 
 /** レビュー一覧全体。読み込み中/空状態、フッター固定の一括登録ボタンを持つ
  *  organism（receipt-scan.md「フロントエンド」節）。カテゴリ/保管場所の
  *  選択肢取得と一括登録（既存 `useCreateItem` へのループ委譲）を自分で持つ。 */
-export const ReceiptReviewPanel = ({ drafts, onDraftsChange, onDone }: ReceiptReviewPanelProps) => {
+export const ReceiptReviewPanel = ({
+  drafts,
+  storeName,
+  onDraftsChange,
+  onStoreNameChange,
+  onDone,
+}: ReceiptReviewPanelProps) => {
   const { t } = useTranslation("receiptScan");
+  const { t: ti } = useTranslation("items");
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
+  const { data: storeNameSuggestions = [] } = useStoreNameSuggestions();
   const createItem = useCreateItem();
 
   const [rowStatus, setRowStatus] = useState<Record<string, ReceiptRowStatus>>({});
@@ -67,7 +81,10 @@ export const ReceiptReviewPanel = ({ drafts, onDraftsChange, onDone }: ReceiptRe
     for (const draft of targets) {
       setRowStatus((prev) => ({ ...prev, [draft.id]: "registering" }));
       try {
-        await createItem.mutateAsync({ values: draftItemToFormValues(draft), forceNew: true });
+        await createItem.mutateAsync({
+          values: draftItemToFormValues(draft, storeName),
+          forceNew: true,
+        });
         succeededIds.add(draft.id);
         setRowStatus((prev) => ({ ...prev, [draft.id]: "success" }));
       } catch {
@@ -86,20 +103,47 @@ export const ReceiptReviewPanel = ({ drafts, onDraftsChange, onDone }: ReceiptRe
     onDraftsChange(drafts.filter((d) => !succeededIds.has(d.id)));
   };
 
+  // レシート全体から抽出した店舗名（品目ごとではない）を確認・編集するヘッダー欄。
+  // #697 の店舗名入力欄（ItemForm）と同じサジェストパターンを流用する。
+  const storeNameField = (
+    <div className="space-y-1">
+      <Label htmlFor="receipt-store-name">{ti("storeName")}</Label>
+      <Input
+        id="receipt-store-name"
+        type="text"
+        list="receipt-store-name-suggestions"
+        value={storeName ?? ""}
+        placeholder={ti("storeNamePlaceholder")}
+        disabled={isSubmitting}
+        onChange={(e) => onStoreNameChange(e.target.value === "" ? null : e.target.value)}
+      />
+      <datalist id="receipt-store-name-suggestions">
+        {storeNameSuggestions.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
+      <p className="text-xs text-muted-foreground">{t("storeNameHint")}</p>
+    </div>
+  );
+
   if (drafts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-        <p className="text-lg font-medium">{t("reviewEmpty")}</p>
-        <Button size="sm" variant="outline" className="mt-4" onClick={addBlankRow}>
-          <Plus className="mr-1 h-4 w-4" />
-          {t("addRow")}
-        </Button>
+      <div className="space-y-4">
+        {storeNameField}
+        <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+          <p className="text-lg font-medium">{t("reviewEmpty")}</p>
+          <Button size="sm" variant="outline" className="mt-4" onClick={addBlankRow}>
+            <Plus className="mr-1 h-4 w-4" />
+            {t("addRow")}
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4 pb-20">
+      {storeNameField}
       <div className="space-y-2">
         {drafts.map((draft) => (
           <ReceiptLineItemRow
