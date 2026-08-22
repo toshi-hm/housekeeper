@@ -42,35 +42,50 @@ const config: TestRunnerConfig = {
   },
   async postVisit(page, context) {
     const storyContext = await getStoryContext(page, context);
+    // Run VRT and a11y independently and collect failures from both instead
+    // of letting a VRT mismatch throw before the a11y check ever runs (which
+    // would silently hide a real a11y regression behind the VRT failure).
+    const errors: unknown[] = [];
 
     if (!storyContext.parameters?.vrt?.disable) {
       await waitForPageReady(page);
       const image = await page.screenshot();
-      expect(image).toMatchImageSnapshot({
-        customSnapshotsDir,
-        customSnapshotIdentifier: context.id,
-        failureThreshold: 0.02,
-        failureThresholdType: "percent",
+      try {
+        expect(image).toMatchImageSnapshot({
+          customSnapshotsDir,
+          customSnapshotIdentifier: context.id,
+          failureThreshold: 0.02,
+          failureThresholdType: "percent",
+        });
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+
+    const a11yEnabled = !storyContext.parameters?.a11y?.disable && !A11Y_BASELINE.has(context.id);
+
+    if (a11yEnabled) {
+      await configureAxe(page, {
+        rules: storyContext.parameters?.a11y?.config?.rules,
       });
+
+      try {
+        await checkA11y(page, "#storybook-root", {
+          axeOptions: storyContext.parameters?.a11y?.options,
+          detailedReport: true,
+          detailedReportOptions: { html: false },
+        });
+      } catch (error) {
+        errors.push(error);
+      }
     }
 
-    if (storyContext.parameters?.a11y?.disable) {
-      return;
+    if (errors.length === 1) {
+      throw errors[0];
     }
-
-    if (A11Y_BASELINE.has(context.id)) {
-      return;
+    if (errors.length > 1) {
+      throw new AggregateError(errors, `Storybook checks failed (${errors.length})`);
     }
-
-    await configureAxe(page, {
-      rules: storyContext.parameters?.a11y?.config?.rules,
-    });
-
-    await checkA11y(page, "#storybook-root", {
-      axeOptions: storyContext.parameters?.a11y?.options,
-      detailedReport: true,
-      detailedReportOptions: { html: false },
-    });
   },
 };
 

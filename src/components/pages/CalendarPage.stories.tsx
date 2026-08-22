@@ -94,6 +94,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
+  // CalendarPage は内部で ExpiryCalendar (new Date() 由来の表示月・today
+  // ハイライト) をレンダリングするため、baseline撮影日以外は必ず画素差分が
+  // 出る。日付を固定する手段が無い以上、VRT対象から除外する。Loadingは
+  // 日付非依存のスケルトン表示のみなのでVRT対象のまま。
+  parameters: { vrt: { disable: true } },
   args: {
     items,
     isLoading: false,
@@ -101,6 +106,7 @@ export const Default: Story = {
 };
 
 export const Empty: Story = {
+  parameters: { vrt: { disable: true } },
   args: {
     items: [],
     isLoading: false,

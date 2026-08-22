@@ -67,6 +67,11 @@ const items: Item[] = [
 const meta = {
   component: ExpiryCalendar,
   tags: ["autodocs"],
+  // ExpiryCalendar は内部で `new Date()` から表示月と「今日」のハイライトを
+  // 算出するため、baseline撮影日以外にCIが走ると月替わり・日替わりで
+  // 必ず画素差分が出てVRTが赤くなる。日付を固定するstory引数が無い以上、
+  // 現状はVRT対象から除外する。
+  parameters: { vrt: { disable: true } },
   args: {
     categories,
     labels: {
