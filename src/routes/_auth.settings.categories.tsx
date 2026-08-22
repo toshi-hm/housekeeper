@@ -8,12 +8,14 @@ import { ColorPicker } from "@/components/atoms/ColorPicker";
 import { IconPicker } from "@/components/atoms/IconPicker";
 import { MasterDataIcon } from "@/components/atoms/MasterDataIcon";
 import { Spinner } from "@/components/atoms/Spinner";
+import { UsageCountBadge } from "@/components/atoms/UsageCountBadge";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   checkCategoryUsage,
   useCategories,
+  useCategoryUsageCounts,
   useCreateCategory,
   useDeleteCategory,
   useUpdateCategory,
@@ -27,6 +29,11 @@ export const CategoriesPage = () => {
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const { data: categories = [], isLoading } = useCategories();
+  /** #863: 一覧表示の時点で使用中件数を取得し、削除ボタンの事前ヒントに使う。
+   *  あくまでUI表示用の目安で、実際の削除可否は handleDeleteClick 内の
+   *  checkCategoryUsage（クリック時のレースコンディション対策込みチェック）
+   *  で改めて判定する。 */
+  const { data: usageCounts = {} } = useCategoryUsageCounts();
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
@@ -283,6 +290,7 @@ export const CategoriesPage = () => {
                   <ColorDot color={c.color ?? DEFAULT_COLOR} className="h-5 w-5 shrink-0" />
                   <MasterDataIcon icon={c.icon} />
                   <span className="flex-1">{c.name}</span>
+                  <UsageCountBadge count={usageCounts[c.id] ?? 0} />
                   <Button
                     size="icon"
                     variant="ghost"
@@ -303,7 +311,8 @@ export const CategoriesPage = () => {
                     variant="ghost"
                     className="text-destructive"
                     aria-label={tc("delete")}
-                    disabled={checkingId === c.id}
+                    title={(usageCounts[c.id] ?? 0) > 0 ? t("categoryInUse") : undefined}
+                    disabled={checkingId === c.id || (usageCounts[c.id] ?? 0) > 0}
                     onClick={() => {
                       void handleDeleteClick(c.id);
                     }}

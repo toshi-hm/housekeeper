@@ -22,6 +22,7 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
   Object.assign(builder, {
     select: chainMethod("select"),
     eq: chainMethod("eq"),
+    order: chainMethod("order"),
     limit: chainMethod("limit"),
     insert: chainMethod("insert"),
     update: chainMethod("update"),
@@ -255,6 +256,82 @@ describe("maybeAutoReorder", () => {
       { data: [], error: null }, // duplicate lookup: none
       { data: null, error: { message: "insert failed" } }, // insert fails
     ];
+
+    const result = await maybeAutoReorder("item-1");
+
+    expect(result).toBe(false);
+  });
+});
+
+// 消費ペース予測に基づく自動追加 (#853)。個数はしきい値を超えている
+// （threshold=null→0、units=10 なので thresholdDue=false）状態でのみ、
+// reorder_lead_days の判定が意味を持つ。
+describe("maybeAutoReorder — 消費ペース予測ベースの自動追加 (#853)", () => {
+  const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+  const paceItem = {
+    ...baseItem,
+    units: 10,
+    reorder_threshold: null,
+    content_amount: 1,
+    content_unit: "個",
+    opened_remaining: null,
+  };
+
+  test("reorder_lead_days が未設定なら、消費ペースが速くても追加しない", async () => {
+    responseQueues.items = [{ data: { ...paceItem, reorder_lead_days: null }, error: null }];
+
+    const result = await maybeAutoReorder("item-1");
+
+    expect(result).toBe(false);
+    expect(callLog.some((c) => c.table === "consumption_logs")).toBe(false);
+  });
+
+  test("予測残日数が reorder_lead_days 以下なら、個数がしきい値を超えていても追加する", async () => {
+    responseQueues.items = [{ data: { ...paceItem, reorder_lead_days: 5 }, error: null }];
+    responseQueues.consumption_logs = [
+      {
+        data: [
+          { delta_amount: 30, delta_unit: "個", occurred_at: daysAgo(3) },
+          { delta_amount: 30, delta_unit: "個", occurred_at: daysAgo(10) },
+        ],
+        error: null,
+      },
+    ];
+    responseQueues.shopping_list_items = [
+      { data: [], error: null },
+      { data: null, error: null },
+    ];
+
+    const result = await maybeAutoReorder("item-1");
+
+    expect(result).toBe(true);
+    expect(callLog.some((c) => c.table === "consumption_logs")).toBe(true);
+    expect(callLog.some((c) => c.table === "shopping_list_items" && c.method === "insert")).toBe(
+      true,
+    );
+  });
+
+  test("予測残日数が reorder_lead_days を超える場合は追加しない", async () => {
+    responseQueues.items = [{ data: { ...paceItem, reorder_lead_days: 5 }, error: null }];
+    responseQueues.consumption_logs = [
+      {
+        data: [
+          { delta_amount: 15, delta_unit: "個", occurred_at: daysAgo(3) },
+          { delta_amount: 15, delta_unit: "個", occurred_at: daysAgo(10) },
+        ],
+        error: null,
+      },
+    ];
+
+    const result = await maybeAutoReorder("item-1");
+
+    expect(result).toBe(false);
+    expect(callLog.some((c) => c.table === "shopping_list_items")).toBe(false);
+  });
+
+  test("consumption_logs の取得に失敗しても例外を投げず false を返す（非致命）", async () => {
+    responseQueues.items = [{ data: { ...paceItem, reorder_lead_days: 5 }, error: null }];
+    responseQueues.consumption_logs = [{ data: null, error: { message: "boom" } }];
 
     const result = await maybeAutoReorder("item-1");
 

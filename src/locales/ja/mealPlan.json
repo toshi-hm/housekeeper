@@ -8,6 +8,8 @@
   "execute": "実行",
   "executeAnyway": "不足分を除いて実行",
   "executedAt": "実行済み",
+  "executedGuardMessage": "この枠はすでに実行済みで、在庫の消費実績（消費記録）に反映されています。ここで解除・変更しても消費実績は取り消されず、実行記録だけが失われます。",
+  "executedGuardTitle": "実行済みの枠を変更しますか？",
   "executeFailed_other": "{{count}}件の消費に失敗しました",
   "executeSuccess": "在庫を消費しました",
   "executing": "実行中…",
