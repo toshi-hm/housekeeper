@@ -72,6 +72,34 @@ export const handler = async (req: Request): Promise<Response> => {
     });
   }
 
+  // Same physical device/Service Worker registration shared across users
+  // (e.g. a household tablet) makes `registration.pushManager.subscribe()`
+  // return the identical `endpoint` for whoever subscribes on it. Uniqueness
+  // is now scoped to (user_id, endpoint) rather than global (#826), so that
+  // no longer conflicts by itself -- but a stale row from the *previous*
+  // owner of this endpoint on this device is still a dead subscription: once
+  // the new user's subscribe call overwrote the browser-side registration,
+  // the old user's row can never be delivered to (and, worse, would keep
+  // silently competing for delivery). RLS hides other users' rows from the
+  // caller's own (anon-key + user JWT) client, so a service-role client is
+  // required here to see and remove that stale row before upserting this
+  // user's own row -- this is the same "act across users" escape hatch used
+  // by verify-security-answer/get-security-question for admin-only lookups.
+  const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+  const { error: reassignError } = await supabaseAdmin
+    .from("push_subscriptions")
+    .delete()
+    .eq("endpoint", body.endpoint)
+    .neq("user_id", user.id);
+
+  if (reassignError) {
+    return new Response(JSON.stringify({ error: reassignError.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   // Subscribe: upsert push subscription (isValidSubscribeBody already
   // guarantees `keys` is present here, since action !== "unsubscribe").
   const { error } = await supabase.from("push_subscriptions").upsert(
@@ -82,7 +110,7 @@ export const handler = async (req: Request): Promise<Response> => {
       auth: body.keys!.auth,
       user_agent: body.user_agent ?? req.headers.get("User-Agent") ?? null,
     },
-    { onConflict: "endpoint" },
+    { onConflict: "user_id,endpoint" },
   );
 
   if (error) {
