@@ -203,6 +203,58 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
     const lotInsert = callLog.find((c) => c.table === "item_lots" && c.method === "insert");
     expect(lotInsert?.args[0]).toMatchObject({ unit_price: 298 });
   });
+
+  test("linked_item_id一致のアクティブな既存アイテムに統合した場合、_stackedを立てて呼び出し側の画像上書きを防ぐ (#894)", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: "item-1" }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // markShoppingItemPurchased
+    ];
+    responseQueues.items = [
+      { data: { id: "item-1", image_path: "existing.jpg" }, error: null }, // linkedActiveItem
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+    responseQueues.item_lots = [
+      { data: { id: "lot-1" }, error: null }, // createLot insert
+      { data: [], error: null }, // syncItemAggregateのロット取得
+    ];
+
+    const result = await purchaseShoppingItem({
+      shoppingItemId: "shopping-1",
+      itemValues: makeFormValues({ image_path: "new-photo.jpg" }),
+    });
+
+    expect(result._stacked).toBe(true);
+    expect(result.image_path).toBe("existing.jpg");
+    // linked_item_id一致経路では新規itemの作成(upsert)は発生しない
+    expect(callLog.filter((c) => c.table === "items" && c.method === "upsert")).toHaveLength(0);
+  });
+
+  test("linked_item_idがソフトデリート済みアイテムを指す場合、復活させ_revivedを立てて呼び出し側の画像上書きを防ぐ (#894)", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: "item-2" }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // markShoppingItemPurchased
+    ];
+    responseQueues.items = [
+      { data: null, error: null }, // linkedActiveItem: 見つからない
+      { data: { id: "item-2", image_path: "existing.jpg" }, error: null }, // linkedDeletedItem
+      { data: { id: "item-2", image_path: "existing.jpg", deleted_at: null }, error: null }, // revive update
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+    responseQueues.item_lots = [
+      { data: { id: "lot-1" }, error: null }, // createLot insert
+      { data: [], error: null }, // syncItemAggregateのロット取得
+    ];
+
+    const result = await purchaseShoppingItem({
+      shoppingItemId: "shopping-1",
+      itemValues: makeFormValues({ image_path: "new-photo.jpg" }),
+    });
+
+    expect(result._revived).toBe(true);
+    expect(result.image_path).toBe("existing.jpg");
+  });
 });
 
 describe("upsertShoppingItem (#766: 同名の同時追加による重複行の防止)", () => {

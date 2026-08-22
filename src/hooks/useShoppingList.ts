@@ -295,7 +295,9 @@ export const purchaseShoppingItem = async ({
       await createLot(user.id, linkedActiveItem.id, lotValuesFromForm(itemValues));
       await syncItemAggregate(linkedActiveItem.id);
       await markShoppingItemPurchased(shoppingItemId, linkedActiveItem.id);
-      return linkedActiveItem as Item;
+      // 既存アイテムへのスタック。呼び出し側が画像アップロードで既存画像を
+      // 上書きしないよう _stacked を立てる（バーコード一致経路と同じ規約、#894）。
+      return { ...(linkedActiveItem as Item), _stacked: true };
     }
 
     const { data: linkedDeletedItem, error: linkedDeletedItemError } = await supabase
@@ -318,7 +320,9 @@ export const purchaseShoppingItem = async ({
       await createLot(user.id, linkedDeletedItem.id, lotValuesFromForm(itemValues));
       await syncItemAggregate(linkedDeletedItem.id);
       await markShoppingItemPurchased(shoppingItemId, revivedLinked.id);
-      return revivedLinked as Item;
+      // 既存アイテムの復活。呼び出し側が画像アップロードで既存画像を
+      // 上書きしないよう _revived を立てる（バーコード一致経路と同じ規約、#894）。
+      return { ...(revivedLinked as Item), _revived: true };
     }
     // 元アイテムが見つからない（削除済みでも復元できない等）場合はバーコード/新規作成に fallback
   }
