@@ -188,6 +188,10 @@ export const normalizeCreateValues = (values: ItemFormValues) => ({
     values.reorder_threshold !== undefined && values.reorder_threshold !== null
       ? values.reorder_threshold
       : null,
+  reorder_lead_days:
+    values.reorder_lead_days !== undefined && values.reorder_lead_days !== null
+      ? values.reorder_lead_days
+      : null,
   pin_x: values.pin_x !== undefined && values.pin_x !== null ? values.pin_x : null,
   pin_y: values.pin_y !== undefined && values.pin_y !== null ? values.pin_y : null,
 });
@@ -243,6 +247,12 @@ export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
     normalized.reorder_threshold =
       values.reorder_threshold !== undefined && values.reorder_threshold !== null
         ? values.reorder_threshold
+        : null;
+  }
+  if (hasOwn(values, "reorder_lead_days")) {
+    normalized.reorder_lead_days =
+      values.reorder_lead_days !== undefined && values.reorder_lead_days !== null
+        ? values.reorder_lead_days
         : null;
   }
   if (hasOwn(values, "pin_x")) {

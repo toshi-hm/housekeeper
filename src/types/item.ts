@@ -75,6 +75,11 @@ export interface Item {
   minimum_stock?: number | null;
   auto_reorder?: boolean;
   reorder_threshold?: number | null;
+  /** 消費ペース予測（`computeConsumptionPaceForecast`）に基づく自動追加のしきい値（日数）。
+   *  `auto_reorder = true` のアイテムで、予測残日数がこの値以下になったら
+   *  `reorder_threshold` の判定とは独立に自動的に買い物リストへ追加する。
+   *  null = 予測残日数による自動追加を使わない（既存の個数しきい値のみ、#853）。 */
+  reorder_lead_days?: number | null;
   last_verified_at?: string | null;
   deleted_at?: string | null;
   deletion_reason?: ItemDeletionReason | null;
@@ -116,6 +121,8 @@ export const itemFormSchema = z.object({
   store_name: z.string().nullable().optional(),
   auto_reorder: z.boolean().default(false),
   reorder_threshold: z.coerce.number().int().min(0).nullable().optional(),
+  /** 予測残日数ベースの自動追加しきい値（日数）。未設定 = null（#853）。 */
+  reorder_lead_days: z.coerce.number().int().min(0).nullable().optional(),
   pin_x: z.coerce.number().min(0).max(1).nullable().optional(),
   pin_y: z.coerce.number().min(0).max(1).nullable().optional(),
 });

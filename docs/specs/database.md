@@ -64,6 +64,7 @@ create table items (
   minimum_stock int check (minimum_stock is null or minimum_stock >= 0), -- ダッシュボード警告用
   auto_reorder boolean not null default false,   -- 定期購入フラグ（#353）
   reorder_threshold int check (reorder_threshold is null or reorder_threshold >= 0), -- 自動追加のしきい値。NULL = 0以下
+  reorder_lead_days int check (reorder_lead_days is null or reorder_lead_days >= 0), -- 消費ペース予測に基づく自動追加のしきい値（日数）。NULL = 予測残日数による自動追加を使わない（#853）
   last_verified_at timestamptz,          -- 棚卸し（在庫確認）: 「在庫確認済み」ボタンで現在時刻に更新 (#375)
   deleted_at timestamptz,                -- ソフトデリート（null = 生存）
   deletion_reason text check (deletion_reason is null or deletion_reason in ('consumed', 'expired_waste', 'other')), -- 削除理由（フードロス集計用, #494）
