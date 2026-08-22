@@ -114,6 +114,7 @@ export const ItemForm = ({
     store_name: defaultValues?.store_name ?? null,
     auto_reorder: defaultValues?.auto_reorder ?? false,
     reorder_threshold: defaultValues?.reorder_threshold ?? null,
+    reorder_lead_days: defaultValues?.reorder_lead_days ?? null,
     pin_x: defaultValues?.pin_x ?? null,
     pin_y: defaultValues?.pin_y ?? null,
   });
@@ -130,6 +131,7 @@ export const ItemForm = ({
   const [daysUseAfterOpeningError, setDaysUseAfterOpeningError] = useState("");
   const [unitPriceError, setUnitPriceError] = useState("");
   const [reorderThresholdError, setReorderThresholdError] = useState("");
+  const [reorderLeadDaysError, setReorderLeadDaysError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
@@ -344,6 +346,14 @@ export const ItemForm = ({
       (isNaN(values.reorder_threshold) || values.reorder_threshold < 0)
     ) {
       setReorderThresholdError(t("reorderThresholdInvalid"));
+      hasError = true;
+    }
+
+    if (
+      typeof values.reorder_lead_days === "number" &&
+      (isNaN(values.reorder_lead_days) || values.reorder_lead_days < 0)
+    ) {
+      setReorderLeadDaysError(t("reorderLeadDaysInvalid"));
       hasError = true;
     }
 
@@ -890,6 +900,43 @@ export const ItemForm = ({
               {reorderThresholdError && (
                 <p id="reorder-threshold-error" className="text-sm text-destructive">
                   {reorderThresholdError}
+                </p>
+              )}
+
+              <Label htmlFor="reorder_lead_days">{t("reorderLeadDays")}</Label>
+              <p id="reorder-lead-days-help" className="text-xs text-muted-foreground">
+                {t("reorderLeadDaysHelp")}
+              </p>
+              <Input
+                id="reorder_lead_days"
+                type="number"
+                min={0}
+                className="w-28"
+                value={values.reorder_lead_days ?? ""}
+                placeholder={t("reorderLeadDaysPlaceholder")}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "") {
+                    set("reorder_lead_days", null);
+                    setReorderLeadDaysError("");
+                    return;
+                  }
+                  const parsed = parseInt(v, 10);
+                  set("reorder_lead_days", isNaN(parsed) ? null : parsed);
+                  setReorderLeadDaysError(
+                    !isNaN(parsed) && parsed < 0 ? t("reorderLeadDaysInvalid") : "",
+                  );
+                }}
+                aria-invalid={!!reorderLeadDaysError}
+                aria-describedby={
+                  reorderLeadDaysError
+                    ? "reorder-lead-days-help reorder-lead-days-error"
+                    : "reorder-lead-days-help"
+                }
+              />
+              {reorderLeadDaysError && (
+                <p id="reorder-lead-days-error" className="text-sm text-destructive">
+                  {reorderLeadDaysError}
                 </p>
               )}
             </div>
