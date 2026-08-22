@@ -37,6 +37,29 @@ describe("ShoppingRow", () => {
     expect(container.textContent).not.toMatch(/自動追加|Auto-added/);
   });
 
+  it("shows the cheapest store hint when provided (#854)", () => {
+    const { container } = render(
+      <ShoppingRow
+        id="1"
+        name="牛乳"
+        desiredUnits={2}
+        cheapestStore={{ storeName: "○○スーパー", unitPrice: 248 }}
+        onDelete={() => {}}
+      />,
+      { wrapper },
+    );
+    expect(container.textContent).toContain("○○スーパー");
+    expect(container.textContent).toContain("248");
+  });
+
+  it("does not show the cheapest store hint by default", () => {
+    const { container } = render(
+      <ShoppingRow id="1" name="牛乳" desiredUnits={2} onDelete={() => {}} />,
+      { wrapper },
+    );
+    expect(container.textContent).not.toMatch(/最安|Cheapest at/);
+  });
+
   it("renders note when provided", () => {
     const { container } = render(
       <ShoppingRow id="1" name="牛乳" desiredUnits={1} note="低脂肪" onDelete={() => {}} />,

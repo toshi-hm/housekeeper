@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 import { checkBarcodeRateLimit } from "../_shared/rate-limit.ts";
 import { isValidBarcode } from "./validation.ts";
 import { fetchYahooShoppingProduct } from "./yahoo.ts";
@@ -10,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-Deno.serve(async (req: Request) => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -23,6 +21,11 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // #834: lazy dynamic import (not a static top-level import) so importing
+  // this module in tests doesn't require network access to esm.sh just to
+  // resolve a handler that never reaches this line (e.g. preflight/auth
+  // tests) — matches the pattern already used by subscribe-push/image-proxy.
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -111,4 +114,6 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+};
+
+if (import.meta.main) Deno.serve(handler);

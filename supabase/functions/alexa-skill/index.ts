@@ -2,9 +2,11 @@ import type { AlexaRequest, AlexaResponse, AlexaSlot, SessionAttributes } from "
 import { buildAskResponse, buildErrorResponse, buildTellResponse } from "./response.ts";
 import { verifyAlexaSignature } from "./signature-verifier.ts";
 
-const ALEXA_SKILL_ID = Deno.env.get("ALEXA_SKILL_ID") ?? "";
-
 const verifyApplicationId = (req: AlexaRequest): Response | null => {
+  // #834: read lazily (not at module top level) so importing this module in
+  // tests doesn't require --allow-env just to resolve a handler that never
+  // reaches this branch (e.g. preflight/method/header-validation tests).
+  const ALEXA_SKILL_ID = Deno.env.get("ALEXA_SKILL_ID") ?? "";
   if (!ALEXA_SKILL_ID) {
     console.error("[alexa-skill] ALEXA_SKILL_ID is not configured");
     return new Response(JSON.stringify({ error: "Server configuration error" }), {
@@ -123,9 +125,7 @@ const verifyAlexaHeaders = (req: Request): Response | null => {
   return null;
 };
 
-const SKIP_SIGNATURE_VERIFICATION = Deno.env.get("SKIP_SIGNATURE_VERIFICATION") === "true";
-
-Deno.serve(async (req: Request): Promise<Response> => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -153,7 +153,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // Read raw bytes first — required for body signature verification
   const rawBodyBytes = new Uint8Array(await req.arrayBuffer());
 
-  if (SKIP_SIGNATURE_VERIFICATION) {
+  // #834: read lazily (not at module top level) so importing this module in
+  // tests doesn't require --allow-env just to resolve a handler that never
+  // reaches this branch (e.g. preflight/method/header-validation tests).
+  const skipSignatureVerification = Deno.env.get("SKIP_SIGNATURE_VERIFICATION") === "true";
+  if (skipSignatureVerification) {
     console.warn("[alexa-skill] Signature verification SKIPPED (development mode)");
   } else {
     const signatureValid = await verifyAlexaSignature(rawBodyBytes, signatureB64, certChainUrl);
@@ -202,4 +206,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       headers: { "Content-Type": "application/json" },
     });
   }
-});
+};
+
+if (import.meta.main) Deno.serve(handler);
