@@ -382,4 +382,23 @@ describe("DashboardPage", () => {
     );
     expect(document.activeElement).toBe(searchInput);
   });
+
+  it("クイックフィルターチップの選択状態がaria-pressedで伝わる (#901)", async () => {
+    itemsspy.mockReturnValue({
+      data: [makeItem({ id: "expired", expiry_date: "2000-01-01", units: 1 })],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useItemsModule.useItems>);
+    const { getByRole } = await renderPage();
+
+    getByRole("button", { name: /すべて|all/i, pressed: true });
+    const expiredChip = getByRole("button", { name: /期限切れ|expired/i, pressed: false });
+
+    await act(async () => {
+      fireEvent.click(expiredChip);
+    });
+
+    getByRole("button", { name: /期限切れ|expired/i, pressed: true });
+    getByRole("button", { name: /すべて|all/i, pressed: false });
+  });
 });
