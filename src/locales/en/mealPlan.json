@@ -9,6 +9,8 @@
   "execute": "Execute",
   "executeAnyway": "Execute anyway",
   "executedAt": "Executed",
+  "executedGuardMessage": "This slot has already been executed and its stock consumption has already been recorded. Unassigning or changing it here won't undo that consumption — only the execution record will be lost.",
+  "executedGuardTitle": "Change this executed slot?",
   "executeFailed_one": "Failed to consume 1 item",
   "executeFailed_other": "Failed to consume {{count}} items",
   "executeSuccess": "Stock consumed",

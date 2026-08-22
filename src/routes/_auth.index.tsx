@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckSquare,
   ChefHat,
+  Download,
   Plus,
   Receipt,
   Search,
@@ -60,6 +61,7 @@ import {
   DEFAULT_LOW_STOCK_FORECAST_DAYS,
   DEFAULT_STOCKTAKE_ALERT_DAYS,
   getExpiryStatus,
+  isBackupExportOverdue,
   isItemUnverified,
   type Item,
   type ItemDeletionReason,
@@ -414,6 +416,10 @@ export const DashboardPage = () => {
     ? allItems.filter((item) => item.units > 0 && isItemUnverified(item, stocktakeAlertDays))
     : [];
 
+  // JSONエクスポート（唯一のバックアップ/リカバリー導線）の未実行リマインダー (#815)。
+  // userSettings 未取得の間（初回ロード中）は誤検知を避けるため出し分けない。
+  const showBackupExportReminder = !!userSettings && isBackupExportOverdue(userSettings);
+
   // 通知センター（#624）のサマリーチップ。0件の種別は含めない。
   const notificationChips: (NotificationChip | false)[] = [
     urgentCount > 0 && {
@@ -435,6 +441,11 @@ export const DashboardPage = () => {
       key: "stocktake",
       icon: <AlertTriangle className="h-4 w-4 shrink-0 text-blue-600" />,
       text: t("stocktakeBanner", { count: unverifiedItems.length }),
+    },
+    showBackupExportReminder && {
+      key: "backupExportReminder",
+      icon: <Download className="h-4 w-4 shrink-0 text-blue-600" />,
+      text: t("backupExportReminderBanner"),
     },
   ];
   const visibleNotificationChips = notificationChips.filter(
@@ -725,6 +736,27 @@ export const DashboardPage = () => {
                   </li>
                 ))}
               </ul>
+            </details>
+          </div>
+        )}
+
+        {/* JSONエクスポート（唯一のバックアップ導線）の未実行リマインダー (#815) */}
+        {showBackupExportReminder && (
+          <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
+            <div className="flex items-center gap-2">
+              <Download className="h-5 w-5 shrink-0" />
+              <p className="text-sm font-medium">{t("backupExportReminderBanner")}</p>
+            </div>
+            <details className="rounded-md border border-blue-200 bg-blue-100/50 p-2">
+              <summary className="cursor-pointer text-sm font-medium">
+                {t("backupExportReminderBannerDetails")}
+              </summary>
+              <Link
+                className="mt-2 inline-block text-sm underline decoration-blue-800 underline-offset-2 hover:opacity-80"
+                to="/settings"
+              >
+                {t("backupExportReminderBannerCta")}
+              </Link>
             </details>
           </div>
         )}
