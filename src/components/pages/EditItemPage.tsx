@@ -243,6 +243,9 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           name: item.name,
           barcode: item.barcode ?? undefined,
           category_id: item.category_id,
+          // #929 セルフレビュー: item_type / expiry_type を渡し忘れると、編集画面から
+          // 保存しただけで種別の個別指定と賞味/消費期限の区別が NULL に消える。
+          item_type: item.item_type ?? null,
           storage_location_id: item.storage_location_id,
           units: selectedLot?.units ?? item.units,
           content_amount: item.content_amount,
@@ -252,6 +255,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           store_name: selectedLot?.store_name ?? null,
           purchase_date: selectedLot?.purchase_date ?? item.purchase_date ?? undefined,
           expiry_date: selectedLot?.expiry_date ?? item.expiry_date ?? undefined,
+          expiry_type: item.expiry_type ?? null,
           notes: item.notes ?? undefined,
           image_path: item.image_path ?? undefined,
           minimum_stock: item.minimum_stock ?? null,

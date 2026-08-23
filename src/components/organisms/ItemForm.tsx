@@ -34,7 +34,12 @@ import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { useSuggestedLocation } from "@/hooks/useSuggestedLocation";
 import { clearItemFormDraft, loadItemFormDraft, saveItemFormDraft } from "@/lib/itemFormDraft";
 import { useToast } from "@/lib/toast-context";
-import { CONTENT_UNITS, type ItemFormValues, resolveItemType } from "@/types/item";
+import {
+  CONTENT_UNITS,
+  DEFAULT_ITEM_TYPE,
+  type ItemFormValues,
+  resolveItemType,
+} from "@/types/item";
 
 const DRAFT_SAVE_DEBOUNCE_MS = 600;
 
@@ -260,9 +265,14 @@ export const ItemForm = ({
   };
 
   const handleAddCategory = async (name: string) => {
-    // フォームで選択中の種別をそのままカテゴリの既定にする。日用品を登録しながら
-    // その場でカテゴリを足したのに、作られたカテゴリが食料品扱いになるのを防ぐ。
-    const category = await addCategory({ name, kind: effectiveItemType });
+    // ユーザーが種別セグメントを明示的に操作していたら、その種別を新しいカテゴリの
+    // 既定にする（日用品を登録しながらその場でカテゴリを足したのに食料品扱いに
+    // なるのを防ぐ）。実効種別（effectiveItemType）ではなく明示値を見るのは、
+    // 別のカテゴリから引き継いだだけの種別を新カテゴリに焼き付けないため。
+    const category = await addCategory({
+      name,
+      kind: values.item_type ?? DEFAULT_ITEM_TYPE,
+    });
     set("category_id", category.id);
   };
 

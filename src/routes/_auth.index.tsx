@@ -318,8 +318,8 @@ export const DashboardPage = () => {
 
   // Alerts must not disappear when the visible list is narrowed by search,
   // category, location, expiry, sorting, or the hide-empty preference.
-  const { data: allItems = [] } = useItems({}, "created_at");
-  const { data: items = [], isLoading, error } = useItems(filters, sort);
+  const { data: rawAllItems = [] } = useItems({}, "created_at");
+  const { data: rawItems = [], isLoading, error } = useItems(filters, sort);
 
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   const locationMap = Object.fromEntries(locations.map((l) => [l.id, l.name]));
@@ -328,6 +328,30 @@ export const DashboardPage = () => {
   // category default) without needing the full category list themselves.
   const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
 
+  // 種別（食料品 / 日用品）の解決。カテゴリの既定値が要るため、サーバー側
+  // （Supabaseクエリ）ではなくクライアント側で行う（expiryStatus / hideEmpty と
+  // 同じ扱い、docs/specs/features/item-type.md）。
+  const itemTypeOf = (item: Item) =>
+    resolveItemType(item, item.category_id ? categoryById[item.category_id] : null);
+
+  /**
+   * 日用品は期限を持たない扱いにするため、表示用の派生値として期限を落とす。
+   *
+   * ItemForm から日用品として保存すると expiry_date は消えるが、既存カテゴリを
+   * 後から日用品へ切り替えた場合は、食料品時代に入力された expiry_date が
+   * DB に残る。それをそのまま流すと、日用品タブに置いたアイテムが期限バッジ・
+   * 期限バナー・期限クイックチップに出続けてしまう。ここで一度落として
+   * おけば、一覧側の全経路（絞り込み・件数・カード表示）が一貫する。
+   */
+  const dropExpiryForDailyGoods = (list: Item[]) =>
+    list.map((item) =>
+      (item.expiry_date || item.expiry_type) && itemTypeOf(item) === "daily_goods"
+        ? { ...item, expiry_date: null, expiry_type: null }
+        : item,
+    );
+  const allItems = dropExpiryForDailyGoods(rawAllItems);
+  const items = dropExpiryForDailyGoods(rawItems);
+
   const baseFiltered = items.filter((item) => !hideEmpty || item.units > 0);
 
   const matchesExpiryFilter = (item: Item) => {
@@ -335,11 +359,6 @@ export const DashboardPage = () => {
     return getExpiryStatus(item.expiry_date, warningDays) === expiryFilter;
   };
 
-  // 種別タブ（食料品 / 日用品）の絞り込み。実効種別の解決にカテゴリの既定値が
-  // 要るため、サーバー側（Supabaseクエリ）ではなくクライアント側で行う
-  // （expiryStatus / hideEmpty と同じ扱い、docs/specs/features/item-type.md）。
-  const itemTypeOf = (item: Item) =>
-    resolveItemType(item, item.category_id ? categoryById[item.category_id] : null);
   const matchesItemTypeTab = (item: Item) =>
     itemTypeTab === "all" || itemTypeOf(item) === itemTypeTab;
 

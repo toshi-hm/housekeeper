@@ -133,10 +133,17 @@ export const resolveItemType = (
 
 ## 影響範囲と非対象
 
-- **期限アラート / カレンダー / 通知**: 日用品は `expiry_date` が null になるため、
-  既存のロジック（`getExpiryStatus` が `unknown` を返し、`ExpiryBadge` は null を描画、
-  カレンダーは `expiry_date is not null` のみ取得）で自然に対象外になる。専用の分岐は
-  追加しない。
+- **期限アラート / カレンダー / 通知**: `ItemForm` から日用品として保存すると
+  `expiry_date` / `expiry_type` が null になるため、既存のロジック
+  （`getExpiryStatus` が `unknown` を返し、`ExpiryBadge` は null を描画、カレンダーは
+  `expiry_date is not null` のみ取得）で自然に対象外になる。専用の分岐は追加しない。
+- ただし **既存カテゴリを後から日用品へ切り替えた場合**、そのカテゴリのアイテムには
+  食料品時代に入力された `expiry_date` が DB に残る。ダッシュボードはこれを表示用の
+  派生値として落とす（`dropExpiryForDailyGoods`）ので、一覧の絞り込み・件数・
+  期限バッジ・期限バナー・期限クイックチップは一貫して「期限なし」として扱う。
+  DB 上の値はそのアイテムを保存し直すまで残るため、**期限カレンダーと通知
+  （Edge Function）では引き続き対象になる**。この2箇所の追従は PLANS.md v1.10 の
+  フォローアップ扱い。
 - **低在庫 / 消費ペース予測 / 棚卸し / 買い物リスト**: 種別に関係なく従来通り機能する
   （むしろ日用品にとってはこちらが主役）。
 - **統計 / レシピ / 献立**: 本 spec では種別による絞り込みを入れない。

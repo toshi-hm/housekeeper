@@ -489,6 +489,33 @@ describe("DashboardPage", () => {
     expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
   });
 
+  it("カテゴリを日用品に切り替えた既存アイテムの残存期限は、期限バナー・チップから外れる", async () => {
+    categoriesspy.mockReturnValue({
+      data: [{ id: "cat-goods", name: "洗剤", kind: "daily_goods" }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    itemsspy.mockReturnValue({
+      data: [
+        // 食料品時代に入力された expiry_date が DB に残っている日用品
+        makeItem({
+          id: "soap",
+          name: "食器用洗剤",
+          category_id: "cat-goods",
+          expiry_date: "2000-01-01",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useItemsModule.useItems>);
+
+    const { queryByText, queryByRole } = await renderPage();
+
+    expect(queryByText(URGENT_BANNER_RE)).toBeNull();
+    expect(queryByRole("button", { name: /期限切れ|expired/i })).toBeNull();
+    // 一覧自体には出る（在庫としては存在する）
+    expect(queryByText("食器用洗剤")).not.toBeNull();
+  });
+
   it("選択中のタブに対応する tabpanel が存在する (accessibility.md §5)", async () => {
     const { getAllByRole, getByRole } = await renderPage();
     const selectedTab = getAllByRole("tab").find(

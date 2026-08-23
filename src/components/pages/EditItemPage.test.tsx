@@ -229,3 +229,69 @@ describe("EditItemPage - backing a lot-less item's units increase with a real lo
     });
   });
 });
+
+// #929 セルフレビュー: 編集画面が defaultValues に渡し忘れたフィールドは、
+// ItemForm 側で null に初期化されて保存時に既存値を消してしまう。
+describe("EditItemPage - defaultValues に種別と期限種別を引き継ぐ", () => {
+  let itemSpy: ReturnType<typeof spyOn>;
+  let lotsSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    spyOn(useTagsModule, "useTags").mockReturnValue({ data: [] } as unknown as ReturnType<
+      typeof useTagsModule.useTags
+    >);
+    spyOn(useTagsModule, "useItemTagIds").mockReturnValue({
+      data: [],
+      isSuccess: true,
+    } as unknown as ReturnType<typeof useTagsModule.useItemTagIds>);
+    spyOn(useTagsModule, "useCreateTag").mockReturnValue({
+      mutateAsync: async () => ({}),
+    } as unknown as ReturnType<typeof useTagsModule.useCreateTag>);
+    spyOn(useItemsModule, "useUpdateItem").mockReturnValue({
+      mutateAsync: mock(async () => baseItem),
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useUpdateItem>);
+    spyOn(useItemLotsModule, "useUpdateLot").mockReturnValue({
+      mutateAsync: mock(async () => baseLot),
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useUpdateLot>);
+    spyOn(useItemLotsModule, "useCreateLot").mockReturnValue({
+      mutateAsync: mock(async () => baseLot),
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useCreateLot>);
+    lotsSpy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data: [baseLot],
+    } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>);
+  });
+
+  afterEach(() => {
+    itemSpy.mockRestore();
+    lotsSpy.mockRestore();
+  });
+
+  it("item_type / expiry_type を ItemForm の defaultValues に渡す", () => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: { ...baseItem, item_type: "daily_goods", expiry_type: "use_by" },
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+
+    render(<EditItemPage itemId="item-1" />, { wrapper: Wrapper });
+
+    const props = itemFormSpy.mock.calls[0]?.[0] as { defaultValues: Partial<ItemFormValues> };
+    expect(props.defaultValues.item_type).toBe("daily_goods");
+    expect(props.defaultValues.expiry_type).toBe("use_by");
+  });
+
+  it("未設定のアイテムでは null を渡す（カテゴリ既定への追従を保つ）", () => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: baseItem,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+
+    render(<EditItemPage itemId="item-1" />, { wrapper: Wrapper });
+
+    const props = itemFormSpy.mock.calls[0]?.[0] as { defaultValues: Partial<ItemFormValues> };
+    expect(props.defaultValues.item_type).toBeNull();
+    expect(props.defaultValues.expiry_type).toBeNull();
+  });
+});

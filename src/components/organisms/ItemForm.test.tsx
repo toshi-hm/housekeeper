@@ -785,6 +785,75 @@ describe("ItemForm — アイテム種別（食料品 / 日用品）", () => {
     ).toBe("true");
   });
 
+  it("種別を明示せずカテゴリ経由で日用品になった状態でカテゴリを追加しても、新カテゴリは食料品になる", async () => {
+    const addCategory = mock(async () => ({ id: "cat-new", name: "調味料" }));
+    const createSpy = spyOn(useMasterDataModule, "useCreateCategory").mockReturnValue({
+      mutateAsync: addCategory,
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCreateCategory>);
+    const user = userEvent.setup();
+    const { container } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "しょうゆ", units: 1 }} />,
+      { wrapper },
+    );
+
+    // 「洗剤」(daily_goods) を選ぶと実効種別は日用品になるが、明示指定はしていない
+    await pickCategory(user, container, "洗剤");
+    await user.click(container.querySelector("#category_id") as HTMLButtonElement);
+    const addButton = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes(i18n.t("items:addCategory")),
+    ) as HTMLButtonElement;
+    await user.click(addButton);
+    await user.type(
+      container.querySelector(
+        'input[placeholder="' + i18n.t("items:addCategory") + '"]',
+      ) as HTMLInputElement,
+      "調味料",
+    );
+    await user.click(
+      container.querySelector(
+        `button[aria-label="${i18n.t("common:confirm")}"]`,
+      ) as HTMLButtonElement,
+    );
+
+    expect(addCategory).toHaveBeenCalledWith({ name: "調味料", kind: "food" });
+    createSpy.mockRestore();
+  });
+
+  it("種別を明示的に日用品にしてからカテゴリを追加すると、新カテゴリも日用品になる", async () => {
+    const addCategory = mock(async () => ({ id: "cat-new", name: "掃除用品" }));
+    const createSpy = spyOn(useMasterDataModule, "useCreateCategory").mockReturnValue({
+      mutateAsync: addCategory,
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCreateCategory>);
+    const user = userEvent.setup();
+    const { container, getByRole } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "スポンジ", units: 1 }} />,
+      { wrapper },
+    );
+
+    await user.click(getByRole("button", { name: i18n.t("items:itemTypeDailyGoods") }));
+    await user.click(container.querySelector("#category_id") as HTMLButtonElement);
+    const addButton = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes(i18n.t("items:addCategory")),
+    ) as HTMLButtonElement;
+    await user.click(addButton);
+    await user.type(
+      container.querySelector(
+        'input[placeholder="' + i18n.t("items:addCategory") + '"]',
+      ) as HTMLInputElement,
+      "掃除用品",
+    );
+    await user.click(
+      container.querySelector(
+        `button[aria-label="${i18n.t("common:confirm")}"]`,
+      ) as HTMLButtonElement,
+    );
+
+    expect(addCategory).toHaveBeenCalledWith({ name: "掃除用品", kind: "daily_goods" });
+    createSpy.mockRestore();
+  });
+
   it("既存アイテム編集時は defaultValues.item_type が反映される", () => {
     const { getByRole } = render(
       <ItemForm
