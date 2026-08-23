@@ -28,8 +28,10 @@ import {
   roundFloat,
 } from "@/types/item";
 
+// insufficientStock lives in the "common" namespace (shared with mutation-failure
+// toasts), so this preview-validation path must look it up via `tc`, not `t`.
 const consumptionErrorKey = {
-  insufficientStock: "insufficientStock",
+  insufficientStock: "insufficientStockError",
 } as const satisfies Record<ConsumptionError, string>;
 
 // Dynamic i18n key lookup for consumption reason chips — see CLAUDE.md's
@@ -191,7 +193,7 @@ export const ItemConsumePage = () => {
     }
     if (!preview || preview.error) {
       setValidationError(
-        preview?.error ? t(consumptionErrorKey[preview.error]) : t("consumeValidationError"),
+        preview?.error ? tc(consumptionErrorKey[preview.error]) : t("consumeValidationError"),
       );
       return;
     }
@@ -487,7 +489,7 @@ export const ItemConsumePage = () => {
             </div>
           )}
           {preview?.error && (
-            <p className="text-sm text-destructive">{t(consumptionErrorKey[preview.error])}</p>
+            <p className="text-sm text-destructive">{tc(consumptionErrorKey[preview.error])}</p>
           )}
 
           {/* Preset consumption-reason chips (optional) — combined with the

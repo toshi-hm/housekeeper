@@ -435,14 +435,15 @@ export const computeConsumption = (
   // Compute total available stock to detect over-consumption before mutating state.
   // When opened_remaining is set, the open unit is already counted in `units`,
   // so sealed units = units - 1.
-  const totalBefore =
+  const totalBefore = roundFloat(
     units === 0
       ? 0
       : openedRemaining !== null
         ? (units - 1) * contentAmount + openedRemaining
-        : units * contentAmount;
+        : units * contentAmount,
+  );
 
-  if (delta > totalBefore) {
+  if (roundFloat(delta) > totalBefore) {
     return { units_after: 0, opened_remaining_after: null, error: "insufficientStock" };
   }
 

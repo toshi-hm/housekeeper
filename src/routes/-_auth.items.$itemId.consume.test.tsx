@@ -359,7 +359,9 @@ describe("ItemConsumePage", () => {
       });
       await user.type(amountInput, "0.6");
 
-      expect(getByText("insufficientStock")).toBeDefined();
+      // insufficientStock is resolved from the "common" namespace (#915); match either
+      // the raw key or its real translation depending on i18n init state (see comment above).
+      expect(getByText(/insufficientStockError|Not enough stock|在庫が足りません/)).toBeDefined();
     });
 
     it("allows exactly consuming the full lot when entered in a converted unit", async () => {
@@ -376,7 +378,7 @@ describe("ItemConsumePage", () => {
       });
       await user.type(amountInput, "0.5");
 
-      expect(queryByText("insufficientStock")).toBeNull();
+      expect(queryByText(/insufficientStockError|Not enough stock|在庫が足りません/)).toBeNull();
     });
   });
 });
