@@ -104,5 +104,7 @@
   "themeLight": "Light",
   "themeSystem": "System",
   "title": "Settings",
-  "viewMap": "View map"
+  "viewMap": "View map",
+  "categoryKind": "Default item type for this category",
+  "categoryKindHelp": "Whether items in this category are treated as food or daily goods by default. Each item can still override this."
 }

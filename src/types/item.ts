@@ -1,11 +1,24 @@
 import { z } from "zod";
 
+/** アイテム種別（食料品 / 日用品）。日用品は期限（expiry_date / expiry_type）を
+ *  持たない前提で、登録フォームから期限入力欄を省き、ダッシュボードでは食料品と
+ *  別タブに分けて表示する。詳細は docs/specs/features/item-type.md。 */
+export const ITEM_TYPES = ["food", "daily_goods"] as const;
+export type ItemType = (typeof ITEM_TYPES)[number];
+
+/** カテゴリ既定もアイテム個別設定も無いときの種別。既存データ（食料品前提で
+ *  登録されてきたアイテム）の挙動をそのまま保つため food とする。 */
+export const DEFAULT_ITEM_TYPE: ItemType = "food";
+
 export interface Category {
   id: string;
   user_id: string;
   name: string;
   color?: string | null;
   icon?: string | null;
+  /** このカテゴリに属するアイテムの既定の種別。items.item_type が未設定の
+   *  アイテムはこの値にフォールバックする。既存カテゴリは全て "food"。 */
+  kind?: ItemType;
   /** 開封後使用推奨日数の既定値。items.days_use_after_opening が未設定の
    *  アイテムはこの値にフォールバックする（#752）。 */
   days_use_after_opening?: number | null;
@@ -53,6 +66,9 @@ export interface Item {
   name: string;
   barcode?: string | null;
   category_id?: string | null;
+  /** アイテム種別の個別上書き。null = カテゴリの kind に従う
+   *  （カテゴリ未設定なら DEFAULT_ITEM_TYPE）。{@link resolveItemType} で解決する。 */
+  item_type?: ItemType | null;
   storage_location_id?: string | null;
   units: number;
   content_amount: number;
@@ -100,6 +116,8 @@ export const itemFormSchema = z.object({
   name: z.string().min(1),
   barcode: z.string().optional(),
   category_id: z.string().uuid().nullable().optional(),
+  /** アイテム種別の個別上書き。未選択 = null（カテゴリ既定に追従）。 */
+  item_type: z.enum(ITEM_TYPES).nullable().optional(),
   storage_location_id: z.string().uuid().nullable().optional(),
   units: z.coerce.number().int().min(1).default(1),
   content_amount: z.coerce.number().positive().default(1),
@@ -304,6 +322,17 @@ export const getExpirySeverity = (
   if (status === "expiring-soon") return "warning";
   return status;
 };
+
+/**
+ * アイテムの実効種別（食料品 / 日用品）を解決する純関数。
+ * 優先順位は「アイテム個別の上書き → カテゴリの既定 → {@link DEFAULT_ITEM_TYPE}」で、
+ * {@link resolveOpenedAlertThresholdDays} と同じ2層構造。カテゴリ未設定のアイテムは
+ * 食料品として扱う（従来挙動の維持）。
+ */
+export const resolveItemType = (
+  item: Pick<Item, "item_type">,
+  category?: Pick<Category, "kind"> | null,
+): ItemType => item.item_type ?? category?.kind ?? DEFAULT_ITEM_TYPE;
 
 /**
  * 開封後使用推奨日数の有効値を解決する (#752)。

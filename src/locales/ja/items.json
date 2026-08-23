@@ -263,5 +263,12 @@
   "verifySuccess": "在庫確認を記録しました",
   "viewModeGrid": "グリッド表示",
   "viewModeList": "リスト表示",
-  "viewModeToggleLabel": "表示切り替え"
+  "viewModeToggleLabel": "表示切り替え",
+  "itemType": "種別",
+  "itemTypeFood": "食料品",
+  "itemTypeDailyGoods": "日用品",
+  "itemTypeHelp": "日用品を選ぶと、期限の入力欄を表示しません。カテゴリを選ぶとそのカテゴリの既定に切り替わります。",
+  "itemTypeFollowsCategoryHint": "カテゴリの既定に従っています",
+  "itemTypeTabAll": "すべて",
+  "itemTypeTabsLabel": "アイテム種別"
 }

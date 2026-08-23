@@ -42,6 +42,7 @@ Read the relevant spec file before implementing any feature.
 - Barcode: docs/specs/features/barcode.md
 - Expiry alerts: docs/specs/features/expiry-alert.md
 - Master data (categories/locations): docs/specs/features/master-data.md
+- Item type (food / daily goods): docs/specs/features/item-type.md
 - Image storage: docs/specs/features/storage.md
 - Storage location photo map: docs/specs/features/storage-location-map.md
 - Shopping list: docs/specs/features/shopping-list.md

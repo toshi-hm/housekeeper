@@ -58,6 +58,7 @@ export interface Database {
           days_use_after_opening: number | null;
           icon: string | null;
           id: string;
+          kind: string;
           name: string;
           updated_at: string;
           user_id: string;
@@ -68,6 +69,7 @@ export interface Database {
           days_use_after_opening?: number | null;
           icon?: string | null;
           id?: string;
+          kind?: string;
           name: string;
           updated_at?: string;
           user_id: string;
@@ -78,6 +80,7 @@ export interface Database {
           days_use_after_opening?: number | null;
           icon?: string | null;
           id?: string;
+          kind?: string;
           name?: string;
           updated_at?: string;
           user_id?: string;
@@ -544,6 +547,7 @@ export interface Database {
           expiry_type: string | null;
           id: string;
           image_path: string | null;
+          item_type: string | null;
           last_verified_at: string | null;
           minimum_stock: number | null;
           name: string;
@@ -574,6 +578,7 @@ export interface Database {
           expiry_type?: string | null;
           id?: string;
           image_path?: string | null;
+          item_type?: string | null;
           last_verified_at?: string | null;
           minimum_stock?: number | null;
           name: string;
@@ -604,6 +609,7 @@ export interface Database {
           expiry_type?: string | null;
           id?: string;
           image_path?: string | null;
+          item_type?: string | null;
           last_verified_at?: string | null;
           minimum_stock?: number | null;
           name?: string;

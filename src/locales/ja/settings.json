@@ -102,5 +102,7 @@
   "themeLight": "ライト",
   "themeSystem": "システム設定に合わせる",
   "title": "設定",
-  "viewMap": "マップで見る"
+  "viewMap": "マップで見る",
+  "categoryKind": "このカテゴリの既定の種別",
+  "categoryKindHelp": "このカテゴリのアイテムを、既定で食料品／日用品のどちらとして扱うか。アイテムごとに個別に上書きもできます。"
 }

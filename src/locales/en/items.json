@@ -282,5 +282,12 @@
   "verifySuccess": "Stock verified",
   "viewModeGrid": "Grid view",
   "viewModeList": "List view",
-  "viewModeToggleLabel": "Switch view"
+  "viewModeToggleLabel": "Switch view",
+  "itemType": "Item type",
+  "itemTypeFood": "Food",
+  "itemTypeDailyGoods": "Daily goods",
+  "itemTypeHelp": "Daily goods hide the expiry date fields. Picking a category switches this to that category's default.",
+  "itemTypeFollowsCategoryHint": "Following the category default",
+  "itemTypeTabAll": "All",
+  "itemTypeTabsLabel": "Item type"
 }

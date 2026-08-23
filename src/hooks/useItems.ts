@@ -162,6 +162,7 @@ export const normalizeCreateValues = (values: ItemFormValues) => ({
   name: values.name,
   barcode: values.barcode || null,
   category_id: values.category_id || null,
+  item_type: values.item_type ?? null,
   storage_location_id: values.storage_location_id || null,
   units: values.units ?? 1,
   content_amount: values.content_amount ?? 1,
@@ -206,6 +207,7 @@ export const normalizeUpdateValues = (values: Partial<ItemFormValues>) => {
 
   if (hasOwn(values, "barcode")) normalized.barcode = values.barcode || null;
   if (hasOwn(values, "category_id")) normalized.category_id = values.category_id || null;
+  if (hasOwn(values, "item_type")) normalized.item_type = values.item_type ?? null;
   if (hasOwn(values, "storage_location_id")) {
     normalized.storage_location_id = values.storage_location_id || null;
   }

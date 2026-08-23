@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ColorDot } from "@/components/atoms/ColorDot";
 import { ColorPicker } from "@/components/atoms/ColorPicker";
 import { IconPicker } from "@/components/atoms/IconPicker";
+import { ItemTypeSelect } from "@/components/atoms/ItemTypeSelect";
 import { MasterDataIcon } from "@/components/atoms/MasterDataIcon";
 import { Spinner } from "@/components/atoms/Spinner";
 import { UsageCountBadge } from "@/components/atoms/UsageCountBadge";
@@ -20,13 +21,16 @@ import {
   useDeleteCategory,
   useUpdateCategory,
 } from "@/hooks/useMasterData";
+import { itemTypeLabelKey } from "@/lib/itemType";
 import { useToast } from "@/lib/toast-context";
+import { DEFAULT_ITEM_TYPE, type ItemType } from "@/types/item";
 
 const DEFAULT_COLOR = "#6b7280";
 
 export const CategoriesPage = () => {
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
+  const { t: ti } = useTranslation("items");
   const navigate = useNavigate();
   const { data: categories = [], isLoading } = useCategories();
   /** #863: 一覧表示の時点で使用中件数を取得し、削除ボタンの事前ヒントに使う。
@@ -44,12 +48,14 @@ export const CategoriesPage = () => {
   const [newIcon, setNewIcon] = useState<string | null>(null);
   const [newDaysUseAfterOpening, setNewDaysUseAfterOpening] = useState<number | null>(null);
   const [newDaysError, setNewDaysError] = useState("");
+  const [newKind, setNewKind] = useState<ItemType>(DEFAULT_ITEM_TYPE);
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState<string | null>(null);
   const [editIcon, setEditIcon] = useState<string | null>(null);
   const [editDaysUseAfterOpening, setEditDaysUseAfterOpening] = useState<number | null>(null);
   const [editDaysError, setEditDaysError] = useState("");
+  const [editKind, setEditKind] = useState<ItemType>(DEFAULT_ITEM_TYPE);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
 
@@ -72,12 +78,14 @@ export const CategoriesPage = () => {
         color: newColor,
         icon: newIcon,
         daysUseAfterOpening: newDaysUseAfterOpening,
+        kind: newKind,
       });
       setNewName("");
       setNewColor(null);
       setNewIcon(null);
       setNewDaysUseAfterOpening(null);
       setNewDaysError("");
+      setNewKind(DEFAULT_ITEM_TYPE);
       toast(t("common:saveSuccess"), "success");
     } catch {
       // error is handled by the mutation's onError
@@ -94,6 +102,7 @@ export const CategoriesPage = () => {
         color: editColor,
         icon: editIcon,
         daysUseAfterOpening: editDaysUseAfterOpening,
+        kind: editKind,
       });
       setEditId(null);
       toast(t("common:saveSuccess"), "success");
@@ -184,6 +193,17 @@ export const CategoriesPage = () => {
         <ColorPicker value={newColor} onChange={setNewColor} />
         <IconPicker value={newIcon} onChange={setNewIcon} />
         <div className="space-y-1">
+          <span className="text-xs text-muted-foreground">{t("categoryKind")}</span>
+          <p id="new-category-kind-help" className="text-xs text-muted-foreground">
+            {t("categoryKindHelp")}
+          </p>
+          <ItemTypeSelect
+            aria-describedby="new-category-kind-help"
+            value={newKind}
+            onChange={setNewKind}
+          />
+        </div>
+        <div className="space-y-1">
           <label htmlFor="new-category-days" className="text-xs text-muted-foreground">
             {t("items:daysUseAfterOpening")}
           </label>
@@ -252,6 +272,10 @@ export const CategoriesPage = () => {
                   <ColorPicker value={editColor} onChange={setEditColor} />
                   <IconPicker value={editIcon} onChange={setEditIcon} />
                   <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">{t("categoryKind")}</span>
+                    <ItemTypeSelect value={editKind} onChange={setEditKind} />
+                  </div>
+                  <div className="space-y-1">
                     <label
                       htmlFor={`edit-category-days-${c.id}`}
                       className="text-xs text-muted-foreground"
@@ -290,6 +314,12 @@ export const CategoriesPage = () => {
                   <ColorDot color={c.color ?? DEFAULT_COLOR} className="h-5 w-5 shrink-0" />
                   <MasterDataIcon icon={c.icon} />
                   <span className="flex-1">{c.name}</span>
+                  {/* 既定（食料品）側にはバッジを出さず、日用品カテゴリだけ目印を付ける */}
+                  {(c.kind ?? DEFAULT_ITEM_TYPE) === "daily_goods" && (
+                    <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+                      {ti(itemTypeLabelKey.daily_goods)}
+                    </span>
+                  )}
                   <UsageCountBadge count={usageCounts[c.id] ?? 0} />
                   <Button
                     size="icon"
@@ -302,6 +332,7 @@ export const CategoriesPage = () => {
                       setEditIcon(c.icon ?? null);
                       setEditDaysUseAfterOpening(c.days_use_after_opening ?? null);
                       setEditDaysError("");
+                      setEditKind(c.kind ?? DEFAULT_ITEM_TYPE);
                     }}
                   >
                     <Pencil className="h-4 w-4" />

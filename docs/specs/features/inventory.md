@@ -76,6 +76,20 @@ if units < 0:
   この `minimum_stock` ベースの警告とは別軸で、同一アイテムが両方に載る場合は低在庫バナー側を
   優先し予測バナー側では重複表示しない（詳細は `docs/specs/features/stats.md` 参照）。
 
+## アイテム種別（食料品 / 日用品）
+
+期限が意味を持たない日用品（洗剤・トイレットペーパー・電池など）を、期限入力なしで
+登録し、ダッシュボードで食料品と分けて表示するための区分。種別は
+「カテゴリの既定値（`categories.kind`）+ アイテム個別の上書き（`items.item_type`）」の
+2層で持ち、純関数 `resolveItemType`（`src/types/item.ts`）で解決する。
+
+- `ItemForm`: 実効種別が `daily_goods` のとき、期限日（`expiry_date`）と期限種別
+  （`expiry_type`）の入力欄を描画せず、送信時にもこの2つを空で送る
+- ダッシュボード（`/_auth/`）: 「すべて / 食料品 / 日用品」の種別タブ（`ItemTypeTabs`）で
+  一覧を切り替える。アラートバナーはタブによらず全在庫を対象にする
+
+仕様の全体は `docs/specs/features/item-type.md` を参照。
+
 ## 保管場所の自動サジェスト (#814)
 
 新規登録時（`ItemForm` の `enableLocationSuggestion` prop、`NewItemPage` でのみ有効）、

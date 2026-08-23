@@ -3,6 +3,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ExpiryTypeSelect } from "@/components/atoms/ExpiryTypeSelect";
+import { ItemTypeSelect } from "@/components/atoms/ItemTypeSelect";
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { LocationPinPicker } from "@/components/molecules/LocationPinPicker";
@@ -33,7 +34,7 @@ import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { useSuggestedLocation } from "@/hooks/useSuggestedLocation";
 import { clearItemFormDraft, loadItemFormDraft, saveItemFormDraft } from "@/lib/itemFormDraft";
 import { useToast } from "@/lib/toast-context";
-import { CONTENT_UNITS, type ItemFormValues } from "@/types/item";
+import { CONTENT_UNITS, type ItemFormValues, resolveItemType } from "@/types/item";
 
 const DRAFT_SAVE_DEBOUNCE_MS = 600;
 
@@ -106,6 +107,7 @@ export const ItemForm = ({
     name: defaultValues?.name ?? "",
     barcode: defaultValues?.barcode ?? "",
     category_id: defaultValues?.category_id ?? null,
+    item_type: defaultValues?.item_type ?? null,
     storage_location_id: defaultValues?.storage_location_id ?? null,
     units: defaultValues?.units ?? 1,
     content_amount: defaultValues?.content_amount ?? 1,
@@ -209,6 +211,14 @@ export const ItemForm = ({
   const selectedLocation = locations.find((l) => l.id === effectiveStorageLocationId);
   const { data: selectedLocationPhotoUrl } = useSignedLocationPhoto(selectedLocation?.photo_path);
 
+  // 種別（食料品 / 日用品）。values.item_type が null の間は選択中カテゴリの既定に
+  // 追従し、ユーザーがセグメントを操作した時点で明示値が入って追従をやめる
+  // （docs/specs/features/item-type.md）。
+  const selectedCategory = categories.find((c) => c.id === values.category_id);
+  const effectiveItemType = resolveItemType(values, selectedCategory);
+  const isDailyGoods = effectiveItemType === "daily_goods";
+  const followsCategoryDefault = (values.item_type ?? null) === null && !!selectedCategory;
+
   const set = <K extends keyof ItemFormValues>(field: K, value: ItemFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
     if (field === "name") setNameError("");
@@ -250,7 +260,9 @@ export const ItemForm = ({
   };
 
   const handleAddCategory = async (name: string) => {
-    const category = await addCategory({ name });
+    // フォームで選択中の種別をそのままカテゴリの既定にする。日用品を登録しながら
+    // その場でカテゴリを足したのに、作られたカテゴリが食料品扱いになるのを防ぐ。
+    const category = await addCategory({ name, kind: effectiveItemType });
     set("category_id", category.id);
   };
 
@@ -397,7 +409,11 @@ export const ItemForm = ({
       storage_location_id: effectiveStorageLocationId,
       barcode: values.barcode || undefined,
       purchase_date: values.purchase_date || undefined,
-      expiry_date: values.expiry_date || undefined,
+      // 日用品は期限を持たない。食料品として期限付きで登録済みのアイテムを
+      // 日用品へ切り替えたときに、隠れた期限が残って期限アラート・カレンダーに
+      // 出続けるのを防ぐため、明示的に空で送って消す。
+      expiry_date: isDailyGoods ? undefined : values.expiry_date || undefined,
+      expiry_type: isDailyGoods ? null : values.expiry_type,
       notes: values.notes || undefined,
       image_path: values.image_path || undefined,
     });
@@ -546,6 +562,23 @@ export const ItemForm = ({
             <p id="name-error" className="text-sm text-destructive">
               {nameError}
             </p>
+          )}
+        </div>
+
+        {/* Item type: food vs daily goods (docs/specs/features/item-type.md) */}
+        <div className="space-y-2">
+          <Label htmlFor="item_type">{t("itemType")}</Label>
+          <p id="item-type-help" className="text-xs text-muted-foreground">
+            {t("itemTypeHelp")}
+          </p>
+          <ItemTypeSelect
+            id="item_type"
+            aria-describedby="item-type-help"
+            value={effectiveItemType}
+            onChange={(value) => set("item_type", value)}
+          />
+          {followsCategoryDefault && (
+            <p className="text-xs text-muted-foreground">{t("itemTypeFollowsCategoryHint")}</p>
           )}
         </div>
 
@@ -707,8 +740,10 @@ export const ItemForm = ({
           </div>
         </div>
 
-        {/* Purchase / Expiry dates */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Purchase / Expiry dates.
+            日用品（isDailyGoods）は期限を持たないため期限側の欄自体を出さない。
+            購入日は日用品でも意味があるので残す（docs/specs/features/item-type.md）。 */}
+        <div className={isDailyGoods ? "space-y-2" : "grid grid-cols-2 gap-3"}>
           <div className="space-y-2">
             <Label htmlFor="purchase_date">{t("purchaseDate")}</Label>
             <Input
@@ -718,39 +753,43 @@ export const ItemForm = ({
               onChange={(e) => set("purchase_date", e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="expiry_date">{t("expiryDate")}</Label>
-            <div className="flex gap-2">
-              <Input
-                id="expiry_date"
-                type="date"
-                value={values.expiry_date ?? ""}
-                onChange={(e) => set("expiry_date", e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowExpiryScanner(true)}
-                title={t("expiryScanButtonTitle")}
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
+          {!isDailyGoods && (
+            <div className="space-y-2">
+              <Label htmlFor="expiry_date">{t("expiryDate")}</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="expiry_date"
+                  type="date"
+                  value={values.expiry_date ?? ""}
+                  onChange={(e) => set("expiry_date", e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowExpiryScanner(true)}
+                  title={t("expiryScanButtonTitle")}
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Expiry type: best-before (quality) vs use-by (safety), #714 */}
-        <div className="space-y-2">
-          <Label>{t("expiryType")}</Label>
-          <p id="expiry-type-help" className="text-xs text-muted-foreground">
-            {t("expiryTypeHelp")}
-          </p>
-          <ExpiryTypeSelect
-            value={values.expiry_type ?? null}
-            onChange={(value) => set("expiry_type", value)}
-          />
-        </div>
+        {!isDailyGoods && (
+          <div className="space-y-2">
+            <Label>{t("expiryType")}</Label>
+            <p id="expiry-type-help" className="text-xs text-muted-foreground">
+              {t("expiryTypeHelp")}
+            </p>
+            <ExpiryTypeSelect
+              value={values.expiry_type ?? null}
+              onChange={(value) => set("expiry_type", value)}
+            />
+          </div>
+        )}
 
         {/* Notes */}
         <div className="space-y-2">

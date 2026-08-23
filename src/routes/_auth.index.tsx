@@ -26,6 +26,7 @@ import { DeletionReasonDialog } from "@/components/molecules/DeletionReasonDialo
 import { ExpiryRecipeSuggestions } from "@/components/molecules/ExpiryRecipeSuggestions";
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { ItemListRow } from "@/components/molecules/ItemListRow";
+import { ItemTypeTabs } from "@/components/molecules/ItemTypeTabs";
 import { QuickMemoSheet } from "@/components/molecules/QuickMemoSheet";
 import {
   DashboardNotificationCenter,
@@ -53,6 +54,12 @@ import { useForecastAlerts } from "@/hooks/useStats";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useViewMode } from "@/hooks/useViewMode";
+import {
+  type ItemTypeTab,
+  itemTypeTabId,
+  itemTypeTabPanelId,
+  parseItemTypeTab,
+} from "@/lib/itemType";
 import { updateAppBadge } from "@/lib/pwa";
 import { OfflineError } from "@/lib/requireOnline";
 import { toggleId, toggleSelectAll } from "@/lib/selection";
@@ -65,6 +72,7 @@ import {
   isItemUnverified,
   type Item,
   type ItemDeletionReason,
+  resolveItemType,
   resolveOpenedAlertThresholdDays,
 } from "@/types/item";
 
@@ -81,6 +89,8 @@ const dashboardSearchSchema = z.object({
   cat: z.string().optional().default(""),
   loc: z.string().optional().default(""),
   expiry: z.string().optional().default(""),
+  /** 種別タブ（すべて/食料品/日用品）。不正値は parseItemTypeTab で "all" に丸める。 */
+  type: z.string().optional().default("all"),
 });
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -203,7 +213,14 @@ export const DashboardPage = () => {
     },
   });
 
-  const { q: search, cat: categoryId, loc: locationId, expiry: expiryFilter } = Route.useSearch();
+  const {
+    q: search,
+    cat: categoryId,
+    loc: locationId,
+    expiry: expiryFilter,
+    type: itemTypeParam,
+  } = Route.useSearch();
+  const itemTypeTab = parseItemTypeTab(itemTypeParam);
 
   const setSearch = (v: string) =>
     void navigate({ to: "/", search: (prev) => ({ ...prev, q: v }), replace: true });
@@ -213,6 +230,8 @@ export const DashboardPage = () => {
     void navigate({ to: "/", search: (prev) => ({ ...prev, loc: v }), replace: true });
   const setExpiryFilter = (v: string) =>
     void navigate({ to: "/", search: (prev) => ({ ...prev, expiry: v }), replace: true });
+  const setItemTypeTab = (v: ItemTypeTab) =>
+    void navigate({ to: "/", search: (prev) => ({ ...prev, type: v }), replace: true });
 
   const [sort, setSort] = useState<ItemSortKey>(
     () => (localStorage.getItem("dashboard.sort") as ItemSortKey) ?? "created_at",
@@ -311,15 +330,32 @@ export const DashboardPage = () => {
 
   const baseFiltered = items.filter((item) => !hideEmpty || item.units > 0);
 
-  const filtered = baseFiltered.filter((item) => {
-    if (expiryFilter && expiryFilter !== "all") {
-      const status = getExpiryStatus(item.expiry_date, warningDays);
-      if (status !== expiryFilter) return false;
-    }
-    return true;
-  });
+  const matchesExpiryFilter = (item: Item) => {
+    if (!expiryFilter || expiryFilter === "all") return true;
+    return getExpiryStatus(item.expiry_date, warningDays) === expiryFilter;
+  };
 
-  const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${hideEmpty}|${sort}`;
+  // 種別タブ（食料品 / 日用品）の絞り込み。実効種別の解決にカテゴリの既定値が
+  // 要るため、サーバー側（Supabaseクエリ）ではなくクライアント側で行う
+  // （expiryStatus / hideEmpty と同じ扱い、docs/specs/features/item-type.md）。
+  const itemTypeOf = (item: Item) =>
+    resolveItemType(item, item.category_id ? categoryById[item.category_id] : null);
+  const matchesItemTypeTab = (item: Item) =>
+    itemTypeTab === "all" || itemTypeOf(item) === itemTypeTab;
+
+  // タブの件数は「そのタブに切り替えたときに出る件数」= 期限絞り込みまで適用した
+  // 集合から数える。逆に期限クイックチップの件数は、種別タブを適用した集合から
+  // 数える（どちらも押した結果の表示件数と一致させるため）。
+  const expiryFiltered = baseFiltered.filter(matchesExpiryFilter);
+  const typeFiltered = baseFiltered.filter(matchesItemTypeTab);
+  const itemTypeCounts: Record<ItemTypeTab, number> = {
+    all: expiryFiltered.length,
+    food: expiryFiltered.filter((item) => itemTypeOf(item) === "food").length,
+    daily_goods: expiryFiltered.filter((item) => itemTypeOf(item) === "daily_goods").length,
+  };
+  const filtered = typeFiltered.filter(matchesExpiryFilter);
+
+  const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${itemTypeTab}|${hideEmpty}|${sort}`;
   const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -376,11 +412,11 @@ export const DashboardPage = () => {
     useRecipeSuggestions(recipeSuggestItemNames);
 
   // クイックフィルターチップの件数。チップをタップしたときに表示される filtered
-  // (baseFiltered を期限状態で絞ったもの) と一致させるため baseFiltered 基準で数える。
-  const expiredCount = baseFiltered.filter(
+  // (typeFiltered を期限状態で絞ったもの) と一致させるため typeFiltered 基準で数える。
+  const expiredCount = typeFiltered.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expired",
   ).length;
-  const expiringSoonCount = baseFiltered.filter(
+  const expiringSoonCount = typeFiltered.filter(
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   ).length;
 
@@ -481,11 +517,11 @@ export const DashboardPage = () => {
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {filtered.length === baseFiltered.length
-              ? t("itemCountLabel", { count: baseFiltered.length })
+            {filtered.length === typeFiltered.length
+              ? t("itemCountLabel", { count: typeFiltered.length })
               : t("itemCountLabelFiltered", {
                   filtered: filtered.length,
-                  total: baseFiltered.length,
+                  total: typeFiltered.length,
                 })}
           </p>
         </div>
@@ -762,254 +798,268 @@ export const DashboardPage = () => {
         )}
       </DashboardNotificationCenter>
 
-      {/* Search */}
-      <div className="flex gap-2">
-        <SearchInput
-          value={search}
-          placeholder={t("searchPlaceholder")}
-          onDebouncedChange={setSearch}
-        />
-        <Button
-          variant={showFilters ? "default" : "outline"}
-          size="icon"
-          onClick={() => setShowFilters((v) => !v)}
-          aria-label={tc("filter")}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-        </Button>
-        <ViewModeToggle value={viewMode} onChange={setViewMode} />
-      </div>
+      {/* 種別タブ（すべて / 食料品 / 日用品, docs/specs/features/item-type.md） */}
+      <ItemTypeTabs value={itemTypeTab} counts={itemTypeCounts} onChange={setItemTypeTab} />
 
-      {/* Quick filter chips */}
-      {(expiredCount > 0 || expiringSoonCount > 0) && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setExpiryFilter("")}
-            aria-pressed={!expiryFilter || expiryFilter === "all"}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              !expiryFilter || expiryFilter === "all"
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-background text-foreground hover:bg-muted"
-            }`}
+      <div
+        id={itemTypeTabPanelId(itemTypeTab)}
+        role="tabpanel"
+        aria-labelledby={itemTypeTabId(itemTypeTab)}
+        tabIndex={0}
+        className="space-y-4"
+      >
+        {/* Search */}
+        <div className="flex gap-2">
+          <SearchInput
+            value={search}
+            placeholder={t("searchPlaceholder")}
+            onDebouncedChange={setSearch}
+          />
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="icon"
+            onClick={() => setShowFilters((v) => !v)}
+            aria-label={tc("filter")}
           >
-            {t("quickFilterAll")} ({baseFiltered.length})
-          </button>
-          {expiredCount > 0 && (
-            <button
-              onClick={() => setExpiryFilter(expiryFilter === "expired" ? "" : "expired")}
-              aria-pressed={expiryFilter === "expired"}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                expiryFilter === "expired"
-                  ? "border-destructive bg-destructive text-destructive-foreground"
-                  : "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
-              }`}
-            >
-              {t("expiryStatus.expired")} ({expiredCount})
-            </button>
-          )}
-          {expiringSoonCount > 0 && (
-            <button
-              onClick={() =>
-                setExpiryFilter(expiryFilter === "expiring-soon" ? "" : "expiring-soon")
-              }
-              aria-pressed={expiryFilter === "expiring-soon"}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                expiryFilter === "expiring-soon"
-                  ? "border-yellow-600 bg-yellow-500 text-white"
-                  : "border-yellow-400/50 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
-              }`}
-            >
-              {t("expiryStatus.expiring-soon")} ({expiringSoonCount})
-            </button>
-          )}
+            <SlidersHorizontal className="h-4 w-4" />
+          </Button>
+          <ViewModeToggle value={viewMode} onChange={setViewMode} />
         </div>
-      )}
 
-      {/* Filter panel */}
-      {showFilters && (
-        <div className="space-y-3 rounded-lg border p-3">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div>
-              <label
-                htmlFor={categoryFilterId}
-                className="mb-1 block text-xs text-muted-foreground"
+        {/* Quick filter chips */}
+        {(expiredCount > 0 || expiringSoonCount > 0) && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setExpiryFilter("")}
+              aria-pressed={!expiryFilter || expiryFilter === "all"}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                !expiryFilter || expiryFilter === "all"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-foreground hover:bg-muted"
+              }`}
+            >
+              {t("quickFilterAll")} ({typeFiltered.length})
+            </button>
+            {expiredCount > 0 && (
+              <button
+                onClick={() => setExpiryFilter(expiryFilter === "expired" ? "" : "expired")}
+                aria-pressed={expiryFilter === "expired"}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  expiryFilter === "expired"
+                    ? "border-destructive bg-destructive text-destructive-foreground"
+                    : "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
+                }`}
               >
-                {t("filterByCategory")}
-              </label>
-              <Select
-                id={categoryFilterId}
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
+                {t("expiryStatus.expired")} ({expiredCount})
+              </button>
+            )}
+            {expiringSoonCount > 0 && (
+              <button
+                onClick={() =>
+                  setExpiryFilter(expiryFilter === "expiring-soon" ? "" : "expiring-soon")
+                }
+                aria-pressed={expiryFilter === "expiring-soon"}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  expiryFilter === "expiring-soon"
+                    ? "border-yellow-600 bg-yellow-500 text-white"
+                    : "border-yellow-400/50 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
+                }`}
               >
-                <option value="">{tc("all")}</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label
-                htmlFor={locationFilterId}
-                className="mb-1 block text-xs text-muted-foreground"
-              >
-                {t("filterByLocation")}
-              </label>
-              <Select
-                id={locationFilterId}
-                value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
-              >
-                <option value="">{tc("all")}</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label htmlFor={expiryFilterId} className="mb-1 block text-xs text-muted-foreground">
-                {t("filterByExpiry")}
-              </label>
-              <Select
-                id={expiryFilterId}
-                value={expiryFilter}
-                onChange={(e) => setExpiryFilter(e.target.value)}
-              >
-                <option value="">{tc("all")}</option>
-                <option value="expired">{t("expiryStatus.expired")}</option>
-                <option value="expiring-soon">{t("expiryStatus.expiring-soon")}</option>
-                <option value="ok">{t("expiryStatus.ok")}</option>
-                <option value="unknown">{t("expiryStatus.unknown")}</option>
-              </Select>
-            </div>
-            <div>
-              <label htmlFor={sortFilterId} className="mb-1 block text-xs text-muted-foreground">
-                {tc("sort")}
-              </label>
-              <Select
-                id={sortFilterId}
-                value={sort}
-                onChange={(e) => {
-                  const v = e.target.value as ItemSortKey;
-                  setSort(v);
-                  localStorage.setItem("dashboard.sort", v);
-                }}
-              >
-                <option value="created_at">{t("sortByCreatedAt")}</option>
-                <option value="expiry_date">{t("sortByExpiry")}</option>
-                <option value="purchase_date">{t("sortByPurchaseDate")}</option>
-              </Select>
-            </div>
+                {t("expiryStatus.expiring-soon")} ({expiringSoonCount})
+              </button>
+            )}
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={hideEmpty}
-              onChange={(e) => {
-                setHideEmpty(e.target.checked);
-                localStorage.setItem("dashboard.hideEmpty", String(e.target.checked));
-              }}
-              className="rounded"
-            />
-            {t("hideEmpty")}
-          </label>
-        </div>
-      )}
+        )}
 
-      {/* Loading / Error / Content */}
-      {isLoading ? (
-        viewMode === "grid" ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="space-y-2 rounded-lg border p-3">
-                <Skeleton className="aspect-square w-full rounded-md" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
+        {/* Filter panel */}
+        {showFilters && (
+          <div className="space-y-3 rounded-lg border p-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div>
+                <label
+                  htmlFor={categoryFilterId}
+                  className="mb-1 block text-xs text-muted-foreground"
+                >
+                  {t("filterByCategory")}
+                </label>
+                <Select
+                  id={categoryFilterId}
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                >
+                  <option value="">{tc("all")}</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-11 w-full rounded-lg" />
-            ))}
-          </div>
-        )
-      ) : error ? (
-        <div className="rounded-lg border border-destructive p-4 text-sm text-destructive">
-          {t("loadError")}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-          {items.length === 0 ? (
-            <>
-              <p className="text-lg font-medium">{t("noItems")}</p>
-              <p className="mt-1 text-sm">{t("firstAddHint")}</p>
-              <Link to="/items/new" className="mt-4">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t("addItem")}
-                </Button>
-              </Link>
-            </>
-          ) : (
-            <p className="text-lg font-medium">{t("noMatchingItems")}</p>
-          )}
-        </div>
-      ) : (
-        <>
-          {viewMode === "grid" ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {visibleItems.map((item) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
-                  locationName={
-                    item.storage_location_id ? locationMap[item.storage_location_id] : undefined
-                  }
-                  warningDays={warningDays}
-                  openedAlertThresholdDays={resolveOpenedAlertThresholdDays(
-                    item,
-                    item.category_id ? categoryById[item.category_id] : null,
-                  )}
-                  isQuickConsuming={quickConsumingId === item.id}
-                  quickConsumeDisabled={quickConsumingId !== null && quickConsumingId !== item.id}
-                  onQuickConsume={(i) => {
-                    void handleQuickConsume(i);
+              <div>
+                <label
+                  htmlFor={locationFilterId}
+                  className="mb-1 block text-xs text-muted-foreground"
+                >
+                  {t("filterByLocation")}
+                </label>
+                <Select
+                  id={locationFilterId}
+                  value={locationId}
+                  onChange={(e) => setLocationId(e.target.value)}
+                >
+                  <option value="">{tc("all")}</option>
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label
+                  htmlFor={expiryFilterId}
+                  className="mb-1 block text-xs text-muted-foreground"
+                >
+                  {t("filterByExpiry")}
+                </label>
+                <Select
+                  id={expiryFilterId}
+                  value={expiryFilter}
+                  onChange={(e) => setExpiryFilter(e.target.value)}
+                >
+                  <option value="">{tc("all")}</option>
+                  <option value="expired">{t("expiryStatus.expired")}</option>
+                  <option value="expiring-soon">{t("expiryStatus.expiring-soon")}</option>
+                  <option value="ok">{t("expiryStatus.ok")}</option>
+                  <option value="unknown">{t("expiryStatus.unknown")}</option>
+                </Select>
+              </div>
+              <div>
+                <label htmlFor={sortFilterId} className="mb-1 block text-xs text-muted-foreground">
+                  {tc("sort")}
+                </label>
+                <Select
+                  id={sortFilterId}
+                  value={sort}
+                  onChange={(e) => {
+                    const v = e.target.value as ItemSortKey;
+                    setSort(v);
+                    localStorage.setItem("dashboard.sort", v);
                   }}
-                  onQuickMemo={(i) => setMemoItem(i)}
-                  imageUrl={item.image_path ? imageUrlsByPath?.[item.image_path] : undefined}
-                  selectionMode={selectionMode}
-                  isSelected={selectedIds.has(item.id)}
-                  onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
-                />
+                >
+                  <option value="created_at">{t("sortByCreatedAt")}</option>
+                  <option value="expiry_date">{t("sortByExpiry")}</option>
+                  <option value="purchase_date">{t("sortByPurchaseDate")}</option>
+                </Select>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={hideEmpty}
+                onChange={(e) => {
+                  setHideEmpty(e.target.checked);
+                  localStorage.setItem("dashboard.hideEmpty", String(e.target.checked));
+                }}
+                className="rounded"
+              />
+              {t("hideEmpty")}
+            </label>
+          </div>
+        )}
+
+        {/* Loading / Error / Content */}
+        {isLoading ? (
+          viewMode === "grid" ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="space-y-2 rounded-lg border p-3">
+                  <Skeleton className="aspect-square w-full rounded-md" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
               ))}
             </div>
           ) : (
             <div className="space-y-2">
-              {visibleItems.map((item) => (
-                <ItemListRow
-                  key={item.id}
-                  item={item}
-                  warningDays={warningDays}
-                  openedAlertThresholdDays={resolveOpenedAlertThresholdDays(
-                    item,
-                    item.category_id ? categoryById[item.category_id] : null,
-                  )}
-                  selectionMode={selectionMode}
-                  isSelected={selectedIds.has(item.id)}
-                  onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
-                />
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-11 w-full rounded-lg" />
               ))}
             </div>
-          )}
-          <div ref={sentinelRef} className="h-1" />
-        </>
-      )}
+          )
+        ) : error ? (
+          <div className="rounded-lg border border-destructive p-4 text-sm text-destructive">
+            {t("loadError")}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+            {items.length === 0 ? (
+              <>
+                <p className="text-lg font-medium">{t("noItems")}</p>
+                <p className="mt-1 text-sm">{t("firstAddHint")}</p>
+                <Link to="/items/new" className="mt-4">
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t("addItem")}
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <p className="text-lg font-medium">{t("noMatchingItems")}</p>
+            )}
+          </div>
+        ) : (
+          <>
+            {viewMode === "grid" ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {visibleItems.map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    categoryName={item.category_id ? categoryMap[item.category_id] : undefined}
+                    locationName={
+                      item.storage_location_id ? locationMap[item.storage_location_id] : undefined
+                    }
+                    warningDays={warningDays}
+                    openedAlertThresholdDays={resolveOpenedAlertThresholdDays(
+                      item,
+                      item.category_id ? categoryById[item.category_id] : null,
+                    )}
+                    isQuickConsuming={quickConsumingId === item.id}
+                    quickConsumeDisabled={quickConsumingId !== null && quickConsumingId !== item.id}
+                    onQuickConsume={(i) => {
+                      void handleQuickConsume(i);
+                    }}
+                    onQuickMemo={(i) => setMemoItem(i)}
+                    imageUrl={item.image_path ? imageUrlsByPath?.[item.image_path] : undefined}
+                    selectionMode={selectionMode}
+                    isSelected={selectedIds.has(item.id)}
+                    onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {visibleItems.map((item) => (
+                  <ItemListRow
+                    key={item.id}
+                    item={item}
+                    warningDays={warningDays}
+                    openedAlertThresholdDays={resolveOpenedAlertThresholdDays(
+                      item,
+                      item.category_id ? categoryById[item.category_id] : null,
+                    )}
+                    selectionMode={selectionMode}
+                    isSelected={selectedIds.has(item.id)}
+                    onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
+                  />
+                ))}
+              </div>
+            )}
+            <div ref={sentinelRef} className="h-1" />
+          </>
+        )}
+      </div>
 
       {/* Bulk operation bar & dialogs (#359) */}
       {selectionMode && (
