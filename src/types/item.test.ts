@@ -388,6 +388,17 @@ describe("computeConsumption", () => {
     expect(r.error).toBeDefined();
     expect(r.opened_remaining_after).toBeNull();
   });
+
+  test("floating-point noise does not block consuming the full remaining amount (#910)", () => {
+    // units=3, content_amount=0.29, opened_remaining=0.29 =>
+    // totalBefore = (3-1)*0.29 + 0.29 = 0.8699999999999999 in raw JS float math,
+    // while the UI rounds the displayed total to 0.87 and feeds that back as delta.
+    const item = { ...baseItem, content_amount: 0.29, units: 3, opened_remaining: 0.29 };
+    const r = computeConsumption(item, 0.87);
+    expect(r.error).toBeUndefined();
+    expect(r.units_after).toBe(0);
+    expect(r.opened_remaining_after).toBeNull();
+  });
 });
 
 // --- isItemUnverified (#375) ---
