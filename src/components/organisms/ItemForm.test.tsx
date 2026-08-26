@@ -639,6 +639,237 @@ describe("ItemForm — 保管場所の自動サジェスト (#814)", () => {
   });
 });
 
+describe("ItemForm — アイテム種別（食料品 / 日用品）", () => {
+  const categories = [
+    {
+      id: "cat-food",
+      user_id: "u1",
+      name: "食品",
+      kind: "food" as const,
+      created_at: "",
+      updated_at: "",
+    },
+    {
+      id: "cat-goods",
+      user_id: "u1",
+      name: "洗剤",
+      kind: "daily_goods" as const,
+      created_at: "",
+      updated_at: "",
+    },
+  ];
+
+  beforeEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: categories,
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+  });
+
+  afterEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockRestore();
+    spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
+  });
+
+  it("既定は食料品で、期限日と期限種別の入力欄が表示される", () => {
+    const { container, getByRole } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "テスト", units: 1 }} />,
+      { wrapper },
+    );
+    expect(
+      getByRole("button", { name: i18n.t("items:itemTypeFood") }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(container.querySelector("#expiry_date")).not.toBeNull();
+    expect(getByRole("button", { name: i18n.t("items:expiryTypeUnset") })).toBeDefined();
+  });
+
+  it("日用品を選ぶと期限日・期限種別の入力欄が消える（購入日は残る）", () => {
+    const { container, getByRole, queryByRole } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "洗剤", units: 1 }} />,
+      { wrapper },
+    );
+
+    fireEvent.click(getByRole("button", { name: i18n.t("items:itemTypeDailyGoods") }));
+
+    expect(container.querySelector("#expiry_date")).toBeNull();
+    expect(queryByRole("button", { name: i18n.t("items:expiryTypeUnset") })).toBeNull();
+    expect(container.querySelector("#purchase_date")).not.toBeNull();
+  });
+
+  it("日用品で送信すると expiry_date / expiry_type が空で送られる（隠れた期限を残さない）", () => {
+    const onSubmit = spyOn({ onSubmit: () => {} }, "onSubmit");
+    const { container, getByRole } = render(
+      <ItemForm
+        onSubmit={onSubmit}
+        defaultValues={{
+          name: "洗剤",
+          units: 1,
+          expiry_date: "2030-01-01",
+          expiry_type: "best_before",
+        }}
+      />,
+      { wrapper },
+    );
+
+    fireEvent.click(getByRole("button", { name: i18n.t("items:itemTypeDailyGoods") }));
+    fireEvent.submit(container.querySelector("form")!);
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        item_type: "daily_goods",
+        expiry_date: undefined,
+        expiry_type: null,
+      }),
+    );
+  });
+
+  /** QuickAddSelect はネイティブ select ではないため、トリガーを開いて
+   *  オプションのボタンをクリックする。 */
+  const pickCategory = async (
+    user: ReturnType<typeof userEvent.setup>,
+    container: HTMLElement,
+    label: string,
+  ) => {
+    await user.click(container.querySelector("#category_id") as HTMLButtonElement);
+    const option = Array.from(container.querySelectorAll('[role="option"]')).find((el) =>
+      el.textContent?.includes(label),
+    ) as HTMLElement;
+    await user.click(option);
+  };
+
+  it("種別を手で触っていない間はカテゴリの既定に追従する", async () => {
+    const user = userEvent.setup();
+    const { container, getByRole } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "洗剤", units: 1 }} />,
+      { wrapper },
+    );
+
+    await pickCategory(user, container, "洗剤");
+
+    expect(
+      getByRole("button", { name: i18n.t("items:itemTypeDailyGoods") }).getAttribute(
+        "aria-pressed",
+      ),
+    ).toBe("true");
+    expect(container.querySelector("#expiry_date")).toBeNull();
+  });
+
+  it("一度手で種別を選んだらカテゴリを変えても追従しない", async () => {
+    const user = userEvent.setup();
+    const { container, getByRole } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "ラップ", units: 1 }} />,
+      { wrapper },
+    );
+
+    fireEvent.click(getByRole("button", { name: i18n.t("items:itemTypeDailyGoods") }));
+    await pickCategory(user, container, "食品");
+
+    expect(
+      getByRole("button", { name: i18n.t("items:itemTypeDailyGoods") }).getAttribute(
+        "aria-pressed",
+      ),
+    ).toBe("true");
+  });
+
+  it("種別を明示せずカテゴリ経由で日用品になった状態でカテゴリを追加しても、新カテゴリは食料品になる", async () => {
+    const addCategory = mock(async () => ({ id: "cat-new", name: "調味料" }));
+    const createSpy = spyOn(useMasterDataModule, "useCreateCategory").mockReturnValue({
+      mutateAsync: addCategory,
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCreateCategory>);
+    const user = userEvent.setup();
+    const { container } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "しょうゆ", units: 1 }} />,
+      { wrapper },
+    );
+
+    // 「洗剤」(daily_goods) を選ぶと実効種別は日用品になるが、明示指定はしていない
+    await pickCategory(user, container, "洗剤");
+    await user.click(container.querySelector("#category_id") as HTMLButtonElement);
+    const addButton = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes(i18n.t("items:addCategory")),
+    ) as HTMLButtonElement;
+    await user.click(addButton);
+    await user.type(
+      container.querySelector(
+        'input[placeholder="' + i18n.t("items:addCategory") + '"]',
+      ) as HTMLInputElement,
+      "調味料",
+    );
+    await user.click(
+      container.querySelector(
+        `button[aria-label="${i18n.t("common:confirm")}"]`,
+      ) as HTMLButtonElement,
+    );
+
+    expect(addCategory).toHaveBeenCalledWith({ name: "調味料", kind: "food" });
+    createSpy.mockRestore();
+  });
+
+  it("種別を明示的に日用品にしてからカテゴリを追加すると、新カテゴリも日用品になる", async () => {
+    const addCategory = mock(async () => ({ id: "cat-new", name: "掃除用品" }));
+    const createSpy = spyOn(useMasterDataModule, "useCreateCategory").mockReturnValue({
+      mutateAsync: addCategory,
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCreateCategory>);
+    const user = userEvent.setup();
+    const { container, getByRole } = render(
+      <ItemForm onSubmit={() => {}} defaultValues={{ name: "スポンジ", units: 1 }} />,
+      { wrapper },
+    );
+
+    await user.click(getByRole("button", { name: i18n.t("items:itemTypeDailyGoods") }));
+    await user.click(container.querySelector("#category_id") as HTMLButtonElement);
+    const addButton = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes(i18n.t("items:addCategory")),
+    ) as HTMLButtonElement;
+    await user.click(addButton);
+    await user.type(
+      container.querySelector(
+        'input[placeholder="' + i18n.t("items:addCategory") + '"]',
+      ) as HTMLInputElement,
+      "掃除用品",
+    );
+    await user.click(
+      container.querySelector(
+        `button[aria-label="${i18n.t("common:confirm")}"]`,
+      ) as HTMLButtonElement,
+    );
+
+    expect(addCategory).toHaveBeenCalledWith({ name: "掃除用品", kind: "daily_goods" });
+    createSpy.mockRestore();
+  });
+
+  it("既存アイテム編集時は defaultValues.item_type が反映される", () => {
+    const { getByRole } = render(
+      <ItemForm
+        onSubmit={() => {}}
+        defaultValues={{ name: "洗剤", units: 1, item_type: "daily_goods" }}
+      />,
+      { wrapper },
+    );
+    expect(
+      getByRole("button", { name: i18n.t("items:itemTypeDailyGoods") }).getAttribute(
+        "aria-pressed",
+      ),
+    ).toBe("true");
+  });
+});
+
 const emptyValues = () => ({
   name: "",
   barcode: "",

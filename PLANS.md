@@ -472,18 +472,19 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 ## §9. 決定ログ
 
-| 日付       | 決定                                                                                                                                                | 理由                                                              |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| 2026-04-30 | MVP 再定義（既存実装の抜けを取り込む）                                                                                                              | Q1=b                                                              |
-| 2026-04-30 | 通知は Push + Email のユーザー選択制                                                                                                                | Q4=c                                                              |
-| 2026-04-30 | オフラインは参照のみ                                                                                                                                | Q5=a                                                              |
-| 2026-04-30 | テストランナーは `bun test` を採用、Vitest 不採用                                                                                                   | Q6=b                                                              |
-| 2026-04-30 | 数量は `units × content_amount` + `opened_remaining` モデル                                                                                         | Q7 補足                                                           |
-| 2026-04-30 | Issue 同期は Skill (`.claude/skills/project/issue-sync`) で運用                                                                                     | Q8=b                                                              |
-| 2026-07-31 | 「Single user」制約を変更し、世帯（household）単位の多人数共有を実装する方針を承認（#64 / #159）。設計は `docs/specs/features/household-sharing.md` | ユーザー承認（issue #64/#159 対応の feature-proposal フロー）     |
-| 2026-07-31 | レシート一括登録（#696）・購入先/店舗別価格比較（#697）を spec ドラフト済みとして Backlog から昇格                                                  | ユーザー承認（feature-proposal フロー）                           |
-| 2026-08-01 | 在庫優先の週間献立プランナー（#715）を spec ドラフト済みとして Backlog から昇格                                                                     | ユーザー承認（feature-proposal フロー）                           |
-| 2026-08-11 | 間取りマップ（v1.9）を追加。2D編集と3D参照を段階導入し、既存写真マップは互換維持                                                                    | ユーザー承認。2DはReact+SVG、3Dはthree+R3F、保存は意味モデルJSONB |
+| 日付       | 決定                                                                                                                                                | 理由                                                                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-30 | MVP 再定義（既存実装の抜けを取り込む）                                                                                                              | Q1=b                                                                                                                               |
+| 2026-04-30 | 通知は Push + Email のユーザー選択制                                                                                                                | Q4=c                                                                                                                               |
+| 2026-04-30 | オフラインは参照のみ                                                                                                                                | Q5=a                                                                                                                               |
+| 2026-04-30 | テストランナーは `bun test` を採用、Vitest 不採用                                                                                                   | Q6=b                                                                                                                               |
+| 2026-04-30 | 数量は `units × content_amount` + `opened_remaining` モデル                                                                                         | Q7 補足                                                                                                                            |
+| 2026-04-30 | Issue 同期は Skill (`.claude/skills/project/issue-sync`) で運用                                                                                     | Q8=b                                                                                                                               |
+| 2026-07-31 | 「Single user」制約を変更し、世帯（household）単位の多人数共有を実装する方針を承認（#64 / #159）。設計は `docs/specs/features/household-sharing.md` | ユーザー承認（issue #64/#159 対応の feature-proposal フロー）                                                                      |
+| 2026-07-31 | レシート一括登録（#696）・購入先/店舗別価格比較（#697）を spec ドラフト済みとして Backlog から昇格                                                  | ユーザー承認（feature-proposal フロー）                                                                                            |
+| 2026-08-01 | 在庫優先の週間献立プランナー（#715）を spec ドラフト済みとして Backlog から昇格                                                                     | ユーザー承認（feature-proposal フロー）                                                                                            |
+| 2026-08-11 | 間取りマップ（v1.9）を追加。2D編集と3D参照を段階導入し、既存写真マップは互換維持                                                                    | ユーザー承認。2DはReact+SVG、3Dはthree+R3F、保存は意味モデルJSONB                                                                  |
+| 2026-08-23 | アイテム種別（食料品 / 日用品）を追加（v1.10）。種別は `categories.kind`（既定）+ `items.item_type`（個別上書き）の2層で保持する                    | ユーザー要望。カテゴリ1件の切り替えで既存在庫をまとめて分類でき、例外は個別に上書きできるため（`days_use_after_opening` と同構造） |
 
 ---
 
@@ -672,6 +673,23 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [ ] Storybook / axe / Chromatic / bun:test / Playwright / pgTAP
 - [ ] モックデータ・ローカル確認・性能計測・Sentry固定分類
 
+### v1.10 — アイテム種別（食料品 / 日用品）
+
+> 詳細: `docs/specs/features/item-type.md`
+
+- [x] 設計: 種別の持ち方（カテゴリ既定 + アイテム個別上書き）とUI方針を確定
+- [x] migration: `categories.kind`（not null default 'food'）と `items.item_type`（nullable）
+- [x] `ITEM_TYPES` / `resolveItemType` と `itemFormSchema` / hook の対応
+- [x] `ItemTypeSelect`（atom）・`ItemTypeTabs`（molecule）+ Story + 単体テスト
+- [x] `ItemForm`: 種別セグメント、日用品では期限欄を出さない・送信時に期限を空にする
+- [x] ダッシュボード: 「すべて / 食料品 / 日用品」タブ（URL search param `type`）
+- [x] カテゴリ管理画面: 既定の種別の設定と一覧バッジ
+- [x] i18n（ja / en）と spec 更新
+- [ ] JSONバックアップ（`itemsToJSON` / `jsonToItems` / `import_items_batch`）への `item_type` 追加
+- [ ] 期限カレンダー・期限通知（Edge Function）でも日用品を対象外にする
+      （ダッシュボードは `dropExpiryForDailyGoods` で対応済み）
+- [ ] 日用品向けのダッシュボード最適化（期限系チップ・ソートの出し分け）
+
 ### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
 
 > 「Single user」制約を変更する根本方針変更。設計: `docs/specs/features/household-sharing.md`
@@ -715,6 +733,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - `docs/specs/features/barcode.md`
 - `docs/specs/features/expiry-alert.md`
 - `docs/specs/features/master-data.md`
+- `docs/specs/features/item-type.md`
 - `docs/specs/features/storage.md`
 - `docs/specs/features/shopping-list.md`
 - `docs/specs/features/consumption-purchase.md`

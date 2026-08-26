@@ -12,6 +12,7 @@
 ## ユーザーストーリー
 
 - カテゴリを追加・改名・削除できる
+- カテゴリに「既定のアイテム種別」（食料品 / 日用品）を設定できる
 - 保管場所を追加・改名・削除できる
 - マスタを削除しても紐づく item は消えない（`SET NULL`）
 - ItemForm で Select として選択できる
@@ -44,19 +45,31 @@
 
 ## API（hook）
 
-| hook                                                                                    | 機能                                      |
-| --------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `useCategories()`                                                                       | 一覧                                      |
-| `useUpsertCategory()`                                                                   | 追加・編集                                |
-| `useDeleteCategory(id)`                                                                 | 削除（FK は SET NULL）                    |
-| `useStorageLocations()` / `useUpsertStorageLocation()` / `useDeleteStorageLocation(id)` | 同上                                      |
-| `useCustomUnits()`                                                                      | 一覧                                      |
-| `useCreateCustomUnit()`                                                                 | 追加                                      |
-| `useDeleteCustomUnit()`                                                                 | 削除（FK ではないため使用中チェック不要） |
+| hook                                                                                    | 機能                                             |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `useCategories()`                                                                       | 一覧                                             |
+| `useUpsertCategory()`                                                                   | 追加・編集（`kind` = 既定のアイテム種別 を含む） |
+| `useDeleteCategory(id)`                                                                 | 削除（FK は SET NULL）                           |
+| `useStorageLocations()` / `useUpsertStorageLocation()` / `useDeleteStorageLocation(id)` | 同上                                             |
+| `useCustomUnits()`                                                                      | 一覧                                             |
+| `useCreateCustomUnit()`                                                                 | 追加                                             |
+| `useDeleteCustomUnit()`                                                                 | 削除（FK ではないため使用中チェック不要）        |
+
+## カテゴリの既定のアイテム種別（`categories.kind`）
+
+`categories.kind`（`food` / `daily_goods`）は、そのカテゴリに属するアイテムの既定の種別。
+`items.item_type` が未設定のアイテムはこの値にフォールバックする
+（`resolveItemType`）。既存カテゴリは全て `food`（`not null default 'food'`）で、
+これまでの表示・挙動が保たれる。詳細は `docs/specs/features/item-type.md` を参照。
+
+- カテゴリ管理画面の追加 / 編集フォームに種別セグメント（`ItemTypeSelect`）を置く
+- 一覧では日用品カテゴリにのみバッジを出す（既定側にはバッジを出さずノイズを減らす）
+- `ItemForm` のクイック追加から作られたカテゴリは、そのときフォームで選択中の種別を既定にする
 
 ## バリデーション
 
 - `name`: 必須、1〜40 文字、ユーザー内で重複不可（`custom_units` も同様）
+- `kind`: `food` / `daily_goods` のいずれか（既定 `food`）
 - カスタム単位名は前後空白を除いて保存し、プリセット単位と同名にはできない
 - `color`: hex 形式（任意）
 - `icon`: lucide のアイコン名（任意）

@@ -420,6 +420,112 @@ describe("DashboardPage", () => {
     expect(queryByText(/JSON.*バックアップ|JSON backup/i)).toBeNull();
   });
 
+  it("種別タブで食料品/日用品を切り替えると一覧が絞り込まれる", async () => {
+    categoriesspy.mockReturnValue({
+      data: [
+        { id: "cat-food", name: "食品", kind: "food" },
+        { id: "cat-goods", name: "洗剤", kind: "daily_goods" },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    itemsspy.mockReturnValue({
+      data: [
+        makeItem({ id: "milk", name: "牛乳", category_id: "cat-food" }),
+        makeItem({ id: "soap", name: "食器用洗剤", category_id: "cat-goods" }),
+        // カテゴリの既定より個別指定が優先される
+        makeItem({ id: "wrap", name: "ラップ", category_id: "cat-food", item_type: "daily_goods" }),
+        // カテゴリ未設定は食料品扱い（従来挙動の維持）
+        makeItem({ id: "rice", name: "お米" }),
+      ],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getAllByRole, queryByText } = await renderPage();
+    const [allTab, foodTab, goodsTab] = getAllByRole("tab");
+
+    // タブの件数
+    expect(allTab?.textContent).toContain("(4)");
+    expect(foodTab?.textContent).toContain("(2)");
+    expect(goodsTab?.textContent).toContain("(2)");
+
+    await act(async () => {
+      fireEvent.click(goodsTab!);
+    });
+
+    expect(queryByText("食器用洗剤")).not.toBeNull();
+    expect(queryByText("ラップ")).not.toBeNull();
+    expect(queryByText("牛乳")).toBeNull();
+    expect(queryByText("お米")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(getAllByRole("tab")[1]!);
+    });
+
+    expect(queryByText("牛乳")).not.toBeNull();
+    expect(queryByText("お米")).not.toBeNull();
+    expect(queryByText("食器用洗剤")).toBeNull();
+  });
+
+  it("種別タブを切り替えても期限切れ警告バナーは全在庫を対象にし続ける", async () => {
+    categoriesspy.mockReturnValue({
+      data: [{ id: "cat-goods", name: "洗剤", kind: "daily_goods" }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    itemsspy.mockReturnValue({
+      data: [
+        makeItem({ id: "expired", name: "期限切れ牛乳", expiry_date: "2000-01-01" }),
+        makeItem({ id: "soap", name: "洗剤", category_id: "cat-goods" }),
+      ],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getAllByRole, queryByText } = await renderPage();
+    await act(async () => {
+      fireEvent.click(getAllByRole("tab")[2]!);
+    });
+
+    expect(queryByText(URGENT_BANNER_RE)).not.toBeNull();
+  });
+
+  it("カテゴリを日用品に切り替えた既存アイテムの残存期限は、期限バナー・チップから外れる", async () => {
+    categoriesspy.mockReturnValue({
+      data: [{ id: "cat-goods", name: "洗剤", kind: "daily_goods" }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    itemsspy.mockReturnValue({
+      data: [
+        // 食料品時代に入力された expiry_date が DB に残っている日用品
+        makeItem({
+          id: "soap",
+          name: "食器用洗剤",
+          category_id: "cat-goods",
+          expiry_date: "2000-01-01",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useItemsModule.useItems>);
+
+    const { queryByText, queryByRole } = await renderPage();
+
+    expect(queryByText(URGENT_BANNER_RE)).toBeNull();
+    expect(queryByRole("button", { name: /期限切れ|expired/i })).toBeNull();
+    // 一覧自体には出る（在庫としては存在する）
+    expect(queryByText("食器用洗剤")).not.toBeNull();
+  });
+
+  it("選択中のタブに対応する tabpanel が存在する (accessibility.md §5)", async () => {
+    const { getAllByRole, getByRole } = await renderPage();
+    const selectedTab = getAllByRole("tab").find(
+      (tab) => tab.getAttribute("aria-selected") === "true",
+    );
+    const panel = getByRole("tabpanel");
+    expect(panel.id).toBe(selectedTab!.getAttribute("aria-controls"));
+    expect(panel.getAttribute("aria-labelledby")).toBe(selectedTab!.id);
+  });
+
   it("クイックフィルターチップの選択状態がaria-pressedで伝わる (#901)", async () => {
     itemsspy.mockReturnValue({
       data: [makeItem({ id: "expired", expiry_date: "2000-01-01", units: 1 })],

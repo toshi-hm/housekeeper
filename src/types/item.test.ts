@@ -16,6 +16,7 @@ import {
   isOpenedAlertDue,
   itemFormSchema,
   itemLotSchema,
+  resolveItemType,
   resolveOpenedAlertThresholdDays,
   roundFloat,
   STOCKTAKE_NEW_ITEM_GRACE_DAYS,
@@ -261,6 +262,24 @@ describe("roundFloat", () => {
 });
 
 // --- resolveOpenedAlertThresholdDays / isOpenedAlertDue (#752) ---
+
+describe("resolveItemType", () => {
+  test("アイテム個別の上書きがカテゴリ既定より優先される", () => {
+    expect(resolveItemType({ item_type: "daily_goods" }, { kind: "food" })).toBe("daily_goods");
+    expect(resolveItemType({ item_type: "food" }, { kind: "daily_goods" })).toBe("food");
+  });
+
+  test("アイテム個別が未設定ならカテゴリ既定に従う", () => {
+    expect(resolveItemType({ item_type: null }, { kind: "daily_goods" })).toBe("daily_goods");
+    expect(resolveItemType({}, { kind: "daily_goods" })).toBe("daily_goods");
+  });
+
+  test("カテゴリ未設定・カテゴリのkind未設定なら食料品にフォールバックする（既存データ互換）", () => {
+    expect(resolveItemType({ item_type: null }, null)).toBe("food");
+    expect(resolveItemType({ item_type: null })).toBe("food");
+    expect(resolveItemType({ item_type: null }, {})).toBe("food");
+  });
+});
 
 describe("resolveOpenedAlertThresholdDays", () => {
   test("item-level override takes precedence over the category default", () => {

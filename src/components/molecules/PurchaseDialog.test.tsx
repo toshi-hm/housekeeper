@@ -284,4 +284,49 @@ describe("PurchaseDialog", () => {
       locSpy.mockRestore();
     });
   });
+
+  // #929 セルフレビュー: existingItem の item_type を渡し忘れると、日用品への
+  // 統合なのに期限欄が出て、入力された期限がロット経由でアイテムに戻ってしまう。
+  it("統合先が日用品のアイテムなら期限欄を出さない", () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const catSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+    } as ReturnType<typeof useMasterDataModule.useCategories>);
+    const locSpy = spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+    } as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+
+    const existingItem = {
+      id: "item-1",
+      user_id: "user-1",
+      name: "食器用洗剤",
+      units: 1,
+      content_amount: 1,
+      content_unit: "個",
+      item_type: "daily_goods",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    } as Item;
+
+    const { container, getByRole } = render(
+      <PurchaseDialog
+        open={true}
+        itemName="食器用洗剤"
+        existingItem={existingItem}
+        onSubmit={() => {}}
+        onClose={() => {}}
+      />,
+      { wrapper: makeWrapper(qc) },
+    );
+
+    expect(container.querySelector("#expiry_date")).toBeNull();
+    expect(
+      getByRole("button", { name: i18n.t("items:itemTypeDailyGoods") }).getAttribute(
+        "aria-pressed",
+      ),
+    ).toBe("true");
+
+    catSpy.mockRestore();
+    locSpy.mockRestore();
+  });
 });

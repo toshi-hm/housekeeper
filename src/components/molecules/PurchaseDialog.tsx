@@ -58,6 +58,9 @@ export const PurchaseDialog = ({
         auto_reorder: existingItem.auto_reorder ?? false,
         reorder_threshold: existingItem.reorder_threshold ?? null,
         expiry_type: existingItem.expiry_type ?? null,
+        // 統合先が日用品なら期限欄を出さない。渡し忘れると null 上書きで
+        // 種別の個別指定が消える（#929 セルフレビュー）。
+        item_type: existingItem.item_type ?? null,
         image_path: existingItem.image_path ?? "",
         units: 1,
       }

@@ -9,6 +9,8 @@
   "backToSettings": "設定に戻る",
   "categories": "カテゴリ管理",
   "categoryInUse": "このカテゴリは使用中のため削除できません",
+  "categoryKind": "このカテゴリの既定の種別",
+  "categoryKindHelp": "このカテゴリのアイテムを、既定で食料品／日用品のどちらとして扱うか。アイテムごとに個別に上書きもできます。",
   "categoryName": "カテゴリ名",
   "customUnitName": "単位名",
   "customUnits": "カスタム単位",

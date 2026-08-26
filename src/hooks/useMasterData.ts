@@ -4,7 +4,12 @@ import { useTranslation } from "react-i18next";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import type { Category, StorageLocation } from "@/types/item";
+import {
+  type Category,
+  DEFAULT_ITEM_TYPE,
+  type ItemType,
+  type StorageLocation,
+} from "@/types/item";
 
 const CATEGORIES_KEY = ["categories"] as const;
 const LOCATIONS_KEY = ["locations"] as const;
@@ -74,6 +79,7 @@ export const createCategory = async (
   color?: string | null,
   icon?: string | null,
   daysUseAfterOpening?: number | null,
+  kind?: ItemType,
 ): Promise<Category> => {
   requireOnline();
   validateNameLength(name);
@@ -86,6 +92,7 @@ export const createCategory = async (
       color: color ?? null,
       icon: icon ?? null,
       days_use_after_opening: daysUseAfterOpening ?? null,
+      kind: kind ?? DEFAULT_ITEM_TYPE,
       user_id: userData.user.id,
     })
     .select()
@@ -103,6 +110,7 @@ export const updateCategory = async (
   color?: string | null,
   icon?: string | null,
   daysUseAfterOpening?: number | null,
+  kind?: ItemType,
 ): Promise<Category> => {
   requireOnline();
   validateNameLength(name);
@@ -113,6 +121,7 @@ export const updateCategory = async (
       color: color ?? null,
       icon: icon ?? null,
       days_use_after_opening: daysUseAfterOpening ?? null,
+      kind: kind ?? DEFAULT_ITEM_TYPE,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -193,12 +202,14 @@ export const useCreateCategory = () => {
       color,
       icon,
       daysUseAfterOpening,
+      kind,
     }: {
       name: string;
       color?: string | null;
       icon?: string | null;
       daysUseAfterOpening?: number | null;
-    }) => createCategory(name, color, icon, daysUseAfterOpening),
+      kind?: ItemType;
+    }) => createCategory(name, color, icon, daysUseAfterOpening, kind),
     onSuccess: (category) => {
       qc.setQueryData<Category[]>(CATEGORIES_KEY, (old) => {
         if (!old) return [category];
@@ -227,13 +238,15 @@ export const useUpdateCategory = () => {
       color,
       icon,
       daysUseAfterOpening,
+      kind,
     }: {
       id: string;
       name: string;
       color?: string | null;
       icon?: string | null;
       daysUseAfterOpening?: number | null;
-    }) => updateCategory(id, name, color, icon, daysUseAfterOpening),
+      kind?: ItemType;
+    }) => updateCategory(id, name, color, icon, daysUseAfterOpening, kind),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
     },
