@@ -176,6 +176,7 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         name: cloneSource.name,
         barcode: cloneSource.barcode ?? "",
         category_id: cloneSource.category_id,
+        item_type: cloneSource.item_type ?? null,
         storage_location_id: cloneSource.storage_location_id,
         content_amount: cloneSource.content_amount,
         content_unit: cloneSource.content_unit,
