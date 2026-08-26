@@ -48,6 +48,7 @@ create table items (
   name text not null,
   barcode text,
   category_id uuid references categories(id) on delete set null,
+  item_type text check (item_type is null or item_type in ('food', 'daily_goods')), -- 食料品/日用品の個別上書き。null = categories.kind に従う（item-type.md）
   storage_location_id uuid references storage_locations(id) on delete set null,
 
   -- 数量モデル
@@ -92,6 +93,9 @@ create index items_location_idx on items(storage_location_id);
 - `expiry_type`（#714）: 「賞味期限」（`best_before`, 品質の目安）と「消費期限」（`use_by`,
   安全性の目安）の区別。`null` = 未設定（既存アイテムはこのまま、区別なしの従来挙動を維持）。
   詳細は `docs/specs/features/expiry-alert.md` を参照
+- `item_type`: 食料品（`food`） / 日用品（`daily_goods`）の区別のアイテム個別上書き。
+  `null` = `categories.kind` に従う（カテゴリ未設定なら `food`）。既存アイテムは全て `null`。
+  詳細は `docs/specs/features/item-type.md` を参照
 
 ## item_lots
 
@@ -140,6 +144,7 @@ create table categories (
   name text not null,
   color text,                            -- hex color or token
   icon text,                             -- lucide icon name など任意
+  kind text not null default 'food' check (kind in ('food', 'daily_goods')), -- このカテゴリの既定のアイテム種別（item-type.md）
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, name)
@@ -147,6 +152,12 @@ create table categories (
 
 create index categories_user_id_idx on categories(user_id);
 ```
+
+- `kind`: このカテゴリに属するアイテムの既定の種別（食料品 / 日用品）。
+  `items.item_type` が `null` のアイテムはこの値にフォールバックする
+  （`resolveItemType`、`docs/specs/features/item-type.md`）。
+  `not null default 'food'` なので既存カテゴリは全て食料品扱いのまま。
+- `days_use_after_opening`（#752）も同じ「カテゴリ既定 + アイテム個別上書き」の構造を取る
 
 ## storage_locations
 

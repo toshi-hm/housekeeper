@@ -19,6 +19,10 @@ export interface Database {
           name: string;
           color: string | null;
           icon: string | null;
+          /** このカテゴリに属するアイテムの既定の種別（食料品 / 日用品）。
+           *  items.item_type が未設定のアイテムはこの値にフォールバックする
+           *  （docs/specs/features/item-type.md）。 */
+          kind: "food" | "daily_goods";
           /** 開封後使用推奨日数（既定値）。items.days_use_after_opening が
            *  未設定のアイテムはこの値にフォールバックする（#752）。 */
           days_use_after_opening: number | null;
@@ -31,6 +35,7 @@ export interface Database {
           name: string;
           color?: string | null;
           icon?: string | null;
+          kind?: "food" | "daily_goods";
           days_use_after_opening?: number | null;
           created_at?: string;
           updated_at?: string;
@@ -41,6 +46,7 @@ export interface Database {
           name?: string;
           color?: string | null;
           icon?: string | null;
+          kind?: "food" | "daily_goods";
           days_use_after_opening?: number | null;
           updated_at?: string;
         };
@@ -219,6 +225,9 @@ export interface Database {
           name: string;
           barcode: string | null;
           category_id: string | null;
+          /** アイテム種別の個別上書き。null = categories.kind に従う
+           *  （docs/specs/features/item-type.md）。 */
+          item_type: "food" | "daily_goods" | null;
           storage_location_id: string | null;
           units: number;
           content_amount: number;
@@ -253,6 +262,7 @@ export interface Database {
           name: string;
           barcode?: string | null;
           category_id?: string | null;
+          item_type?: "food" | "daily_goods" | null;
           storage_location_id?: string | null;
           units?: number;
           content_amount?: number;
@@ -283,6 +293,7 @@ export interface Database {
           name?: string;
           barcode?: string | null;
           category_id?: string | null;
+          item_type?: "food" | "daily_goods" | null;
           storage_location_id?: string | null;
           units?: number;
           content_amount?: number;

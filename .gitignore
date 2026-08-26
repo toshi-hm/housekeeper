@@ -25,6 +25,15 @@ test-results
 playwright-report
 /playwright/.cache
 
+# Test coverage (bun test --coverage-dir=coverage / deno test --coverage=coverage/deno /
+# storybook test-runner --coverageDirectory coverage/storybook)
+coverage
+
+# VRT: jest-image-snapshot が差分検出時に diff/actual 画像を書き出す先。
+# baseline（__image_snapshots__/*.png）はコミットするが、この出力は生成物なので追跡しない
+# （CI では _a11y.yml の Upload visual regression diffs が artifact として保存する）
+.storybook/__image_snapshots__/__diff_output__/
+
 # Supabase CLI temp files
 supabase/.temp/
 

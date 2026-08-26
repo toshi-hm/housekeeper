@@ -225,6 +225,55 @@ describe("NewItemPage - location suggestion wiring (#814)", () => {
   });
 });
 
+// #929 セルフレビューの追従: EditItemPage / PurchaseDialog と同じ穴が cloneFrom にも
+// あった — clone 元アイテムの item_type（個別上書き）が cloneDefaultValues に渡されて
+// おらず、クローンすると null（カテゴリ追従）に戻ってしまっていた。
+describe("NewItemPage - clone carries item_type (#929 follow-up)", () => {
+  let itemSpy: ReturnType<typeof spyOn>;
+  let settingsSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    settingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+  });
+
+  afterEach(() => {
+    itemSpy.mockRestore();
+    settingsSpy.mockRestore();
+    cleanup();
+  });
+
+  it("clone元の個別上書きされた item_type を defaultValues に引き継ぐ", () => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: { id: "item-1", item_type: "daily_goods" } as Item,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+
+    render(<NewItemPage cloneFrom="item-1" />, { wrapper: Wrapper });
+
+    const lastCallProps = itemFormSpy.mock.calls.at(-1)?.[0] as
+      | { defaultValues?: { item_type?: string | null } }
+      | undefined;
+    expect(lastCallProps?.defaultValues?.item_type).toBe("daily_goods");
+  });
+
+  it("clone元が個別指定なし（追従）のときは null を引き継ぐ", () => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: { id: "item-1", item_type: null } as unknown as Item,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+
+    render(<NewItemPage cloneFrom="item-1" />, { wrapper: Wrapper });
+
+    const lastCallProps = itemFormSpy.mock.calls.at(-1)?.[0] as
+      | { defaultValues?: { item_type?: string | null } }
+      | undefined;
+    expect(lastCallProps?.defaultValues?.item_type).toBeNull();
+  });
+});
+
 // #650: a revived (un-soft-deleted) item is an *existing* item, just like a
 // stacked one — selecting a new image/tag on the form must not overwrite the
 // values it already had before it was deleted.
