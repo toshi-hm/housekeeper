@@ -28,6 +28,7 @@
   "duplicateCategoryName": "A category with this name already exists",
   "duplicateCustomUnitName": "A custom unit with this name already exists",
   "duplicateLocationName": "A location with this name already exists",
+  "duplicateTagName": "A tag with this name already exists",
   "editCategory": "Edit Category",
   "editLocation": "Edit Location",
   "expiryWarningDays": "Expiry warning days",
