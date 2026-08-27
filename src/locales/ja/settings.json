@@ -28,6 +28,7 @@
   "duplicateCategoryName": "同名のカテゴリがあります",
   "duplicateCustomUnitName": "同名のカスタム単位があります",
   "duplicateLocationName": "同名の保管場所があります",
+  "duplicateTagName": "同名のタグがあります",
   "editCategory": "カテゴリを編集",
   "editLocation": "保管場所を編集",
   "expiryWarningDays": "期限警告日数",

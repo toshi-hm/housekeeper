@@ -97,6 +97,7 @@ export const TagsPage = () => {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder={t("tagName")}
+            maxLength={40}
             disabled={createTag.isPending}
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleCreate();
@@ -134,6 +135,7 @@ export const TagsPage = () => {
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       className="flex-1"
+                      maxLength={40}
                       autoFocus
                       disabled={updateTag.isPending}
                       onKeyDown={(e) => {
