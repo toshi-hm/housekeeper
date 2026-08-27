@@ -192,6 +192,55 @@ describe("NotificationSettings", () => {
     expect(mutateAsync).toHaveBeenCalledWith({ timezone: "America/Los_Angeles" });
   });
 
+  it("通知日数に不正な値を入力してフォーカスアウトすると表示値が保存済みの値に戻りaria-invalidになる (#918)", () => {
+    setPrefs({});
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const thresholdInput = getByLabelText(/日数前|Days before/i) as HTMLInputElement;
+    fireEvent.change(thresholdInput, { target: { value: "31" } });
+    fireEvent.blur(thresholdInput);
+
+    expect(thresholdInput.value).toBe("3");
+    expect(thresholdInput.getAttribute("aria-invalid")).toBe("true");
+    expect(thresholdInput.getAttribute("aria-describedby")).toBeTruthy();
+  });
+
+  it("通知時刻に不正な値を入力してフォーカスアウトすると表示値が保存済みの値に戻りaria-invalidになる (#918)", () => {
+    setPrefs({ notify_at: "09:00" });
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const notifyAtInput = getByLabelText(/通知時刻|Notification time/i) as HTMLInputElement;
+    fireEvent.change(notifyAtInput, { target: { value: "" } });
+    fireEvent.blur(notifyAtInput);
+
+    expect(notifyAtInput.value).toBe("09:00");
+    expect(notifyAtInput.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("メールアドレスに不正な値を入力してフォーカスアウトすると表示値が保存済みの値に戻りaria-invalidになる (#918)", () => {
+    setPrefs({ email_enabled: true, email_address: "user@example.com" });
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const emailInput = getByLabelText(/メールアドレス|Email address/i) as HTMLInputElement;
+    fireEvent.change(emailInput, { target: { value: "not-an-email" } });
+    fireEvent.blur(emailInput);
+
+    expect(emailInput.value).toBe("user@example.com");
+    expect(emailInput.getAttribute("aria-invalid")).toBe("true");
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("バリデーションエラー後に有効な値で再度フォーカスアウトするとaria-invalidが解除される (#918)", () => {
+    setPrefs({});
+    const { getByLabelText } = render(<NotificationSettings />, { wrapper });
+    const thresholdInput = getByLabelText(/日数前|Days before/i) as HTMLInputElement;
+    fireEvent.change(thresholdInput, { target: { value: "31" } });
+    fireEvent.blur(thresholdInput);
+    expect(thresholdInput.getAttribute("aria-invalid")).toBe("true");
+
+    fireEvent.change(thresholdInput, { target: { value: "5" } });
+    fireEvent.blur(thresholdInput);
+    expect(thresholdInput.getAttribute("aria-invalid")).toBe("false");
+    expect(mutateAsync).toHaveBeenCalledWith({ threshold_days: 5 });
+  });
+
   it("既定では設定済みのtimezoneが選択された状態で表示される (#660)", () => {
     prefsSpy.mockReturnValue({
       data: {
