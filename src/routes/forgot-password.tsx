@@ -207,8 +207,14 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
               placeholder={t("answerPlaceholder")}
               autoComplete="off"
               required
+              aria-invalid={!!fieldErrors.answer}
+              aria-describedby={fieldErrors.answer ? "answer-error" : undefined}
             />
-            {fieldErrors.answer && <p className="text-xs text-destructive">{fieldErrors.answer}</p>}
+            {fieldErrors.answer && (
+              <p id="answer-error" className="text-xs text-destructive">
+                {fieldErrors.answer}
+              </p>
+            )}
           </div>
 
           {/* New password */}
@@ -224,6 +230,8 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
                 required
                 autoComplete="new-password"
                 className="pr-10"
+                aria-invalid={!!fieldErrors.newPassword}
+                aria-describedby={fieldErrors.newPassword ? "newPassword-error" : undefined}
               />
               <button
                 type="button"
@@ -235,7 +243,9 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
               </button>
             </div>
             {fieldErrors.newPassword && (
-              <p className="text-xs text-destructive">{fieldErrors.newPassword}</p>
+              <p id="newPassword-error" className="text-xs text-destructive">
+                {fieldErrors.newPassword}
+              </p>
             )}
           </div>
 
@@ -252,6 +262,12 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
                 required
                 autoComplete="new-password"
                 className="pr-10"
+                aria-invalid={confirmMismatch || !!fieldErrors.confirmPassword}
+                aria-describedby={
+                  confirmMismatch || fieldErrors.confirmPassword
+                    ? "forgotPasswordConfirm-error"
+                    : undefined
+                }
               />
               <button
                 type="button"
@@ -263,10 +279,14 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
               </button>
             </div>
             {confirmMismatch && (
-              <p className="text-xs text-destructive">{t("confirmPasswordMismatch")}</p>
+              <p id="forgotPasswordConfirm-error" className="text-xs text-destructive">
+                {t("confirmPasswordMismatch")}
+              </p>
             )}
             {fieldErrors.confirmPassword && !confirmMismatch && (
-              <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
+              <p id="forgotPasswordConfirm-error" className="text-xs text-destructive">
+                {fieldErrors.confirmPassword}
+              </p>
             )}
           </div>
 
@@ -289,7 +309,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
 // Page
 // ---------------------------------------------------------------------------
 
-const ForgotPasswordPage = () => {
+export const ForgotPasswordPage = () => {
   const { t } = useTranslation("auth");
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");

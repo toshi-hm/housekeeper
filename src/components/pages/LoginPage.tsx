@@ -289,9 +289,18 @@ export const LoginPage = () => {
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="mfaCode">{tm("codeLabel")}</Label>
-                  <TotpCodeInput id="mfaCode" value={mfaCode} onChange={setMfaCode} autoFocus />
+                  <TotpCodeInput
+                    id="mfaCode"
+                    value={mfaCode}
+                    onChange={setMfaCode}
+                    autoFocus
+                    aria-invalid={!!fieldErrors.mfaCode}
+                    aria-describedby={fieldErrors.mfaCode ? "mfaCode-error" : undefined}
+                  />
                   {fieldErrors.mfaCode && (
-                    <p className="text-xs text-destructive">{fieldErrors.mfaCode}</p>
+                    <p id="mfaCode-error" className="text-xs text-destructive">
+                      {fieldErrors.mfaCode}
+                    </p>
                   )}
                 </div>
 
@@ -324,9 +333,13 @@ export const LoginPage = () => {
                     placeholder={t("emailPlaceholder")}
                     required
                     autoComplete="email"
+                    aria-invalid={!!fieldErrors.email}
+                    aria-describedby={fieldErrors.email ? "email-error" : undefined}
                   />
                   {fieldErrors.email && (
-                    <p className="text-xs text-destructive">{fieldErrors.email}</p>
+                    <p id="email-error" className="text-xs text-destructive">
+                      {fieldErrors.email}
+                    </p>
                   )}
                 </div>
 
@@ -343,6 +356,8 @@ export const LoginPage = () => {
                       required
                       autoComplete={isSignupMode ? "new-password" : "current-password"}
                       className="pr-10"
+                      aria-invalid={!!fieldErrors.password}
+                      aria-describedby={fieldErrors.password ? "password-error" : undefined}
                     />
                     <button
                       type="button"
@@ -354,7 +369,9 @@ export const LoginPage = () => {
                     </button>
                   </div>
                   {fieldErrors.password && (
-                    <p className="text-xs text-destructive">{fieldErrors.password}</p>
+                    <p id="password-error" className="text-xs text-destructive">
+                      {fieldErrors.password}
+                    </p>
                   )}
                   {isSignupMode && <PasswordStrength password={password} />}
                 </div>
@@ -375,6 +392,12 @@ export const LoginPage = () => {
                           required
                           autoComplete="new-password"
                           className="pr-10"
+                          aria-invalid={confirmMismatch || !!fieldErrors.confirmPassword}
+                          aria-describedby={
+                            confirmMismatch || fieldErrors.confirmPassword
+                              ? "confirmPassword-error"
+                              : undefined
+                          }
                         />
                         <button
                           type="button"
@@ -390,10 +413,14 @@ export const LoginPage = () => {
                         </button>
                       </div>
                       {confirmMismatch && (
-                        <p className="text-xs text-destructive">{t("confirmPasswordMismatch")}</p>
+                        <p id="confirmPassword-error" className="text-xs text-destructive">
+                          {t("confirmPasswordMismatch")}
+                        </p>
                       )}
                       {fieldErrors.confirmPassword && !confirmMismatch && (
-                        <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
+                        <p id="confirmPassword-error" className="text-xs text-destructive">
+                          {fieldErrors.confirmPassword}
+                        </p>
                       )}
                     </div>
 
@@ -405,6 +432,10 @@ export const LoginPage = () => {
                         value={securityQuestion}
                         onChange={(e) => setSecurityQuestion(e.target.value)}
                         required
+                        aria-invalid={!!fieldErrors.securityQuestion}
+                        aria-describedby={
+                          fieldErrors.securityQuestion ? "securityQuestion-error" : undefined
+                        }
                       >
                         <option value="">{t("selectSecurityQuestion")}</option>
                         {SECURITY_QUESTION_IDS.map((id) => (
@@ -414,7 +445,9 @@ export const LoginPage = () => {
                         ))}
                       </Select>
                       {fieldErrors.securityQuestion && (
-                        <p className="text-xs text-destructive">{fieldErrors.securityQuestion}</p>
+                        <p id="securityQuestion-error" className="text-xs text-destructive">
+                          {fieldErrors.securityQuestion}
+                        </p>
                       )}
                     </div>
 
@@ -428,10 +461,20 @@ export const LoginPage = () => {
                         onChange={(e) => setSecurityAnswer(e.target.value)}
                         placeholder={t("securityAnswerPlaceholder")}
                         autoComplete="off"
+                        aria-invalid={!!fieldErrors.securityAnswer}
+                        aria-describedby={
+                          fieldErrors.securityAnswer
+                            ? "securityAnswer-hint securityAnswer-error"
+                            : "securityAnswer-hint"
+                        }
                       />
-                      <p className="text-xs text-muted-foreground">{t("securityAnswerHint")}</p>
+                      <p id="securityAnswer-hint" className="text-xs text-muted-foreground">
+                        {t("securityAnswerHint")}
+                      </p>
                       {fieldErrors.securityAnswer && (
-                        <p className="text-xs text-destructive">{fieldErrors.securityAnswer}</p>
+                        <p id="securityAnswer-error" className="text-xs text-destructive">
+                          {fieldErrors.securityAnswer}
+                        </p>
                       )}
                     </div>
                   </>
