@@ -35,6 +35,13 @@ export const NotificationSettings = () => {
   const testNotification = useTestNotification();
   const { toast } = useToast();
   const [isPushLoading, setIsPushLoading] = useState(false);
+  const [emailAddressError, setEmailAddressError] = useState("");
+  const [thresholdDaysError, setThresholdDaysError] = useState("");
+  const [notifyAtError, setNotifyAtError] = useState("");
+  // 検証失敗時に保存済みの値へ表示を戻すため、制御コンポーネントとして保持する (#918)
+  const [emailAddressDraft, setEmailAddressDraft] = useState(prefs?.email_address ?? "");
+  const [thresholdDaysDraft, setThresholdDaysDraft] = useState(String(prefs?.threshold_days ?? 3));
+  const [notifyAtDraft, setNotifyAtDraft] = useState(toHourOnly(prefs?.notify_at ?? "08:00"));
 
   const isPushSupported =
     typeof window !== "undefined" &&
@@ -96,9 +103,12 @@ export const NotificationSettings = () => {
   const handleEmailAddressBlur = async (address: string) => {
     const trimmed = address.trim();
     if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailAddressError(t("invalidEmailAddress"));
+      setEmailAddressDraft(prefs?.email_address ?? "");
       toast(t("invalidEmailAddress"), "error");
       return;
     }
+    setEmailAddressError("");
     try {
       await updatePrefs.mutateAsync({ email_address: trimmed || null });
     } catch (error) {
@@ -111,9 +121,12 @@ export const NotificationSettings = () => {
   const handleThresholdBlur = async (val: string) => {
     const days = parseInt(val, 10);
     if (isNaN(days) || days < 0 || days > 30) {
+      setThresholdDaysError(t("invalidThresholdDays"));
+      setThresholdDaysDraft(String(prefs?.threshold_days ?? 3));
       toast(t("invalidThresholdDays"), "error");
       return;
     }
+    setThresholdDaysError("");
     try {
       await updatePrefs.mutateAsync({ threshold_days: days });
     } catch (error) {
@@ -124,18 +137,18 @@ export const NotificationSettings = () => {
   };
 
   const handleNotifyAtBlur = async (val: string) => {
-    if (!val) {
-      toast(t("invalidNotifyAt"), "error");
-      return;
-    }
-    const hour = parseInt(val.split(":")[0] ?? "", 10);
+    const hour = val ? parseInt(val.split(":")[0] ?? "", 10) : NaN;
     if (isNaN(hour) || hour < 0 || hour > 23) {
+      setNotifyAtError(t("invalidNotifyAt"));
+      setNotifyAtDraft(toHourOnly(prefs?.notify_at ?? "08:00"));
       toast(t("invalidNotifyAt"), "error");
       return;
     }
+    setNotifyAtError("");
     // 配信は毎時0分実行のcronで時単位でしか判定されないため、
     // UIも時単位に丸めて実態と一致させる (#708)
     const normalized = `${hour.toString().padStart(2, "0")}:00`;
+    setNotifyAtDraft(normalized);
     try {
       await updatePrefs.mutateAsync({ notify_at: normalized });
     } catch (error) {
@@ -157,7 +170,8 @@ export const NotificationSettings = () => {
 
   const timezones = useMemo(() => listAvailableTimezones(), []);
 
-  // key forces re-mount of uncontrolled inputs when prefs load
+  // key forces re-mount when prefs load, re-initializing both the
+  // uncontrolled timezone select and the draft state above from prefs
   return (
     <div className="space-y-5" key={prefs?.user_id ?? "loading"}>
       {/* Push */}
@@ -218,11 +232,19 @@ export const NotificationSettings = () => {
             <Input
               id="email_address"
               type="email"
-              defaultValue={prefs.email_address ?? ""}
+              value={emailAddressDraft}
+              onChange={(e) => setEmailAddressDraft(e.target.value)}
               placeholder="you@example.com"
               onBlur={(e) => void handleEmailAddressBlur(e.target.value)}
+              aria-invalid={!!emailAddressError}
+              aria-describedby={emailAddressError ? "email-address-error" : undefined}
             />
-            {!prefs.email_address && (
+            {emailAddressError && (
+              <p id="email-address-error" className="text-xs text-destructive">
+                {emailAddressError}
+              </p>
+            )}
+            {!emailAddressError && !prefs.email_address && (
               <p className="text-xs text-destructive">{t("emailAddressMissingWarning")}</p>
             )}
           </div>
@@ -239,12 +261,20 @@ export const NotificationSettings = () => {
               type="number"
               min={0}
               max={30}
-              defaultValue={prefs?.threshold_days ?? 3}
+              value={thresholdDaysDraft}
+              onChange={(e) => setThresholdDaysDraft(e.target.value)}
               className="w-20"
               onBlur={(e) => void handleThresholdBlur(e.target.value)}
+              aria-invalid={!!thresholdDaysError}
+              aria-describedby={thresholdDaysError ? "threshold-days-error" : undefined}
             />
             <span className="text-sm text-muted-foreground">{t("daysBefore")}</span>
           </div>
+          {thresholdDaysError && (
+            <p id="threshold-days-error" className="text-xs text-destructive">
+              {thresholdDaysError}
+            </p>
+          )}
         </div>
         <div className="space-y-1">
           <Label htmlFor="notify_at">{t("notifyAt")}</Label>
@@ -252,10 +282,21 @@ export const NotificationSettings = () => {
             id="notify_at"
             type="time"
             step={3600}
-            defaultValue={toHourOnly(prefs?.notify_at ?? "08:00")}
+            value={notifyAtDraft}
+            onChange={(e) => setNotifyAtDraft(e.target.value)}
             onBlur={(e) => void handleNotifyAtBlur(e.target.value)}
+            aria-invalid={!!notifyAtError}
+            aria-describedby={notifyAtError ? "notify-at-error" : "notify-at-help"}
           />
-          <p className="text-xs text-muted-foreground">{t("notifyAtHelp")}</p>
+          {notifyAtError ? (
+            <p id="notify-at-error" className="text-xs text-destructive">
+              {notifyAtError}
+            </p>
+          ) : (
+            <p id="notify-at-help" className="text-xs text-muted-foreground">
+              {t("notifyAtHelp")}
+            </p>
+          )}
         </div>
         <div className="col-span-2 space-y-1">
           <Label htmlFor="timezone">{t("timezone")}</Label>
