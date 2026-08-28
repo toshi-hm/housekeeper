@@ -35,4 +35,14 @@ describe("CategoryValueChart — アクセシビリティ (#665)", () => {
     const table = container.querySelector("table.sr-only");
     expect(table?.textContent).toContain("¥3,200");
   });
+
+  it("sr-onlyテーブルはrole=imgの外にあり、支援技術のツリーから隠されない (#922)", () => {
+    const { container } = render(
+      <CategoryValueChart stats={[{ categoryId: "cat-1", name: "飲料", value: 3200 }]} />,
+      { wrapper },
+    );
+    const img = container.querySelector('[role="img"]');
+    const table = container.querySelector("table.sr-only");
+    expect(img?.contains(table)).toBe(false);
+  });
 });

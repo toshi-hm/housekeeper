@@ -37,8 +37,8 @@ export const ExpiryChart = ({ distribution }: ExpiryChartProps) => {
     .join("、")}`;
 
   return (
-    <div role="img" aria-label={summary}>
-      <div aria-hidden="true">
+    <div>
+      <div role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height={220}>
           <PieChart accessibilityLayer={false}>
             <Pie

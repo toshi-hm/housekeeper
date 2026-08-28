@@ -47,4 +47,14 @@ describe("ConsumptionChart — アクセシビリティ (#665)", () => {
     expect(table?.textContent).toContain("500");
     expect(table?.textContent).toContain("2");
   });
+
+  it("sr-onlyテーブルはrole=imgの外にあり、支援技術のツリーから隠されない (#922)", () => {
+    const { container } = render(
+      <ConsumptionChart data={[{ month: "2026/03", totals: [{ unit: "mL", total: 500 }] }]} />,
+      { wrapper },
+    );
+    const img = container.querySelector('[role="img"]');
+    const table = container.querySelector("table.sr-only");
+    expect(img?.contains(table)).toBe(false);
+  });
 });

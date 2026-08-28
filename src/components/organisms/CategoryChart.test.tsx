@@ -36,4 +36,14 @@ describe("CategoryChart — アクセシビリティ (#665)", () => {
     expect(table?.textContent).toContain(i18n.t("stats:uncategorized"));
     expect(table?.textContent).toContain("2");
   });
+
+  it("sr-onlyテーブルはrole=imgの外にあり、支援技術のツリーから隠されない (#922)", () => {
+    const { container } = render(
+      <CategoryChart stats={[{ categoryId: "cat-1", name: "飲料", count: 5 }]} />,
+      { wrapper },
+    );
+    const img = container.querySelector('[role="img"]');
+    const table = container.querySelector("table.sr-only");
+    expect(img?.contains(table)).toBe(false);
+  });
 });
