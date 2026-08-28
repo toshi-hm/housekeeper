@@ -54,7 +54,9 @@ export const handler = async (req: Request): Promise<Response> => {
     // prevent brute-forcing the (low-entropy) secret question answer.
     const rateLimit = await checkRateLimit(supabase, RATE_LIMIT_SCOPE, normalizedEmail);
     if (!rateLimit.allowed) {
-      return json({ error: "しばらく時間をおいて再度お試しください" }, 429, {
+      // #921: return a stable error_code instead of a hardcoded Japanese
+      // message, so the client can translate it via i18n.
+      return json({ error: "Rate limited", error_code: "rate_limited" }, 429, {
         "Retry-After": String(rateLimit.retryAfterSeconds),
       });
     }
@@ -67,13 +69,13 @@ export const handler = async (req: Request): Promise<Response> => {
 
     if (fetchError || !row) {
       // Return 401 (same as wrong answer) to avoid email enumeration
-      return json({ error: "秘密の質問の答えが正しくありません" }, 401);
+      return json({ error: "Invalid answer", error_code: "invalid_answer" }, 401);
     }
 
     const hash = await sha256hex(row.user_id + ":" + answer.toLowerCase().trim());
     // Constant-time comparison to avoid leaking hash-match info via timing.
     if (!(await timingSafeEqual(hash, row.answer_hash))) {
-      return json({ error: "秘密の質問の答えが正しくありません" }, 401);
+      return json({ error: "Invalid answer", error_code: "invalid_answer" }, 401);
     }
 
     const { error: updateError } = await supabase.auth.admin.updateUserById(row.user_id, {
@@ -82,7 +84,7 @@ export const handler = async (req: Request): Promise<Response> => {
 
     if (updateError) {
       console.error(updateError);
-      return json({ error: "パスワードの更新に失敗しました" }, 500);
+      return json({ error: "Failed to update password", error_code: "update_failed" }, 500);
     }
 
     return json({ success: true });

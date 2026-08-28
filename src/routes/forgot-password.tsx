@@ -18,6 +18,34 @@ import { useToast } from "@/lib/toast-context";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
+// get-security-question / verify-security-answer (#921) return a stable
+// `error_code` instead of a hardcoded Japanese message, so the client can
+// translate it via i18n rather than displaying raw server text.
+type EdgeFunctionErrorCode = "rate_limited" | "invalid_answer" | "update_failed";
+
+const edgeFunctionErrorKey = {
+  rate_limited: "resetRateLimitedError",
+  invalid_answer: "invalidSecurityAnswer",
+  update_failed: "passwordUpdateFailed",
+} as const satisfies Record<EdgeFunctionErrorCode, string>;
+
+const isEdgeFunctionErrorCode = (code: unknown): code is EdgeFunctionErrorCode =>
+  typeof code === "string" && code in edgeFunctionErrorKey;
+
+class EdgeFunctionError extends Error {
+  readonly code: string | undefined;
+  constructor(code: string | undefined) {
+    super(code ?? "unknown_error");
+    this.code = code;
+  }
+}
+
+/** Edge Functionのerror_codeを、表示用のi18nキーへ変換する。未知のコード
+ *  （405/400/500等、通常のUI操作では到達しないパス）は共通の汎用エラーへ
+ *  フォールバックする。 */
+const translateEdgeFunctionError = (code: string | undefined): string =>
+  isEdgeFunctionErrorCode(code) ? edgeFunctionErrorKey[code] : "common:unknownError";
+
 const callEdge = async <T,>(fn: string, body: unknown): Promise<T> => {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
     method: "POST",
@@ -28,8 +56,8 @@ const callEdge = async <T,>(fn: string, body: unknown): Promise<T> => {
     },
     body: JSON.stringify(body),
   });
-  const data = (await res.json()) as T & { error?: string };
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? "エラーが発生しました");
+  const data = (await res.json()) as T & { error_code?: string };
+  if (!res.ok) throw new EdgeFunctionError(data.error_code);
   return data;
 };
 
@@ -63,7 +91,13 @@ const Step1 = ({ onNext }: Step1Props) => {
       // generic error for both "unknown email" and "wrong answer".
       onNext(email, question ?? t("genericSecurityQuestion"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common:unknownError"));
+      setError(
+        t(
+          err instanceof EdgeFunctionError
+            ? translateEdgeFunctionError(err.code)
+            : "common:unknownError",
+        ),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +199,13 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
       toast(t("resetSuccess"), "success");
       void navigate({ to: "/login" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common:unknownError"));
+      setError(
+        t(
+          err instanceof EdgeFunctionError
+            ? translateEdgeFunctionError(err.code)
+            : "common:unknownError",
+        ),
+      );
     } finally {
       setIsLoading(false);
     }
