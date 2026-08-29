@@ -3,6 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { createElement, type ReactNode } from "react";
 
+import { ConcurrentUpdateError } from "@/lib/requireOnline";
 import type { Item } from "@/types/item";
 
 interface SupabaseResponse {
@@ -176,7 +177,7 @@ describe("consumeItem", () => {
     responseQueues.item_lots = [{ data: [], error: null }];
     responseQueues.consumption_logs = [{ data: null, error: null }];
     responseQueues.items = [
-      { data: null, error: null }, // items.update
+      { data: makeItem({ units: 0 }), error: null }, // items.update (conditional, #911)
       {
         data: {
           id: "item-1",
@@ -198,6 +199,39 @@ describe("consumeItem", () => {
       (c) => c.table === "shopping_list_items" && c.method === "insert",
     );
     expect(shoppingInsert?.args[0]).toMatchObject({ linked_item_id: "item-1", auto_added: true });
+  });
+
+  test("ロットが存在しない場合、items直接更新は読み取り時点のunits/opened_remainingを条件にする (#911)", async () => {
+    responseQueues.item_lots = [{ data: [], error: null }];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+    responseQueues.items = [{ data: makeItem({ units: 2 }), error: null }];
+
+    await consumeItem({ item: makeItem({ units: 3, opened_remaining: null }), deltaAmount: 1 });
+
+    const itemsUpdateEqCalls = callLog.filter(
+      (c) => c.table === "items" && c.method === "eq" && c.args[0] === "units",
+    );
+    expect(itemsUpdateEqCalls[0]?.args).toEqual(["units", 3]);
+    const itemsUpdateIsCall = callLog.find(
+      (c) => c.table === "items" && c.method === "is" && c.args[0] === "opened_remaining",
+    );
+    expect(itemsUpdateIsCall?.args).toEqual(["opened_remaining", null]);
+  });
+
+  test("ロットが存在しない場合、同時消費で対象行が無ければConcurrentUpdateErrorを投げる (#911)", async () => {
+    responseQueues.item_lots = [{ data: [], error: null }];
+    // Conditional update matches no row (another request already changed
+    // units/opened_remaining in the meantime) → maybeSingle resolves with
+    // data: null.
+    responseQueues.items = [{ data: null, error: null }];
+
+    await expect(
+      consumeItem({ item: makeItem({ units: 3, opened_remaining: null }), deltaAmount: 1 }),
+    ).rejects.toBeInstanceOf(ConcurrentUpdateError);
+
+    // No consumption_logs insert should happen once the conditional update
+    // itself found no matching row.
+    expect(callLog.some((c) => c.table === "consumption_logs")).toBe(false);
   });
 });
 

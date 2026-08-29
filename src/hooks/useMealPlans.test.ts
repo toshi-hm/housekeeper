@@ -189,7 +189,7 @@ describe("executeMealPlan", () => {
       { data: [], error: null }, // item-1's consumeItem fetch
     ];
     responseQueues.items = [
-      { data: null, error: null }, // items update (no-lots fallback path)
+      { data: { ...itemsById["item-1"], units: 2 }, error: null }, // items update (no-lots fallback path, conditional #911)
       { data: { auto_reorder: false }, error: null }, // maybeAutoReorder's own select
       { data: { ...itemsById["item-1"], units: 2 }, error: null }, // consumeItem's final re-select
     ];
