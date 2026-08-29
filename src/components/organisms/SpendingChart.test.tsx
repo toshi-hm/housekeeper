@@ -39,6 +39,15 @@ describe("SpendingChart — アクセシビリティ (#665)", () => {
     expect(table?.textContent).toContain("¥15,200");
   });
 
+  it("sr-onlyテーブルはrole=imgの外にあり、支援技術のツリーから隠されない (#922)", () => {
+    const { container } = render(<SpendingChart data={[{ month: "2026/01", total: 15200 }]} />, {
+      wrapper,
+    });
+    const img = container.querySelector('[role="img"]');
+    const table = container.querySelector("table.sr-only");
+    expect(img?.contains(table)).toBe(false);
+  });
+
   it("データが無い場合はグラフを描画せずヒントのみ表示する", () => {
     const { container } = render(<SpendingChart data={[{ month: "2026/01", total: 0 }]} />, {
       wrapper,

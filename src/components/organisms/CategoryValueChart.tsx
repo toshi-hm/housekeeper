@@ -41,8 +41,8 @@ export const CategoryValueChart = ({ stats }: CategoryValueChartProps) => {
     .join("、")}`;
 
   return (
-    <div role="img" aria-label={summary}>
-      <div aria-hidden="true">
+    <div>
+      <div role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height={Math.max(160, data.length * 40)}>
           <BarChart
             data={data}

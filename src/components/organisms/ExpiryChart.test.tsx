@@ -36,4 +36,14 @@ describe("ExpiryChart — アクセシビリティ (#665)", () => {
     expect(table?.textContent).toContain(i18n.t("items:expiryStatus.expiring-soon"));
     expect(table?.textContent).toContain("4");
   });
+
+  it("sr-onlyテーブルはrole=imgの外にあり、支援技術のツリーから隠されない (#922)", () => {
+    const { container } = render(
+      <ExpiryChart distribution={[{ status: "expiring-soon", count: 4 }]} />,
+      { wrapper },
+    );
+    const img = container.querySelector('[role="img"]');
+    const table = container.querySelector("table.sr-only");
+    expect(img?.contains(table)).toBe(false);
+  });
 });

@@ -50,8 +50,8 @@ export const ConsumptionChart = ({ data }: ConsumptionChartProps) => {
     .join("、")}`;
 
   return (
-    <div role="img" aria-label={summary}>
-      <div aria-hidden="true">
+    <div>
+      <div role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart
             data={chartData}

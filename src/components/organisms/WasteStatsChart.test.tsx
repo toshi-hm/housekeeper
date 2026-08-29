@@ -50,4 +50,22 @@ describe("WasteStatsChart — アクセシビリティ (#665)", () => {
     expect(table?.textContent).toContain("野菜");
     expect(table?.textContent).toContain(i18n.t("stats:uncategorized"));
   });
+
+  it("sr-onlyテーブルはrole=imgの外にあり、支援技術のツリーから隠されない (#922)", () => {
+    const { container } = render(
+      <WasteStatsChart
+        data={[
+          {
+            month: "2026/03",
+            total: 3,
+            byCategory: [{ categoryId: "cat-1", name: "野菜", count: 3 }],
+          },
+        ]}
+      />,
+      { wrapper },
+    );
+    const img = container.querySelector('[role="img"]');
+    const table = container.querySelector("table.sr-only");
+    expect(img?.contains(table)).toBe(false);
+  });
 });
