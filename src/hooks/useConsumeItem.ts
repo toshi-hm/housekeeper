@@ -113,7 +113,14 @@ export const consumeItem = async ({
       result.opened_remaining_after,
       item.opened_at ?? null,
     );
-    const { error: updateError } = await supabase
+    // #911: optimistic concurrency, mirroring consumeLot/updateLot/
+    // restoreLotConsumption in useItemLots.ts. Only apply the update if the
+    // item still has the exact units/opened_remaining our computeConsumption
+    // call above was based on. Without this guard, a concurrent consumption
+    // of this same lot-less item (another device, dashboard quick-consume vs.
+    // the detail page, ...) made in between the read and this write gets
+    // silently overwritten by this stale snapshot (lost update).
+    let updateQuery = supabase
       .from("items")
       .update({
         units: result.units_after,
@@ -121,8 +128,16 @@ export const consumeItem = async ({
         opened_at: openedAtAfter,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", item.id);
+      .eq("id", item.id)
+      .eq("units", item.units);
+    updateQuery =
+      item.opened_remaining === null || item.opened_remaining === undefined
+        ? updateQuery.is("opened_remaining", null)
+        : updateQuery.eq("opened_remaining", item.opened_remaining);
+
+    const { data: updateData, error: updateError } = await updateQuery.select().maybeSingle();
     if (updateError) throw updateError;
+    if (!updateData) throw new ConcurrentUpdateError();
 
     const { data: logData, error: logError } = await supabase
       .from("consumption_logs")

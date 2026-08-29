@@ -159,9 +159,9 @@ describe("executeRecipe", () => {
       { data: [], error: null },
     ];
     responseQueues.items = [
-      { data: null, error: null }, // item-1 update
+      { data: makeItem({ id: "item-1", units: 2 }), error: null }, // item-1 update (conditional, #911)
       { data: makeItem({ id: "item-1", units: 2 }), error: null }, // item-1 re-select
-      { data: null, error: null }, // item-2 update
+      { data: makeItem({ id: "item-2", units: 1 }), error: null }, // item-2 update (conditional, #911)
       { data: makeItem({ id: "item-2", units: 1 }), error: null }, // item-2 re-select
     ];
     responseQueues.consumption_logs = [
@@ -195,7 +195,7 @@ describe("executeRecipe", () => {
       { data: [], error: null }, // item-1's consumeItem fetch (item-2 is skipped)
     ];
     responseQueues.items = [
-      { data: null, error: null },
+      { data: makeItem({ id: "item-1", units: 2 }), error: null }, // item-1 update (conditional, #911)
       { data: makeItem({ id: "item-1", units: 2 }), error: null },
     ];
     responseQueues.consumption_logs = [{ data: null, error: null }];
@@ -230,7 +230,7 @@ describe("executeRecipe", () => {
       { data: [], error: null },
     ];
     responseQueues.items = [
-      { data: null, error: null },
+      { data: makeItem({ id: "item-2", units: 2 }), error: null }, // item-2 update (conditional, #911)
       { data: makeItem({ id: "item-2", units: 2 }), error: null },
     ];
     responseQueues.consumption_logs = [{ data: null, error: null }];
@@ -293,10 +293,10 @@ describe("executeRecipe", () => {
     // auto_reorder が無い(falsy)行を返せば、maybeAutoReorder はそれ以上
     // クエリを発行せず早期returnする。
     responseQueues.items = [
-      { data: null, error: null }, // 1行目 update
+      { data: makeItem({ id: "item-1", units: 3 }), error: null }, // 1行目 update (conditional, #911)
       { data: null, error: null }, // 1行目 maybeAutoReorder select (auto_reorder無し→即return)
       { data: makeItem({ id: "item-1", units: 3 }), error: null }, // 1行目 re-select
-      { data: null, error: null }, // 2行目 update
+      { data: makeItem({ id: "item-1", units: 2 }), error: null }, // 2行目 update (conditional, #911)
       { data: null, error: null }, // 2行目 maybeAutoReorder select
       { data: makeItem({ id: "item-1", units: 2 }), error: null }, // 2行目 re-select
     ];
@@ -331,7 +331,7 @@ describe("useExecuteRecipe", () => {
       { data: [], error: null }, // item-1's consumeItem fetch
     ];
     responseQueues.items = [
-      { data: null, error: null },
+      { data: makeItem({ id: "item-1", units: 2 }), error: null }, // item-1 update (conditional, #911)
       { data: makeItem({ id: "item-1", units: 2 }), error: null },
     ];
     responseQueues.consumption_logs = [{ data: null, error: null }];
@@ -361,7 +361,7 @@ describe("useExecuteRecipe", () => {
       { data: [], error: null }, // item-1's consumeItem fetch
     ];
     responseQueues.items = [
-      { data: null, error: null },
+      { data: makeItem({ id: "item-1", units: 2 }), error: null }, // item-1 update (conditional, #911)
       { data: makeItem({ id: "item-1", units: 2 }), error: null },
     ];
     responseQueues.consumption_logs = [{ data: null, error: null }];

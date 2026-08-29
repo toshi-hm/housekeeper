@@ -32,11 +32,13 @@
 
 実装は **トランザクションを Postgres 関数 (RPC)** で書くのが安全（本 spec が推奨する将来案）:
 
-> **現状の実装（#432）**: v1 時点では RPC 化していない。代わりにロット更新を
-> 楽観的排他制御（`update ... where id = ? and units = ? and opened_remaining = ?`
+> **現状の実装（#432, #911）**: v1 時点では RPC 化していない。代わりに item / ロット
+> 更新を楽観的排他制御（`update ... where id = ? and units = ? and opened_remaining = ?`
 > で消費前に読んだ値と一致する行だけを更新し、0 行なら `ConcurrentUpdateError` を
 > 投げてユーザーにエラー表示する）で保護しており、ほぼ同時に同一ロットへ2回消費した
-> 場合の lost update は防げる（`src/hooks/useItemLots.ts` の `consumeLot`）。
+> 場合の lost update は防げる（`src/hooks/useItemLots.ts` の `consumeLot`）。ロットを
+> 持たないアイテムに対する `useConsumeItem` の "direct" フォールバック（`items` を
+> 直接更新する経路）も同じガードを持つ（#911）。
 > ただし「ロット更新 → ログ insert → アグリゲート再計算」を単一トランザクションには
 > できていないため、ログ insert 失敗時などにロールバックはされない（非致命として警告表示、
 > #441）。ローカルに Supabase CLI 環境がなく RPC マイグレーションを実機検証できないため、
