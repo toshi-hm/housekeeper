@@ -36,7 +36,9 @@ export const handler = async (req: Request): Promise<Response> => {
     // brute-force / enumeration probing.
     const rateLimit = await checkRateLimit(supabase, RATE_LIMIT_SCOPE, normalizedEmail);
     if (!rateLimit.allowed) {
-      return json({ error: "しばらく時間をおいて再度お試しください" }, 429, {
+      // #921: return a stable error_code instead of a hardcoded Japanese
+      // message, so the client can translate it via i18n.
+      return json({ error: "Rate limited", error_code: "rate_limited" }, 429, {
         "Retry-After": String(rateLimit.retryAfterSeconds),
       });
     }
