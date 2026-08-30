@@ -279,6 +279,37 @@ export const useDeleteAllPurchasedItems = () => {
 };
 
 /**
+ * `purchaseShoppingItem` の既存アイテム統合4パス（linked_item_id一致/バーコード一致 ×
+ * アクティブ/削除済み復活）共通の冪等化ガード（#912）。
+ *
+ * `createLot` が成功した後に、shopping 行の `created_item_id` を対象アイテムへ
+ * 予約する（新規作成パスの「ロット作成後に存在チェックする」冪等化パターン、
+ * Fix #211 と同様、完了を示すマーカーは作業が終わってから立てる）。
+ * `syncItemAggregate`/`markShoppingItemPurchased` がネットワーク瞬断等で失敗
+ * すると shopping 行は `planned` のまま残るため、同じ購入操作がリトライされ
+ * 得る。その際、直前の試行で既にこの対象アイテムへ予約済み（＝ロット作成まで
+ * 完了していた）と分かれば `createLot` をスキップし、在庫ロットの二重作成を
+ * 防ぐ。新規作成パス（既存ロット有無チェック、Fix #211）と異なり、統合先
+ * アイテムは既存ロットを持ち得るため「ロットの有無」では判定できず、
+ * `created_item_id` の予約を目印にする。
+ */
+const reserveAndCreateLot = async (
+  shoppingItemId: string,
+  userId: string,
+  targetItemId: string,
+  alreadyReservedItemId: string | null,
+  lot: ReturnType<typeof lotValuesFromForm>,
+): Promise<void> => {
+  if (alreadyReservedItemId === targetItemId) return;
+  await createLot(userId, targetItemId, lot);
+  const { error: reserveError } = await supabase
+    .from("shopping_list_items")
+    .update({ created_item_id: targetItemId })
+    .eq("id", shoppingItemId);
+  if (reserveError) throw reserveError;
+};
+
+/**
  * ショッピングリストのアイテムを「購入済み」にし、対応する在庫アイテムを
  * 作成/スタック/復活させる。各クエリの `error` を必ず検査し、失敗時は
  * throw して mutation を失敗させることで、重複アイテム作成を防ぐ（#440）。
@@ -297,13 +328,16 @@ export const purchaseShoppingItem = async ({
   // Fix #447: linked_item_id（「補充」等で元アイテムに紐付けられた行）があれば、
   // バーコード一致より優先して元アイテムへ統合する。バーコード未登録のアイテムでも
   // 別行に分裂せず、正しく元アイテムに戻せるようにする。
+  // created_item_id も併せて取得し、新規作成パス（Fix #211）と既存アイテム統合
+  // パス（#912）の両方でリトライ時の冪等化予約チェックに使う。
   const { data: shoppingRowForLink, error: shoppingRowForLinkError } = await supabase
     .from("shopping_list_items")
-    .select("linked_item_id")
+    .select("linked_item_id, created_item_id")
     .eq("id", shoppingItemId)
     .maybeSingle();
   if (shoppingRowForLinkError) throw shoppingRowForLinkError;
   const linkedItemId = shoppingRowForLink?.linked_item_id ?? null;
+  const reservedItemId = shoppingRowForLink?.created_item_id ?? null;
 
   if (linkedItemId) {
     const { data: linkedActiveItem, error: linkedActiveItemError } = await supabase
@@ -336,7 +370,13 @@ export const purchaseShoppingItem = async ({
             return data as Item;
           })()
         : linkedActiveItem;
-      await createLot(user.id, linkedActiveItem.id, lotValuesFromForm(itemValues));
+      await reserveAndCreateLot(
+        shoppingItemId,
+        user.id,
+        linkedActiveItem.id,
+        reservedItemId,
+        lotValuesFromForm(itemValues),
+      );
       await syncItemAggregate(linkedActiveItem.id);
       await markShoppingItemPurchased(shoppingItemId, linkedActiveItem.id);
       // 既存アイテムへのスタック。呼び出し側が画像アップロードで既存画像を
@@ -367,7 +407,13 @@ export const purchaseShoppingItem = async ({
         .select()
         .single();
       if (reviveLinkedError) throw reviveLinkedError;
-      await createLot(user.id, linkedDeletedItem.id, lotValuesFromForm(itemValues));
+      await reserveAndCreateLot(
+        shoppingItemId,
+        user.id,
+        linkedDeletedItem.id,
+        reservedItemId,
+        lotValuesFromForm(itemValues),
+      );
       await syncItemAggregate(linkedDeletedItem.id);
       await markShoppingItemPurchased(shoppingItemId, revivedLinked.id);
       // 既存アイテムの復活。呼び出し側が画像アップロードで既存画像を
@@ -393,7 +439,13 @@ export const purchaseShoppingItem = async ({
       // バーコード一致は購入完了時にしか対象アイテムが判明せず、フォームは
       // プリフィルされない（#879セルフレビュー）ため、items 側のフィールド
       // は反映しない。ロット追加・集計のみ行う。
-      await createLot(user.id, activeItem.id, lotValuesFromForm(itemValues));
+      await reserveAndCreateLot(
+        shoppingItemId,
+        user.id,
+        activeItem.id,
+        reservedItemId,
+        lotValuesFromForm(itemValues),
+      );
       await syncItemAggregate(activeItem.id);
       await markShoppingItemPurchased(shoppingItemId, activeItem.id);
       // 既存アイテムへのスタック。呼び出し側が画像アップロードで既存画像を
@@ -426,7 +478,13 @@ export const purchaseShoppingItem = async ({
         .select()
         .single();
       if (reviveError) throw reviveError;
-      await createLot(user.id, deletedItem.id, lotValuesFromForm(itemValues));
+      await reserveAndCreateLot(
+        shoppingItemId,
+        user.id,
+        deletedItem.id,
+        reservedItemId,
+        lotValuesFromForm(itemValues),
+      );
       await syncItemAggregate(deletedItem.id);
       await markShoppingItemPurchased(shoppingItemId, revived.id);
       return { ...(revived as Item), _revived: true };
@@ -435,13 +493,7 @@ export const purchaseShoppingItem = async ({
 
   // バーコードなし or 既存アイテムなし → 新規作成（冪等化）
   // created_item_id が既に設定されている場合はリトライ: 同じIDでupsert
-  const { data: shoppingRow, error: shoppingRowError } = await supabase
-    .from("shopping_list_items")
-    .select("created_item_id")
-    .eq("id", shoppingItemId)
-    .maybeSingle();
-  if (shoppingRowError) throw shoppingRowError;
-  const reservedItemId = shoppingRow?.created_item_id ?? null;
+  // （reservedItemId は冒頭の shoppingRowForLink 取得で既に読み込み済み）
   const newItemId = reservedItemId ?? crypto.randomUUID();
 
   // アイテム作成前に created_item_id を予約（失敗時のリトライで重複作成を防ぐ）
