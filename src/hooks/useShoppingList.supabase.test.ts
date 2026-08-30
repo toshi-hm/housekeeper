@@ -206,7 +206,8 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
 
   test("linked_item_id一致のアクティブな既存アイテムに統合した場合、_stackedを立てて呼び出し側の画像上書きを防ぐ (#894)", async () => {
     responseQueues.shopping_list_items = [
-      { data: { linked_item_id: "item-1" }, error: null }, // shoppingRowForLink
+      { data: { linked_item_id: "item-1", created_item_id: null }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // reserveAndCreateLotのcreated_item_id予約update(#912)
       { data: null, error: null }, // markShoppingItemPurchased
     ];
     responseQueues.items = [
@@ -232,7 +233,8 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
 
   test("linked_item_idがソフトデリート済みアイテムを指す場合、復活させ_revivedを立てて呼び出し側の画像上書きを防ぐ (#894)", async () => {
     responseQueues.shopping_list_items = [
-      { data: { linked_item_id: "item-2" }, error: null }, // shoppingRowForLink
+      { data: { linked_item_id: "item-2", created_item_id: null }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // reserveAndCreateLotのcreated_item_id予約update(#912)
       { data: null, error: null }, // markShoppingItemPurchased
     ];
     responseQueues.items = [
@@ -261,7 +263,8 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
   // 入力のカテゴリ/保管場所/メモ等を items テーブルへ反映してよい。
   test("linked_item_id一致 + applyMergeFields:trueの場合、フォーム入力が items の update に含まれる", async () => {
     responseQueues.shopping_list_items = [
-      { data: { linked_item_id: "item-1" }, error: null }, // shoppingRowForLink
+      { data: { linked_item_id: "item-1", created_item_id: null }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // reserveAndCreateLotのcreated_item_id予約update(#912)
       { data: null, error: null }, // markShoppingItemPurchased
     ];
     responseQueues.items = [
@@ -317,7 +320,8 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
   // 既存のカテゴリ/保管場所/メモ等が保持される（フォームの空欄で上書きされない）。
   test("linked_item_id一致でもapplyMergeFields未指定なら items をupdateしない(既存値を保持)", async () => {
     responseQueues.shopping_list_items = [
-      { data: { linked_item_id: "item-1" }, error: null }, // shoppingRowForLink
+      { data: { linked_item_id: "item-1", created_item_id: null }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // reserveAndCreateLotのcreated_item_id予約update(#912)
       { data: null, error: null }, // markShoppingItemPurchased
     ];
     responseQueues.items = [
@@ -363,7 +367,8 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
   // しまう(#879で発見されたデータ損失バグ)。items は一切updateしないことを検証する。
   test("バーコード一致でアクティブな既存アイテムへ統合する際、items をupdateせず既存値を保持する", async () => {
     responseQueues.shopping_list_items = [
-      { data: { linked_item_id: null }, error: null }, // shoppingRowForLink
+      { data: { linked_item_id: null, created_item_id: null }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // reserveAndCreateLotのcreated_item_id予約update(#912)
       { data: null, error: null }, // markShoppingItemPurchased
     ];
     responseQueues.items = [
@@ -398,6 +403,87 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
       storage_location_id: "existing-loc",
       _stacked: true,
     });
+  });
+});
+
+describe("purchaseShoppingItem (#912: 既存アイテム統合パスの冪等化)", () => {
+  // markShoppingItemPurchased がネットワーク瞬断等で失敗すると shopping 行は
+  // planned のまま残り、同じ購入操作がリトライされ得る。createLot 成功後に
+  // 予約された created_item_id が既に対象アイテムを指していれば、リトライ時に
+  // createLot(ロット作成)をスキップし、在庫ロットの二重作成を防ぐ。
+  test("linked_item_id一致でcreated_item_idが既に対象アイテムへ予約済みなら、createLotをスキップする(リトライ時の二重作成防止)", async () => {
+    responseQueues.shopping_list_items = [
+      // 直前の試行で createLot/syncItemAggregate まで成功済み
+      // (created_item_id が既に linkedActiveItem を指している)
+      { data: { linked_item_id: "item-1", created_item_id: "item-1" }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // markShoppingItemPurchased
+    ];
+    responseQueues.items = [
+      { data: { id: "item-1", image_path: "existing.jpg" }, error: null }, // linkedActiveItem
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+
+    const result = await purchaseShoppingItem({
+      shoppingItemId: "shopping-1",
+      itemValues: makeFormValues({ image_path: "new-photo.jpg" }),
+    });
+
+    expect(result._stacked).toBe(true);
+    // 予約済みなので item_lots への insert(createLot)は発生しない
+    // (syncItemAggregateによるselectは冪等化ガードに関係なく常に走るため対象外)
+    expect(callLog.filter((c) => c.table === "item_lots" && c.method === "insert")).toHaveLength(0);
+    expect(
+      callLog.filter((c) => c.table === "shopping_list_items" && c.method === "update"),
+    ).toHaveLength(1);
+  });
+
+  test("バーコード一致でcreated_item_idが既に対象アイテムへ予約済みなら、createLotをスキップする(リトライ時の二重作成防止)", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: null, created_item_id: "item-2" }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // markShoppingItemPurchased
+    ];
+    responseQueues.items = [
+      { data: { id: "item-2", barcode: "123456" }, error: null }, // activeItem検索(barcode一致)
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+
+    const result = await purchaseShoppingItem({
+      shoppingItemId: "shopping-1",
+      itemValues: makeFormValues({ barcode: "123456" }),
+    });
+
+    expect(result._stacked).toBe(true);
+    expect(callLog.filter((c) => c.table === "item_lots" && c.method === "insert")).toHaveLength(0);
+  });
+
+  test("created_item_idが別アイテムを指す場合(初回購入)は、予約updateしてからcreateLotする", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: "item-3", created_item_id: null }, error: null }, // shoppingRowForLink
+      { data: null, error: null }, // reserveAndCreateLotのcreated_item_id予約update
+      { data: null, error: null }, // markShoppingItemPurchased
+    ];
+    responseQueues.items = [
+      { data: { id: "item-3", image_path: "existing.jpg" }, error: null }, // linkedActiveItem
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+    responseQueues.item_lots = [
+      { data: { id: "lot-3" }, error: null }, // createLot insert
+      { data: [], error: null }, // syncItemAggregateのロット取得
+    ];
+
+    await purchaseShoppingItem({
+      shoppingItemId: "shopping-1",
+      itemValues: makeFormValues({}),
+    });
+
+    const reserveUpdate = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "update",
+    );
+    expect(reserveUpdate?.args[0]).toMatchObject({ created_item_id: "item-3" });
+    expect(callLog.filter((c) => c.table === "item_lots" && c.method === "insert")).toHaveLength(1);
   });
 });
 

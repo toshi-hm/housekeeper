@@ -57,6 +57,14 @@
 
 両方のテーブルに `user_id` が乗っているので RLS は問題なし。失敗時はトーストで通知し、片方だけ成功した場合のリカバリ手順も `notes` に残せる UI を用意する。
 
+`purchaseShoppingItem`（`src/hooks/useShoppingList.ts`）には新規作成 / `linked_item_id`一致
+（アクティブ・削除済み復活）/ バーコード一致（アクティブ・削除済み復活）の計5パスがあり、
+いずれも最後の「行を `purchased` に更新」ステップがネットワーク瞬断等で失敗すると、
+shopping 行は `planned` のまま残り同じ購入操作がリトライされ得る。全パスとも `createLot`
+（ロット作成）実行前に `created_item_id` を対象アイテムへ予約し、リトライ時は既に同じ
+対象アイテムへ予約済みであれば `createLot` をスキップすることで、リトライによる在庫ロットの
+二重作成を防ぐ（#211: 新規作成パス、#912: 4つの既存アイテム統合パス）。
+
 ### 購入済みクリア → アーカイブ（#365）
 
 `useDeleteAllPurchasedItems()` は `archive_purchased_shopping_items` RPC を呼び出す。RPC内の
