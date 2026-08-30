@@ -109,6 +109,42 @@ describe("ItemForm — aria-describedby / aria-invalid (#621)", () => {
   });
 });
 
+describe("ItemForm — icon-onlyボタンのaria-label (#936)", () => {
+  beforeEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+  });
+
+  afterEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockRestore();
+    spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
+  });
+
+  it("バーコード検索・スキャン・期限OCRの各ボタンがaria-labelを持つ", () => {
+    const { getByRole } = render(<ItemForm onSubmit={() => {}} />, { wrapper });
+
+    expect(getByRole("button", { name: i18n.t("items:searchBarcode") })).toBeTruthy();
+    expect(getByRole("button", { name: i18n.t("items:scanBarcode") })).toBeTruthy();
+    expect(getByRole("button", { name: i18n.t("items:expiryScanButtonTitle") })).toBeTruthy();
+  });
+});
+
 describe("ItemForm — 期限種別セレクタ (#714)", () => {
   beforeEach(() => {
     spyOn(useMasterDataModule, "useCategories").mockReturnValue({

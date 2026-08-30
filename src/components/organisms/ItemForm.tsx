@@ -500,6 +500,7 @@ export const ItemForm = ({
               }}
               disabled={isLookingUp || !values.barcode}
               title={t("searchBarcode")}
+              aria-label={t("searchBarcode")}
             >
               {isLookingUp ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -514,6 +515,7 @@ export const ItemForm = ({
               onClick={() => setShowScanner(true)}
               disabled={isLookingUp}
               title={t("scanBarcode")}
+              aria-label={t("scanBarcode")}
             >
               <Barcode className="h-4 w-4" />
             </Button>
@@ -779,6 +781,7 @@ export const ItemForm = ({
                   size="icon"
                   onClick={() => setShowExpiryScanner(true)}
                   title={t("expiryScanButtonTitle")}
+                  aria-label={t("expiryScanButtonTitle")}
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
