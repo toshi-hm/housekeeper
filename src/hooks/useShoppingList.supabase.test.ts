@@ -485,6 +485,35 @@ describe("purchaseShoppingItem (#912: 既存アイテム統合パスの冪等化
     expect(reserveUpdate?.args[0]).toMatchObject({ created_item_id: "item-3" });
     expect(callLog.filter((c) => c.table === "item_lots" && c.method === "insert")).toHaveLength(1);
   });
+
+  // createLot が失敗した場合に created_item_id の予約だけが残ってしまうと、
+  // リトライ時に「予約済み＝ロット作成済み」と誤判定して createLot が永久に
+  // スキップされ、対象アイテムにロットが1件も作られなくなる(サイレントな
+  // 在庫欠落)。createLot を予約updateより先に実行することで、createLotが
+  // 失敗した場合は予約updateが呼ばれず、リトライ時に再度createLotが
+  // 試みられることを検証する。
+  test("createLotが失敗した場合、created_item_idの予約updateは呼ばれない(リトライ時のロット欠落防止)", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { linked_item_id: "item-4", created_item_id: null }, error: null }, // shoppingRowForLink
+    ];
+    responseQueues.items = [
+      { data: { id: "item-4", image_path: "existing.jpg" }, error: null }, // linkedActiveItem
+    ];
+    responseQueues.item_lots = [
+      { data: null, error: new Error("network error") }, // createLot insert
+    ];
+
+    await expect(
+      purchaseShoppingItem({
+        shoppingItemId: "shopping-1",
+        itemValues: makeFormValues({}),
+      }),
+    ).rejects.toThrow("network error");
+
+    expect(
+      callLog.filter((c) => c.table === "shopping_list_items" && c.method === "update"),
+    ).toHaveLength(0);
+  });
 });
 
 describe("upsertShoppingItem (#766: 同名の同時追加による重複行の防止)", () => {

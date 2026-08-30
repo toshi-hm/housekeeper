@@ -282,14 +282,16 @@ export const useDeleteAllPurchasedItems = () => {
  * `purchaseShoppingItem` の既存アイテム統合4パス（linked_item_id一致/バーコード一致 ×
  * アクティブ/削除済み復活）共通の冪等化ガード（#912）。
  *
- * `createLot` の前に shopping 行の `created_item_id` を対象アイテムへ予約する。
- * `createLot`/`syncItemAggregate` 後の `markShoppingItemPurchased` がネットワーク
- * 瞬断等で失敗すると shopping 行は `planned` のまま残るため、同じ購入操作が
- * リトライされ得る。その際、直前の試行で既にこの対象アイテムへ予約済み
- * （＝ロット作成まで完了していた）と分かれば `createLot` をスキップし、
- * 在庫ロットの二重作成を防ぐ。新規作成パス（既存ロット有無チェック、Fix #211）
- * と異なり、統合先アイテムは既存ロットを持ち得るため「ロットの有無」では
- * 判定できず、`created_item_id` の予約を目印にする。
+ * `createLot` が成功した後に、shopping 行の `created_item_id` を対象アイテムへ
+ * 予約する（新規作成パスの「ロット作成後に存在チェックする」冪等化パターン、
+ * Fix #211 と同様、完了を示すマーカーは作業が終わってから立てる）。
+ * `syncItemAggregate`/`markShoppingItemPurchased` がネットワーク瞬断等で失敗
+ * すると shopping 行は `planned` のまま残るため、同じ購入操作がリトライされ
+ * 得る。その際、直前の試行で既にこの対象アイテムへ予約済み（＝ロット作成まで
+ * 完了していた）と分かれば `createLot` をスキップし、在庫ロットの二重作成を
+ * 防ぐ。新規作成パス（既存ロット有無チェック、Fix #211）と異なり、統合先
+ * アイテムは既存ロットを持ち得るため「ロットの有無」では判定できず、
+ * `created_item_id` の予約を目印にする。
  */
 const reserveAndCreateLot = async (
   shoppingItemId: string,
@@ -299,12 +301,12 @@ const reserveAndCreateLot = async (
   lot: ReturnType<typeof lotValuesFromForm>,
 ): Promise<void> => {
   if (alreadyReservedItemId === targetItemId) return;
+  await createLot(userId, targetItemId, lot);
   const { error: reserveError } = await supabase
     .from("shopping_list_items")
     .update({ created_item_id: targetItemId })
     .eq("id", shoppingItemId);
   if (reserveError) throw reserveError;
-  await createLot(userId, targetItemId, lot);
 };
 
 /**
