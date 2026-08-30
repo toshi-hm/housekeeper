@@ -67,6 +67,7 @@ import { useToast } from "@/lib/toast-context";
 import {
   DEFAULT_LOW_STOCK_FORECAST_DAYS,
   DEFAULT_STOCKTAKE_ALERT_DAYS,
+  dropExpiryForDailyGoods,
   getExpiryStatus,
   isBackupExportOverdue,
   isItemUnverified,
@@ -334,23 +335,13 @@ export const DashboardPage = () => {
   const itemTypeOf = (item: Item) =>
     resolveItemType(item, item.category_id ? categoryById[item.category_id] : null);
 
-  /**
-   * 日用品は期限を持たない扱いにするため、表示用の派生値として期限を落とす。
-   *
-   * ItemForm から日用品として保存すると expiry_date は消えるが、既存カテゴリを
-   * 後から日用品へ切り替えた場合は、食料品時代に入力された expiry_date が
-   * DB に残る。それをそのまま流すと、日用品タブに置いたアイテムが期限バッジ・
-   * 期限バナー・期限クイックチップに出続けてしまう。ここで一度落として
-   * おけば、一覧側の全経路（絞り込み・件数・カード表示）が一貫する。
-   */
-  const dropExpiryForDailyGoods = (list: Item[]) =>
-    list.map((item) =>
-      (item.expiry_date || item.expiry_type) && itemTypeOf(item) === "daily_goods"
-        ? { ...item, expiry_date: null, expiry_type: null }
-        : item,
-    );
-  const allItems = dropExpiryForDailyGoods(rawAllItems);
-  const items = dropExpiryForDailyGoods(rawItems);
+  // ItemForm から日用品として保存すると expiry_date は消えるが、既存カテゴリを
+  // 後から日用品へ切り替えた場合は、食料品時代に入力された expiry_date が
+  // DB に残る。それをそのまま流すと、日用品タブに置いたアイテムが期限バッジ・
+  // 期限バナー・期限クイックチップに出続けてしまう。ここで一度落として
+  // おけば、一覧側の全経路（絞り込み・件数・カード表示）が一貫する。
+  const allItems = dropExpiryForDailyGoods(rawAllItems, categoryById);
+  const items = dropExpiryForDailyGoods(rawItems, categoryById);
 
   const baseFiltered = items.filter((item) => !hideEmpty || item.units > 0);
 

@@ -1,4 +1,5 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
+import { type ItemType, resolveItemType } from "../_shared/itemType.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { zonedDateString, zonedNow } from "./date.ts";
 import { shouldClaimNotificationSlot, wasAnyPushDelivered } from "./deliveryClaim.ts";
@@ -36,6 +37,11 @@ interface ExpiringItem {
   // #714: 「賞味期限」(品質の目安) と「消費期限」(安全性の目安) の区別。
   // null = 未設定（区別なし、既存アイテム）で従来通りの一律の通知文言のまま扱う。
   expiry_type: ExpiryType;
+  // #937: 実効種別（食料品/日用品）を解決するための元データ。カテゴリを後から
+  // 日用品へ切り替えた既存アイテムは expiry_date が DB に残ったままになるため、
+  // 通知対象からは除外する（ダッシュボード側の dropExpiryForDailyGoods と同様）。
+  item_type: ItemType | null;
+  categories: { kind: ItemType | null } | null;
 }
 
 // #630: Edge Functions can't use react-i18next, so notification copy is kept
@@ -168,7 +174,7 @@ export const handler = async (req: Request): Promise<Response> => {
         items = await fetchAllPages(async (from, to) => {
           const { data, error } = await supabase
             .from("items")
-            .select("id, name, expiry_date, expiry_type")
+            .select("id, name, expiry_date, expiry_type, item_type, categories(kind)")
             .eq("user_id", pref.user_id)
             .not("expiry_date", "is", null)
             .lte("expiry_date", thresholdStr)
@@ -183,6 +189,11 @@ export const handler = async (req: Request): Promise<Response> => {
         console.error("Failed to fetch items for user", pref.user_id, error);
         return;
       }
+
+      // #937: 日用品に切り替え済みのアイテムは対象外にする。
+      items = items.filter(
+        (item) => resolveItemType(item.item_type, item.categories?.kind) !== "daily_goods",
+      );
 
       if (items.length === 0) return;
 
