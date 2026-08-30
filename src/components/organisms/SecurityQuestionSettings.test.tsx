@@ -94,6 +94,26 @@ describe("SecurityQuestionSettings (#850)", () => {
     expect(upsertMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("marks both fields aria-invalid and links the error text via aria-describedby (#947)", async () => {
+    const { getByRole, getByLabelText, findByText } = render(<SecurityQuestionSettings />, {
+      wrapper,
+    });
+
+    fireEvent.click(getByRole("button", { name: /設定する|Set up/i }));
+    fireEvent.click(getByRole("button", { name: /保存|Save/i }));
+    await findByText(/秘密の質問を選択してください|Please select a security question/i);
+
+    const questionSelect = getByLabelText(/秘密の質問|Security Question/i);
+    expect(questionSelect.getAttribute("aria-invalid")).toBe("true");
+    expect(questionSelect.getAttribute("aria-describedby")).toBe("settingsSecurityQuestion-error");
+
+    const answerInput = getByLabelText(/秘密の質問の答え|Security Answer/i);
+    expect(answerInput.getAttribute("aria-invalid")).toBe("true");
+    expect(answerInput.getAttribute("aria-describedby")).toBe(
+      "settingsSecurityAnswer-hint settingsSecurityAnswer-error",
+    );
+  });
+
   it("saves a selected question and typed answer", async () => {
     const user = userEvent.setup();
     const { getByRole, findByLabelText, getByLabelText } = render(<SecurityQuestionSettings />, {
