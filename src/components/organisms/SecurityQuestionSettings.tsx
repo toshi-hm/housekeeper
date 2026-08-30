@@ -111,6 +111,10 @@ export const SecurityQuestionSettings = () => {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               required
+              aria-invalid={!!fieldErrors.securityQuestion}
+              aria-describedby={
+                fieldErrors.securityQuestion ? "settingsSecurityQuestion-error" : undefined
+              }
             >
               <option value="">{t("selectSecurityQuestion")}</option>
               {SECURITY_QUESTION_IDS.map((id) => (
@@ -120,7 +124,9 @@ export const SecurityQuestionSettings = () => {
               ))}
             </Select>
             {fieldErrors.securityQuestion && (
-              <p className="text-xs text-destructive">{fieldErrors.securityQuestion}</p>
+              <p id="settingsSecurityQuestion-error" className="text-xs text-destructive">
+                {fieldErrors.securityQuestion}
+              </p>
             )}
           </div>
 
@@ -133,10 +139,20 @@ export const SecurityQuestionSettings = () => {
               onChange={(e) => setAnswer(e.target.value)}
               placeholder={t("securityAnswerPlaceholder")}
               autoComplete="off"
+              aria-invalid={!!fieldErrors.securityAnswer}
+              aria-describedby={
+                fieldErrors.securityAnswer
+                  ? "settingsSecurityAnswer-hint settingsSecurityAnswer-error"
+                  : "settingsSecurityAnswer-hint"
+              }
             />
-            <p className="text-xs text-muted-foreground">{t("securityAnswerHint")}</p>
+            <p id="settingsSecurityAnswer-hint" className="text-xs text-muted-foreground">
+              {t("securityAnswerHint")}
+            </p>
             {fieldErrors.securityAnswer && (
-              <p className="text-xs text-destructive">{fieldErrors.securityAnswer}</p>
+              <p id="settingsSecurityAnswer-error" className="text-xs text-destructive">
+                {fieldErrors.securityAnswer}
+              </p>
             )}
           </div>
 
