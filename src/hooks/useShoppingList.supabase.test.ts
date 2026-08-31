@@ -575,6 +575,64 @@ describe("upsertShoppingItem (#766: 同名の同時追加による重複行の�
   });
 });
 
+describe("upsertShoppingItem (#952: 重複統合の並行更新でのロストアップデート防止)", () => {
+  const duplicateRow = (units: number) => ({
+    id: "row-existing",
+    user_id: "user-1",
+    name: "牛乳",
+    desired_units: units,
+    note: null,
+    linked_item_id: null,
+    status: "planned",
+    purchased_at: null,
+    created_item_id: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  });
+
+  test("並行マージで desired_units が読み取り時から変わっていた場合、最新値を再取得して増分を計算し直しリトライする", async () => {
+    responseQueues.shopping_list_items = [
+      { data: [duplicateRow(1)], error: null }, // plannedRows検索: desired_units=1の重複行を発見
+      { data: null, error: null }, // 1回目のupdate: desired_units=1条件が0件ヒット(並行マージで既に変わっていた)
+      { data: duplicateRow(3), error: null }, // 再取得: 別の並行マージで既にdesired_units=3になっている
+      { data: { ...duplicateRow(4) }, error: null }, // 2回目のupdate(desired_units=3基準): 成功
+    ];
+
+    const result = await upsertShoppingItem({ name: "牛乳", desired_units: 1 });
+
+    expect(result).toMatchObject({ id: "row-existing", desired_units: 4 });
+    const updateCalls = callLog.filter(
+      (c) => c.table === "shopping_list_items" && c.method === "update",
+    );
+    expect(updateCalls).toHaveLength(2);
+    // 1回目は古い値(1)を基準に、2回目は再取得した最新値(3)を基準に増分している
+    expect(updateCalls[0]?.args[0]).toMatchObject({ desired_units: 2 });
+    expect(updateCalls[1]?.args[0]).toMatchObject({ desired_units: 4 });
+    // どちらのupdateも直前に読んだdesired_unitsを楽観ロック条件にしている
+    const eqCalls = callLog.filter(
+      (c) =>
+        c.table === "shopping_list_items" && c.method === "eq" && c.args[0] === "desired_units",
+    );
+    expect(eqCalls.map((c) => c.args[1])).toEqual([1, 3]);
+  });
+
+  test("再試行の上限を超えて競合が続く場合はエラーになる", async () => {
+    responseQueues.shopping_list_items = [
+      { data: [duplicateRow(1)], error: null }, // plannedRows検索
+      { data: null, error: null }, // 1回目update: 失敗
+      { data: duplicateRow(2), error: null }, // 再取得1
+      { data: null, error: null }, // 2回目update: 失敗
+      { data: duplicateRow(3), error: null }, // 再取得2
+      { data: null, error: null }, // 3回目update: 失敗(上限到達)
+      { data: duplicateRow(4), error: null }, // 再取得3
+    ];
+
+    await expect(upsertShoppingItem({ name: "牛乳", desired_units: 1 })).rejects.toThrow(
+      "too many concurrent updates",
+    );
+  });
+});
+
 describe("upsertShoppingItem (#619: インライン編集での linked_item_id 消失の防止)", () => {
   test("編集時に linked_item_id を渡さない場合、既存行の値を取得して保持する", async () => {
     responseQueues.shopping_list_items = [

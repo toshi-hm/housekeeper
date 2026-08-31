@@ -42,10 +42,21 @@ export const useShoppingList = (status: ShoppingStatus = "planned") => {
 
 export { findDuplicatePlannedItem } from "@/lib/shoppingDuplicates";
 
+/** #952: desired_units の加算マージで楽観的排他制御が競合し続けた場合に
+ *  諦めるまでの最大試行回数。 */
+const MAX_MERGE_ATTEMPTS = 3;
+
 /**
  * 新規追加時の重複防止チェック: 同一 linked_item_id、または同名（前後空白を無視し
  * 大文字小文字を区別しない）の planned 行が既にあれば、新規作成せず desired_units を
  * インクリメントして統合する (#522, #447)。見つからなければ null。
+ *
+ * #952: `desired_units` の加算は「直前に読んだ値」を前提にした絶対値の書き込みの
+ * ため、`.eq("desired_units", <直前に読んだ値>)` を条件に付けた楽観的排他制御を行う。
+ * 2つの並行マージ（例: bulkConsumeItems が複数アイテムに対して並列発火する
+ * maybeAutoReorder）が同じ行を同時に読むと、条件に一致する行が0件になり
+ * ロストアップデートを防げる。0件だった場合は最新の行を再取得し、その値を基準に
+ * 増分を計算し直してリトライする（23505 競合時のリトライパターンと同様）。
  */
 const mergeIntoDuplicatePlannedItem = async (
   userId: string,
@@ -58,21 +69,39 @@ const mergeIntoDuplicatePlannedItem = async (
     .eq("status", "planned");
   if (plannedError) throw new Error(plannedError.message);
 
-  const duplicate = findDuplicatePlannedItem((plannedRows ?? []) as ShoppingItem[], input);
+  let duplicate = findDuplicatePlannedItem((plannedRows ?? []) as ShoppingItem[], input);
   if (!duplicate) return null;
 
-  const { data, error } = await supabase
-    .from("shopping_list_items")
-    .update({
-      desired_units: duplicate.desired_units + (input.desired_units ?? 1),
-      note: input.note ?? duplicate.note,
-      linked_item_id: duplicate.linked_item_id ?? input.linked_item_id ?? null,
-    })
-    .eq("id", duplicate.id)
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return data;
+  for (let attempt = 0; attempt < MAX_MERGE_ATTEMPTS; attempt++) {
+    const { data, error } = await supabase
+      .from("shopping_list_items")
+      .update({
+        desired_units: duplicate.desired_units + (input.desired_units ?? 1),
+        note: input.note ?? duplicate.note,
+        linked_item_id: duplicate.linked_item_id ?? input.linked_item_id ?? null,
+      })
+      .eq("id", duplicate.id)
+      .eq("desired_units", duplicate.desired_units)
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (data) return data;
+
+    // desired_units が読み取り時から変わっていた(並行マージがあった)ため、
+    // 最新の行を再取得して増分を計算し直す。
+    const { data: refreshed, error: refreshError } = await supabase
+      .from("shopping_list_items")
+      .select("*")
+      .eq("id", duplicate.id)
+      .maybeSingle();
+    if (refreshError) throw new Error(refreshError.message);
+    // 再取得中に行自体が削除された(購入/削除された)場合は統合対象が消えたとみなし、
+    // 呼び出し元の通常の新規作成/挿入パスに委ねる。
+    if (!refreshed) return null;
+    duplicate = refreshed as ShoppingItem;
+  }
+
+  throw new Error("Failed to merge shopping list item: too many concurrent updates");
 };
 
 /** `useUpsertShoppingItem` の実処理。単体テストのため素の関数として切り出している。 */
