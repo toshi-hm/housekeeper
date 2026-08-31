@@ -57,8 +57,17 @@ export const ReceiptReviewPanel = ({
     onDraftsChange(drafts.map((d) => (d.id === id ? { ...d, ...patch } : d)));
   };
 
+  // #923: 失敗行もここから削除できる（ReceiptLineItemRowのtrashボタンはpending/
+  // failed両方で表示）。rowStatusも一緒に掃除し、同じidの行が手動追加で
+  // 再利用されても古いstatusが残らないようにする。
   const removeDraft = (id: string) => {
     onDraftsChange(drafts.filter((d) => d.id !== id));
+    setRowStatus((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   const addBlankRow = () => {

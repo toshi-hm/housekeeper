@@ -71,7 +71,9 @@ export const ReceiptLineItemRow = ({
         )}
         {status === "success" && <Check className="h-4 w-4 shrink-0 text-emerald-600" />}
         {status === "failed" && <X className="h-4 w-4 shrink-0 text-destructive" />}
-        {status === "pending" && (
+        {/* #923: failed行は一括登録で一度も成功していない（DB未反映）ため、
+         *  pendingと同じくレビュー一覧から削除できる（DB呼び出し不要）。 */}
+        {(status === "pending" || status === "failed") && (
           <button
             type="button"
             onClick={onRemove}
