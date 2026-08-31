@@ -1,3 +1,5 @@
+import { type ItemType, resolveItemType } from "../_shared/itemType.ts";
+
 /**
  * PWA Web App Widgets（実験的機能, #367）向けのサマリー生成ロジック。
  *
@@ -8,11 +10,19 @@
  * 同じもの。ダッシュボードの urgentItems（src/routes/_auth.index.tsx, #450）は
  * units>0 のみで opened_remaining は見ておらず、判定基準が異なる点に注意。
  * 低在庫はダッシュボードの lowStockItems と同じ（minimum_stock が設定されていて
- * units <= minimum_stock）。
+ * units <= minimum_stock）。低在庫はアイテム種別に関係なく（日用品こそ主役、
+ * docs/specs/features/item-type.md 影響範囲節）従来通り対象にする。
  *
  * Deno Edge Function 側は import map / パスエイリアスを共有できないため、
  * フロントエンドの src/types/item.ts の判定ロジックをこのファイルに複製している。
  * 判定基準を変更する場合は両方を同期させること。
+ *
+ * #940: 既存カテゴリを後から日用品へ切り替えた場合、そのカテゴリのアイテムには
+ * 食料品時代に入力された expiry_date が DB に残ったままになる
+ * （docs/specs/features/item-type.md の既知のギャップ）。send-expiry-notifications
+ * （#937）と同様、実効種別（resolveItemType, ../_shared/itemType.ts）が daily_goods の
+ * アイテムは期限集計（expired_count/expiring_soon_count/top_expiring）から除外する。
+ * 低在庫（top_low_stock/low_stock_count）は種別を問わず対象のまま。
  */
 
 export interface WidgetItemInput {
@@ -21,6 +31,8 @@ export interface WidgetItemInput {
   expiry_date: string | null;
   opened_remaining: number | null;
   minimum_stock: number | null;
+  item_type: ItemType | null;
+  categories: { kind: ItemType | null } | null;
 }
 
 export type WidgetExpiryStatus = "expired" | "expiring-soon";
@@ -85,7 +97,14 @@ export const buildWidgetSummary = (
 ): WidgetSummary => {
   // 期限切れ／期限間近: 在庫が残っており（units > 0）、開封済みで空でない
   // （opened_remaining !== 0）アイテムのみ対象（send-expiry-notifications と同じ基準）。
-  const activeForExpiry = items.filter((item) => item.units > 0 && item.opened_remaining !== 0);
+  // #940: 実効種別が daily_goods のアイテム（日用品へ切り替え後も expiry_date が
+  // DB に残っている旧食料品）は、期限バッジの集計対象から除外する。
+  const activeForExpiry = items.filter(
+    (item) =>
+      item.units > 0 &&
+      item.opened_remaining !== 0 &&
+      resolveItemType(item.item_type, item.categories?.kind) !== "daily_goods",
+  );
 
   const expiring = activeForExpiry
     .map((item) => ({ item, status: getExpiryStatus(item.expiry_date, todayStr, warningDays) }))
