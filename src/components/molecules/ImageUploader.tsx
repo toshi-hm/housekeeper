@@ -1,5 +1,5 @@
 import { Camera, Trash2, Upload } from "lucide-react";
-import { type DragEvent, useId, useRef, useState } from "react";
+import { type DragEvent, type KeyboardEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,17 @@ export const ImageUploader = ({
     if (file) handleFile(file);
   };
 
+  // The drop zone wraps a real <button> (camera capture). Keydown bubbles,
+  // so only react to Enter/Space that originated on the zone itself —
+  // the nested button already gets native Enter/Space handling and stops
+  // propagation (mirroring its onClick) so this doesn't double-fire.
+  const handleZoneKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return;
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    inputRef.current?.click();
+  };
+
   return (
     <div className="space-y-2">
       {previewUrl ? (
@@ -113,10 +124,15 @@ export const ImageUploader = ({
         </div>
       ) : (
         <div
-          className={`flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-colors ${
+          role="button"
+          tabIndex={0}
+          aria-label={t("imageDrop")}
+          aria-describedby={error ? errorId : undefined}
+          className={`flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/30"
           }`}
           onClick={() => inputRef.current?.click()}
+          onKeyDown={handleZoneKeyDown}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -131,6 +147,7 @@ export const ImageUploader = ({
               e.stopPropagation();
               inputRef.current?.click();
             }}
+            onKeyDown={(e) => e.stopPropagation()}
             aria-describedby={error ? errorId : undefined}
           >
             <Camera className="mr-1 h-4 w-4" />
