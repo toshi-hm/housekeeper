@@ -5,6 +5,7 @@ import {
   computeConsumption,
   DEFAULT_EXPIRY_WARNING_DAYS,
   DEFAULT_STOCKTAKE_ALERT_DAYS,
+  dropExpiryForDailyGoods,
   formatRemaining,
   getExpiryApprox,
   getExpirySeverity,
@@ -278,6 +279,57 @@ describe("resolveItemType", () => {
     expect(resolveItemType({ item_type: null }, null)).toBe("food");
     expect(resolveItemType({ item_type: null })).toBe("food");
     expect(resolveItemType({ item_type: null }, {})).toBe("food");
+  });
+});
+
+describe("dropExpiryForDailyGoods (#937)", () => {
+  test("実効種別が日用品のアイテムはexpiry_date/expiry_typeをnullに落とす", () => {
+    const items = [
+      {
+        item_type: null,
+        category_id: "cat-goods",
+        expiry_date: "2026-01-01",
+        expiry_type: "best_before" as const,
+      },
+    ];
+    const result = dropExpiryForDailyGoods(items, { "cat-goods": { kind: "daily_goods" } });
+    expect(result[0]!.expiry_date).toBeNull();
+    expect(result[0]!.expiry_type).toBeNull();
+  });
+
+  test("実効種別が食料品のアイテムはexpiry_date/expiry_typeをそのまま保つ", () => {
+    const items = [
+      {
+        item_type: null,
+        category_id: "cat-food",
+        expiry_date: "2026-01-01",
+        expiry_type: "use_by" as const,
+      },
+    ];
+    const result = dropExpiryForDailyGoods(items, { "cat-food": { kind: "food" } });
+    expect(result[0]!.expiry_date).toBe("2026-01-01");
+    expect(result[0]!.expiry_type).toBe("use_by");
+  });
+
+  test("アイテム個別のitem_typeがカテゴリより優先される", () => {
+    const items = [
+      {
+        item_type: "daily_goods" as const,
+        category_id: "cat-food",
+        expiry_date: "2026-01-01",
+        expiry_type: null,
+      },
+    ];
+    const result = dropExpiryForDailyGoods(items, { "cat-food": { kind: "food" } });
+    expect(result[0]!.expiry_date).toBeNull();
+  });
+
+  test("expiry_date/expiry_typeが両方とも無いアイテムはそのまま返す（不要な複製を避ける）", () => {
+    const items = [
+      { item_type: null, category_id: "cat-goods", expiry_date: null, expiry_type: null },
+    ];
+    const result = dropExpiryForDailyGoods(items, { "cat-goods": { kind: "daily_goods" } });
+    expect(result[0]).toBe(items[0]);
   });
 });
 

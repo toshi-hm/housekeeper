@@ -335,6 +335,27 @@ export const resolveItemType = (
 ): ItemType => item.item_type ?? category?.kind ?? DEFAULT_ITEM_TYPE;
 
 /**
+ * 日用品は期限を持たない扱いにするため、表示用の派生値として期限を落とす。
+ *
+ * 既存カテゴリを後から日用品へ切り替えた場合、食料品時代に入力された
+ * `expiry_date`/`expiry_type` が DB に残ったままになる。実効種別
+ * （{@link resolveItemType}）で `daily_goods` と判定されたアイテムは、
+ * ダッシュボード・期限カレンダー・期限通知など期限を扱うすべての経路で
+ * 一貫して「期限なし」として扱うため、ここで一律 null 化する（#937）。
+ */
+export const dropExpiryForDailyGoods = <
+  T extends Pick<Item, "item_type" | "category_id" | "expiry_date" | "expiry_type">,
+>(
+  items: T[],
+  categoryById: Record<string, Pick<Category, "kind"> | undefined>,
+): T[] =>
+  items.map((item) => {
+    if (!item.expiry_date && !item.expiry_type) return item;
+    const kind = resolveItemType(item, item.category_id ? categoryById[item.category_id] : null);
+    return kind === "daily_goods" ? { ...item, expiry_date: null, expiry_type: null } : item;
+  });
+
+/**
  * 開封後使用推奨日数の有効値を解決する (#752)。
  * アイテム個別の設定（`item.days_use_after_opening`）が優先され、未設定なら
  * カテゴリの既定値（`category.days_use_after_opening`）にフォールバックする。

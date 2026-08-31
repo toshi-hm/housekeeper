@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ExpiryCheckItem } from "@/components/molecules/ExpiryCheckItem";
 import { ExpiryCalendar } from "@/components/organisms/ExpiryCalendar";
-import type { Category, Item } from "@/types/item";
+import { type Category, dropExpiryForDailyGoods, type Item } from "@/types/item";
 
 interface CalendarPageProps {
   items: Item[];
@@ -17,7 +17,7 @@ interface CalendarPageProps {
 }
 
 export const CalendarPage = ({
-  items,
+  items: rawItems,
   categories,
   isLoading,
   warningDays,
@@ -27,6 +27,13 @@ export const CalendarPage = ({
 }: CalendarPageProps) => {
   const { t } = useTranslation("calendar");
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
+  const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
+
+  // 既存カテゴリを後から日用品へ切り替えた場合、食料品時代に入力された
+  // expiry_date が DB に残ったままになる。ダッシュボードは dropExpiryForDailyGoods
+  // で表示用に落としているため、期限カレンダー側でも同じ処理を適用して一貫させる
+  // （#937）。
+  const items = dropExpiryForDailyGoods(rawItems, categoryById);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
