@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "storybook/test";
 
 import { FloorPlanViewer } from "./FloorPlanViewer";
 
@@ -89,5 +90,12 @@ export const WithPlacedItems: Story = {
 export const Empty: Story = {
   args: {
     document: { ...document, walls: [], shapes: [] },
+  },
+};
+
+export const WithRemovablePlacement: Story = {
+  args: {
+    ...WithPlacedItems.args,
+    onRemovePlacement: fn(),
   },
 };

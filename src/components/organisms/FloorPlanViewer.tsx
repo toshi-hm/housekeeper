@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -18,6 +19,7 @@ interface FloorPlanViewerProps {
   unplacedItems?: Item[];
   highlightedItemId?: string | null;
   onItemClick?: (itemId: string) => void;
+  onRemovePlacement?: (placementId: string) => void;
   pendingItemId?: string | null;
   onSelectItemForPlacement?: (itemId: string) => void;
   onCanvasClick?: (point: { x: number; y: number }) => void;
@@ -37,6 +39,7 @@ export const FloorPlanViewer = ({
   unplacedItems = [],
   highlightedItemId = null,
   onItemClick,
+  onRemovePlacement,
   pendingItemId = null,
   onSelectItemForPlacement,
   onCanvasClick,
@@ -268,15 +271,26 @@ export const FloorPlanViewer = ({
         <ul className="divide-y rounded-lg border" aria-label={t("mapPlacedItems")}>
           {placements.map((placement) => {
             const item = itemsById.get(placement.item_id);
+            const itemName = item?.name ?? t("mapUnknownItem");
             return (
-              <li key={placement.id}>
+              <li key={placement.id} className="flex items-center">
                 <button
                   type="button"
-                  className="w-full p-3 text-left text-sm hover:bg-muted/50"
+                  className="flex-1 p-3 text-left text-sm hover:bg-muted/50"
                   onClick={onItemClick ? () => onItemClick(placement.item_id) : undefined}
                 >
-                  {item?.name ?? t("mapUnknownItem")}
+                  {itemName}
                 </button>
+                {onRemovePlacement && (
+                  <button
+                    type="button"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-destructive"
+                    aria-label={t("mapRemovePlacement", { name: itemName })}
+                    onClick={() => onRemovePlacement(placement.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
               </li>
             );
           })}

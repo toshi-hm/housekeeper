@@ -38,6 +38,8 @@
   "mapPlaceMarkerHelp": "保管場所を選択してから、共通間取り上の位置をタップしてください。",
   "mapRedo": "やり直す",
   "mapReloadFloorPlan": "最新を読み込む",
+  "mapRemovePlacement": "{{name}}の配置を解除",
+  "mapRemovePlacementConfirm": "この在庫の配置を解除します。よろしいですか？",
   "mapSaveBeforeMarker": "先に共通間取りを保存してください",
   "mapSaving": "保存中…",
   "mapSearchPlaceholder": "在庫名・バーコードで検索",
