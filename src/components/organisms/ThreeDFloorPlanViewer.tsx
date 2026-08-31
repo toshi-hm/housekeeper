@@ -1,7 +1,10 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ErrorBoundary } from "@/components/atoms/ErrorBoundary";
+import { isWebglAvailable } from "@/lib/webgl";
 import type {
   FloorPlanDocument,
   FloorPlanItemPlacement,
@@ -17,6 +20,13 @@ interface ThreeDFloorPlanViewerProps {
   items?: Item[];
   highlightedItemId?: string | null;
   onItemClick?: (itemId: string) => void;
+  /**
+   * WebGL初期化に失敗した（またはCanvas描画中に例外が発生した）ときに一度だけ
+   * 呼ばれる。呼び出し側はこれを2Dビュー(FloorPlanViewer)への自動切り替えに
+   * 使う想定（docs/specs/features/floor-plan-map.md「WebGL初期化失敗:
+   * 2DビューとDOMリストへ切り替える」）。
+   */
+  onWebglUnavailable?: () => void;
 }
 
 const itemById = (items: Item[]): Map<string, Item> =>
@@ -96,6 +106,30 @@ const FloorPlanScene = ({
   </>
 );
 
+/**
+ * Canvas配下(FloorPlanScene)のレンダリングが例外を投げた場合にErrorBoundaryが
+ * 表示するfallback。マウント時に一度だけ`onWebglUnavailable`を呼び、
+ * 呼び出し側での2Dビューへの自動切り替えを起動する。
+ */
+const CanvasErrorFallback = ({
+  message,
+  onWebglUnavailable,
+}: {
+  message: string;
+  onWebglUnavailable?: () => void;
+}) => {
+  const onWebglUnavailableRef = useRef(onWebglUnavailable);
+  useEffect(() => {
+    onWebglUnavailableRef.current = onWebglUnavailable;
+  });
+
+  useEffect(() => {
+    onWebglUnavailableRef.current?.();
+  }, []);
+
+  return <p className="p-4 text-sm text-muted-foreground">{message}</p>;
+};
+
 export const ThreeDFloorPlanViewer = ({
   document,
   storageLocationMarkers = [],
@@ -104,24 +138,52 @@ export const ThreeDFloorPlanViewer = ({
   items = [],
   highlightedItemId = null,
   onItemClick,
+  onWebglUnavailable,
 }: ThreeDFloorPlanViewerProps) => {
   const { t } = useTranslation("common");
   const itemsById = itemById(items);
+  // WebGLコンテキストを生成できるかは環境依存で変わらないため、マウント時に
+  // 一度だけ判定する。生成できない場合はCanvasを一切マウントしない
+  // (three.jsのWebGLRenderer構築失敗は非同期effect内で起きるため、Canvas自体の
+  // fallbackやReactのエラーバウンダリでは検出できない。詳細はsrc/lib/webgl.ts)。
+  const [webglSupported] = useState(isWebglAvailable);
+  const onWebglUnavailableRef = useRef(onWebglUnavailable);
+  useEffect(() => {
+    onWebglUnavailableRef.current = onWebglUnavailable;
+  });
+
+  useEffect(() => {
+    if (!webglSupported) onWebglUnavailableRef.current?.();
+  }, [webglSupported]);
+
   return (
     <div className="space-y-2">
       <div className="h-[min(70vh,32rem)] min-h-72 overflow-hidden rounded-lg border bg-slate-100">
-        <Canvas
-          camera={{ position: [document.width / 2, document.height, document.height], fov: 45 }}
-          fallback={<p className="p-4 text-sm text-muted-foreground">{t("map3dFallback")}</p>}
-        >
-          <FloorPlanScene
-            document={document}
-            storageLocationMarkers={storageLocationMarkers}
-            placements={placements}
-            highlightedItemId={highlightedItemId}
-            onItemClick={onItemClick}
-          />
-        </Canvas>
+        {webglSupported ? (
+          <ErrorBoundary
+            fallback={
+              <CanvasErrorFallback
+                message={t("map3dFallback")}
+                onWebglUnavailable={onWebglUnavailable}
+              />
+            }
+          >
+            <Canvas
+              camera={{ position: [document.width / 2, document.height, document.height], fov: 45 }}
+              fallback={<p className="p-4 text-sm text-muted-foreground">{t("map3dFallback")}</p>}
+            >
+              <FloorPlanScene
+                document={document}
+                storageLocationMarkers={storageLocationMarkers}
+                placements={placements}
+                highlightedItemId={highlightedItemId}
+                onItemClick={onItemClick}
+              />
+            </Canvas>
+          </ErrorBoundary>
+        ) : (
+          <p className="p-4 text-sm text-muted-foreground">{t("map3dFallback")}</p>
+        )}
       </div>
       {storageLocationMarkers.length > 0 && (
         <ul className="divide-y rounded-lg border" aria-label={t("mapStorageLocations")}>
