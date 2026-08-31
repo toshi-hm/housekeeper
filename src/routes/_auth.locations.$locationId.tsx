@@ -4,10 +4,12 @@ import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { FloorPlanViewer } from "@/components/organisms/FloorPlanViewer";
 import { StorageLocationMap } from "@/components/organisms/StorageLocationMap";
 import { Button } from "@/components/ui/button";
 import {
+  useDeleteFloorPlanPlacement,
   useFloorPlan,
   useFloorPlanPlacements,
   useFloorPlanStorageLocationMarkers,
@@ -34,6 +36,7 @@ export const LocationMapPage = () => {
   const navigate = useNavigate();
   const [view, setView] = useState<"photo" | "2d" | "3d">("photo");
   const [pendingItemId, setPendingItemId] = useState<string | null>(null);
+  const [removeTargetId, setRemoveTargetId] = useState<string | null>(null);
   const {
     data: locations = [],
     isLoading: isLoadingLocations,
@@ -54,6 +57,7 @@ export const LocationMapPage = () => {
     floorPlan?.id ?? null,
   );
   const upsertPlacement = useUpsertFloorPlanPlacement();
+  const deletePlacement = useDeleteFloorPlanPlacement();
   const placedItemIds = new Set(placements.map((placement) => placement.item_id));
   const unplacedFloorPlanItems = items.filter((item) => !placedItemIds.has(item.id));
 
@@ -70,6 +74,21 @@ export const LocationMapPage = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
+      <ConfirmDialog
+        open={removeTargetId !== null}
+        title={t("confirmDeleteTitle")}
+        message={t("mapRemovePlacementConfirm")}
+        confirmLabel={t("delete")}
+        isConfirming={deletePlacement.isPending}
+        onConfirm={() => {
+          if (!removeTargetId || !floorPlan) return;
+          deletePlacement.mutate(
+            { id: removeTargetId, floorPlanId: floorPlan.id },
+            { onSuccess: () => setRemoveTargetId(null) },
+          );
+        }}
+        onCancel={() => setRemoveTargetId(null)}
+      />
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
@@ -162,6 +181,7 @@ export const LocationMapPage = () => {
                 onItemClick={(itemId) =>
                   void navigate({ to: "/items/$itemId", params: { itemId } })
                 }
+                onRemovePlacement={(placementId) => setRemoveTargetId(placementId)}
               />
             ) : (
               <p className="rounded-lg border p-4 text-sm text-muted-foreground">

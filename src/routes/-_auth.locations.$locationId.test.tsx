@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import * as useItemsModule from "@/hooks/useItems";
 import * as useLocationPhotoModule from "@/hooks/useLocationPhoto";
 import * as useMasterDataModule from "@/hooks/useMasterData";
+import { ToastContext } from "@/lib/toast-context";
 import type { Item, StorageLocation } from "@/types/item";
 
 // Import routerContext via relative path (not in public package exports) to provide
@@ -24,11 +25,15 @@ const stubRouter = {
   state: { location: { href: "/", pathname: "/" }, matches: [], pendingMatches: [] },
 } as unknown as Parameters<typeof routerContext.Provider>[0]["value"];
 
+const stubToast = { toasts: [], toast: () => "", dismiss: () => {} };
+
 const Wrapper = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
     <QueryClientProvider client={queryClient}>
-      <routerContext.Provider value={stubRouter}>{children}</routerContext.Provider>
+      <ToastContext.Provider value={stubToast}>
+        <routerContext.Provider value={stubRouter}>{children}</routerContext.Provider>
+      </ToastContext.Provider>
     </QueryClientProvider>
   );
 };

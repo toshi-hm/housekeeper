@@ -169,4 +169,65 @@ describe("FloorPlanViewer", () => {
     expect(onItemClick).toHaveBeenCalledWith("item-1");
     expect(onCanvasClick).not.toHaveBeenCalled();
   });
+
+  it("配置解除ボタンをクリックするとonRemovePlacementに配置IDを渡す", () => {
+    const onRemovePlacement = mock(() => undefined);
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanViewer
+          document={document}
+          items={[{ id: "item-1", name: "Rice" } as Item]}
+          placements={[
+            {
+              id: "placement-1",
+              user_id: "user-1",
+              floor_plan_id: "plan-1",
+              item_id: "item-1",
+              object_id: null,
+              x: 20,
+              y: 20,
+              z: 0,
+              rotation: 0,
+              created_at: "2026-01-01T00:00:00Z",
+              updated_at: "2026-01-01T00:00:00Z",
+            },
+          ]}
+          onRemovePlacement={onRemovePlacement}
+        />
+      </I18nextProvider>,
+    );
+
+    const removeButton = getByRole("button", { name: /配置を解除|Remove Rice/ });
+    fireEvent.click(removeButton);
+    expect(onRemovePlacement).toHaveBeenCalledWith("placement-1");
+  });
+
+  it("onRemovePlacementが未指定の場合、配置解除ボタンを表示しない", () => {
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanViewer
+          document={document}
+          items={[{ id: "item-1", name: "Rice" } as Item]}
+          placements={[
+            {
+              id: "placement-1",
+              user_id: "user-1",
+              floor_plan_id: "plan-1",
+              item_id: "item-1",
+              object_id: null,
+              x: 20,
+              y: 20,
+              z: 0,
+              rotation: 0,
+              created_at: "2026-01-01T00:00:00Z",
+              updated_at: "2026-01-01T00:00:00Z",
+            },
+          ]}
+        />
+      </I18nextProvider>,
+    );
+
+    const itemList = getByRole("list", { name: /配置した在庫|placed on the floor plan/ });
+    expect(itemList.querySelectorAll("button")).toHaveLength(1);
+  });
 });

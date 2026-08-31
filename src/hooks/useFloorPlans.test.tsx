@@ -29,6 +29,7 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     update: chainMethod("update"),
     insert: chainMethod("insert"),
     upsert: chainMethod("upsert"),
+    delete: chainMethod("delete"),
     maybeSingle: () => {
       callLog.push({ table, method: "maybeSingle", args: [] });
       return Promise.resolve(response);
@@ -37,6 +38,7 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
       callLog.push({ table, method: "single", args: [] });
       return Promise.resolve(response);
     },
+    then: (resolve: (value: SupabaseResponse) => unknown) => resolve(response),
   });
   return builder;
 };
@@ -53,13 +55,19 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { useUpsertFloorPlan, useUpsertFloorPlanStorageLocationMarker } =
+const { useUpsertFloorPlan, useUpsertFloorPlanStorageLocationMarker, useDeleteFloorPlanPlacement } =
   await import("@/hooks/useFloorPlans");
+const { ToastContext } = await import("@/lib/toast-context");
 
-const makeWrapper =
-  (queryClient: QueryClient) =>
-  ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client: queryClient }, children);
+const makeWrapper = (queryClient: QueryClient) => {
+  const stubToast = { toasts: [], toast: () => "", dismiss: () => {} };
+  return ({ children }: { children: ReactNode }) =>
+    createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      createElement(ToastContext, { value: stubToast }, children),
+    );
+};
 
 beforeEach(() => {
   callLog = [];
@@ -144,5 +152,40 @@ describe("useUpsertFloorPlanStorageLocationMarker", () => {
         { onConflict: "floor_plan_id,storage_location_id" },
       ],
     });
+  });
+});
+
+describe("useDeleteFloorPlanPlacement", () => {
+  test("配置を削除し、対象の間取りの配置一覧キャッシュを無効化する", async () => {
+    responseQueues.floor_plan_item_placements = [{ data: null, error: null }];
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    queryClient.invalidateQueries =
+      invalidateSpy as unknown as typeof queryClient.invalidateQueries;
+
+    const { result } = renderHook(() => useDeleteFloorPlanPlacement(), {
+      wrapper: makeWrapper(queryClient),
+    });
+
+    act(() => {
+      result.current.mutate({ id: "placement-1", floorPlanId: "plan-1" });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(callLog).toContainEqual({
+      table: "floor_plan_item_placements",
+      method: "delete",
+      args: [],
+    });
+    expect(callLog).toContainEqual({
+      table: "floor_plan_item_placements",
+      method: "eq",
+      args: ["id", "placement-1"],
+    });
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["floor-plan-placements", "plan-1"]);
   });
 });

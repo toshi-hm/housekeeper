@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
-import { FloorPlanConflictError, requireOnline } from "@/lib/requireOnline";
+import { FloorPlanConflictError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 import {
   type FloorPlan,
   type FloorPlanDocument,
@@ -218,6 +220,33 @@ export const useUpsertFloorPlanPlacement = () => {
       void queryClient.invalidateQueries({
         queryKey: ["floor-plan-placements", placement.floor_plan_id],
       });
+    },
+  });
+};
+
+interface DeleteFloorPlanPlacementInput {
+  id: string;
+  floorPlanId: string;
+}
+
+export const useDeleteFloorPlanPlacement = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
+  return useMutation({
+    mutationFn: async ({ id }: DeleteFloorPlanPlacementInput): Promise<void> => {
+      requireOnline();
+      const { error } = await supabase.from("floor_plan_item_placements").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["floor-plan-placements", variables.floorPlanId],
+      });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };

@@ -39,6 +39,8 @@
   "mapPlaceMarkerHelp": "Choose a storage location, then tap its position on the shared floor plan.",
   "mapRedo": "Redo",
   "mapReloadFloorPlan": "Load latest",
+  "mapRemovePlacement": "Remove {{name}} from the floor plan",
+  "mapRemovePlacementConfirm": "This will remove the item's placement from the floor plan. Continue?",
   "mapSaveBeforeMarker": "Save the shared floor plan before placing markers",
   "mapSaving": "Saving…",
   "mapSearchPlaceholder": "Search by item name or barcode",
