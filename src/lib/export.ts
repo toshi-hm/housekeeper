@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   type Category,
+  dropExpiryForDailyGoods,
   EXPIRY_TYPES,
   type ExpiryType,
   type Item,
@@ -61,14 +62,21 @@ export const DEFAULT_ITEMS_CSV_HEADER = [
 
 export const itemsToCSV = (
   items: Item[],
-  categories: Pick<Category, "id" | "name">[],
+  categories: Pick<Category, "id" | "name" | "kind">[],
   locations: Pick<StorageLocation, "id" | "name">[],
   header: string[] = [...DEFAULT_ITEMS_CSV_HEADER],
 ): string => {
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
   const locationMap = new Map(locations.map((l) => [l.id, l.name]));
+  // 日用品（カテゴリを後から daily_goods に切り替えたアイテムを含む）は「期限なし」
+  // として扱う。ダッシュボードと同じ dropExpiryForDailyGoods で、DB に残った古い
+  // expiry_date/expiry_type を書き出す前に落とす（#953）。
+  const categoryById: Record<string, Pick<Category, "kind"> | undefined> = Object.fromEntries(
+    categories.map((c) => [c.id, { kind: c.kind }]),
+  );
+  const displayItems = dropExpiryForDailyGoods(items, categoryById);
 
-  const rows = items.map((item) => [
+  const rows = displayItems.map((item) => [
     item.name,
     item.barcode ?? "",
     item.category_id ? (categoryMap.get(item.category_id) ?? "") : "",
