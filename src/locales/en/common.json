@@ -15,6 +15,7 @@
   "loading": "Loading...",
   "lotConflictError": "This item was changed by another update. Please refresh and try again",
   "map3d": "3D view",
+  "map3dAutoSwitchedTo2d": "3D is unavailable, so we switched to the 2D view.",
   "map3dFallback": "3D is unavailable. Please switch to the 2D view.",
   "map3dHelp": "Drag to rotate; use the wheel or pinch to zoom.",
   "mapCanvasKeyboardPlacementAriaLabel": "2D floor plan. Use the arrow keys to move the placement marker, then press Enter to place the item.",
