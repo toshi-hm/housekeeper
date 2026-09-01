@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-import { fetchRecentlyConsumedItems } from "./inventory.ts";
+import { fetchAllItems, fetchRecentlyConsumedItems } from "./inventory.ts";
+import type { InventoryItem } from "./types.ts";
 
 interface ConsumptionLogRow {
   item_id: string;
@@ -98,4 +99,54 @@ Deno.test("fetchRecentlyConsumedItems - skips rows whose joined item is missing"
   const supabase = makeFakeClient([makeRow({ items: null })]);
   const result = await fetchRecentlyConsumedItems(supabase);
   assert.deepStrictEqual(result, []);
+});
+
+// Minimal stand-in for the subset of SupabaseClient used by fetchAllItems
+// (a single chained select ending in `.range()`), so the daily_goods
+// expiry_date scrub (#966) can be exercised without a live database.
+const makeFakeItemsClient = (rows: InventoryItem[]): SupabaseClient =>
+  ({
+    from: () => ({
+      select: () => ({
+        is: () => ({
+          order: () => ({
+            range: () => Promise.resolve({ data: rows, error: null }),
+          }),
+        }),
+      }),
+    }),
+  }) as unknown as SupabaseClient;
+
+const makeInventoryItem = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
+  id: "item-1",
+  name: "牛乳",
+  category_id: null,
+  storage_location_id: null,
+  units: 2,
+  content_amount: 500,
+  content_unit: "mL",
+  opened_remaining: null,
+  expiry_date: "2026-07-10",
+  deleted_at: null,
+  item_type: null,
+  categories: null,
+  storage_locations: null,
+  ...overrides,
+});
+
+Deno.test("fetchAllItems (#966) - 実効種別がdaily_goodsのアイテムはexpiry_dateをnullにする", async () => {
+  const supabase = makeFakeItemsClient([
+    makeInventoryItem({ id: "item-1", item_type: "daily_goods", expiry_date: "2026-07-10" }),
+    makeInventoryItem({
+      id: "item-2",
+      item_type: null,
+      categories: { name: "日用品", kind: "daily_goods" },
+      expiry_date: "2026-07-10",
+    }),
+    makeInventoryItem({ id: "item-3", item_type: "food", expiry_date: "2026-07-10" }),
+  ]);
+  const result = await fetchAllItems(supabase);
+  assert.strictEqual(result?.[0]?.expiry_date, null);
+  assert.strictEqual(result?.[1]?.expiry_date, null);
+  assert.strictEqual(result?.[2]?.expiry_date, "2026-07-10");
 });

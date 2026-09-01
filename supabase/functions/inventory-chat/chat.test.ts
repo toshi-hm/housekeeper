@@ -20,7 +20,8 @@ const makeItem = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
   opened_remaining: null,
   expiry_date: "2026-07-10",
   deleted_at: null,
-  categories: { name: "飲料" },
+  item_type: null,
+  categories: { name: "飲料", kind: null },
   storage_locations: { name: "冷蔵庫" },
   ...overrides,
 });

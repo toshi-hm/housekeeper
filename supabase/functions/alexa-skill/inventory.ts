@@ -1,15 +1,16 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
+import { dropExpiryForDailyGoods } from "../_shared/itemType.ts";
 import type { InventoryItem, RecentlyConsumedItem } from "./types.ts";
 import { getSupabaseClient } from "./supabase-client.ts";
 export type { RemainingFields } from "./inventory-formatters.ts";
 export { formatExpiryDate, formatTotalRemaining } from "./inventory-formatters.ts";
 
 const ITEM_SELECT =
-  "id, name, category_id, storage_location_id, units, content_amount, content_unit, opened_remaining, expiry_date, deleted_at, categories(name), storage_locations(name)";
+  "id, name, category_id, storage_location_id, units, content_amount, content_unit, opened_remaining, expiry_date, deleted_at, item_type, categories(name, kind), storage_locations(name)";
 
 // !inner forces an INNER JOIN so only items with a matching storage_location row are returned.
 const LOCATION_ITEM_SELECT =
-  "id, name, category_id, storage_location_id, units, content_amount, content_unit, opened_remaining, expiry_date, deleted_at, categories(name), storage_locations!inner(name)";
+  "id, name, category_id, storage_location_id, units, content_amount, content_unit, opened_remaining, expiry_date, deleted_at, item_type, categories(name, kind), storage_locations!inner(name)";
 
 export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
   const ctx = getSupabaseClient();
@@ -22,7 +23,7 @@ export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
     // #695: mirrors the #669 fix — a single unbounded select silently
     // truncates once a user's items exceed PostgREST's row cap (default
     // 1000). Page through with a stable order instead.
-    return await fetchAllPages(async (from, to) => {
+    const items = await fetchAllPages(async (from, to) => {
       const { data, error } = await supabase
         .from("items")
         .select(ITEM_SELECT)
@@ -33,6 +34,9 @@ export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
       if (error) throw error;
       return (data ?? []) as InventoryItem[];
     });
+    // #966: a category (or item) switched to daily_goods after the fact can
+    // still have a stale expiry_date left over from when it was food.
+    return dropExpiryForDailyGoods(items);
   } catch (error) {
     console.error("[inventory] fetchAllItems error:", error);
     return null;
@@ -110,7 +114,7 @@ export const fetchItemsByLocation = async (
   try {
     // #695: mirrors the #669 fix — page through instead of a single
     // unbounded select.
-    return await fetchAllPages(async (from, to) => {
+    const items = await fetchAllPages(async (from, to) => {
       const { data, error } = await supabase
         .from("items")
         .select(LOCATION_ITEM_SELECT)
@@ -122,6 +126,8 @@ export const fetchItemsByLocation = async (
       if (error) throw error;
       return (data ?? []) as InventoryItem[];
     });
+    // #966: mirrors fetchAllItems's daily_goods expiry_date scrub.
+    return dropExpiryForDailyGoods(items);
   } catch (error) {
     console.error("[inventory] fetchItemsByLocation error:", error);
     return null;
