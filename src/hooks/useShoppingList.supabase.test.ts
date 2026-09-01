@@ -69,6 +69,7 @@ mock.module("@/lib/requireOnline", () => ({
 }));
 
 const { purchaseShoppingItem, upsertShoppingItem } = await import("@/hooks/useShoppingList");
+const { ConcurrentUpdateError } = await import("@/lib/requireOnline");
 
 const makeFormValues = (overrides: Partial<ItemFormValues> = {}): ItemFormValues => ({
   name: "テスト商品",
@@ -627,8 +628,8 @@ describe("upsertShoppingItem (#952: 重複統合の並行更新でのロスト�
       { data: duplicateRow(4), error: null }, // 再取得3
     ];
 
-    await expect(upsertShoppingItem({ name: "牛乳", desired_units: 1 })).rejects.toThrow(
-      "too many concurrent updates",
+    await expect(upsertShoppingItem({ name: "牛乳", desired_units: 1 })).rejects.toBeInstanceOf(
+      ConcurrentUpdateError,
     );
   });
 });

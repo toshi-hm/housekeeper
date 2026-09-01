@@ -1,3 +1,4 @@
+import { ConcurrentUpdateError } from "@/lib/requireOnline";
 import { findDuplicatePlannedItem } from "@/lib/shoppingDuplicates";
 import { supabase } from "@/lib/supabase";
 import { getLotRemainingAmount } from "@/types/item";
@@ -57,20 +58,23 @@ const mergeAutoReorderRow = async (
     if (data) return data as ShoppingItem;
 
     // desired_units が読み取り時から変わっていた(並行マージがあった)ため、
-    // 最新の行を再取得して増分を計算し直す。
+    // 最新の行を再取得して増分を計算し直す。status="planned"も再度絞り込み、
+    // 再取得までの間に行が購入済み等へ遷移していた場合は統合対象から除外する
+    // （そうしないと在庫に紐づかない別ステータスの行へ誤って統合してしまう）。
     const { data: refreshed, error: refreshError } = await supabase
       .from("shopping_list_items")
       .select("*")
       .eq("id", duplicate.id)
+      .eq("status", "planned")
       .maybeSingle();
     if (refreshError) throw refreshError;
-    // 再取得中に行自体が削除された場合は統合対象が消えたとみなし、
-    // 呼び出し元の通常の新規insertパスに委ねる。
+    // 再取得中に行自体が削除された、またはplannedでなくなった場合は統合対象が
+    // 消えたとみなし、呼び出し元の通常の新規insertパスに委ねる。
     if (!refreshed) return null;
     duplicate = refreshed as ShoppingItem;
   }
 
-  throw new Error("Failed to merge auto-reorder shopping list item: too many concurrent updates");
+  throw new ConcurrentUpdateError();
 };
 
 /**

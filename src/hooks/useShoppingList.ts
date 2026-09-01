@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
 import { normalizeCreateValues, normalizeUpdateValues } from "@/hooks/useItems";
 import { PURCHASE_HISTORY_KEY } from "@/hooks/usePurchaseHistory";
-import { OfflineError, requireOnline } from "@/lib/requireOnline";
+import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { findDuplicatePlannedItem } from "@/lib/shoppingDuplicates";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
@@ -88,20 +88,23 @@ const mergeIntoDuplicatePlannedItem = async (
     if (data) return data;
 
     // desired_units が読み取り時から変わっていた(並行マージがあった)ため、
-    // 最新の行を再取得して増分を計算し直す。
+    // 最新の行を再取得して増分を計算し直す。status="planned"も再度絞り込み、
+    // 再取得までの間に行が購入済み等へ遷移していた場合は統合対象から除外する
+    // （そうしないと在庫に紐づかない別ステータスの行へ誤って統合してしまう）。
     const { data: refreshed, error: refreshError } = await supabase
       .from("shopping_list_items")
       .select("*")
       .eq("id", duplicate.id)
+      .eq("status", "planned")
       .maybeSingle();
     if (refreshError) throw new Error(refreshError.message);
-    // 再取得中に行自体が削除された(購入/削除された)場合は統合対象が消えたとみなし、
-    // 呼び出し元の通常の新規作成/挿入パスに委ねる。
+    // 再取得中に行自体が削除された、またはplannedでなくなった(購入/削除された)
+    // 場合は統合対象が消えたとみなし、呼び出し元の通常の新規作成/挿入パスに委ねる。
     if (!refreshed) return null;
     duplicate = refreshed as ShoppingItem;
   }
 
-  throw new Error("Failed to merge shopping list item: too many concurrent updates");
+  throw new ConcurrentUpdateError();
 };
 
 /** `useUpsertShoppingItem` の実処理。単体テストのため素の関数として切り出している。 */
@@ -175,6 +178,8 @@ export const useUpsertShoppingItem = () => {
     onError: (error) => {
       if (error instanceof OfflineError) {
         toast(t("offlineError"), "error");
+      } else if (error instanceof ConcurrentUpdateError) {
+        toast(t("lotConflictError"), "error");
       } else {
         toast(t("unknownError"), "error");
       }
