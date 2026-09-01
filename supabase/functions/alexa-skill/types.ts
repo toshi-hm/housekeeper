@@ -1,3 +1,5 @@
+import type { ItemType } from "../_shared/itemType.ts";
+
 export interface AlexaSlot {
   name: string;
   value?: string;
@@ -80,7 +82,8 @@ export interface InventoryItem {
   opened_remaining: number | null;
   expiry_date: string | null;
   deleted_at: string | null;
-  categories: { name: string } | null;
+  item_type: ItemType | null;
+  categories: { name: string; kind: ItemType | null } | null;
   storage_locations: { name: string } | null;
 }
 
