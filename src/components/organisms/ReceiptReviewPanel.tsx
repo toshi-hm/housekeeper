@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -52,6 +52,15 @@ export const ReceiptReviewPanel = ({
 
   const [rowStatus, setRowStatus] = useState<Record<string, ReceiptRowStatus>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // handleBulkRegisterはループ中に非同期でawaitを挟むため、ループ開始時に
+  // 閉じ込めた`drafts`は途中でユーザーが失敗行を削除しても更新されない古い
+  // スナップショットのままになる（#923）。ループ終了時点の最新のdraftsを
+  // 参照できるよう、propの値を常にrefへ同期しておく。
+  const draftsRef = useRef(drafts);
+  useEffect(() => {
+    draftsRef.current = drafts;
+  }, [drafts]);
 
   const updateDraft = (id: string, patch: Partial<ReceiptDraftItem>) => {
     onDraftsChange(drafts.map((d) => (d.id === id ? { ...d, ...patch } : d)));
@@ -108,8 +117,9 @@ export const ReceiptReviewPanel = ({
       return;
     }
     // 失敗行が残る場合は一覧に留まり、再試行できるようにする。成功済みの行は
-    // 一覧から取り除いて二重登録を防ぐ。
-    onDraftsChange(drafts.filter((d) => !succeededIds.has(d.id)));
+    // 一覧から取り除いて二重登録を防ぐ。ループ中に手動削除された行（#923）を
+    // 誤って復活させないよう、閉じ込めたdraftsではなくdraftsRef.currentを使う。
+    onDraftsChange(draftsRef.current.filter((d) => !succeededIds.has(d.id)));
   };
 
   // レシート全体から抽出した店舗名（品目ごとではない）を確認・編集するヘッダー欄。
