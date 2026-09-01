@@ -16,7 +16,7 @@ jobs:
       github.actor != 'dependabot[bot]' &&
       !contains(github.event.pull_request.labels.*.name, 'skip-issue-link')
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         with:
           script: |
             const body = context.payload.pull_request.body ?? '';
