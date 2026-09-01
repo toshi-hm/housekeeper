@@ -40,13 +40,20 @@ const mergeIntoDuplicatePlannedItem = async (
   });
   if (!duplicate) return false;
 
+  // .select().single() confirms the update actually matched a row (mirrors
+  // useShoppingList.ts's mergeIntoDuplicatePlannedItem): without it, a race
+  // where `duplicate` was deleted/moved between the select above and this
+  // update would silently affect 0 rows, and we'd still report success
+  // (and skip the insert fallback) despite nothing being merged.
   const { error: updateError } = await supabase
     .from("shopping_list_items")
     .update({
       desired_units: duplicate.desired_units + 1,
       linked_item_id: duplicate.linked_item_id ?? linkedItemId,
     })
-    .eq("id", duplicate.id);
+    .eq("id", duplicate.id)
+    .select()
+    .single();
   if (updateError) {
     console.error("[yes-no] shopping list merge update error:", updateError);
     return false;
