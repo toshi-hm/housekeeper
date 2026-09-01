@@ -24,7 +24,8 @@ export type ReceiptScanErrorKind =
   | "rate_limited"
   | "timeout"
   | "image_too_large"
-  | "server_error";
+  | "server_error"
+  | "cancelled";
 
 export class ReceiptScanError extends Error {
   readonly kind: ReceiptScanErrorKind;
@@ -53,7 +54,15 @@ const fileToBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
-export const scanReceipt = async (file: File): Promise<ReceiptScanResult> => {
+/** リクエスト中断（AbortError/DOMExceptionのname、実装によって両方あり得る）か判定する。 */
+const isAbortError = (error: unknown): boolean =>
+  error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError");
+
+// #923: スキャン中(25sタイムアウト、receipt-scan.md §3.1)にユーザーが待たされ
+// たままキャンセルできなかった問題への対応。呼び出し元(ReceiptScanPage)から
+// AbortSignalを渡せるようにし、functions.invokeにそのまま委譲する
+// （FunctionsClient.invokeはsignalオプションをfetchへ渡す）。
+export const scanReceipt = async (file: File, signal?: AbortSignal): Promise<ReceiptScanResult> => {
   requireOnline();
   if (!isReceiptMimeType(file.type)) {
     throw new ReceiptScanError("unsupported_type");
@@ -64,12 +73,16 @@ export const scanReceipt = async (file: File): Promise<ReceiptScanResult> => {
   // ever shrinking the file, so ordinary 6-15MB phone photos exceeded the Edge
   // Function's 8MB payload limit and failed with a generic error.
   const compressed = await compressImageForUpload(file);
+  if (signal?.aborted) throw new ReceiptScanError("cancelled");
   const image = await fileToBase64(compressed);
+  if (signal?.aborted) throw new ReceiptScanError("cancelled");
   const { data, error } = await supabase.functions.invoke<ReceiptScanSuccess>("receipt-scan", {
     body: { image, mimeType: compressed.type },
+    signal,
   });
 
   if (error) {
+    if (isAbortError(error) || signal?.aborted) throw new ReceiptScanError("cancelled");
     if (error instanceof FunctionsHttpError) {
       if (error.context?.status === 429) throw new ReceiptScanError("rate_limited");
       if (error.context?.status === 504) throw new ReceiptScanError("timeout");
@@ -81,9 +94,14 @@ export const scanReceipt = async (file: File): Promise<ReceiptScanResult> => {
   return { items: data?.items ?? [], storeName: data?.storeName ?? null };
 };
 
+interface ScanReceiptVariables {
+  file: File;
+  signal?: AbortSignal;
+}
+
 export const useReceiptScan = () => {
   return useMutation({
-    mutationFn: scanReceipt,
+    mutationFn: ({ file, signal }: ScanReceiptVariables) => scanReceipt(file, signal),
   });
 };
 

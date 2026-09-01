@@ -1,5 +1,5 @@
 import { Camera, Trash2, Upload } from "lucide-react";
-import { type DragEvent, useId, useRef, useState } from "react";
+import { type DragEvent, type KeyboardEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,12 @@ export const ImageUploader = ({
     if (file) handleFile(file);
   };
 
+  const handleZoneKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    inputRef.current?.click();
+  };
+
   return (
     <div className="space-y-2">
       {previewUrl ? (
@@ -113,24 +119,34 @@ export const ImageUploader = ({
         </div>
       ) : (
         <div
-          className={`flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-colors ${
+          className={`flex h-40 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-colors ${
             isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/30"
           }`}
-          onClick={() => inputRef.current?.click()}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <Upload className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{t("imageDrop")}</p>
+          {/* Only the icon+text are wrapped in role="button" — the camera
+              button below is a sibling, not a descendant, so the two
+              independently-focusable controls don't trigger axe's
+              nested-interactive-controls violation. */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={t("imageDrop")}
+            aria-describedby={error ? errorId : undefined}
+            className="flex cursor-pointer flex-col items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => inputRef.current?.click()}
+            onKeyDown={handleZoneKeyDown}
+          >
+            <Upload className="h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">{t("imageDrop")}</p>
+          </div>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              inputRef.current?.click();
-            }}
+            onClick={() => inputRef.current?.click()}
             aria-describedby={error ? errorId : undefined}
           >
             <Camera className="mr-1 h-4 w-4" />

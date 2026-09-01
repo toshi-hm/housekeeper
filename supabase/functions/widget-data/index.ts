@@ -77,7 +77,11 @@ export const handler = async (req: Request): Promise<Response> => {
     items = await fetchAllPages(async (from, to) => {
       const { data, error } = await supabase
         .from("items")
-        .select("name, units, expiry_date, opened_remaining, minimum_stock")
+        // #940: item_type と categories(kind) を取得し、日用品へ切り替え済み
+        // アイテムを buildWidgetSummary 側で期限集計から除外できるようにする。
+        .select(
+          "name, units, expiry_date, opened_remaining, minimum_stock, item_type, categories(kind)",
+        )
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .order("id", { ascending: true })
