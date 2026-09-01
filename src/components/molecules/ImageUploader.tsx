@@ -70,12 +70,7 @@ export const ImageUploader = ({
     if (file) handleFile(file);
   };
 
-  // The drop zone wraps a real <button> (camera capture). Keydown bubbles,
-  // so only react to Enter/Space that originated on the zone itself —
-  // the nested button already gets native Enter/Space handling and stops
-  // propagation (mirroring its onClick) so this doesn't double-fire.
   const handleZoneKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget) return;
     if (e.key !== "Enter" && e.key !== " ") return;
     e.preventDefault();
     inputRef.current?.click();
@@ -124,30 +119,34 @@ export const ImageUploader = ({
         </div>
       ) : (
         <div
-          role="button"
-          tabIndex={0}
-          aria-label={t("imageDrop")}
-          aria-describedby={error ? errorId : undefined}
-          className={`flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          className={`flex h-40 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-colors ${
             isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/30"
           }`}
-          onClick={() => inputRef.current?.click()}
-          onKeyDown={handleZoneKeyDown}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <Upload className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{t("imageDrop")}</p>
+          {/* Only the icon+text are wrapped in role="button" — the camera
+              button below is a sibling, not a descendant, so the two
+              independently-focusable controls don't trigger axe's
+              nested-interactive-controls violation. */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={t("imageDrop")}
+            aria-describedby={error ? errorId : undefined}
+            className="flex cursor-pointer flex-col items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => inputRef.current?.click()}
+            onKeyDown={handleZoneKeyDown}
+          >
+            <Upload className="h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">{t("imageDrop")}</p>
+          </div>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              inputRef.current?.click();
-            }}
-            onKeyDown={(e) => e.stopPropagation()}
+            onClick={() => inputRef.current?.click()}
             aria-describedby={error ? errorId : undefined}
           >
             <Camera className="mr-1 h-4 w-4" />
