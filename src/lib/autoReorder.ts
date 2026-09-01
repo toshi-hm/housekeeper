@@ -1,8 +1,13 @@
+import { ConcurrentUpdateError } from "@/lib/requireOnline";
 import { findDuplicatePlannedItem } from "@/lib/shoppingDuplicates";
 import { supabase } from "@/lib/supabase";
 import { getLotRemainingAmount } from "@/types/item";
 import type { ShoppingItem } from "@/types/shopping";
 import { computeConsumptionPaceForecast } from "@/types/stats";
+
+/** #952: desired_units の加算マージで楽観的排他制御が競合し続けた場合に
+ *  諦めるまでの最大試行回数。 */
+const MAX_MERGE_ATTEMPTS = 3;
 
 /**
  * 対象アイテムの既存 planned 行の中から `findDuplicatePlannedItem` と同じ基準
@@ -10,6 +15,14 @@ import { computeConsumptionPaceForecast } from "@/types/stats";
  * `desired_units` をインクリメントして統合する。手動追加（`upsertShoppingItem`）
  * と同じ重複統合ロジックを使うことで、自由入力済みの同名手動行に対しても
  * 別行として二重追加しない（#829）。
+ *
+ * #952: `desired_units` の加算は「直前に読んだ値」を前提にした絶対値の書き込みの
+ * ため、`.eq("desired_units", <直前に読んだ値>)` を条件に付けた楽観的排他制御を行う。
+ * 例えば bulkConsumeItems が同名・auto_reorder有効の複数アイテムに対して
+ * `Promise.all(ids.map((id) => maybeAutoReorder(id)))` で並列発火した場合、両方が
+ * 同じ行の同じ desired_units を読んでしまい、条件に一致する行が0件になる。その場合は
+ * 最新の行を再取得し、その値を基準に増分を計算し直してリトライする（23505 競合時の
+ * リトライパターンと同様）。
  */
 const mergeAutoReorderRow = async (
   userId: string,
@@ -23,24 +36,45 @@ const mergeAutoReorderRow = async (
     .eq("status", "planned");
   if (plannedError) throw plannedError;
 
-  const duplicate = findDuplicatePlannedItem((plannedRows ?? []) as ShoppingItem[], {
+  let duplicate = findDuplicatePlannedItem((plannedRows ?? []) as ShoppingItem[], {
     name,
     linked_item_id: itemId,
   });
   if (!duplicate) return null;
 
-  const { data, error } = await supabase
-    .from("shopping_list_items")
-    .update({
-      desired_units: duplicate.desired_units + 1,
-      linked_item_id: duplicate.linked_item_id ?? itemId,
-      auto_added: true,
-    })
-    .eq("id", duplicate.id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as ShoppingItem;
+  for (let attempt = 0; attempt < MAX_MERGE_ATTEMPTS; attempt++) {
+    const { data, error } = await supabase
+      .from("shopping_list_items")
+      .update({
+        desired_units: duplicate.desired_units + 1,
+        linked_item_id: duplicate.linked_item_id ?? itemId,
+        auto_added: true,
+      })
+      .eq("id", duplicate.id)
+      .eq("desired_units", duplicate.desired_units)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    if (data) return data as ShoppingItem;
+
+    // desired_units が読み取り時から変わっていた(並行マージがあった)ため、
+    // 最新の行を再取得して増分を計算し直す。status="planned"も再度絞り込み、
+    // 再取得までの間に行が購入済み等へ遷移していた場合は統合対象から除外する
+    // （そうしないと在庫に紐づかない別ステータスの行へ誤って統合してしまう）。
+    const { data: refreshed, error: refreshError } = await supabase
+      .from("shopping_list_items")
+      .select("*")
+      .eq("id", duplicate.id)
+      .eq("status", "planned")
+      .maybeSingle();
+    if (refreshError) throw refreshError;
+    // 再取得中に行自体が削除された、またはplannedでなくなった場合は統合対象が
+    // 消えたとみなし、呼び出し元の通常の新規insertパスに委ねる。
+    if (!refreshed) return null;
+    duplicate = refreshed as ShoppingItem;
+  }
+
+  throw new ConcurrentUpdateError();
 };
 
 /**

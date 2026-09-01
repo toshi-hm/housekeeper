@@ -10,6 +10,8 @@ const item = (overrides: Partial<WidgetItemInput> = {}): WidgetItemInput => ({
   expiry_date: null,
   opened_remaining: null,
   minimum_stock: null,
+  item_type: null,
+  categories: null,
   ...overrides,
 });
 
@@ -90,4 +92,73 @@ Deno.test("buildWidgetSummary - caps top_low_stock at WIDGET_TOP_N while low_sto
   const summary = buildWidgetSummary(items, TODAY, 3, NOW_ISO);
   assert.strictEqual(summary.low_stock_count, 8);
   assert.strictEqual(summary.top_low_stock.length, 5);
+});
+
+// #940: 既存カテゴリを後から日用品(daily_goods)へ切り替えた場合、そのカテゴリの
+// アイテムには食料品時代に入力された expiry_date が DB に残ったままになる
+// (docs/specs/features/item-type.md の既知のギャップ、#937 と同じ根本原因)。
+// widget-data の期限バッジ集計はこれを「期限なし」として扱うべき。
+
+Deno.test("buildWidgetSummary (#940) - excludes an item whose own item_type is daily_goods from expiry counts", () => {
+  const items = [
+    item({ name: "日用品(個別)", expiry_date: "2026-07-19", item_type: "daily_goods" }),
+    item({ name: "食料品", expiry_date: "2026-07-19", item_type: "food" }),
+  ];
+  const summary = buildWidgetSummary(items, TODAY, 3, NOW_ISO);
+  assert.strictEqual(summary.expired_count, 1);
+  assert.strictEqual(summary.top_expiring.length, 1);
+  assert.strictEqual(summary.top_expiring[0].name, "食料品");
+});
+
+Deno.test("buildWidgetSummary (#940) - excludes an item that resolves to daily_goods via its category's kind (stale expiry_date)", () => {
+  const items = [
+    item({
+      name: "日用品化されたカテゴリの旧食料品",
+      expiry_date: "2026-07-19",
+      item_type: null,
+      categories: { kind: "daily_goods" },
+    }),
+    item({
+      name: "食料品カテゴリ",
+      expiry_date: "2026-07-19",
+      item_type: null,
+      categories: { kind: "food" },
+    }),
+  ];
+  const summary = buildWidgetSummary(items, TODAY, 3, NOW_ISO);
+  assert.strictEqual(summary.expired_count, 1);
+  assert.strictEqual(summary.top_expiring.length, 1);
+  assert.strictEqual(summary.top_expiring[0].name, "食料品カテゴリ");
+});
+
+Deno.test("buildWidgetSummary (#940) - an item-level item_type override wins over the category's kind", () => {
+  const items = [
+    // カテゴリは daily_goods だが、アイテム個別で food に上書きしている
+    // (例外的なアイテム) 場合は期限集計の対象に残る。
+    item({
+      name: "個別上書きで食料品",
+      expiry_date: "2026-07-19",
+      item_type: "food",
+      categories: { kind: "daily_goods" },
+    }),
+  ];
+  const summary = buildWidgetSummary(items, TODAY, 3, NOW_ISO);
+  assert.strictEqual(summary.expired_count, 1);
+});
+
+Deno.test("buildWidgetSummary (#940) - daily_goods items are still counted in low stock (item type is expiry-only)", () => {
+  const items = [
+    item({
+      name: "低在庫の日用品",
+      units: 1,
+      minimum_stock: 2,
+      item_type: "daily_goods",
+      expiry_date: "2026-07-19",
+    }),
+  ];
+  const summary = buildWidgetSummary(items, TODAY, 3, NOW_ISO);
+  assert.strictEqual(summary.low_stock_count, 1);
+  assert.strictEqual(summary.top_low_stock[0].name, "低在庫の日用品");
+  // 期限集計からは除外される
+  assert.strictEqual(summary.expired_count, 0);
 });

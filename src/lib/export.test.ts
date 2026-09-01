@@ -108,6 +108,28 @@ describe("itemsToCSV", () => {
     const dataLine = csv.slice(1).split("\r\n")[1];
     expect(dataLine).toBe("牛乳（1本）,,,,2,1000,mL,2026-07-15,2026-07-01,");
   });
+
+  test("#953: blanks out a stale expiry_date for an item individually marked daily_goods", () => {
+    const item = makeItem({ item_type: "daily_goods", category_id: null });
+    const csv = itemsToCSV([item], [], []);
+    const dataLine = csv.slice(1).split("\r\n")[1];
+    // 期限（8列目）が空文字になり、購入日以降はそのまま残る
+    expect(dataLine).toBe("牛乳,,,,2,1000,mL,,2026-07-01,");
+  });
+
+  test("#953: blanks out a stale expiry_date when the item's category was later switched to daily_goods", () => {
+    const item = makeItem({ category_id: "cat-1" });
+    const csv = itemsToCSV([item], [{ id: "cat-1", name: "洗剤", kind: "daily_goods" }], []);
+    const dataLine = csv.slice(1).split("\r\n")[1];
+    expect(dataLine).toBe("牛乳,,洗剤,,2,1000,mL,,2026-07-01,");
+  });
+
+  test("#953: still exports expiry_date for a food item (default kind, no item_type override)", () => {
+    const item = makeItem({ category_id: "cat-1" });
+    const csv = itemsToCSV([item], [{ id: "cat-1", name: "食品", kind: "food" }], []);
+    const dataLine = csv.slice(1).split("\r\n")[1];
+    expect(dataLine).toBe("牛乳,,食品,,2,1000,mL,2026-07-15,2026-07-01,");
+  });
 });
 
 describe("itemsToJSON", () => {

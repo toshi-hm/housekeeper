@@ -18,6 +18,7 @@ import {
 import { useItems } from "@/hooks/useItems";
 import { useSignedLocationPhoto } from "@/hooks/useLocationPhoto";
 import { useStorageLocations } from "@/hooks/useMasterData";
+import { useToast } from "@/lib/toast-context";
 
 const ThreeDFloorPlanViewer = lazy(() =>
   import("@/components/organisms/ThreeDFloorPlanViewer").then((module) => ({
@@ -34,9 +35,17 @@ export const LocationMapPage = () => {
   const { t } = useTranslation("common");
   const { t: ts } = useTranslation("settings");
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [view, setView] = useState<"photo" | "2d" | "3d">("photo");
   const [pendingItemId, setPendingItemId] = useState<string | null>(null);
   const [removeTargetId, setRemoveTargetId] = useState<string | null>(null);
+  // WebGL初期化失敗時、3Dタブに留まらせず2Dビュー(+DOMリスト)へ自動で切り替える
+  // (docs/specs/features/floor-plan-map.md「WebGL初期化失敗:
+  // 2DビューとDOMリストへ切り替える」、#919)。
+  const handleWebglUnavailable = () => {
+    setView("2d");
+    toast(t("map3dAutoSwitchedTo2d"), "warning");
+  };
   const {
     data: locations = [],
     isLoading: isLoadingLocations,
@@ -206,6 +215,7 @@ export const LocationMapPage = () => {
                   onItemClick={(itemId) =>
                     void navigate({ to: "/items/$itemId", params: { itemId } })
                   }
+                  onWebglUnavailable={handleWebglUnavailable}
                 />
               </Suspense>
             ) : (
