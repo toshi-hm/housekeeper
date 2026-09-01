@@ -123,7 +123,12 @@ const CanvasErrorFallback = ({
     onWebglUnavailableRef.current = onWebglUnavailable;
   });
 
+  // StrictModeの開発時マウント→アンマウント→再マウントで二重に呼ばれないよう、
+  // useAutoArchive.tsのhasRunRefと同じパターンで1回のマウントにつき1回だけ実行する。
+  const hasRunRef = useRef(false);
   useEffect(() => {
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
     onWebglUnavailableRef.current?.();
   }, []);
 
@@ -152,8 +157,15 @@ export const ThreeDFloorPlanViewer = ({
     onWebglUnavailableRef.current = onWebglUnavailable;
   });
 
+  // StrictModeの開発時マウント→アンマウント→再マウントで二重に呼ばれないよう、
+  // useAutoArchive.tsのhasRunRefと同じパターンで1回のマウントにつき1回だけ実行する。
+  const hasRunRef = useRef(false);
   useEffect(() => {
-    if (!webglSupported) onWebglUnavailableRef.current?.();
+    if (hasRunRef.current) return;
+    if (!webglSupported) {
+      hasRunRef.current = true;
+      onWebglUnavailableRef.current?.();
+    }
   }, [webglSupported]);
 
   return (
