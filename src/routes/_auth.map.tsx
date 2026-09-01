@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Map as MapIcon, Search } from "lucide-react";
+import { Map as MapIcon, MapPin, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
 import { FloorPlanViewer } from "@/components/organisms/FloorPlanViewer";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   useFloorPlan,
@@ -14,7 +15,7 @@ import {
 import { useItems } from "@/hooks/useItems";
 import { useStorageLocations } from "@/hooks/useMasterData";
 
-const MapPage = () => {
+export const MapPage = () => {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -59,7 +60,24 @@ const MapPage = () => {
           className="pl-9"
         />
       </label>
-      {floorPlan ? (
+      {!locationsLoading && locations.length === 0 ? (
+        // #916: without a storage location there is no `$locationId` to
+        // reach `/locations/$locationId/edit` through, so there was
+        // previously no way to even start a floor plan from this tab. Guide
+        // the user to create one first instead of silently omitting the
+        // floor-plan section.
+        <div className="space-y-3 rounded-lg border border-dashed p-6 text-center">
+          <MapPin className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <div>
+            <p className="font-medium">{t("mapNoLocationsTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("mapNoLocationsHelp")}</p>
+          </div>
+          <Button onClick={() => void navigate({ to: "/settings/locations" })}>
+            <Plus className="mr-1 h-4 w-4" />
+            {t("mapCreateLocationCta")}
+          </Button>
+        </div>
+      ) : floorPlan ? (
         <section className="space-y-2" aria-labelledby="shared-floor-plan">
           <div className="flex items-center justify-between gap-2">
             <h2 id="shared-floor-plan" className="text-base font-semibold">

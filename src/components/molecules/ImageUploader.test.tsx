@@ -50,4 +50,52 @@ describe("ImageUploader", () => {
 
     expect(called).toBe(false);
   });
+
+  it("exposes the drop zone as a focusable, labelled button", () => {
+    const { getByRole } = render(<ImageUploader onFile={() => {}} />, { wrapper });
+
+    const zone = getByRole("button", { name: /ドロップ|tap to select/i });
+    expect(zone.getAttribute("tabIndex")).toBe("0");
+  });
+
+  it("opens the file picker when Enter is pressed on the drop zone", () => {
+    const { getByRole, container } = render(<ImageUploader onFile={() => {}} />, { wrapper });
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    let clicked = false;
+    input.addEventListener("click", () => (clicked = true));
+
+    const zone = getByRole("button", { name: /ドロップ|tap to select/i });
+    fireEvent.keyDown(zone, { key: "Enter" });
+
+    expect(clicked).toBe(true);
+  });
+
+  it("opens the file picker when Space is pressed on the drop zone", () => {
+    const { getByRole, container } = render(<ImageUploader onFile={() => {}} />, { wrapper });
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    let clicked = false;
+    input.addEventListener("click", () => (clicked = true));
+
+    const zone = getByRole("button", { name: /ドロップ|tap to select/i });
+    fireEvent.keyDown(zone, { key: " " });
+
+    expect(clicked).toBe(true);
+  });
+
+  it("does not double-trigger the file picker when Enter is pressed on the nested capture button", () => {
+    const { getByRole, container } = render(<ImageUploader onFile={() => {}} />, { wrapper });
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    let clickCount = 0;
+    input.addEventListener("click", () => clickCount++);
+
+    const captureButton = getByRole("button", { name: /撮影|Take Photo/i });
+    fireEvent.keyDown(captureButton, { key: "Enter" });
+
+    // The keydown on the nested button should not bubble into the drop
+    // zone's own handler and fire the input click a second time.
+    expect(clickCount).toBeLessThanOrEqual(1);
+  });
 });

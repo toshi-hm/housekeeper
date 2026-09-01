@@ -1,6 +1,8 @@
 import { Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { snapToGrid } from "@/lib/floorPlanEditor";
 import type {
   FloorPlanDocument,
   FloorPlanItemPlacement,
@@ -48,14 +50,76 @@ export const FloorPlanViewer = ({
   const itemsById = itemById(items);
   const storageLocationsById = new Map(storageLocations.map((location) => [location.id, location]));
 
+  // Keyboard alternative to the pointer-only `onCanvasClick` placement flow
+  // (#916): once an item is chosen from the list below, the canvas becomes a
+  // focusable "application" that a keyboard user can move a cursor around on
+  // (arrow keys, one grid step at a time) and confirm with Enter/Space —
+  // mirroring the keyboard nudge already supported for walls/shapes in
+  // FloorPlanEditor.tsx.
+  const initialKeyboardCursor = (): { x: number; y: number } | null =>
+    pendingItemId
+      ? {
+          x: snapToGrid(document.width / 2, document.gridSize, document.width),
+          y: snapToGrid(document.height / 2, document.gridSize, document.height),
+        }
+      : null;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [keyboardCursor, setKeyboardCursor] = useState(initialKeyboardCursor);
+  // Tracks which `pendingItemId` the current `keyboardCursor` was derived
+  // for, so the cursor only resets to the grid center on an actual
+  // selection change — not on every unrelated re-render, which would fight
+  // a keyboard user actively nudging it with the arrow keys. Comparing and
+  // resetting during render (rather than in a useEffect) is the pattern
+  // React recommends for "adjusting state when a prop changes".
+  const [cursorForPendingItemId, setCursorForPendingItemId] = useState(pendingItemId);
+  const canKeyboardPlace = Boolean(onCanvasClick && pendingItemId);
+
+  if (pendingItemId !== cursorForPendingItemId) {
+    setCursorForPendingItemId(pendingItemId);
+    setKeyboardCursor(initialKeyboardCursor());
+  }
+
+  // Move focus onto the canvas once an item is selected for placement, so a
+  // keyboard user can immediately use the arrow keys without first tabbing
+  // to find it.
+  useEffect(() => {
+    if (pendingItemId) svgRef.current?.focus();
+  }, [pendingItemId]);
+
+  const handleCanvasKeyDown = (event: React.KeyboardEvent<SVGSVGElement>) => {
+    if (!canKeyboardPlace || !keyboardCursor) return;
+    if (
+      event.key === "ArrowUp" ||
+      event.key === "ArrowDown" ||
+      event.key === "ArrowLeft" ||
+      event.key === "ArrowRight"
+    ) {
+      event.preventDefault();
+      const step = document.gridSize;
+      const dx = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
+      const dy = event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0;
+      setKeyboardCursor({
+        x: snapToGrid(keyboardCursor.x + dx, step, document.width),
+        y: snapToGrid(keyboardCursor.y + dy, step, document.height),
+      });
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onCanvasClick?.(keyboardCursor);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="overflow-auto rounded-lg border bg-muted/20 p-2">
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${document.width} ${document.height}`}
           className="h-auto min-h-72 w-full min-w-[480px]"
-          role="img"
-          aria-label={t("mapFloorPlanAriaLabel")}
+          role={canKeyboardPlace ? "application" : "img"}
+          tabIndex={canKeyboardPlace ? 0 : undefined}
+          aria-label={
+            canKeyboardPlace ? t("mapCanvasKeyboardPlacementAriaLabel") : t("mapFloorPlanAriaLabel")
+          }
           onClick={
             onCanvasClick
               ? (event) => {
@@ -67,6 +131,7 @@ export const FloorPlanViewer = ({
                 }
               : undefined
           }
+          onKeyDown={canKeyboardPlace ? handleCanvasKeyDown : undefined}
         >
           <defs>
             <pattern
@@ -223,8 +288,24 @@ export const FloorPlanViewer = ({
               </g>
             );
           })}
+          {canKeyboardPlace && keyboardCursor && (
+            <circle
+              data-testid="floor-plan-keyboard-cursor"
+              cx={keyboardCursor.x}
+              cy={keyboardCursor.y}
+              r="12"
+              fill="hsl(var(--accent) / 0.35)"
+              stroke="hsl(var(--accent))"
+              strokeDasharray="6 4"
+              strokeWidth="3"
+              pointerEvents="none"
+            />
+          )}
         </svg>
       </div>
+      {canKeyboardPlace && (
+        <p className="text-xs text-muted-foreground">{t("mapCanvasKeyboardPlacementHelp")}</p>
+      )}
       <p className="text-xs text-muted-foreground">{t("mapFloorPlanFallbackHelp")}</p>
       {storageLocationMarkers.length > 0 && (
         <ul className="divide-y rounded-lg border" aria-label={t("mapStorageLocations")}>

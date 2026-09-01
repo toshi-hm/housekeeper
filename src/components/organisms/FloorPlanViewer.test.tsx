@@ -230,4 +230,45 @@ describe("FloorPlanViewer", () => {
     const itemList = getByRole("list", { name: /配置した在庫|placed on the floor plan/ });
     expect(itemList.querySelectorAll("button")).toHaveLength(1);
   });
+
+  it("在庫が選択されている間はキャンバスがキーボード操作可能になり、矢印キー+Enterで配置できる(#916)", () => {
+    const onCanvasClick = mock(() => undefined);
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanViewer
+          document={document}
+          items={[{ id: "item-1", name: "Rice" } as Item]}
+          unplacedItems={[{ id: "item-1", name: "Rice" } as Item]}
+          pendingItemId="item-1"
+          onSelectItemForPlacement={() => undefined}
+          onCanvasClick={onCanvasClick}
+        />
+      </I18nextProvider>,
+    );
+
+    const canvas = getByRole("application");
+    expect(canvas.getAttribute("tabindex")).toBe("0");
+
+    // Grid is 100x100 with a 10-unit step, so the cursor starts centered at
+    // (50, 50). ArrowRight moves it one grid step right before Enter
+    // confirms the placement at the cursor's position.
+    fireEvent.keyDown(canvas, { key: "ArrowRight" });
+    fireEvent.keyDown(canvas, { key: "Enter" });
+
+    expect(onCanvasClick).toHaveBeenCalledWith({ x: 60, y: 50 });
+  });
+
+  it("キーボード配置モードでない場合、キャンバスはimgロールのままキー操作を無視する", () => {
+    const onCanvasClick = mock(() => undefined);
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanViewer document={document} onCanvasClick={onCanvasClick} />
+      </I18nextProvider>,
+    );
+
+    const canvas = getByRole("img");
+    expect(canvas.getAttribute("tabindex")).toBeNull();
+    fireEvent.keyDown(canvas, { key: "Enter" });
+    expect(onCanvasClick).not.toHaveBeenCalled();
+  });
 });

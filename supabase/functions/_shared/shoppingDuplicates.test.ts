@@ -10,31 +10,26 @@ const makeRow = (overrides: Partial<ShoppingPlannedRow> = {}): ShoppingPlannedRo
   ...overrides,
 });
 
-Deno.test("findDuplicatePlannedItem (#946) - 同一 linked_item_id を持つ行を重複として検出する", () => {
+Deno.test("findDuplicatePlannedItem (#946) - linked_item_id が一致する行を重複とみなす", () => {
   const rows = [makeRow({ id: "row-1", name: "牛乳", linked_item_id: "item-1" })];
-  const duplicate = findDuplicatePlannedItem(rows, { name: "牛乳", linked_item_id: "item-1" });
+  const duplicate = findDuplicatePlannedItem(rows, { name: "別名", linked_item_id: "item-1" });
   assert.strictEqual(duplicate?.id, "row-1");
 });
 
-Deno.test("findDuplicatePlannedItem (#946) - linked_item_id が異なれば重複としない", () => {
-  const rows = [makeRow({ id: "row-1", name: "牛乳", linked_item_id: "item-1" })];
-  const duplicate = findDuplicatePlannedItem(rows, { name: "豆乳", linked_item_id: "item-2" });
-  assert.strictEqual(duplicate, undefined);
-});
-
-Deno.test("findDuplicatePlannedItem (#946) - 前後空白・大文字小文字を無視した同名一致で重複を検出する", () => {
-  const rows = [makeRow({ id: "row-1", name: "Milk", linked_item_id: null })];
-  const duplicate = findDuplicatePlannedItem(rows, { name: "  milk  ", linked_item_id: null });
+Deno.test("findDuplicatePlannedItem (#946) - 前後空白/大文字小文字を無視した名前一致を重複とみなす", () => {
+  const rows = [makeRow({ id: "row-1", name: " Milk ", linked_item_id: null })];
+  const duplicate = findDuplicatePlannedItem(rows, { name: "milk", linked_item_id: null });
   assert.strictEqual(duplicate?.id, "row-1");
 });
 
-Deno.test("findDuplicatePlannedItem (#946) - 名前が異なり linked_item_id もなければ重複としない", () => {
-  const rows = [makeRow({ id: "row-1", name: "牛乳", linked_item_id: null })];
-  const duplicate = findDuplicatePlannedItem(rows, { name: "卵", linked_item_id: null });
+Deno.test("findDuplicatePlannedItem (#946) - 一致する行がなければ undefined を返す", () => {
+  const rows = [makeRow({ id: "row-1", name: "牛乳", linked_item_id: "item-1" })];
+  const duplicate = findDuplicatePlannedItem(rows, { name: "パン", linked_item_id: "item-2" });
   assert.strictEqual(duplicate, undefined);
 });
 
-Deno.test("findDuplicatePlannedItem (#946) - 行が空なら重複なし", () => {
-  const duplicate = findDuplicatePlannedItem([], { name: "牛乳", linked_item_id: null });
+Deno.test("findDuplicatePlannedItem (#946) - linked_item_id が null の入力は名前一致のみで判定する", () => {
+  const rows = [makeRow({ id: "row-1", name: "牛乳", linked_item_id: "item-1" })];
+  const duplicate = findDuplicatePlannedItem(rows, { name: "パン", linked_item_id: null });
   assert.strictEqual(duplicate, undefined);
 });

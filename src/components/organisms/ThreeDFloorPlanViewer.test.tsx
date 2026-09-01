@@ -1,8 +1,9 @@
 import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it, mock } from "bun:test";
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { I18nextProvider } from "react-i18next";
 
 import i18n from "@/lib/i18n";
+import * as webglModule from "@/lib/webgl";
 import type { Item } from "@/types/item";
 
 import { ThreeDFloorPlanViewer } from "./ThreeDFloorPlanViewer";
@@ -58,5 +59,43 @@ describe("ThreeDFloorPlanViewer", () => {
       </I18nextProvider>,
     );
     expect(queryByRole("list", { name: /配置した在庫|placed on the floor plan/ })).toBeNull();
+  });
+
+  describe("WebGL initialization failure (#919)", () => {
+    let webglSpy: ReturnType<typeof spyOn> | undefined;
+
+    afterEach(() => {
+      webglSpy?.mockRestore();
+      webglSpy = undefined;
+    });
+
+    it("does not mount the 3D canvas and calls onWebglUnavailable when WebGL is unsupported", () => {
+      // happy-dom (this test environment) has no WebGL support by default, so
+      // isWebglAvailable() already returns false here without any mocking —
+      // this exercises the real "unsupported" path end to end.
+      const onWebglUnavailable = mock(() => undefined);
+      const { container, getByText } = render(
+        <I18nextProvider i18n={i18n}>
+          <ThreeDFloorPlanViewer document={document} onWebglUnavailable={onWebglUnavailable} />
+        </I18nextProvider>,
+      );
+
+      expect(onWebglUnavailable).toHaveBeenCalledTimes(1);
+      expect(container.querySelector("canvas")).toBeNull();
+      expect(getByText(/3D表示を利用できないため|3D is unavailable/)).toBeDefined();
+    });
+
+    it("mounts the 3D canvas and does not call onWebglUnavailable when WebGL is supported", () => {
+      webglSpy = spyOn(webglModule, "isWebglAvailable").mockReturnValue(true);
+      const onWebglUnavailable = mock(() => undefined);
+      const { container } = render(
+        <I18nextProvider i18n={i18n}>
+          <ThreeDFloorPlanViewer document={document} onWebglUnavailable={onWebglUnavailable} />
+        </I18nextProvider>,
+      );
+
+      expect(onWebglUnavailable).not.toHaveBeenCalled();
+      expect(container.querySelector("canvas")).not.toBeNull();
+    });
   });
 });

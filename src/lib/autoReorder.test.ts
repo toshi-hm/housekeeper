@@ -233,6 +233,66 @@ describe("maybeAutoReorder", () => {
     expect(calls.filter((c) => c.method === "update")).toHaveLength(1);
   });
 
+  // #952: mergeAutoReorderRow の desired_units 加算に楽観的排他制御が無く、
+  // 並行マージ(例: bulkConsumeItemsが複数アイテムに対して並列発火する
+  // maybeAutoReorder)がロストアップデートする問題の回帰テスト。
+  const duplicateRow = (units: number) => ({
+    id: "shopping-1",
+    user_id: "user-1",
+    name: "牛乳",
+    desired_units: units,
+    note: null,
+    linked_item_id: "item-1",
+    auto_added: true,
+    status: "planned",
+    purchased_at: null,
+    created_item_id: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  });
+
+  test("並行マージで desired_units が読み取り時から変わっていた場合、最新値を再取得して増分を計算し直しリトライする (#952)", async () => {
+    responseQueues.items = [{ data: { ...baseItem, units: 0 }, error: null }];
+    responseQueues.shopping_list_items = [
+      { data: [duplicateRow(1)], error: null }, // duplicate lookup: desired_units=1
+      { data: null, error: null }, // 1回目のupdate: desired_units=1条件が0件ヒット(並行マージで既に変わっていた)
+      { data: duplicateRow(3), error: null }, // 再取得: 別の並行マージで既にdesired_units=3になっている
+      { data: { ...duplicateRow(4) }, error: null }, // 2回目のupdate(desired_units=3基準): 成功
+    ];
+
+    const result = await maybeAutoReorder("item-1");
+
+    expect(result).toBe(true);
+    const updateCalls = callLog.filter(
+      (c) => c.table === "shopping_list_items" && c.method === "update",
+    );
+    expect(updateCalls).toHaveLength(2);
+    expect(updateCalls[0]?.args[0]).toMatchObject({ desired_units: 2 });
+    expect(updateCalls[1]?.args[0]).toMatchObject({ desired_units: 4 });
+    const eqCalls = callLog.filter(
+      (c) =>
+        c.table === "shopping_list_items" && c.method === "eq" && c.args[0] === "desired_units",
+    );
+    expect(eqCalls.map((c) => c.args[1])).toEqual([1, 3]);
+  });
+
+  test("再試行の上限を超えて競合が続く場合、非致命エラーとしてfalseを返す (#952)", async () => {
+    responseQueues.items = [{ data: { ...baseItem, units: 0 }, error: null }];
+    responseQueues.shopping_list_items = [
+      { data: [duplicateRow(1)], error: null }, // duplicate lookup
+      { data: null, error: null }, // 1回目update: 失敗
+      { data: duplicateRow(2), error: null }, // 再取得1
+      { data: null, error: null }, // 2回目update: 失敗
+      { data: duplicateRow(3), error: null }, // 再取得2
+      { data: null, error: null }, // 3回目update: 失敗(上限到達)
+      { data: duplicateRow(4), error: null }, // 再取得3
+    ];
+
+    const result = await maybeAutoReorder("item-1");
+
+    expect(result).toBe(false);
+  });
+
   test("アイテムが見つからない場合は何もしない", async () => {
     responseQueues.items = [{ data: null, error: null }];
 

@@ -99,3 +99,44 @@ export const WithRemovablePlacement: Story = {
     onRemovePlacement: fn(),
   },
 };
+
+// #916: once an item is chosen for placement, the canvas becomes keyboard
+// operable (role="application", arrow keys to move a grid-snapped cursor,
+// Enter/Space to confirm) as an alternative to the pointer-only click.
+export const KeyboardPlacementMode: Story = {
+  args: {
+    document,
+    unplacedItems: [
+      {
+        id: "item-2",
+        name: "醤油",
+        barcode: null,
+        category_id: null,
+        storage_location_id: null,
+        units: 1,
+        content_amount: 1,
+        content_unit: "本",
+        opened_remaining: null,
+        purchase_date: null,
+        expiry_date: null,
+        expiry_type: null,
+        notes: null,
+        image_path: null,
+        minimum_stock: null,
+        auto_reorder: false,
+        reorder_threshold: null,
+        last_verified_at: null,
+        deleted_at: null,
+        deletion_reason: null,
+        pin_x: null,
+        pin_y: null,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+        user_id: "user-1",
+      },
+    ],
+    pendingItemId: "item-2",
+    onSelectItemForPlacement: fn(),
+    onCanvasClick: fn(),
+  },
+};
