@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { LayoutList, Plus, ScanLine, ShoppingCart } from "lucide-react";
+import { Footprints, LayoutList, Plus, ScanLine, ShoppingCart } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ShareButton } from "@/components/atoms/ShareButton";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
@@ -12,6 +13,10 @@ import { ScanToShoppingDialog } from "@/components/molecules/ScanToShoppingDialo
 import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
 import { ShoppingRow } from "@/components/molecules/ShoppingRow";
 import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
+import {
+  type ShoppingModeAlertEntry,
+  ShoppingModeView,
+} from "@/components/organisms/ShoppingModeView";
 import { ShoppingTemplatesPanel } from "@/components/organisms/ShoppingTemplatesPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +45,8 @@ import {
 import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { useStorePriceComparisons } from "@/hooks/useStats";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
+import { useUserSettings } from "@/hooks/useUserSettings";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { OfflineError } from "@/lib/requireOnline";
 import {
   type CategoryResolver,
@@ -50,12 +57,18 @@ import {
   sortShoppingItems,
 } from "@/lib/shoppingView";
 import { useToast } from "@/lib/toast-context";
-import { type ItemFormValues, targetsExistingItem } from "@/types/item";
+import {
+  dropExpiryForDailyGoods,
+  getExpiryStatus,
+  type ItemFormValues,
+  targetsExistingItem,
+} from "@/types/item";
 import type { ShoppingItem, ShoppingTemplateWithItems } from "@/types/shopping";
 
 import { PurchaseDialog } from "../components/molecules/PurchaseDialog";
 
 const SORT_STORAGE_KEY = "shopping.sort";
+const SHOPPING_MODE_STORAGE_KEY = "shopping.mode";
 
 const sortLabelKey = {
   added: "sortAdded",
@@ -81,7 +94,7 @@ const tabLabelKey = {
 } as const satisfies Record<ShoppingTab, string>;
 
 const ShoppingPage = () => {
-  const { t } = useTranslation("shopping");
+  const { t, i18n } = useTranslation("shopping");
   const { t: tc } = useTranslation("common");
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -112,6 +125,12 @@ const ShoppingPage = () => {
     const saved = localStorage.getItem(SORT_STORAGE_KEY);
     return saved && isShoppingSortKey(saved) ? saved : "added";
   });
+  // 買い物中モード（#926）: 買い物リスト・低在庫・期限間近を1画面に統合表示する。
+  // トグル状態は端末に記憶しておき、次回訪問時も同じ表示で開く。
+  const [shoppingMode, setShoppingMode] = useState(
+    () => localStorage.getItem(SHOPPING_MODE_STORAGE_KEY) === "1",
+  );
+  const [addingAlertId, setAddingAlertId] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [scanDraft, setScanDraft] = useState<ScanDraft | null>(null);
   const [isLooking, setIsLooking] = useState(false);
@@ -122,6 +141,7 @@ const ShoppingPage = () => {
   const { data: templates = [] } = useShoppingTemplates();
   const { data: inventoryItems = [] } = useItems();
   const { data: categories = [] } = useCategories();
+  const { data: userSettings } = useUserSettings();
   const upsert = useUpsertShoppingItem();
   const deleteItem = useDeleteShoppingItem();
   const purchase = usePurchaseShoppingItem();
@@ -307,6 +327,24 @@ const ShoppingPage = () => {
     localStorage.setItem(SORT_STORAGE_KEY, value);
   };
 
+  const handleToggleShoppingMode = () => {
+    const next = !shoppingMode;
+    setShoppingMode(next);
+    localStorage.setItem(SHOPPING_MODE_STORAGE_KEY, next ? "1" : "0");
+  };
+
+  const handleAddAlertToList = async (entry: ShoppingModeAlertEntry) => {
+    setAddingAlertId(entry.id);
+    try {
+      await upsert.mutateAsync({ name: entry.name, linked_item_id: entry.id });
+      toast(t("restockSuccess"), "success");
+    } catch {
+      // Error toast is handled by useUpsertShoppingItem.onError
+    } finally {
+      setAddingAlertId(null);
+    }
+  };
+
   // バーコードスキャン → 在庫一致 or バーコードAPIで商品名を解決し、確認ダイアログを開く
   const handleScan = async (barcode: string) => {
     setShowScanner(false);
@@ -389,6 +427,49 @@ const ShoppingPage = () => {
 
   const sortedItems = sortShoppingItems(items, sort, resolveCategory);
   const groups = sort === "category" ? groupShoppingItemsByCategory(items, resolveCategory) : null;
+
+  // 買い物中モード（#926）: ダッシュボード（`_auth.index.tsx`）と同じ算出ロジックを
+  // 再利用し、新規データ取得は行わない。日用品は期限を扱わない
+  // (`dropExpiryForDailyGoods`, #937) ため、期限間近セクションには出さない。
+  const warningDays = userSettings?.expiry_warning_days;
+  const inventoryItemsForMode = dropExpiryForDailyGoods(
+    inventoryItems,
+    Object.fromEntries(categories.map((c) => [c.id, c])),
+  );
+  const lowStockAlerts: ShoppingModeAlertEntry[] = inventoryItemsForMode
+    .filter(
+      (item) =>
+        item.minimum_stock !== null &&
+        item.minimum_stock !== undefined &&
+        item.units <= item.minimum_stock,
+    )
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      detail: t("shoppingModeLowStockDetail", { units: item.units, minimum: item.minimum_stock }),
+    }));
+  const expiringAlerts: ShoppingModeAlertEntry[] = inventoryItemsForMode
+    .filter((item) => {
+      const status = getExpiryStatus(item.expiry_date, warningDays);
+      return (status === "expired" || status === "expiring-soon") && item.units > 0;
+    })
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      detail: item.expiry_date
+        ? parseLocalDate(item.expiry_date).toLocaleDateString(i18n.language)
+        : undefined,
+      badge: (
+        <ExpiryBadge
+          expiryDate={item.expiry_date}
+          warningDays={warningDays}
+          expiryType={item.expiry_type}
+        />
+      ),
+    }));
+  const addedAlertItemIds = new Set(
+    plannedItems.flatMap((item) => (item.linked_item_id ? [item.linked_item_id] : [])),
+  );
 
   const renderRow = (item: ShoppingItem) => (
     <ShoppingRow
@@ -476,6 +557,15 @@ const ShoppingPage = () => {
           <h1 className="text-2xl font-bold">{t("title")}</h1>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={shoppingMode ? "default" : "outline"}
+            onClick={handleToggleShoppingMode}
+            aria-pressed={shoppingMode}
+          >
+            <Footprints className="mr-1 h-4 w-4" />
+            {t("shoppingMode")}
+          </Button>
           {plannedItems.length > 0 && (
             <ShareButton
               title={t("shareShoppingList")}
@@ -620,109 +710,129 @@ const ShoppingPage = () => {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex rounded-lg border p-1" role="tablist" {...shoppingTablistProps}>
-        {SHOPPING_TABS.map((s) => (
-          <button
-            key={s}
-            id={shoppingTabIds[s]}
-            role="tab"
-            aria-selected={tab === s}
-            aria-controls={`${shoppingTabIds[s]}-panel`}
-            {...getShoppingTabProps(s)}
-            className={`flex-1 rounded py-1.5 text-sm font-medium transition-colors ${
-              tab === s
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => {
-              setTab(s);
-              setShowAdd(false);
-              setEditId(null);
-            }}
+      {shoppingMode ? (
+        <ShoppingModeView
+          plannedItems={plannedItems}
+          onPurchase={(id) => {
+            clearPendingPurchaseImage();
+            setPendingPurchaseId(id);
+          }}
+          onDelete={(id) => setDeleteId(id)}
+          lowStockItems={lowStockAlerts}
+          expiringItems={expiringAlerts}
+          addedItemIds={addedAlertItemIds}
+          onAddAlert={(entry) => {
+            void handleAddAlertToList(entry);
+          }}
+          addingItemId={addingAlertId}
+        />
+      ) : (
+        <>
+          {/* Tabs */}
+          <div className="flex rounded-lg border p-1" role="tablist" {...shoppingTablistProps}>
+            {SHOPPING_TABS.map((s) => (
+              <button
+                key={s}
+                id={shoppingTabIds[s]}
+                role="tab"
+                aria-selected={tab === s}
+                aria-controls={`${shoppingTabIds[s]}-panel`}
+                {...getShoppingTabProps(s)}
+                className={`flex-1 rounded py-1.5 text-sm font-medium transition-colors ${
+                  tab === s
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => {
+                  setTab(s);
+                  setShowAdd(false);
+                  setEditId(null);
+                }}
+              >
+                {t(tabLabelKey[s])}
+              </button>
+            ))}
+          </div>
+
+          <div
+            id={`${activeShoppingTabId}-panel`}
+            role="tabpanel"
+            aria-labelledby={activeShoppingTabId}
+            tabIndex={0}
+            className="space-y-4"
           >
-            {t(tabLabelKey[s])}
-          </button>
-        ))}
-      </div>
-
-      <div
-        id={`${activeShoppingTabId}-panel`}
-        role="tabpanel"
-        aria-labelledby={activeShoppingTabId}
-        tabIndex={0}
-        className="space-y-4"
-      >
-        {/* Sort / group control */}
-        {items.length > 0 && (
-          <div className="flex items-center justify-end gap-2">
-            <label htmlFor="shopping-sort" className="text-xs text-muted-foreground">
-              {t("sortLabel")}
-            </label>
-            <Select
-              id="shopping-sort"
-              className="h-8 w-auto"
-              value={sort}
-              onChange={(e) => {
-                if (isShoppingSortKey(e.target.value)) handleSortChange(e.target.value);
-              }}
-            >
-              {SHOPPING_SORT_KEYS.map((key) => (
-                <option key={key} value={key}>
-                  {t(sortLabelKey[key])}
-                </option>
-              ))}
-            </Select>
-          </div>
-        )}
-
-        {/* Clear purchased button */}
-        {tab === "purchased" && items.length > 0 && (
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={() => setShowClearPurchased(true)}
-            >
-              {t("clearPurchased")}
-            </Button>
-          </div>
-        )}
-
-        {/* List */}
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
-                <Skeleton className="h-5 w-5 rounded" />
-                <Skeleton className="h-4 flex-1" />
-                <Skeleton className="h-8 w-16 rounded-md" />
+            {/* Sort / group control */}
+            {items.length > 0 && (
+              <div className="flex items-center justify-end gap-2">
+                <label htmlFor="shopping-sort" className="text-xs text-muted-foreground">
+                  {t("sortLabel")}
+                </label>
+                <Select
+                  id="shopping-sort"
+                  className="h-8 w-auto"
+                  value={sort}
+                  onChange={(e) => {
+                    if (isShoppingSortKey(e.target.value)) handleSortChange(e.target.value);
+                  }}
+                >
+                  {SHOPPING_SORT_KEYS.map((key) => (
+                    <option key={key} value={key}>
+                      {t(sortLabelKey[key])}
+                    </option>
+                  ))}
+                </Select>
               </div>
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <p className="py-8 text-center text-muted-foreground">
-            {tab === "planned" ? t("noItems") : t("noPurchased")}
-          </p>
-        ) : groups ? (
-          <div className="space-y-3">
-            {groups.map((group) => (
-              <div key={group.categoryId ?? "__other__"} className="space-y-2">
-                <ShoppingGroupHeader
-                  name={group.categoryName}
-                  color={group.color}
-                  count={group.items.length}
-                  otherLabel={t("groupOther")}
-                />
-                {group.items.map(renderRow)}
+            )}
+
+            {/* Clear purchased button */}
+            {tab === "purchased" && items.length > 0 && (
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setShowClearPurchased(true)}
+                >
+                  {t("clearPurchased")}
+                </Button>
               </div>
-            ))}
+            )}
+
+            {/* List */}
+            {isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+                    <Skeleton className="h-5 w-5 rounded" />
+                    <Skeleton className="h-4 flex-1" />
+                    <Skeleton className="h-8 w-16 rounded-md" />
+                  </div>
+                ))}
+              </div>
+            ) : items.length === 0 ? (
+              <p className="py-8 text-center text-muted-foreground">
+                {tab === "planned" ? t("noItems") : t("noPurchased")}
+              </p>
+            ) : groups ? (
+              <div className="space-y-3">
+                {groups.map((group) => (
+                  <div key={group.categoryId ?? "__other__"} className="space-y-2">
+                    <ShoppingGroupHeader
+                      name={group.categoryName}
+                      color={group.color}
+                      count={group.items.length}
+                      otherLabel={t("groupOther")}
+                    />
+                    {group.items.map(renderRow)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">{sortedItems.map(renderRow)}</div>
+            )}
           </div>
-        ) : (
-          <div className="space-y-2">{sortedItems.map(renderRow)}</div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 };
