@@ -119,8 +119,11 @@ export const AllClear: Story = {
   },
 };
 
-/** #977: 元データ取得中は「確認事項なし」ではなくスケルトンを表示する。 */
+/** #977: 元データ取得中は「確認事項なし」ではなくスケルトンを表示する。
+ *  Skeleton は animate-pulse で不透明度が常に変化するため、撮影タイミングに
+ *  よってVRTが不安定になる。VRT対象から除外する。 */
 export const Loading: Story = {
+  parameters: { vrt: { disable: true } },
   args: {
     plannedItems: [],
     onPurchase: () => {},
