@@ -5,8 +5,9 @@ import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/atoms/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
-interface CheapestStoreHint {
+export interface CheapestStoreHint {
   storeName: string;
   unitPrice: number;
 }
@@ -24,6 +25,8 @@ interface ShoppingRowProps {
   cheapestStore?: CheapestStoreHint | null;
   isEditing?: boolean;
   isSaving?: boolean;
+  /** 片手・濡れた手での操作を想定するタップターゲット44px規約に揃える（買い物中モード、#980）。 */
+  touchTarget?: boolean;
   onPurchase?: (id: string) => void;
   onDelete?: (id: string) => void;
   onEdit?: (id: string) => void;
@@ -44,6 +47,7 @@ export const ShoppingRow = ({
   cheapestStore,
   isEditing,
   isSaving,
+  touchTarget,
   onPurchase,
   onDelete,
   onEdit,
@@ -188,7 +192,7 @@ export const ShoppingRow = ({
       </div>
       <div className="flex shrink-0 gap-1">
         {!isPurchased && onPurchase && (
-          <Button variant="outline" size="sm" onClick={() => onPurchase(id)}>
+          <Button variant="outline" size={touchTarget ? "lg" : "sm"} onClick={() => onPurchase(id)}>
             {t("markPurchased")}
           </Button>
         )}
@@ -196,7 +200,10 @@ export const ShoppingRow = ({
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-foreground"
+            className={cn(
+              "text-muted-foreground hover:text-foreground",
+              touchTarget && "h-11 w-11",
+            )}
             onClick={handleEditStart}
             aria-label={t("editItem")}
           >
@@ -207,7 +214,10 @@ export const ShoppingRow = ({
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-destructive"
+            className={cn(
+              "text-muted-foreground hover:text-destructive",
+              touchTarget && "h-11 w-11",
+            )}
             onClick={() => onDelete(id)}
             aria-label={t("common:delete")}
           >

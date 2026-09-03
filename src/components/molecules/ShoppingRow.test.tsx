@@ -109,6 +109,42 @@ describe("ShoppingRow", () => {
     expect(onDelete).toHaveBeenCalledWith("abc");
   });
 
+  // #980: shopping mode reuses ShoppingRow but needs 44px touch targets
+  // (docs/specs/accessibility.md); touchTarget bumps the purchase/delete buttons up
+  // from their default compact sizes (h-9 / h-10) to h-11.
+  it("uses larger (44px) purchase/delete buttons when touchTarget is set", () => {
+    const { container, getByRole } = render(
+      <ShoppingRow
+        id="abc"
+        name="牛乳"
+        desiredUnits={1}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        touchTarget
+      />,
+      { wrapper },
+    );
+    const purchaseBtn = container.querySelector("button:not([aria-label])") as HTMLElement;
+    expect(purchaseBtn.className).toContain("h-11");
+    const deleteBtn = getByRole("button", { name: /delete|削除/i });
+    expect(deleteBtn.className).toContain("h-11");
+  });
+
+  it("uses the default compact button sizes when touchTarget is not set", () => {
+    const { container } = render(
+      <ShoppingRow
+        id="abc"
+        name="牛乳"
+        desiredUnits={1}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+      />,
+      { wrapper },
+    );
+    const purchaseBtn = container.querySelector("button:not([aria-label])") as HTMLElement;
+    expect(purchaseBtn.className).not.toContain("h-11");
+  });
+
   it("renders edit inputs when isEditing=true", () => {
     const { container } = render(
       <ShoppingRow

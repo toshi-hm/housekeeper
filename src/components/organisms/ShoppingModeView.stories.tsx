@@ -118,3 +118,32 @@ export const AllClear: Story = {
     onAddAlert: () => {},
   },
 };
+
+/** #977: 元データ取得中は「確認事項なし」ではなくスケルトンを表示する。 */
+export const Loading: Story = {
+  args: {
+    plannedItems: [],
+    onPurchase: () => {},
+    onDelete: () => {},
+    lowStockItems: [],
+    expiringItems: [],
+    addedItemIds: new Set(),
+    onAddAlert: () => {},
+    isLoading: true,
+  },
+};
+
+/** #979: 買い物リストの行にも通常表示と同じ最安店舗ヒントを表示できる。 */
+export const WithCheapestStoreHint: Story = {
+  args: {
+    plannedItems,
+    onPurchase: () => {},
+    onDelete: () => {},
+    lowStockItems: [],
+    expiringItems: [],
+    addedItemIds: new Set(),
+    onAddAlert: () => {},
+    resolveCheapestStore: (item) =>
+      item.id === "s1" ? { storeName: "〇〇スーパー", unitPrice: 198 } : null,
+  },
+};

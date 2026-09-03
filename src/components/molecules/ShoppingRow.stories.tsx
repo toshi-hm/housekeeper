@@ -113,3 +113,15 @@ export const PurchasedNoActions: Story = {
     onDelete: () => {},
   },
 };
+
+/** #980: 買い物中モードでは片手・濡れた手での操作を想定し、44pxタップターゲットに揃える。 */
+export const TouchTarget: Story = {
+  args: {
+    id: "8",
+    name: "牛乳",
+    desiredUnits: 1,
+    touchTarget: true,
+    onPurchase: () => {},
+    onDelete: () => {},
+  },
+};
