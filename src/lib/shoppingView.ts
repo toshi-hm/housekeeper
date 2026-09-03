@@ -1,5 +1,6 @@
 import type { Item } from "@/types/item";
 import type { ShoppingItem } from "@/types/shopping";
+import { excludeAlreadyAlertedForecastAlerts } from "@/types/stats";
 
 /** 買い物リストの並び順。`category` のときはカテゴリ別グループ表示になる。 */
 export type ShoppingSortKey = "added" | "category" | "name" | "priority";
@@ -120,11 +121,12 @@ export const mergeLowStockAlerts = <T extends { id: string }>(
 ): T[] => {
   const minimumStockIds = new Set(minimumStockAlerts.map((entry) => entry.id));
   const itemsById = new Map(items.map((item) => [item.id, item]));
-  const forecastEntries = forecastAlerts
-    .filter((alert) => !minimumStockIds.has(alert.itemId))
-    .flatMap((alert) => {
-      const item = itemsById.get(alert.itemId);
-      return item ? [buildForecastEntry(item, alert.predictedRemainingDays)] : [];
-    });
+  const forecastEntries = excludeAlreadyAlertedForecastAlerts(
+    forecastAlerts,
+    minimumStockIds,
+  ).flatMap((alert) => {
+    const item = itemsById.get(alert.itemId);
+    return item ? [buildForecastEntry(item, alert.predictedRemainingDays)] : [];
+  });
   return [...minimumStockAlerts, ...forecastEntries];
 };

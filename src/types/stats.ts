@@ -358,6 +358,17 @@ export interface ForecastAlertEntry {
 }
 
 /**
+ * 既に他の低在庫アラート（`minimum_stock` ベース等）に含まれるアイテムの予測アラートを除外する。
+ * ダッシュボード（`_auth.index.tsx`）と買い物中モード（`shoppingView.mergeLowStockAlerts`、#978）が
+ * 共通して使う重複除外ロジック。
+ */
+export const excludeAlreadyAlertedForecastAlerts = (
+  forecastAlerts: ForecastAlertEntry[],
+  alreadyAlertedItemIds: ReadonlySet<string>,
+): ForecastAlertEntry[] =>
+  forecastAlerts.filter((alert) => !alreadyAlertedItemIds.has(alert.itemId));
+
+/**
  * 在庫があるアイテムのうち、消費ペースからの予測残日数が thresholdDays 以内のものを抽出する。
  * `minimum_stock` による既存の低在庫バナー（#230/#382）とは独立した、消費ペースベースの予測。
  * 予測残日数が短い順（=急ぐ順）にソートして返す。
