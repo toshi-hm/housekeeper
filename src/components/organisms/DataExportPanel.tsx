@@ -68,6 +68,7 @@ export const DataExportPanel = () => {
         purchase_date: lot.purchase_date,
         expiry_date: lot.expiry_date,
         store_name: lot.store_name,
+        opened_at: lot.opened_at,
       });
       map.set(lot.item_id, lots);
     }

@@ -6,6 +6,8 @@ import {
   EXPIRY_TYPES,
   type ExpiryType,
   type Item,
+  ITEM_TYPES,
+  type ItemType,
   type StorageLocation,
 } from "@/types/item";
 
@@ -101,6 +103,8 @@ export interface ItemLotExport {
   expiry_date: string | null;
   /** 購入先の店舗名。null = 未設定（#697、後方互換: 追加前のv2バックアップは常に null）。 */
   store_name: string | null;
+  /** このロットの開封日時。null = 未開封、または未設定（#974、後方互換: 追加前のv2バックアップは常に null）。 */
+  opened_at: string | null;
 }
 
 interface ItemExportV2 {
@@ -110,10 +114,19 @@ interface ItemExportV2 {
   content_unit: string;
   /** 「賞味期限」/「消費期限」の区別（#714）。null = 未設定・区別なし（#746、後方互換: 追加前のv2バックアップは常に null）。 */
   expiry_type: ExpiryType | null;
+  /** アイテム種別の個別上書き。null = カテゴリの kind に従う（#973、後方互換: 追加前のv2バックアップは常に null）。 */
+  item_type: ItemType | null;
   notes: string | null;
   minimum_stock: number | null;
   auto_reorder: boolean;
   reorder_threshold: number | null;
+  /** 開封後使用推奨日数の個別上書き（#973、後方互換: 追加前のv2バックアップは常に null）。 */
+  days_use_after_opening: number | null;
+  /** 消費ペース予測ベースの自動追加しきい値（日数）（#973、後方互換: 追加前のv2バックアップは常に null）。 */
+  reorder_lead_days: number | null;
+  /** 保管場所の写真上の相対位置（#973、後方互換: 追加前のv2バックアップは常に null）。 */
+  pin_x: number | null;
+  pin_y: number | null;
   lots: ItemLotExport[];
 }
 
@@ -144,10 +157,15 @@ export const itemsToJSON = (
       content_amount: item.content_amount,
       content_unit: item.content_unit,
       expiry_type: item.expiry_type ?? null,
+      item_type: item.item_type ?? null,
       notes: item.notes ?? null,
       minimum_stock: item.minimum_stock ?? null,
       auto_reorder: item.auto_reorder ?? false,
       reorder_threshold: item.reorder_threshold ?? null,
+      days_use_after_opening: item.days_use_after_opening ?? null,
+      reorder_lead_days: item.reorder_lead_days ?? null,
+      pin_x: item.pin_x ?? null,
+      pin_y: item.pin_y ?? null,
       // 通常は全アイテムが >=1 件のロットを持つが、取得漏れ等で空だった場合に
       // 備え、アイテム自身の集約値を1ロットとしてフォールバックする。
       lots: lotsByItemId.get(item.id) ?? [
@@ -158,6 +176,7 @@ export const itemsToJSON = (
           purchase_date: item.purchase_date ?? null,
           expiry_date: item.expiry_date ?? null,
           store_name: null,
+          opened_at: item.opened_at ?? null,
         },
       ],
     })),
@@ -176,6 +195,8 @@ const importLotSchema = z.object({
   expiry_date: z.string().nullable().optional(),
   /** #697より前のv2バックアップには存在しないため任意。無ければ null として扱う。 */
   store_name: z.string().nullable().optional(),
+  /** #974より前のバックアップには存在しないため任意。無ければ null（自動遷移に任せる）として扱う。 */
+  opened_at: z.string().nullable().optional(),
 });
 
 type ImportLotInput = z.infer<typeof importLotSchema>;
@@ -194,10 +215,19 @@ const importItemBaseSchema = z.object({
   content_unit: z.string().min(1),
   /** #714より前のバックアップには存在しないため任意。無ければ null（区別なし）として扱う（#746）。 */
   expiry_type: z.enum(EXPIRY_TYPES).nullable().optional(),
+  /** #973より前のバックアップには存在しないため任意。無ければ null（カテゴリ既定に従う）として扱う。 */
+  item_type: z.enum(ITEM_TYPES).nullable().optional(),
   notes: z.string().nullable().optional(),
   minimum_stock: z.number().int().min(0).nullable().optional(),
   auto_reorder: z.boolean().optional(),
   reorder_threshold: z.number().int().min(0).nullable().optional(),
+  /** #973より前のバックアップには存在しないため任意。無ければ null（カテゴリ既定に従う）として扱う。 */
+  days_use_after_opening: z.number().int().positive().nullable().optional(),
+  /** #973より前のバックアップには存在しないため任意。無ければ null（予測残日数による自動追加を使わない）として扱う。 */
+  reorder_lead_days: z.number().int().min(0).nullable().optional(),
+  /** #973より前のバックアップには存在しないため任意。無ければ null（ピン未設定）として扱う。 */
+  pin_x: z.number().min(0).max(1).nullable().optional(),
+  pin_y: z.number().min(0).max(1).nullable().optional(),
 });
 
 /** v1: ロットの区別がなく、アイテム行自体が単一ロット相当の集約値を持つ旧形式。 */
@@ -221,10 +251,15 @@ export interface ImportItemInput {
   content_amount: number;
   content_unit: string;
   expiry_type?: ExpiryType | null;
+  item_type?: ItemType | null;
   notes?: string | null;
   minimum_stock?: number | null;
   auto_reorder?: boolean;
   reorder_threshold?: number | null;
+  days_use_after_opening?: number | null;
+  reorder_lead_days?: number | null;
+  pin_x?: number | null;
+  pin_y?: number | null;
   lots: ImportLotInput[];
 }
 
@@ -257,10 +292,15 @@ const normalizeV2Item = (item: z.infer<typeof importItemV2Schema>): ImportItemIn
   content_amount: item.content_amount,
   content_unit: item.content_unit,
   expiry_type: item.expiry_type,
+  item_type: item.item_type,
   notes: item.notes,
   minimum_stock: item.minimum_stock,
   auto_reorder: item.auto_reorder,
   reorder_threshold: item.reorder_threshold,
+  days_use_after_opening: item.days_use_after_opening,
+  reorder_lead_days: item.reorder_lead_days,
+  pin_x: item.pin_x,
+  pin_y: item.pin_y,
   lots: item.lots,
 });
 
@@ -270,10 +310,15 @@ const normalizeV1Item = (item: z.infer<typeof importItemV1Schema>): ImportItemIn
   content_amount: item.content_amount,
   content_unit: item.content_unit,
   expiry_type: item.expiry_type,
+  item_type: item.item_type,
   notes: item.notes,
   minimum_stock: item.minimum_stock,
   auto_reorder: item.auto_reorder,
   reorder_threshold: item.reorder_threshold,
+  days_use_after_opening: item.days_use_after_opening,
+  reorder_lead_days: item.reorder_lead_days,
+  pin_x: item.pin_x,
+  pin_y: item.pin_y,
   lots: [
     {
       units: item.units,
@@ -281,6 +326,8 @@ const normalizeV1Item = (item: z.infer<typeof importItemV1Schema>): ImportItemIn
       unit_price: null,
       purchase_date: item.purchase_date ?? null,
       expiry_date: item.expiry_date ?? null,
+      store_name: null,
+      opened_at: null,
     },
   ],
 });

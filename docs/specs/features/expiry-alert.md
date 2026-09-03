@@ -149,9 +149,10 @@ export const getExpiryStatus = (
   `items` を直接更新するコード経路が新たに増えた場合は、この集計ロジックを
   手動で踏襲する必要がある。
 - JSONバックアップのエクスポート/インポート（`docs/specs/features/consumption-purchase.md`
-  参照）は `opened_at` を往復させない。将来インポート機能を実装する際は、
-  素朴な `insert` だとトリガーが `opened_at` を「インポート実行時刻」に
-  上書きしてしまう点に注意が必要（現状インポート機能自体が未実装のため影響なし）。
+  参照）は `item_lots.opened_at` を往復させる（#974）。`import_items_batch` RPC が
+  エクスポートされた `opened_at` をそのまま `item_lots` へ INSERT で明示指定するため、
+  `set_item_lot_opened_at` トリガーの自動セット（`new.opened_at is null` の場合のみ
+  発動）は上書きせず、開封済みロットの経過日数が復元時にリセットされることはない。
 
 ## Backlog
 

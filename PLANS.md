@@ -685,7 +685,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [x] ダッシュボード: 「すべて / 食料品 / 日用品」タブ（URL search param `type`）
 - [x] カテゴリ管理画面: 既定の種別の設定と一覧バッジ
 - [x] i18n（ja / en）と spec 更新
-- [ ] JSONバックアップ（`itemsToJSON` / `jsonToItems` / `import_items_batch`）への `item_type` 追加
+- [x] JSONバックアップ（`itemsToJSON` / `jsonToItems` / `import_items_batch`）への `item_type` 追加（#973）
 - [x] 期限カレンダー・期限通知（Edge Function）でも日用品を対象外にする
       （ダッシュボードは `dropExpiryForDailyGoods` で対応済み）
 - [ ] 日用品向けのダッシュボード最適化（期限系チップ・ソートの出し分け）

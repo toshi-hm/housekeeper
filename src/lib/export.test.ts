@@ -184,6 +184,7 @@ describe("itemsToJSON", () => {
         purchase_date: item.purchase_date,
         expiry_date: item.expiry_date,
         store_name: null,
+        opened_at: null,
       },
     ]);
   });
@@ -192,6 +193,67 @@ describe("itemsToJSON", () => {
     const json = itemsToJSON([], new Map());
     const parsed = JSON.parse(json) as { items: unknown[] };
     expect(parsed.items).toEqual([]);
+  });
+
+  // #973: item_type / days_use_after_opening / reorder_lead_days / pin_x / pin_y
+  // used to be silently dropped by itemsToJSON, so an item's individual overrides
+  // (e.g. item_type diverging from its category's default kind) were lost on
+  // export and silently fell back to the category default on re-import.
+  test("#973: carries item_type / days_use_after_opening / reorder_lead_days / pin_x / pin_y", () => {
+    const item = makeItem({
+      item_type: "daily_goods",
+      days_use_after_opening: 14,
+      reorder_lead_days: 3,
+      pin_x: 0.25,
+      pin_y: 0.75,
+    });
+    const json = itemsToJSON([item], new Map());
+    const parsed = JSON.parse(json) as {
+      items: {
+        item_type: string | null;
+        days_use_after_opening: number | null;
+        reorder_lead_days: number | null;
+        pin_x: number | null;
+        pin_y: number | null;
+      }[];
+    };
+    expect(parsed.items[0]).toMatchObject({
+      item_type: "daily_goods",
+      days_use_after_opening: 14,
+      reorder_lead_days: 3,
+      pin_x: 0.25,
+      pin_y: 0.75,
+    });
+  });
+
+  test("#973: unset item_type / days_use_after_opening / reorder_lead_days / pin_x / pin_y become null", () => {
+    const item = makeItem();
+    const json = itemsToJSON([item], new Map());
+    const parsed = JSON.parse(json) as {
+      items: {
+        item_type: string | null;
+        days_use_after_opening: number | null;
+        reorder_lead_days: number | null;
+        pin_x: number | null;
+        pin_y: number | null;
+      }[];
+    };
+    expect(parsed.items[0]).toMatchObject({
+      item_type: null,
+      days_use_after_opening: null,
+      reorder_lead_days: null,
+      pin_x: null,
+      pin_y: null,
+    });
+  });
+
+  // #974: a lot's opened_at must round-trip so a restored already-opened lot
+  // keeps its real open date instead of resetting to the import time.
+  test("#974: carries each lot's opened_at through the fallback single-lot path", () => {
+    const item = makeItem({ opened_at: "2026-07-05T00:00:00Z" });
+    const json = itemsToJSON([item], new Map());
+    const parsed = JSON.parse(json) as { items: { lots: { opened_at: string | null }[] }[] };
+    expect(parsed.items[0]?.lots[0]?.opened_at).toBe("2026-07-05T00:00:00Z");
   });
 });
 
@@ -234,10 +296,15 @@ describe("jsonToItems", () => {
         content_amount: item.content_amount,
         content_unit: item.content_unit,
         expiry_type: null,
+        item_type: null,
         notes: item.notes,
         minimum_stock: item.minimum_stock,
         auto_reorder: false,
         reorder_threshold: null,
+        days_use_after_opening: null,
+        reorder_lead_days: null,
+        pin_x: null,
+        pin_y: null,
         lots: lots.get(item.id),
       },
     ]);
@@ -248,6 +315,54 @@ describe("jsonToItems", () => {
     const json = itemsToJSON([item], new Map());
     const result = jsonToItems(json);
     expect(result[0]?.expiry_type).toBe("best_before");
+  });
+
+  // #973: an item's individual overrides used to fall silently back to the
+  // category default (item_type) or be dropped (days_use_after_opening /
+  // reorder_lead_days / pin_x / pin_y) after a round trip through the backup.
+  test("round-trips item_type / days_use_after_opening / reorder_lead_days / pin_x / pin_y (#973)", () => {
+    const item = makeItem({
+      item_type: "daily_goods",
+      days_use_after_opening: 14,
+      reorder_lead_days: 3,
+      pin_x: 0.25,
+      pin_y: 0.75,
+    });
+    const json = itemsToJSON([item], new Map());
+    const result = jsonToItems(json);
+    expect(result[0]).toMatchObject({
+      item_type: "daily_goods",
+      days_use_after_opening: 14,
+      reorder_lead_days: 3,
+      pin_x: 0.25,
+      pin_y: 0.75,
+    });
+  });
+
+  // #974: an already-opened lot's opened_at must survive the round trip so the
+  // opened-alert threshold keeps counting from the real open date, not the
+  // import time.
+  test("round-trips a lot's opened_at (#974)", () => {
+    const item = makeItem();
+    const lots = new Map([
+      [
+        item.id,
+        [
+          {
+            units: 1,
+            opened_remaining: 300,
+            unit_price: null,
+            purchase_date: "2026-07-01",
+            expiry_date: "2026-08-01",
+            store_name: null,
+            opened_at: "2026-07-10T00:00:00Z",
+          },
+        ],
+      ],
+    ]);
+    const json = itemsToJSON([item], lots);
+    const result = jsonToItems(json);
+    expect(result[0]?.lots[0]?.opened_at).toBe("2026-07-10T00:00:00Z");
   });
 
   test("reads an old v1 (aggregate-only) backup, synthesizing a single lot", () => {
@@ -277,10 +392,15 @@ describe("jsonToItems", () => {
         content_amount: 1000,
         content_unit: "mL",
         expiry_type: undefined,
+        item_type: undefined,
         notes: null,
         minimum_stock: null,
         auto_reorder: undefined,
         reorder_threshold: undefined,
+        days_use_after_opening: undefined,
+        reorder_lead_days: undefined,
+        pin_x: undefined,
+        pin_y: undefined,
         lots: [
           {
             units: 2,
@@ -288,6 +408,8 @@ describe("jsonToItems", () => {
             unit_price: null,
             purchase_date: "2026-07-01",
             expiry_date: "2026-07-15",
+            store_name: null,
+            opened_at: null,
           },
         ],
       },
