@@ -4,6 +4,7 @@ import {
   type CategoryResolver,
   groupShoppingItemsByCategory,
   isShoppingSortKey,
+  mergeLowStockAlerts,
   type ResolvedCategory,
   sortShoppingItems,
 } from "@/lib/shoppingView";
@@ -87,5 +88,66 @@ describe("groupShoppingItemsByCategory", () => {
     expect(food?.items.map((i) => i.name)).toEqual(["牛乳", "卵"]); // グループ内も名前順
     expect(food?.color).toBe("#22c55e");
     expect(groups[2]?.items.map((i) => i.id)).toEqual(["x"]);
+  });
+});
+
+// #978: 買い物中モードの「在庫が少ないもの」に、minimum_stock ベースのアラートだけでなく
+// 消費ペース予測ベースのアラート（ダッシュボードの forecastAlertItems と同じ算出元）も
+// 含めるようにするための純関数。
+describe("mergeLowStockAlerts", () => {
+  const items = [
+    { id: "i1", name: "醤油" },
+    { id: "i2", name: "ヨーグルト" },
+    { id: "i3", name: "牛乳" },
+  ];
+  const buildForecastEntry = (
+    item: { id: string; name: string },
+    predictedRemainingDays: number,
+  ) => ({ id: item.id, name: item.name, detail: `約${predictedRemainingDays}日` });
+
+  test("minimum_stock ベースのアラートに予測アラートを補完して返す", () => {
+    const minimumStockAlerts = [{ id: "i1", name: "醤油", detail: "在庫少" }];
+    const forecastAlerts = [{ itemId: "i2", predictedRemainingDays: 3 }];
+    const result = mergeLowStockAlerts(
+      minimumStockAlerts,
+      forecastAlerts,
+      items,
+      buildForecastEntry,
+    );
+    expect(result).toEqual([
+      { id: "i1", name: "醤油", detail: "在庫少" },
+      { id: "i2", name: "ヨーグルト", detail: "約3日" },
+    ]);
+  });
+
+  test("既に minimum_stock ベースのアラートに含まれるアイテムは予測ベースの方を除外する", () => {
+    const minimumStockAlerts = [{ id: "i1", name: "醤油", detail: "在庫少" }];
+    const forecastAlerts = [{ itemId: "i1", predictedRemainingDays: 1 }];
+    const result = mergeLowStockAlerts(
+      minimumStockAlerts,
+      forecastAlerts,
+      items,
+      buildForecastEntry,
+    );
+    expect(result).toEqual([{ id: "i1", name: "醤油", detail: "在庫少" }]);
+  });
+
+  test("予測アラートの対象アイテムが items に存在しない場合は無視する", () => {
+    const forecastAlerts = [{ itemId: "missing", predictedRemainingDays: 2 }];
+    const result = mergeLowStockAlerts([], forecastAlerts, items, buildForecastEntry);
+    expect(result).toEqual([]);
+  });
+
+  test("どちらも空なら空配列を返す", () => {
+    expect(mergeLowStockAlerts([], [], items, buildForecastEntry)).toEqual([]);
+  });
+
+  test("複数の予測アラートを順序を保って補完する", () => {
+    const forecastAlerts = [
+      { itemId: "i3", predictedRemainingDays: 5 },
+      { itemId: "i2", predictedRemainingDays: 2 },
+    ];
+    const result = mergeLowStockAlerts([], forecastAlerts, items, buildForecastEntry);
+    expect(result.map((entry) => entry.id)).toEqual(["i3", "i2"]);
   });
 });

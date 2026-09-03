@@ -76,6 +76,7 @@ import {
   resolveItemType,
   resolveOpenedAlertThresholdDays,
 } from "@/types/item";
+import { excludeAlreadyAlertedForecastAlerts } from "@/types/stats";
 
 interface QuickConsumeUndoPayload {
   itemId: string;
@@ -440,13 +441,13 @@ export const DashboardPage = () => {
   );
 
   // 消費ペースからの予測残日数が閾値以内のアイテム（#392）。既に minimum_stock ベースの
-  // 低在庫バナーに載っているアイテムは重複表示しない（補完する）。
+  // 低在庫バナーに載っているアイテムは重複表示しない（補完する）。買い物中モード
+  // （`shoppingView.mergeLowStockAlerts`、#978）と同じ除外ロジックを共有する。
   const lowStockIds = new Set(lowStockItems.map((item) => item.id));
   const forecastThresholdDays =
     userSettings?.low_stock_forecast_days ?? DEFAULT_LOW_STOCK_FORECAST_DAYS;
   const { alerts: forecastAlerts } = useForecastAlerts(allItems, forecastThresholdDays);
-  const forecastAlertItems = forecastAlerts
-    .filter((forecastAlert) => !lowStockIds.has(forecastAlert.itemId))
+  const forecastAlertItems = excludeAlreadyAlertedForecastAlerts(forecastAlerts, lowStockIds)
     .map((forecastAlert) => ({
       forecastAlert,
       item: allItems.find((item) => item.id === forecastAlert.itemId),
