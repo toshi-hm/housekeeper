@@ -136,4 +136,60 @@ describe("ShoppingModeView", () => {
     );
     expect((getByRole("button") as HTMLButtonElement).disabled).toBe(true);
   });
+
+  // #977: while the underlying data (shopping list / inventory / categories) is still
+  // loading, every section prop still defaults to [] — without an explicit isLoading
+  // flag this used to be indistinguishable from "genuinely nothing to check".
+  it("shows a loading skeleton instead of the all-clear message while isLoading is true", () => {
+    const { queryByText } = render(
+      <ShoppingModeView
+        plannedItems={[]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        isLoading
+      />,
+      { wrapper },
+    );
+    expect(queryByText("shoppingModeAllClear", { exact: false })).toBeNull();
+  });
+
+  it("does not show the loading skeleton once isLoading is false, even with empty sections", () => {
+    const { getByText } = render(
+      <ShoppingModeView
+        plannedItems={[]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        isLoading={false}
+      />,
+      { wrapper },
+    );
+    expect(getByText(i18n.t("shopping:shoppingModeAllClear"))).toBeTruthy();
+  });
+
+  // #979: the shopping-list section must be able to show the same cheapest-store hint
+  // as the normal (non-mode) list, via the resolveCheapestStore resolver prop.
+  it("shows the cheapest-store hint for a planned item when resolveCheapestStore returns one", () => {
+    const { getByText } = render(
+      <ShoppingModeView
+        plannedItems={[plannedItem]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        resolveCheapestStore={() => ({ storeName: "〇〇スーパー", unitPrice: 128 })}
+      />,
+      { wrapper },
+    );
+    expect(getByText(/〇〇スーパー/)).toBeTruthy();
+  });
 });

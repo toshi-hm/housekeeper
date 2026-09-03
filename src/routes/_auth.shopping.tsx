@@ -139,10 +139,10 @@ const ShoppingPage = () => {
   const speechInput = useSpeechInput((transcript) => setAddName(transcript));
 
   const { data: items = [], isLoading } = useShoppingList(tab);
-  const { data: plannedItems = [] } = useShoppingList("planned");
+  const { data: plannedItems = [], isLoading: plannedItemsLoading } = useShoppingList("planned");
   const { data: templates = [] } = useShoppingTemplates();
-  const { data: inventoryItems = [] } = useItems();
-  const { data: categories = [] } = useCategories();
+  const { data: inventoryItems = [], isLoading: inventoryItemsLoading } = useItems();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { data: userSettings } = useUserSettings();
   const upsert = useUpsertShoppingItem();
   const deleteItem = useDeleteShoppingItem();
@@ -491,6 +491,8 @@ const ShoppingPage = () => {
   const addedAlertItemIds = new Set(
     plannedItems.flatMap((item) => (item.linked_item_id ? [item.linked_item_id] : [])),
   );
+  // 買い物中モード（#977）: 元データ未取得の間に「確認事項なし」を誤表示しないためのローディング判定。
+  const shoppingModeLoading = plannedItemsLoading || inventoryItemsLoading || categoriesLoading;
 
   const renderRow = (item: ShoppingItem) => (
     <ShoppingRow
@@ -746,6 +748,8 @@ const ShoppingPage = () => {
             void handleAddAlertToList(entry);
           }}
           addingItemId={addingAlertId}
+          isLoading={shoppingModeLoading}
+          resolveCheapestStore={resolveCheapestStore}
         />
       ) : (
         <>
