@@ -88,21 +88,34 @@ begin
         );
       end loop;
 
+      -- item_type/days_use_after_opening/reorder_lead_days/pin_x/pin_y は今回
+      -- 追加した項目のため、これらのキーを持たない古い形式のバックアップ
+      -- （このマイグレーション以前にエクスポートされた JSON）を overwrite で
+      -- 取り込むと、キーが存在せず NULL 評価されて既存の設定値が消えてしまう。
+      -- `?` 演算子でキーの有無を見て、キーが無ければ既存値を維持する（キーが
+      -- あって値が null の場合は itemsToJSON の仕様通り「上書きで解除」を
+      -- 尊重し、coalesce ではなく既存値を明示的に null にする）。
       update items
       set
         name = v_item ->> 'name',
         content_amount = (v_item ->> 'content_amount')::numeric,
         content_unit = v_item ->> 'content_unit',
         expiry_type = v_item ->> 'expiry_type',
-        item_type = v_item ->> 'item_type',
+        item_type = case when v_item ? 'item_type' then v_item ->> 'item_type' else items.item_type end,
         notes = v_item ->> 'notes',
         minimum_stock = (v_item ->> 'minimum_stock')::int,
         auto_reorder = coalesce((v_item ->> 'auto_reorder')::boolean, false),
         reorder_threshold = (v_item ->> 'reorder_threshold')::int,
-        days_use_after_opening = (v_item ->> 'days_use_after_opening')::int,
-        reorder_lead_days = (v_item ->> 'reorder_lead_days')::int,
-        pin_x = (v_item ->> 'pin_x')::numeric,
-        pin_y = (v_item ->> 'pin_y')::numeric
+        days_use_after_opening = case
+          when v_item ? 'days_use_after_opening' then (v_item ->> 'days_use_after_opening')::int
+          else items.days_use_after_opening
+        end,
+        reorder_lead_days = case
+          when v_item ? 'reorder_lead_days' then (v_item ->> 'reorder_lead_days')::int
+          else items.reorder_lead_days
+        end,
+        pin_x = case when v_item ? 'pin_x' then (v_item ->> 'pin_x')::numeric else items.pin_x end,
+        pin_y = case when v_item ? 'pin_y' then (v_item ->> 'pin_y')::numeric else items.pin_y end
       where id = v_existing_id and user_id = auth.uid();
 
       item_id := v_existing_id;
