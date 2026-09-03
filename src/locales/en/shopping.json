@@ -47,6 +47,7 @@
   "shoppingModeExpiringTitle": "Expiring soon",
   "shoppingModeListTitle": "Shopping list",
   "shoppingModeLowStockDetail": "{{units}} in stock / min {{minimum}}",
+  "shoppingModeLowStockForecastDetail": "Predicted to run out in about {{days}} days",
   "shoppingModeLowStockTitle": "Low on stock",
   "sortAdded": "Added order",
   "sortCategory": "By category",

@@ -47,6 +47,7 @@
   "shoppingModeExpiringTitle": "期限が近いもの",
   "shoppingModeListTitle": "買い物リスト",
   "shoppingModeLowStockDetail": "在庫 {{units}} / 最低 {{minimum}}",
+  "shoppingModeLowStockForecastDetail": "約{{days}}日で在庫切れ予測",
   "shoppingModeLowStockTitle": "在庫が少ないもの",
   "sortAdded": "追加順",
   "sortCategory": "カテゴリ順",

@@ -43,7 +43,7 @@ import {
   useShoppingTemplates,
 } from "@/hooks/useShoppingTemplates";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
-import { useStorePriceComparisons } from "@/hooks/useStats";
+import { useForecastAlerts, useStorePriceComparisons } from "@/hooks/useStats";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { parseLocalDate } from "@/lib/dateUtils";
@@ -52,12 +52,14 @@ import {
   type CategoryResolver,
   groupShoppingItemsByCategory,
   isShoppingSortKey,
+  mergeLowStockAlerts,
   SHOPPING_SORT_KEYS,
   type ShoppingSortKey,
   sortShoppingItems,
 } from "@/lib/shoppingView";
 import { useToast } from "@/lib/toast-context";
 import {
+  DEFAULT_LOW_STOCK_FORECAST_DAYS,
   dropExpiryForDailyGoods,
   getExpiryStatus,
   type ItemFormValues,
@@ -436,7 +438,7 @@ const ShoppingPage = () => {
     inventoryItems,
     Object.fromEntries(categories.map((c) => [c.id, c])),
   );
-  const lowStockAlerts: ShoppingModeAlertEntry[] = inventoryItemsForMode
+  const minimumStockAlerts: ShoppingModeAlertEntry[] = inventoryItemsForMode
     .filter(
       (item) =>
         item.minimum_stock !== null &&
@@ -448,6 +450,21 @@ const ShoppingPage = () => {
       name: item.name,
       detail: t("shoppingModeLowStockDetail", { units: item.units, minimum: item.minimum_stock }),
     }));
+  // 消費ペースからの予測残日数ベースの低在庫アラート（#392）。ダッシュボードと同様、
+  // 既に minimum_stock ベースのアラートに載っているアイテムは重複表示しない（#978）。
+  const forecastThresholdDays =
+    userSettings?.low_stock_forecast_days ?? DEFAULT_LOW_STOCK_FORECAST_DAYS;
+  const { alerts: forecastAlerts } = useForecastAlerts(inventoryItems, forecastThresholdDays);
+  const lowStockAlerts: ShoppingModeAlertEntry[] = mergeLowStockAlerts(
+    minimumStockAlerts,
+    forecastAlerts,
+    inventoryItems,
+    (item, predictedRemainingDays) => ({
+      id: item.id,
+      name: item.name,
+      detail: t("shoppingModeLowStockForecastDetail", { days: predictedRemainingDays }),
+    }),
+  );
   const expiringAlerts: ShoppingModeAlertEntry[] = inventoryItemsForMode
     .filter((item) => {
       const status = getExpiryStatus(item.expiry_date, warningDays);

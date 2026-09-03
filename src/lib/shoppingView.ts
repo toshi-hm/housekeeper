@@ -1,3 +1,4 @@
+import type { Item } from "@/types/item";
 import type { ShoppingItem } from "@/types/shopping";
 
 /** 買い物リストの並び順。`category` のときはカテゴリ別グループ表示になる。 */
@@ -97,4 +98,33 @@ export const groupShoppingItemsByCategory = (
     if (b.categoryName === null) return -1;
     return collator.compare(a.categoryName, b.categoryName);
   });
+};
+
+/** 消費ペース予測ベースの低在庫アラート1件分の入力（`computeForecastAlerts` の出力）。 */
+export interface ForecastLowStockAlertInput {
+  itemId: string;
+  predictedRemainingDays: number;
+}
+
+/**
+ * `minimum_stock` ベースの低在庫アラートと、消費ペース予測ベースの低在庫アラート
+ * （`computeForecastAlerts`）をマージする。ダッシュボード（`_auth.index.tsx`）の
+ * 重複除外ロジック（#392）と同じく、既に `minimum_stock` ベースのアラートに含まれる
+ * アイテムは予測ベースの方を除外する（買い物中モード、#978）。
+ */
+export const mergeLowStockAlerts = <T extends { id: string }>(
+  minimumStockAlerts: T[],
+  forecastAlerts: ForecastLowStockAlertInput[],
+  items: Pick<Item, "id" | "name">[],
+  buildForecastEntry: (item: Pick<Item, "id" | "name">, predictedRemainingDays: number) => T,
+): T[] => {
+  const minimumStockIds = new Set(minimumStockAlerts.map((entry) => entry.id));
+  const itemsById = new Map(items.map((item) => [item.id, item]));
+  const forecastEntries = forecastAlerts
+    .filter((alert) => !minimumStockIds.has(alert.itemId))
+    .flatMap((alert) => {
+      const item = itemsById.get(alert.itemId);
+      return item ? [buildForecastEntry(item, alert.predictedRemainingDays)] : [];
+    });
+  return [...minimumStockAlerts, ...forecastEntries];
 };
