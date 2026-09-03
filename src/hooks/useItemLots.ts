@@ -410,6 +410,8 @@ interface FullLotForExport {
   purchase_date: string | null;
   expiry_date: string | null;
   store_name: string | null;
+  /** このロットの開封日時。JSONバックアップの往復対象（#974）。 */
+  opened_at: string | null;
 }
 
 const fetchAllLotsFull = async (): Promise<FullLotForExport[]> => {
@@ -421,7 +423,7 @@ const fetchAllLotsFull = async (): Promise<FullLotForExport[]> => {
     const { data, error } = await supabase
       .from("item_lots")
       .select(
-        "item_id, units, opened_remaining, unit_price, purchase_date, expiry_date, store_name, id",
+        "item_id, units, opened_remaining, unit_price, purchase_date, expiry_date, store_name, opened_at, id",
       )
       .eq("user_id", userData.user.id)
       .order("created_at", { ascending: true })
