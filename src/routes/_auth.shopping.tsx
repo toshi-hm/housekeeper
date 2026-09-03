@@ -431,7 +431,9 @@ const ShoppingPage = () => {
   const groups = sort === "category" ? groupShoppingItemsByCategory(items, resolveCategory) : null;
 
   // 買い物中モード（#926）: ダッシュボード（`_auth.index.tsx`）と同じ算出ロジックを
-  // 再利用し、新規データ取得は行わない。日用品は期限を扱わない
+  // 再利用する。minimum_stock ベースのアラートは既に取得済みの inventoryItems から
+  // 算出するため新規フェッチはないが、消費ペース予測（#392）は consumption_logs の
+  // 追加フェッチを伴うため、買い物中モード表示時のみ取得する。日用品は期限を扱わない
   // (`dropExpiryForDailyGoods`, #937) ため、期限間近セクションには出さない。
   const warningDays = userSettings?.expiry_warning_days;
   const inventoryItemsForMode = dropExpiryForDailyGoods(
@@ -454,7 +456,9 @@ const ShoppingPage = () => {
   // 既に minimum_stock ベースのアラートに載っているアイテムは重複表示しない（#978）。
   const forecastThresholdDays =
     userSettings?.low_stock_forecast_days ?? DEFAULT_LOW_STOCK_FORECAST_DAYS;
-  const { alerts: forecastAlerts } = useForecastAlerts(inventoryItems, forecastThresholdDays);
+  const { alerts: forecastAlerts } = useForecastAlerts(inventoryItems, forecastThresholdDays, {
+    enabled: shoppingMode,
+  });
   const lowStockAlerts: ShoppingModeAlertEntry[] = mergeLowStockAlerts(
     minimumStockAlerts,
     forecastAlerts,

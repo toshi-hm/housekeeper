@@ -172,8 +172,9 @@ export const useConsumptionSpeedRanking = (windowDays = DEFAULT_FORECAST_LOOKBAC
 export const useForecastAlerts = (
   items: Array<Pick<Item, "id" | "units" | "content_amount" | "content_unit" | "opened_remaining">>,
   thresholdDays: number,
+  options?: { enabled?: boolean },
 ) => {
-  const { data: logs = [], isLoading, isError } = useAllConsumptionLogs();
+  const { data: logs = [], isLoading, isError } = useAllConsumptionLogs(options);
   return { alerts: computeForecastAlerts(items, logs, thresholdDays), isLoading, isError };
 };
 

@@ -30,9 +30,10 @@ export interface ConsumptionLogForAggregation {
   occurred_at: string;
 }
 
-export const useAllConsumptionLogs = () =>
+export const useAllConsumptionLogs = (options?: { enabled?: boolean }) =>
   useQuery<ConsumptionLogForAggregation[]>({
     queryKey: ["consumption-logs-all"],
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const {
         data: { user },
