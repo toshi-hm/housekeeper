@@ -215,6 +215,12 @@ export const LocationMapPage = () => {
                   onItemClick={(itemId) =>
                     void navigate({ to: "/items/$itemId", params: { itemId } })
                   }
+                  onStorageLocationClick={(storageLocationId) =>
+                    void navigate({
+                      to: "/locations/$locationId",
+                      params: { locationId: storageLocationId },
+                    })
+                  }
                   onWebglUnavailable={handleWebglUnavailable}
                 />
               </Suspense>

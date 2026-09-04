@@ -40,6 +40,39 @@ export const Default: Story = {
   args: { document },
 };
 
+export const WithStorageLocations: Story = {
+  args: {
+    document,
+    storageLocations: [
+      {
+        id: "location-1",
+        user_id: "user-1",
+        name: "冷蔵庫",
+        photo_path: null,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+    ],
+    storageLocationMarkers: [
+      {
+        id: "marker-1",
+        user_id: "user-1",
+        floor_plan_id: "plan-1",
+        storage_location_id: "location-1",
+        object_id: "shape-1",
+        x: 150,
+        y: 140,
+        z: 0,
+        rotation: 0,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+    ],
+    // #988: 保管場所マーカー・一覧をクリック/タップすると該当保管場所へ遷移できる。
+    onStorageLocationClick: () => {},
+  },
+};
+
 export const WithPlacedItems: Story = {
   args: {
     document,
