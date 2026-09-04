@@ -77,6 +77,12 @@ export const MapPage = () => {
             {t("mapCreateLocationCta")}
           </Button>
         </div>
+      ) : locationsLoading || floorPlanLoading || markersLoading || placementsLoading ? (
+        // #989: 共有間取りマップの取得中は Empty 状態（mapNoSharedFloorPlan）を出さず
+        // ローディング表示にする。取得完了前に「未登録」を一瞬誤表示していた問題の修正。
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
       ) : floorPlan ? (
         <section className="space-y-2" aria-labelledby="shared-floor-plan">
           <div className="flex items-center justify-between gap-2">
