@@ -4,7 +4,7 @@ import { I18nextProvider } from "react-i18next";
 
 import i18n from "@/lib/i18n";
 import * as webglModule from "@/lib/webgl";
-import type { Item } from "@/types/item";
+import type { Item, StorageLocation } from "@/types/item";
 
 import { ThreeDFloorPlanViewer } from "./ThreeDFloorPlanViewer";
 
@@ -50,6 +50,48 @@ describe("ThreeDFloorPlanViewer", () => {
     if (!itemButton) throw new Error("Expected a placed item button");
     fireEvent.click(itemButton);
     expect(onItemClick).toHaveBeenCalledWith("item-1");
+  });
+
+  it("renders the storage-location list and opens a location from it (#988)", () => {
+    const onStorageLocationClick = mock(() => undefined);
+    const location: StorageLocation = {
+      id: "loc-1",
+      user_id: "user-1",
+      name: "冷蔵庫",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <ThreeDFloorPlanViewer
+          document={document}
+          storageLocations={[location]}
+          storageLocationMarkers={[
+            {
+              id: "marker-1",
+              user_id: "user-1",
+              floor_plan_id: "plan-1",
+              storage_location_id: "loc-1",
+              object_id: null,
+              x: 10,
+              y: 10,
+              z: 0,
+              rotation: 0,
+              created_at: "2026-01-01T00:00:00Z",
+              updated_at: "2026-01-01T00:00:00Z",
+            },
+          ]}
+          onStorageLocationClick={onStorageLocationClick}
+        />
+      </I18nextProvider>,
+    );
+    const locationList = getByRole("list", {
+      name: /間取り上の保管場所|Storage locations on the floor plan/,
+    });
+    const locationButton = locationList.querySelector("button");
+    if (!locationButton) throw new Error("Expected a storage-location button");
+    fireEvent.click(locationButton);
+    expect(onStorageLocationClick).toHaveBeenCalledWith("loc-1");
   });
 
   it("renders nothing for the placed-items list when there are no placements", () => {

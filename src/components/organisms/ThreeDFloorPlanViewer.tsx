@@ -21,6 +21,11 @@ interface ThreeDFloorPlanViewerProps {
   highlightedItemId?: string | null;
   onItemClick?: (itemId: string) => void;
   /**
+   * 保管場所マーカーのクリック時に呼ばれる（2Dの `FloorPlanViewer` と同じ機能、#988）。
+   * 未指定ならマーカー・一覧ともクリック不可のまま（表示のみ）にする。
+   */
+  onStorageLocationClick?: (storageLocationId: string) => void;
+  /**
    * WebGL初期化に失敗した（またはCanvas描画中に例外が発生した）ときに一度だけ
    * 呼ばれる。呼び出し側はこれを2Dビュー(FloorPlanViewer)への自動切り替えに
    * 使う想定（docs/specs/features/floor-plan-map.md「WebGL初期化失敗:
@@ -38,6 +43,7 @@ const FloorPlanScene = ({
   placements = [],
   highlightedItemId = null,
   onItemClick,
+  onStorageLocationClick,
 }: ThreeDFloorPlanViewerProps) => (
   <>
     <ambientLight intensity={1.5} />
@@ -77,7 +83,18 @@ const FloorPlanScene = ({
       </mesh>
     ))}
     {storageLocationMarkers.map((marker) => (
-      <mesh key={marker.id} position={[marker.x, 48, marker.y]}>
+      <mesh
+        key={marker.id}
+        position={[marker.x, 48, marker.y]}
+        onClick={
+          onStorageLocationClick
+            ? (event) => {
+                event.stopPropagation();
+                onStorageLocationClick(marker.storage_location_id);
+              }
+            : undefined
+        }
+      >
         <sphereGeometry args={[18, 24, 16]} />
         <meshStandardMaterial color="#f97316" />
       </mesh>
@@ -143,6 +160,7 @@ export const ThreeDFloorPlanViewer = ({
   items = [],
   highlightedItemId = null,
   onItemClick,
+  onStorageLocationClick,
   onWebglUnavailable,
 }: ThreeDFloorPlanViewerProps) => {
   const { t } = useTranslation("common");
@@ -190,6 +208,7 @@ export const ThreeDFloorPlanViewer = ({
                 placements={placements}
                 highlightedItemId={highlightedItemId}
                 onItemClick={onItemClick}
+                onStorageLocationClick={onStorageLocationClick}
               />
             </Canvas>
           </ErrorBoundary>
@@ -200,9 +219,19 @@ export const ThreeDFloorPlanViewer = ({
       {storageLocationMarkers.length > 0 && (
         <ul className="divide-y rounded-lg border" aria-label={t("mapStorageLocations")}>
           {storageLocationMarkers.map((marker) => (
-            <li key={marker.id} className="p-3 text-sm">
-              {storageLocations.find((location) => location.id === marker.storage_location_id)
-                ?.name ?? t("mapUnknownStorageLocation")}
+            <li key={marker.id}>
+              <button
+                type="button"
+                className="w-full p-3 text-left text-sm hover:bg-muted/50"
+                onClick={
+                  onStorageLocationClick
+                    ? () => onStorageLocationClick(marker.storage_location_id)
+                    : undefined
+                }
+              >
+                {storageLocations.find((location) => location.id === marker.storage_location_id)
+                  ?.name ?? t("mapUnknownStorageLocation")}
+              </button>
             </li>
           ))}
         </ul>
