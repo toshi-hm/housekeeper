@@ -95,7 +95,7 @@ const tabLabelKey = {
   purchased: "statusPurchased",
 } as const satisfies Record<ShoppingTab, string>;
 
-const ShoppingPage = () => {
+export const ShoppingPage = () => {
   const { t, i18n } = useTranslation("shopping");
   const { t: tc } = useTranslation("common");
   const { toast } = useToast();
@@ -456,9 +456,11 @@ const ShoppingPage = () => {
   // 既に minimum_stock ベースのアラートに載っているアイテムは重複表示しない（#978）。
   const forecastThresholdDays =
     userSettings?.low_stock_forecast_days ?? DEFAULT_LOW_STOCK_FORECAST_DAYS;
-  const { alerts: forecastAlerts } = useForecastAlerts(inventoryItems, forecastThresholdDays, {
-    enabled: shoppingMode,
-  });
+  const { alerts: forecastAlerts, isLoading: forecastAlertsLoading } = useForecastAlerts(
+    inventoryItems,
+    forecastThresholdDays,
+    { enabled: shoppingMode },
+  );
   const lowStockAlerts: ShoppingModeAlertEntry[] = mergeLowStockAlerts(
     minimumStockAlerts,
     forecastAlerts,
@@ -491,8 +493,14 @@ const ShoppingPage = () => {
   const addedAlertItemIds = new Set(
     plannedItems.flatMap((item) => (item.linked_item_id ? [item.linked_item_id] : [])),
   );
-  // 買い物中モード（#977）: 元データ未取得の間に「確認事項なし」を誤表示しないためのローディング判定。
-  const shoppingModeLoading = plannedItemsLoading || inventoryItemsLoading || categoriesLoading;
+  // 買い物中モード（#977, #986）: 元データ未取得の間に「確認事項なし」を誤表示しないための
+  // ローディング判定。消費ペース予測（#392, #985）の取得は shoppingMode が true の間だけ走るため、
+  // shoppingMode が false のときはこの判定に含めない（未取得のまま常時 loading にならないように）。
+  const shoppingModeLoading =
+    plannedItemsLoading ||
+    inventoryItemsLoading ||
+    categoriesLoading ||
+    (shoppingMode && forecastAlertsLoading);
 
   const renderRow = (item: ShoppingItem) => (
     <ShoppingRow
