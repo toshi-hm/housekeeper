@@ -127,4 +127,20 @@ describe("MapPage", () => {
       getByText(/mapNoSharedFloorPlan|共通の2D間取りがまだありません|No shared 2D floor plan yet/),
     ).toBeDefined();
   });
+
+  it("間取りデータ取得中は「未登録」を誤表示せずローディング表示にする(#989)", () => {
+    floorPlanSpy.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as ReturnType<typeof useFloorPlansModule.useFloorPlan>);
+
+    const { queryByText, getAllByRole } = renderPage();
+
+    expect(
+      queryByText(
+        /mapNoSharedFloorPlan|共通の2D間取りがまだありません|No shared 2D floor plan yet/,
+      ),
+    ).toBeNull();
+    expect(getAllByRole("status").length).toBeGreaterThan(0);
+  });
 });
