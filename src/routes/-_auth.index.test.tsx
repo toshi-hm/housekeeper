@@ -516,6 +516,77 @@ describe("DashboardPage", () => {
     expect(queryByText("食器用洗剤")).not.toBeNull();
   });
 
+  it("日用品タブでは期限フィルタ・期限順ソートが表示されない (#998)", async () => {
+    categoriesspy.mockReturnValue({
+      data: [{ id: "cat-goods", name: "洗剤", kind: "daily_goods" }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    itemsspy.mockReturnValue({
+      data: [makeItem({ id: "soap", name: "洗剤", category_id: "cat-goods" })],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getAllByRole, getByLabelText, queryByLabelText } = await renderPage();
+
+    // 食料品/すべてタブでは期限フィルタが出る
+    const filterBtn = getByLabelText(/filter|絞り込み/i);
+    await act(async () => {
+      fireEvent.click(filterBtn);
+    });
+    expect(getByLabelText(/filter by expiry|期限で絞り込み/i)).toBeDefined();
+    const selectsBeforeSwitch = getAllByRole("combobox");
+    expect(selectsBeforeSwitch).toHaveLength(4);
+
+    // 日用品タブへ切り替えると期限フィルタSelect自体が消え、ソートSelectから
+    // 「期限が近い順」オプションも消える
+    await act(async () => {
+      fireEvent.click(getAllByRole("tab")[2]!);
+    });
+
+    expect(queryByLabelText(/filter by expiry|期限で絞り込み/i)).toBeNull();
+    const selectsAfterSwitch = getAllByRole("combobox");
+    expect(selectsAfterSwitch).toHaveLength(3);
+    const sortSelect = selectsAfterSwitch[selectsAfterSwitch.length - 1] as HTMLSelectElement;
+    const sortOptionValues = Array.from(sortSelect.options).map((o) => o.value);
+    expect(sortOptionValues).not.toContain("expiry_date");
+    expect(sortOptionValues).toContain("created_at");
+    expect(sortOptionValues).toContain("purchase_date");
+  });
+
+  it("食品タブで期限フィルタを設定した状態で日用品タブへ切り替えると、フィルタがリセットされ一覧が0件にならない (#998)", async () => {
+    categoriesspy.mockReturnValue({
+      data: [{ id: "cat-goods", name: "掃除用品", kind: "daily_goods" }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    itemsspy.mockReturnValue({
+      data: [
+        makeItem({ id: "expired-food", name: "期限切れ牛乳", expiry_date: "2000-01-01" }),
+        makeItem({ id: "soap", name: "食器用洗剤", category_id: "cat-goods" }),
+      ],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getAllByRole, getByRole, queryByText } = await renderPage();
+
+    // 「すべて」タブのまま期限切れチップで絞り込む
+    const expiredChip = getByRole("button", { name: /期限切れ|expired/i, pressed: false });
+    await act(async () => {
+      fireEvent.click(expiredChip);
+    });
+    // 期限フィルタが効いて、期限のない日用品は一覧から消える
+    expect(queryByText("食器用洗剤")).toBeNull();
+
+    // 日用品タブへ切り替える
+    await act(async () => {
+      fireEvent.click(getAllByRole("tab")[2]!);
+    });
+
+    // 食品タブで設定した期限フィルタが持ち越されず、日用品が一覧に表示される
+    expect(queryByText("食器用洗剤")).not.toBeNull();
+  });
+
   it("選択中のタブに対応する tabpanel が存在する (accessibility.md §5)", async () => {
     const { getAllByRole, getByRole } = await renderPage();
     const selectedTab = getAllByRole("tab").find(

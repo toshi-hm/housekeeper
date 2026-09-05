@@ -232,12 +232,31 @@ export const DashboardPage = () => {
     void navigate({ to: "/", search: (prev) => ({ ...prev, loc: v }), replace: true });
   const setExpiryFilter = (v: string) =>
     void navigate({ to: "/", search: (prev) => ({ ...prev, expiry: v }), replace: true });
-  const setItemTypeTab = (v: ItemTypeTab) =>
-    void navigate({ to: "/", search: (prev) => ({ ...prev, type: v }), replace: true });
 
   const [sort, setSort] = useState<ItemSortKey>(
     () => (localStorage.getItem("dashboard.sort") as ItemSortKey) ?? "created_at",
   );
+  // 日用品タブでは dropExpiryForDailyGoods により expiry_date/expiry_type が
+  // 常にnull扱いになるため、期限順ソートは意味を持たない (#998)。保存された
+  // `sort` 自体は書き換えず（食料品タブへ戻したときの利用者の選択を保つ）、
+  // 日用品タブを見ている間だけクエリ・並び替えSelect双方に効く実効値を導出する。
+  const effectiveSort: ItemSortKey =
+    itemTypeTab === "daily_goods" && sort === "expiry_date" ? "created_at" : sort;
+
+  const setItemTypeTab = (v: ItemTypeTab) => {
+    void navigate({ to: "/", search: (prev) => ({ ...prev, type: v }), replace: true });
+  };
+
+  // 日用品タブでは期限フィルタも意味を持たない (#998)。タブ切り替え時に限らず、
+  // 直接URL遷移・ブックマーク・PWA復元など itemTypeTab が daily_goods になり
+  // 得るあらゆる経路で、食料品タブ由来の期限フィルタが残ったまま一覧が0件に
+  // 見えてしまう事故を防ぐため、itemTypeTab 自体を起点にリセットする
+  // （クリックハンドラ内だけに置くとそれ以外の経路をすり抜ける）。
+  useEffect(() => {
+    if (itemTypeTab !== "daily_goods" || expiryFilter === "") return;
+    void navigate({ to: "/", search: (prev) => ({ ...prev, expiry: "" }), replace: true });
+  }, [itemTypeTab, expiryFilter, navigate]);
+
   const [showFilters, setShowFilters] = useState(false);
   const { viewMode, setViewMode } = useViewMode();
   const [hideEmpty, setHideEmpty] = useState(() => {
@@ -321,7 +340,7 @@ export const DashboardPage = () => {
   // Alerts must not disappear when the visible list is narrowed by search,
   // category, location, expiry, sorting, or the hide-empty preference.
   const { data: rawAllItems = [] } = useItems({}, "created_at");
-  const { data: rawItems = [], isLoading, error } = useItems(filters, sort);
+  const { data: rawItems = [], isLoading, error } = useItems(filters, effectiveSort);
 
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   const locationMap = Object.fromEntries(locations.map((l) => [l.id, l.name]));
@@ -366,7 +385,7 @@ export const DashboardPage = () => {
   };
   const filtered = typeFiltered.filter(matchesExpiryFilter);
 
-  const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${itemTypeTab}|${hideEmpty}|${sort}`;
+  const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${itemTypeTab}|${hideEmpty}|${effectiveSort}`;
   const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -926,32 +945,36 @@ export const DashboardPage = () => {
                   ))}
                 </Select>
               </div>
-              <div>
-                <label
-                  htmlFor={expiryFilterId}
-                  className="mb-1 block text-xs text-muted-foreground"
-                >
-                  {t("filterByExpiry")}
-                </label>
-                <Select
-                  id={expiryFilterId}
-                  value={expiryFilter}
-                  onChange={(e) => setExpiryFilter(e.target.value)}
-                >
-                  <option value="">{tc("all")}</option>
-                  <option value="expired">{t("expiryStatus.expired")}</option>
-                  <option value="expiring-soon">{t("expiryStatus.expiring-soon")}</option>
-                  <option value="ok">{t("expiryStatus.ok")}</option>
-                  <option value="unknown">{t("expiryStatus.unknown")}</option>
-                </Select>
-              </div>
+              {/* 日用品タブでは期限が常に「なし」扱いになり絞り込みが意味を持たないため
+                  出し分ける (#998) */}
+              {itemTypeTab !== "daily_goods" && (
+                <div>
+                  <label
+                    htmlFor={expiryFilterId}
+                    className="mb-1 block text-xs text-muted-foreground"
+                  >
+                    {t("filterByExpiry")}
+                  </label>
+                  <Select
+                    id={expiryFilterId}
+                    value={expiryFilter}
+                    onChange={(e) => setExpiryFilter(e.target.value)}
+                  >
+                    <option value="">{tc("all")}</option>
+                    <option value="expired">{t("expiryStatus.expired")}</option>
+                    <option value="expiring-soon">{t("expiryStatus.expiring-soon")}</option>
+                    <option value="ok">{t("expiryStatus.ok")}</option>
+                    <option value="unknown">{t("expiryStatus.unknown")}</option>
+                  </Select>
+                </div>
+              )}
               <div>
                 <label htmlFor={sortFilterId} className="mb-1 block text-xs text-muted-foreground">
                   {tc("sort")}
                 </label>
                 <Select
                   id={sortFilterId}
-                  value={sort}
+                  value={effectiveSort}
                   onChange={(e) => {
                     const v = e.target.value as ItemSortKey;
                     setSort(v);
@@ -959,7 +982,10 @@ export const DashboardPage = () => {
                   }}
                 >
                   <option value="created_at">{t("sortByCreatedAt")}</option>
-                  <option value="expiry_date">{t("sortByExpiry")}</option>
+                  {/* 日用品タブでは期限順ソートが意味を持たないため出し分ける (#998) */}
+                  {itemTypeTab !== "daily_goods" && (
+                    <option value="expiry_date">{t("sortByExpiry")}</option>
+                  )}
                   <option value="purchase_date">{t("sortByPurchaseDate")}</option>
                 </Select>
               </div>

@@ -688,7 +688,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [x] JSONバックアップ（`itemsToJSON` / `jsonToItems` / `import_items_batch`）への `item_type` 追加（#973）
 - [x] 期限カレンダー・期限通知（Edge Function）でも日用品を対象外にする
       （ダッシュボードは `dropExpiryForDailyGoods` で対応済み）
-- [ ] 日用品向けのダッシュボード最適化（期限系チップ・ソートの出し分け）
+- [x] 日用品向けのダッシュボード最適化（期限系チップ・ソートの出し分け） <!-- issue:#998 -->
 
 ### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
 
