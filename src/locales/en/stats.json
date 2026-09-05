@@ -30,5 +30,7 @@
   },
   "trendLabel": "Trend",
   "uncategorized": "Uncategorized",
-  "wasteBreakdown": "Food Waste (Discard Count)"
+  "wasteBreakdown": "Food Waste (Discard Count)",
+  "wasteStreak_one": "{{count}}-week zero-waste streak",
+  "wasteStreak_other": "{{count}}-week zero-waste streak"
 }

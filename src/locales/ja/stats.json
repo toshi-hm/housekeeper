@@ -30,5 +30,6 @@
   },
   "trendLabel": "傾向",
   "uncategorized": "未分類",
-  "wasteBreakdown": "フードロス（廃棄件数）"
+  "wasteBreakdown": "フードロス（廃棄件数）",
+  "wasteStreak_other": "現在{{count}}週連続ロスゼロ中"
 }

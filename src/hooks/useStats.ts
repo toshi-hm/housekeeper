@@ -266,3 +266,28 @@ export const useWasteStats = (months = 6) => {
     isError: itemsError || categoriesError,
   };
 };
+
+/** waste_streaks.current_streak_weeks（#925）。行はsend-waste-digest Edge Functionの
+ *  週次バッチでのみ作成・更新される（クライアント側では書き込まない、RLSはSELECT
+ *  のみを許可）。行がまだ存在しない（未評価/新規ユーザー）場合は0として扱う。 */
+const fetchWasteStreak = async (): Promise<number> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("waste_streaks")
+    .select("current_streak_weeks")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.current_streak_weeks ?? 0;
+};
+
+export const useWasteStreak = () =>
+  useQuery<number>({
+    queryKey: ["waste-streak"],
+    queryFn: fetchWasteStreak,
+    staleTime: 30_000,
+  });
