@@ -461,6 +461,18 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
   ドラフト PR には含めない
 - 多人数共有 + Alexa マルチユーザー対応（v2, #64 / #159） — 詳細: `docs/specs/features/household-sharing.md`。
   「Single user」制約の変更を伴う根本方針変更のため、実装は複数 PR に分割する（§9 決定ログ参照）
+- 買い物中モード拡張（v1.11, #981 / #982 / #983） — 詳細: `docs/specs/features/shopping-mode.md`
+- バーコード即時消費（v1.12, #924） — 詳細: `docs/specs/features/quick-consume.md`
+- 食品ロス削減ダッシュボード＆週次ダイジェスト通知（v1.13, #925） — 詳細:
+  `docs/specs/features/waste-reduction-dashboard.md`
+- 棚卸し写真チェック（シェルフスキャン）（v1.14, #927） — 詳細: `docs/specs/features/shelf-scan.md`
+- レシートレビューでの店舗別価格上昇アラート（v1.15, #941） — 詳細:
+  `docs/specs/features/receipt-scan.md`「9. 拡張」節
+- 開封後使用期限アラートの通知統合（v1.16, #967） — 詳細: `docs/specs/features/notifications.md`
+  「拡張: 開封後使用期限アラートの通知統合」節
+- 類似アイテム名のマージ提案（v1.17, #990） — 詳細: `docs/specs/features/similar-item-suggestion.md`
+- 月次予算超過アラート（v1.18, #991） — 詳細: `docs/specs/features/budget-alert.md`
+- bun test カバレッジ回帰ゲート導入（v1.19, #992） — CI設定のみのため spec ドラフトなし
 
 ### 8.6. MVP の完了判定
 
@@ -472,19 +484,20 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 ## §9. 決定ログ
 
-| 日付       | 決定                                                                                                                                                | 理由                                                                                                                               |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-04-30 | MVP 再定義（既存実装の抜けを取り込む）                                                                                                              | Q1=b                                                                                                                               |
-| 2026-04-30 | 通知は Push + Email のユーザー選択制                                                                                                                | Q4=c                                                                                                                               |
-| 2026-04-30 | オフラインは参照のみ                                                                                                                                | Q5=a                                                                                                                               |
-| 2026-04-30 | テストランナーは `bun test` を採用、Vitest 不採用                                                                                                   | Q6=b                                                                                                                               |
-| 2026-04-30 | 数量は `units × content_amount` + `opened_remaining` モデル                                                                                         | Q7 補足                                                                                                                            |
-| 2026-04-30 | Issue 同期は Skill (`.claude/skills/project/issue-sync`) で運用                                                                                     | Q8=b                                                                                                                               |
-| 2026-07-31 | 「Single user」制約を変更し、世帯（household）単位の多人数共有を実装する方針を承認（#64 / #159）。設計は `docs/specs/features/household-sharing.md` | ユーザー承認（issue #64/#159 対応の feature-proposal フロー）                                                                      |
-| 2026-07-31 | レシート一括登録（#696）・購入先/店舗別価格比較（#697）を spec ドラフト済みとして Backlog から昇格                                                  | ユーザー承認（feature-proposal フロー）                                                                                            |
-| 2026-08-01 | 在庫優先の週間献立プランナー（#715）を spec ドラフト済みとして Backlog から昇格                                                                     | ユーザー承認（feature-proposal フロー）                                                                                            |
-| 2026-08-11 | 間取りマップ（v1.9）を追加。2D編集と3D参照を段階導入し、既存写真マップは互換維持                                                                    | ユーザー承認。2DはReact+SVG、3Dはthree+R3F、保存は意味モデルJSONB                                                                  |
-| 2026-08-23 | アイテム種別（食料品 / 日用品）を追加（v1.10）。種別は `categories.kind`（既定）+ `items.item_type`（個別上書き）の2層で保持する                    | ユーザー要望。カテゴリ1件の切り替えで既存在庫をまとめて分類でき、例外は個別に上書きできるため（`days_use_after_opening` と同構造） |
+| 日付       | 決定                                                                                                                                                                                                                                                                                                                           | 理由                                                                                                                               |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-30 | MVP 再定義（既存実装の抜けを取り込む）                                                                                                                                                                                                                                                                                         | Q1=b                                                                                                                               |
+| 2026-04-30 | 通知は Push + Email のユーザー選択制                                                                                                                                                                                                                                                                                           | Q4=c                                                                                                                               |
+| 2026-04-30 | オフラインは参照のみ                                                                                                                                                                                                                                                                                                           | Q5=a                                                                                                                               |
+| 2026-04-30 | テストランナーは `bun test` を採用、Vitest 不採用                                                                                                                                                                                                                                                                              | Q6=b                                                                                                                               |
+| 2026-04-30 | 数量は `units × content_amount` + `opened_remaining` モデル                                                                                                                                                                                                                                                                    | Q7 補足                                                                                                                            |
+| 2026-04-30 | Issue 同期は Skill (`.claude/skills/project/issue-sync`) で運用                                                                                                                                                                                                                                                                | Q8=b                                                                                                                               |
+| 2026-07-31 | 「Single user」制約を変更し、世帯（household）単位の多人数共有を実装する方針を承認（#64 / #159）。設計は `docs/specs/features/household-sharing.md`                                                                                                                                                                            | ユーザー承認（issue #64/#159 対応の feature-proposal フロー）                                                                      |
+| 2026-07-31 | レシート一括登録（#696）・購入先/店舗別価格比較（#697）を spec ドラフト済みとして Backlog から昇格                                                                                                                                                                                                                             | ユーザー承認（feature-proposal フロー）                                                                                            |
+| 2026-08-01 | 在庫優先の週間献立プランナー（#715）を spec ドラフト済みとして Backlog から昇格                                                                                                                                                                                                                                                | ユーザー承認（feature-proposal フロー）                                                                                            |
+| 2026-08-11 | 間取りマップ（v1.9）を追加。2D編集と3D参照を段階導入し、既存写真マップは互換維持                                                                                                                                                                                                                                               | ユーザー承認。2DはReact+SVG、3Dはthree+R3F、保存は意味モデルJSONB                                                                  |
+| 2026-08-23 | アイテム種別（食料品 / 日用品）を追加（v1.10）。種別は `categories.kind`（既定）+ `items.item_type`（個別上書き）の2層で保持する                                                                                                                                                                                               | ユーザー要望。カテゴリ1件の切り替えで既存在庫をまとめて分類でき、例外は個別に上書きできるため（`days_use_after_opening` と同構造） |
+| 2026-09-05 | Claude Routines 自動起票の新機能提案11件のうち10件（#924/#925/#927/#941/#967/#981/#982/#983/#990/#991）を spec ドラフト済みとして Backlog から昇格（v1.11〜v1.18）。#992（bun test カバレッジ回帰ゲート）はCI設定のみのため spec なしで v1.19 に直接追加。#942（写真からのAI商品名・カテゴリ推定登録）はユーザー判断でスキップ | ユーザー承認（feature-proposal フロー、issue 単位で個別確認）                                                                      |
 
 ---
 
@@ -689,6 +702,92 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [x] 期限カレンダー・期限通知（Edge Function）でも日用品を対象外にする
       （ダッシュボードは `dropExpiryForDailyGoods` で対応済み）
 - [x] 日用品向けのダッシュボード最適化（期限系チップ・ソートの出し分け） <!-- issue:#998 -->
+
+### v1.11 — 買い物中モード拡張（オフライン耐性 / 見込み合計金額 / カート軽量チェックオフ）
+
+> 詳細: `docs/specs/features/shopping-mode.md`（既存の買い物中モード本体を追認 + 3件の拡張）
+
+- [ ] オフライン耐性強化: 購入確定・アラート追加のローカルキュー + 再接続時自動同期 <!-- issue:#981 -->
+- [ ] 見込み合計金額表示: 買い物リストの最安値ベース合算をモード上部に表示 <!-- issue:#982 -->
+- [ ] 「カートに入れた」軽量チェックオフ: `localStorage` ベースの端末内一時状態 <!-- issue:#983 -->
+
+### v1.12 — バーコード即時消費（クイックコンシューム）
+
+> 詳細: `docs/specs/features/quick-consume.md`（親 Issue: #924）
+
+- [ ] `BarcodeScanner` 呼び出し元に `onMatch` コールバックを追加し、既存アイテム一致判定を分岐
+- [ ] `QuickConsumeSheet` molecule（1点使う / 一部使用 / 新規登録への脱出リンク）+ Story
+- [ ] 複数ロットFIFO選択（`purchased_at` 昇順で先頭ロットを対象にする）
+- [ ] 既存 `useConsumeItem` / `consumeLot` への委譲（消費ロジック自体は変更しない）
+- [ ] テスト / CI 整備と PR CI グリーン化
+
+### v1.13 — 食品ロス削減ダッシュボード＆週次ダイジェスト通知
+
+> 詳細: `docs/specs/features/waste-reduction-dashboard.md`（親 Issue: #925）
+
+- [ ] migration: `waste_streaks` テーブル新設（RLS込み）
+- [ ] `computeWeeklyWasteDigest`（`src/types/stats.ts`）+ 単体テスト
+- [ ] 新規 Edge Function `send-waste-digest`（`pg_cron` 週次、月曜配信）
+- [ ] `WasteStreakBadge` atom + Story、統計ページへの組み込み
+- [ ] `NotificationSettings` に週次ダイジェストの受信トグルを追加
+- [ ] テスト / CI 整備と PR CI グリーン化
+
+### v1.14 — 棚卸し写真チェック（シェルフスキャン）
+
+> 詳細: `docs/specs/features/shelf-scan.md`（親 Issue: #927）
+
+- [ ] 新規 Edge Function `shelf-scan`（Gemini Vision、`receipt-scan` のパターンを踏襲）
+- [ ] `src/lib/shelfScanMatch.ts`（在庫との差分マッチングロジック）+ 単体テスト
+- [ ] `ShelfScanCapturePage` ルート（保管場所選択 + カメラ起動）
+- [ ] `ShelfScanReviewPanel` organism（差分候補一覧 + 一括補正）+ Story
+- [ ] ダッシュボードの Scan メニューへの導線追加
+- [ ] i18n `shelfScan` 名前空間
+- [ ] テスト / CI 整備と PR CI グリーン化
+
+### v1.15 — レシートレビューでの店舗別価格上昇アラート
+
+> 詳細: `docs/specs/features/receipt-scan.md`「9. 拡張: レビュー画面での店舗別価格上昇アラート」節（親 Issue: #941）
+
+- [ ] レビュー画面の各行での商品名（完全一致）× `storeName` の直近単価クエリ追加
+- [ ] 値上がりバッジ + ツールチップ UI（`ReceiptLineItemRow`）
+- [ ] テスト / CI 整備と PR CI グリーン化
+
+### v1.16 — 開封後使用期限アラートのプッシュ/メール通知統合
+
+> 詳細: `docs/specs/features/notifications.md`「拡張: 開封後使用期限アラートの通知統合」節（親 Issue: #967）
+
+- [ ] `isOpenedAlertDue` 相当のロジックを `supabase/functions/_shared/` へ移植
+- [ ] `send-expiry-notifications` の対象抽出・本文テンプレートに開封後アラート分を追加
+- [ ] 日用品（`item_type = 'daily_goods'`）を対象から除外
+- [ ] テスト / CI 整備と PR CI グリーン化
+
+### v1.17 — 類似アイテム名のマージ提案（表記揺れ対策）
+
+> 詳細: `docs/specs/features/similar-item-suggestion.md`（親 Issue: #990）
+
+- [ ] `src/lib/similarItemMatch.ts`（正規化 + Levenshtein 距離）+ 単体テスト
+- [ ] `SimilarItemSuggestion` molecule + Story
+- [ ] `ItemForm`（新規登録時のみ）への組み込み
+- [ ] テスト / CI 整備と PR CI グリーン化
+
+### v1.18 — 月次予算超過アラート
+
+> 詳細: `docs/specs/features/budget-alert.md`（親 Issue: #991）
+
+- [ ] migration: `user_settings.monthly_budget numeric null`
+- [ ] `useBudgetStatus()` hook（既存の月別支出集計ロジックの当月抽出ラッパー）
+- [ ] `BudgetBanner` organism + Story
+- [ ] `SettingsPage` に予算入力欄を追加
+- [ ] i18n キー追加
+- [ ] テスト / CI 整備と PR CI グリーン化
+
+### v1.19 — CI: bun test カバレッジ回帰ゲート導入
+
+> 親 Issue: #992。ユーザー向け機能ではないため spec ドラフトは作成しない（CI設定のみ）。
+
+- [ ] 現状のカバレッジ実測値を確認し、少し余裕を持たせた初期閾値を決定
+- [ ] `bunfig.toml` の `[test]` に `coverageThreshold` を追加
+- [ ] CI で意図的にカバレッジを下げて正しく失敗することを確認
 
 ### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
 
