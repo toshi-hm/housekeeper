@@ -232,12 +232,31 @@ export const DashboardPage = () => {
     void navigate({ to: "/", search: (prev) => ({ ...prev, loc: v }), replace: true });
   const setExpiryFilter = (v: string) =>
     void navigate({ to: "/", search: (prev) => ({ ...prev, expiry: v }), replace: true });
-  const setItemTypeTab = (v: ItemTypeTab) =>
-    void navigate({ to: "/", search: (prev) => ({ ...prev, type: v }), replace: true });
 
   const [sort, setSort] = useState<ItemSortKey>(
     () => (localStorage.getItem("dashboard.sort") as ItemSortKey) ?? "created_at",
   );
+
+  // 日用品タブでは dropExpiryForDailyGoods により expiry_date/expiry_type が
+  // 常にnull扱いになるため、期限フィルタ・期限順ソートは意味を持たない (#998)。
+  // 食料品タブで設定した期限フィルタ/ソートが日用品タブに残ったまま一覧が
+  // 0件に見えてしまう事故を防ぐため、日用品タブへの切り替え時にリセットする。
+  const setItemTypeTab = (v: ItemTypeTab) => {
+    if (v === "daily_goods") {
+      if (sort === "expiry_date") {
+        setSort("created_at");
+        localStorage.setItem("dashboard.sort", "created_at");
+      }
+      void navigate({
+        to: "/",
+        search: (prev) => ({ ...prev, type: v, expiry: "" }),
+        replace: true,
+      });
+      return;
+    }
+    void navigate({ to: "/", search: (prev) => ({ ...prev, type: v }), replace: true });
+  };
+
   const [showFilters, setShowFilters] = useState(false);
   const { viewMode, setViewMode } = useViewMode();
   const [hideEmpty, setHideEmpty] = useState(() => {
@@ -926,25 +945,29 @@ export const DashboardPage = () => {
                   ))}
                 </Select>
               </div>
-              <div>
-                <label
-                  htmlFor={expiryFilterId}
-                  className="mb-1 block text-xs text-muted-foreground"
-                >
-                  {t("filterByExpiry")}
-                </label>
-                <Select
-                  id={expiryFilterId}
-                  value={expiryFilter}
-                  onChange={(e) => setExpiryFilter(e.target.value)}
-                >
-                  <option value="">{tc("all")}</option>
-                  <option value="expired">{t("expiryStatus.expired")}</option>
-                  <option value="expiring-soon">{t("expiryStatus.expiring-soon")}</option>
-                  <option value="ok">{t("expiryStatus.ok")}</option>
-                  <option value="unknown">{t("expiryStatus.unknown")}</option>
-                </Select>
-              </div>
+              {/* 日用品タブでは期限が常に「なし」扱いになり絞り込みが意味を持たないため
+                  出し分ける (#998) */}
+              {itemTypeTab !== "daily_goods" && (
+                <div>
+                  <label
+                    htmlFor={expiryFilterId}
+                    className="mb-1 block text-xs text-muted-foreground"
+                  >
+                    {t("filterByExpiry")}
+                  </label>
+                  <Select
+                    id={expiryFilterId}
+                    value={expiryFilter}
+                    onChange={(e) => setExpiryFilter(e.target.value)}
+                  >
+                    <option value="">{tc("all")}</option>
+                    <option value="expired">{t("expiryStatus.expired")}</option>
+                    <option value="expiring-soon">{t("expiryStatus.expiring-soon")}</option>
+                    <option value="ok">{t("expiryStatus.ok")}</option>
+                    <option value="unknown">{t("expiryStatus.unknown")}</option>
+                  </Select>
+                </div>
+              )}
               <div>
                 <label htmlFor={sortFilterId} className="mb-1 block text-xs text-muted-foreground">
                   {tc("sort")}
@@ -959,7 +982,10 @@ export const DashboardPage = () => {
                   }}
                 >
                   <option value="created_at">{t("sortByCreatedAt")}</option>
-                  <option value="expiry_date">{t("sortByExpiry")}</option>
+                  {/* 日用品タブでは期限順ソートが意味を持たないため出し分ける (#998) */}
+                  {itemTypeTab !== "daily_goods" && (
+                    <option value="expiry_date">{t("sortByExpiry")}</option>
+                  )}
                   <option value="purchase_date">{t("sortByPurchaseDate")}</option>
                 </Select>
               </div>
