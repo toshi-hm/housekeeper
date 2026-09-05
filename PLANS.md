@@ -497,7 +497,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 | 2026-08-01 | 在庫優先の週間献立プランナー（#715）を spec ドラフト済みとして Backlog から昇格                                                                                                                                                                                                                                                | ユーザー承認（feature-proposal フロー）                                                                                            |
 | 2026-08-11 | 間取りマップ（v1.9）を追加。2D編集と3D参照を段階導入し、既存写真マップは互換維持                                                                                                                                                                                                                                               | ユーザー承認。2DはReact+SVG、3Dはthree+R3F、保存は意味モデルJSONB                                                                  |
 | 2026-08-23 | アイテム種別（食料品 / 日用品）を追加（v1.10）。種別は `categories.kind`（既定）+ `items.item_type`（個別上書き）の2層で保持する                                                                                                                                                                                               | ユーザー要望。カテゴリ1件の切り替えで既存在庫をまとめて分類でき、例外は個別に上書きできるため（`days_use_after_opening` と同構造） |
-| 2026-09-05 | Claude Routines 自動起票の新機能提案11件のうち10件（#924/#925/#927/#941/#967/#981/#982/#983/#990/#991）を spec ドラフト済みとして Backlog から昇格（v1.11〜v1.18）。#992（bun test カバレッジ回帰ゲート）はCI設定のみのため spec なしで v1.19 に直接追加。#942（写真からのAI商品名・カテゴリ推定登録）はユーザー判断でスキップ | ユーザー承認（feature-proposal フロー、issue 単位で個別確認）                                                                      |
+| 2026-09-05 | Claude Routines 自動起票の新機能提案12件のうち10件（#924/#925/#927/#941/#967/#981/#982/#983/#990/#991）を spec ドラフト済みとして Backlog から昇格（v1.11〜v1.18）。#992（bun test カバレッジ回帰ゲート）はCI設定のみのため spec なしで v1.19 に直接追加。#942（写真からのAI商品名・カテゴリ推定登録）はユーザー判断でスキップ | ユーザー承認（feature-proposal フロー、issue 単位で個別確認）                                                                      |
 
 ---
 
@@ -715,79 +715,79 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 詳細: `docs/specs/features/quick-consume.md`（親 Issue: #924）
 
-- [ ] `BarcodeScanner` 呼び出し元に `onMatch` コールバックを追加し、既存アイテム一致判定を分岐
-- [ ] `QuickConsumeSheet` molecule（1点使う / 一部使用 / 新規登録への脱出リンク）+ Story
-- [ ] 複数ロットFIFO選択（`purchased_at` 昇順で先頭ロットを対象にする）
-- [ ] 既存 `useConsumeItem` / `consumeLot` への委譲（消費ロジック自体は変更しない）
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [ ] `BarcodeScanner` 呼び出し元に `onMatch` コールバックを追加し、既存アイテム一致判定を分岐 <!-- issue:#924 -->
+- [ ] `QuickConsumeSheet` molecule（1点使う / 一部使用 / 新規登録への脱出リンク）+ Story <!-- issue:#924 -->
+- [ ] 複数ロットFIFO選択（`purchased_at` 昇順で先頭ロットを対象にする） <!-- issue:#924 -->
+- [ ] 既存 `useConsumeItem` / `consumeLot` への委譲（消費ロジック自体は変更しない） <!-- issue:#924 -->
+- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#924 -->
 
 ### v1.13 — 食品ロス削減ダッシュボード＆週次ダイジェスト通知
 
 > 詳細: `docs/specs/features/waste-reduction-dashboard.md`（親 Issue: #925）
 
-- [ ] migration: `waste_streaks` テーブル新設（RLS込み）
-- [ ] `computeWeeklyWasteDigest`（`src/types/stats.ts`）+ 単体テスト
-- [ ] 新規 Edge Function `send-waste-digest`（`pg_cron` 週次、月曜配信）
-- [ ] `WasteStreakBadge` atom + Story、統計ページへの組み込み
-- [ ] `NotificationSettings` に週次ダイジェストの受信トグルを追加
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [ ] migration: `waste_streaks` テーブル新設（RLS込み） <!-- issue:#925 -->
+- [ ] `computeWeeklyWasteDigest`（`src/types/stats.ts`）+ 単体テスト <!-- issue:#925 -->
+- [ ] 新規 Edge Function `send-waste-digest`（`pg_cron` 週次、月曜配信） <!-- issue:#925 -->
+- [ ] `WasteStreakBadge` atom + Story、統計ページへの組み込み <!-- issue:#925 -->
+- [ ] `NotificationSettings` に週次ダイジェストの受信トグルを追加 <!-- issue:#925 -->
+- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#925 -->
 
 ### v1.14 — 棚卸し写真チェック（シェルフスキャン）
 
 > 詳細: `docs/specs/features/shelf-scan.md`（親 Issue: #927）
 
-- [ ] 新規 Edge Function `shelf-scan`（Gemini Vision、`receipt-scan` のパターンを踏襲）
-- [ ] `src/lib/shelfScanMatch.ts`（在庫との差分マッチングロジック）+ 単体テスト
-- [ ] `ShelfScanCapturePage` ルート（保管場所選択 + カメラ起動）
-- [ ] `ShelfScanReviewPanel` organism（差分候補一覧 + 一括補正）+ Story
-- [ ] ダッシュボードの Scan メニューへの導線追加
-- [ ] i18n `shelfScan` 名前空間
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [ ] 新規 Edge Function `shelf-scan`（Gemini Vision、`receipt-scan` のパターンを踏襲） <!-- issue:#927 -->
+- [ ] `src/lib/shelfScanMatch.ts`（在庫との差分マッチングロジック）+ 単体テスト <!-- issue:#927 -->
+- [ ] `ShelfScanCapturePage` ルート（保管場所選択 + カメラ起動） <!-- issue:#927 -->
+- [ ] `ShelfScanReviewPanel` organism（差分候補一覧 + 一括補正）+ Story <!-- issue:#927 -->
+- [ ] ダッシュボードの Scan メニューへの導線追加 <!-- issue:#927 -->
+- [ ] i18n `shelfScan` 名前空間 <!-- issue:#927 -->
+- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#927 -->
 
 ### v1.15 — レシートレビューでの店舗別価格上昇アラート
 
 > 詳細: `docs/specs/features/receipt-scan.md`「9. 拡張: レビュー画面での店舗別価格上昇アラート」節（親 Issue: #941）
 
-- [ ] レビュー画面の各行での商品名（完全一致）× `storeName` の直近単価クエリ追加
-- [ ] 値上がりバッジ + ツールチップ UI（`ReceiptLineItemRow`）
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [ ] レビュー画面の各行での商品名（完全一致）× `storeName` の直近単価クエリ追加 <!-- issue:#941 -->
+- [ ] 値上がりバッジ + ツールチップ UI（`ReceiptLineItemRow`） <!-- issue:#941 -->
+- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#941 -->
 
 ### v1.16 — 開封後使用期限アラートのプッシュ/メール通知統合
 
 > 詳細: `docs/specs/features/notifications.md`「拡張: 開封後使用期限アラートの通知統合」節（親 Issue: #967）
 
-- [ ] `isOpenedAlertDue` 相当のロジックを `supabase/functions/_shared/` へ移植
-- [ ] `send-expiry-notifications` の対象抽出・本文テンプレートに開封後アラート分を追加
-- [ ] 日用品（`item_type = 'daily_goods'`）を対象から除外
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [ ] `isOpenedAlertDue` 相当のロジックを `supabase/functions/_shared/` へ移植 <!-- issue:#967 -->
+- [ ] `send-expiry-notifications` の対象抽出・本文テンプレートに開封後アラート分を追加 <!-- issue:#967 -->
+- [ ] 日用品（`item_type = 'daily_goods'`）を対象から除外 <!-- issue:#967 -->
+- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#967 -->
 
 ### v1.17 — 類似アイテム名のマージ提案（表記揺れ対策）
 
 > 詳細: `docs/specs/features/similar-item-suggestion.md`（親 Issue: #990）
 
-- [ ] `src/lib/similarItemMatch.ts`（正規化 + Levenshtein 距離）+ 単体テスト
-- [ ] `SimilarItemSuggestion` molecule + Story
-- [ ] `ItemForm`（新規登録時のみ）への組み込み
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [ ] `src/lib/similarItemMatch.ts`（正規化 + Levenshtein 距離）+ 単体テスト <!-- issue:#990 -->
+- [ ] `SimilarItemSuggestion` molecule + Story <!-- issue:#990 -->
+- [ ] `ItemForm`（新規登録時のみ）への組み込み <!-- issue:#990 -->
+- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#990 -->
 
 ### v1.18 — 月次予算超過アラート
 
 > 詳細: `docs/specs/features/budget-alert.md`（親 Issue: #991）
 
-- [ ] migration: `user_settings.monthly_budget numeric null`
-- [ ] `useBudgetStatus()` hook（既存の月別支出集計ロジックの当月抽出ラッパー）
-- [ ] `BudgetBanner` organism + Story
-- [ ] `SettingsPage` に予算入力欄を追加
-- [ ] i18n キー追加
-- [ ] テスト / CI 整備と PR CI グリーン化
+- [ ] migration: `user_settings.monthly_budget numeric null` <!-- issue:#991 -->
+- [ ] `useBudgetStatus()` hook（既存の月別支出集計ロジックの当月抽出ラッパー） <!-- issue:#991 -->
+- [ ] `BudgetBanner` organism + Story <!-- issue:#991 -->
+- [ ] `SettingsPage` に予算入力欄を追加 <!-- issue:#991 -->
+- [ ] i18n キー追加 <!-- issue:#991 -->
+- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#991 -->
 
 ### v1.19 — CI: bun test カバレッジ回帰ゲート導入
 
 > 親 Issue: #992。ユーザー向け機能ではないため spec ドラフトは作成しない（CI設定のみ）。
 
-- [ ] 現状のカバレッジ実測値を確認し、少し余裕を持たせた初期閾値を決定
-- [ ] `bunfig.toml` の `[test]` に `coverageThreshold` を追加
-- [ ] CI で意図的にカバレッジを下げて正しく失敗することを確認
+- [ ] 現状のカバレッジ実測値を確認し、少し余裕を持たせた初期閾値を決定 <!-- issue:#992 -->
+- [ ] `bunfig.toml` の `[test]` に `coverageThreshold` を追加 <!-- issue:#992 -->
+- [ ] CI で意図的にカバレッジを下げて正しく失敗することを確認 <!-- issue:#992 -->
 
 ### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
 

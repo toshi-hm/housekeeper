@@ -4,7 +4,7 @@
 
 ## 概要
 
-`docs/specs/stats.md` には既に月別支出グラフ（`item_lots.unit_price * purchased_units`
+`docs/specs/features/stats.md` には既に月別支出グラフ（`item_lots.unit_price * purchased_units`
 の月集計、#633）があり、支出データの集計基盤は揃っている。しかし予算上限や超過
 アラートの概念は存在しない。既存機能・提案（CSVエクスポート・店舗別価格比較・
 食品ロスダッシュボード）はすべて「振り返り」系であり、「使いすぎを事前に知る」
@@ -35,7 +35,7 @@
 
 - migration: `user_settings.monthly_budget numeric null` 追加（デフォルト
   `null` = 未設定 = 非表示）
-- 既存の月別支出集計ロジック（`docs/specs/stats.md` #633）を再利用する新規
+- 既存の月別支出集計ロジック（`docs/specs/features/stats.md` #633）を再利用する新規
   `useBudgetStatus()` hook を追加（当月分のみ集計）
 
 ## エラー
