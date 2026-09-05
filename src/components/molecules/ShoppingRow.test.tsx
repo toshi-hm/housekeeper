@@ -130,6 +130,91 @@ describe("ShoppingRow", () => {
     expect(deleteBtn.className).toContain("h-11");
   });
 
+  // #983: shopping mode's lightweight "added to cart" check-off. The checkbox
+  // only renders when onToggleCartCheck is provided (mode-only, not the normal list).
+  it("does not show a cart-check checkbox when onToggleCartCheck is not provided", () => {
+    const { container } = render(
+      <ShoppingRow
+        id="abc"
+        name="牛乳"
+        desiredUnits={1}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+      />,
+      { wrapper },
+    );
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+  });
+
+  it("shows a cart-check checkbox when onToggleCartCheck is provided", () => {
+    const { container } = render(
+      <ShoppingRow
+        id="abc"
+        name="牛乳"
+        desiredUnits={1}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        onToggleCartCheck={() => {}}
+      />,
+      { wrapper },
+    );
+    expect(container.querySelector('input[type="checkbox"]')).not.toBeNull();
+  });
+
+  it("calls onToggleCartCheck with id when the cart-check checkbox is toggled", () => {
+    const onToggleCartCheck = mock(() => {});
+    const { container } = render(
+      <ShoppingRow
+        id="abc"
+        name="牛乳"
+        desiredUnits={1}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        onToggleCartCheck={onToggleCartCheck}
+      />,
+      { wrapper },
+    );
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLElement;
+    fireEvent.click(checkbox);
+    expect(onToggleCartCheck).toHaveBeenCalledWith("abc");
+  });
+
+  it("shows the checkbox as checked when isCartChecked=true", () => {
+    const { container } = render(
+      <ShoppingRow
+        id="abc"
+        name="牛乳"
+        desiredUnits={1}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        onToggleCartCheck={() => {}}
+        isCartChecked
+      />,
+      { wrapper },
+    );
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it("applies strikethrough to the name when isCartChecked=true", () => {
+    const { container } = render(
+      <ShoppingRow
+        id="abc"
+        name="牛乳"
+        desiredUnits={1}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        onToggleCartCheck={() => {}}
+        isCartChecked
+      />,
+      { wrapper },
+    );
+    const nameEl = Array.from(container.querySelectorAll("p")).find((p) =>
+      p.textContent?.includes("牛乳"),
+    );
+    expect(nameEl?.className).toContain("line-through");
+  });
+
   it("uses the default compact button sizes when touchTarget is not set", () => {
     const { container } = render(
       <ShoppingRow

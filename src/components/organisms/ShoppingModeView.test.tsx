@@ -174,6 +174,84 @@ describe("ShoppingModeView", () => {
     expect(getByText(i18n.t("shopping:shoppingModeAllClear"))).toBeTruthy();
   });
 
+  // #983: the lightweight "added to cart" check-off checkbox only appears when
+  // onToggleCartCheck is provided (device-local, shopping-mode-only feature).
+  it("does not show a cart-check checkbox or hint when onToggleCartCheck is not provided", () => {
+    const { container, queryByText } = render(
+      <ShoppingModeView
+        plannedItems={[plannedItem]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+      />,
+      { wrapper },
+    );
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(queryByText(i18n.t("shopping:cartCheckOffHint"))).toBeNull();
+  });
+
+  it("shows a cart-check checkbox and hint for each planned item when onToggleCartCheck is provided", () => {
+    const { container, getByText } = render(
+      <ShoppingModeView
+        plannedItems={[plannedItem]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        checkedCartItemIds={new Set()}
+        onToggleCartCheck={() => {}}
+      />,
+      { wrapper },
+    );
+    expect(container.querySelector('input[type="checkbox"]')).not.toBeNull();
+    expect(getByText(i18n.t("shopping:cartCheckOffHint"))).toBeTruthy();
+  });
+
+  it("calls onToggleCartCheck with the shopping item id when its checkbox is toggled", () => {
+    const onToggleCartCheck = mock(() => {});
+    const { container } = render(
+      <ShoppingModeView
+        plannedItems={[plannedItem]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        checkedCartItemIds={new Set()}
+        onToggleCartCheck={onToggleCartCheck}
+      />,
+      { wrapper },
+    );
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLElement;
+    fireEvent.click(checkbox);
+    expect(onToggleCartCheck).toHaveBeenCalledWith("s1");
+  });
+
+  it("shows a planned item's checkbox as checked when its id is in checkedCartItemIds", () => {
+    const { container } = render(
+      <ShoppingModeView
+        plannedItems={[plannedItem]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        checkedCartItemIds={new Set(["s1"])}
+        onToggleCartCheck={() => {}}
+      />,
+      { wrapper },
+    );
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+  });
+
   // #979: the shopping-list section must be able to show the same cheapest-store hint
   // as the normal (non-mode) list, via the resolveCheapestStore resolver prop.
   it("shows the cheapest-store hint for a planned item when resolveCheapestStore returns one", () => {

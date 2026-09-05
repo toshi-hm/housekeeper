@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { act, cleanup, fireEvent, render, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { I18nextProvider } from "react-i18next";
 
 import * as useItemsModule from "@/hooks/useItems";
@@ -128,5 +128,109 @@ describe("ShoppingPage - 買い物中モードのローディング判定 (#986)
     expect(
       queryByText(/shoppingModeAllClear|買い物中に確認することはありません|Nothing to check/),
     ).toBeNull();
+  });
+});
+
+describe("ShoppingPage - 「カートに入れた」チェック状態のクリア (#983)", () => {
+  const plannedItem = {
+    id: "s1",
+    user_id: "u1",
+    name: "牛乳",
+    desired_units: 1,
+    note: null,
+    linked_item_id: null,
+    auto_added: false,
+    status: "planned" as const,
+    purchased_at: null,
+    created_item_id: null,
+    created_at: "2026-09-01T00:00:00Z",
+    updated_at: "2026-09-01T00:00:00Z",
+  };
+
+  const CART_CHECK_STORAGE_KEY = "shopping.cartCheckedIds";
+  let shoppingListSpy: ReturnType<typeof spyOn>;
+  let itemsSpy: ReturnType<typeof spyOn>;
+  let categoriesSpy: ReturnType<typeof spyOn>;
+  let userSettingsSpy: ReturnType<typeof spyOn>;
+  let templatesSpy: ReturnType<typeof spyOn>;
+  let forecastAlertsSpy: ReturnType<typeof spyOn>;
+  let storePriceComparisonsSpy: ReturnType<typeof spyOn>;
+  let deleteItemSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    window.localStorage.setItem(CART_CHECK_STORAGE_KEY, JSON.stringify({ s1: true }));
+
+    shoppingListSpy = spyOn(useShoppingListModule, "useShoppingList").mockImplementation(
+      (tab: unknown) =>
+        ({
+          data: tab === "planned" ? [plannedItem] : [],
+          isLoading: false,
+        }) as ReturnType<typeof useShoppingListModule.useShoppingList>,
+    );
+
+    itemsSpy = spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItems>);
+
+    categoriesSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useMasterDataModule.useCategories>);
+
+    userSettingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    templatesSpy = spyOn(useShoppingTemplatesModule, "useShoppingTemplates").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useShoppingTemplatesModule.useShoppingTemplates>);
+
+    forecastAlertsSpy = spyOn(useStatsModule, "useForecastAlerts").mockReturnValue({
+      alerts: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useForecastAlerts>);
+
+    storePriceComparisonsSpy = spyOn(useStatsModule, "useStorePriceComparisons").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useStorePriceComparisons>);
+
+    deleteItemSpy = spyOn(useShoppingListModule, "useDeleteShoppingItem").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as ReturnType<typeof useShoppingListModule.useDeleteShoppingItem>);
+  });
+
+  afterEach(() => {
+    shoppingListSpy.mockRestore();
+    itemsSpy.mockRestore();
+    categoriesSpy.mockRestore();
+    userSettingsSpy.mockRestore();
+    templatesSpy.mockRestore();
+    forecastAlertsSpy.mockRestore();
+    storePriceComparisonsSpy.mockRestore();
+    deleteItemSpy.mockRestore();
+    window.localStorage.removeItem(CART_CHECK_STORAGE_KEY);
+    cleanup();
+  });
+
+  it("アイテムを削除すると、そのアイテムの「カートに入れた」チェック状態も消える", async () => {
+    const { getByRole, findByRole } = renderPage();
+
+    fireEvent.click(getByRole("button", { name: /削除|delete/i }));
+    const dialog = await findByRole("alertdialog");
+
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: /^削除$|^delete$/i }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const stored: unknown = JSON.parse(window.localStorage.getItem(CART_CHECK_STORAGE_KEY) ?? "{}");
+    expect(stored).toEqual({});
   });
 });

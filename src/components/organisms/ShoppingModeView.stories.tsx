@@ -151,6 +151,21 @@ export const WithCheapestStoreHint: Story = {
   },
 };
 
+/** #983: 「カートに入れた」の軽量チェックオフ。onToggleCartCheck指定時のみ表示する。 */
+export const WithCartCheckOff: Story = {
+  args: {
+    plannedItems,
+    onPurchase: () => {},
+    onDelete: () => {},
+    lowStockItems: [],
+    expiringItems: [],
+    addedItemIds: new Set(),
+    onAddAlert: () => {},
+    checkedCartItemIds: new Set(["s1"]),
+    onToggleCartCheck: () => {},
+  },
+};
+
 /** #982: 全アイテムに比較データがある場合、見込み合計金額のみを表示し
  *  「一部のアイテムは概算に含まれていません」の注記は出さない。 */
 export const WithEstimatedTotalAllMatched: Story = {
