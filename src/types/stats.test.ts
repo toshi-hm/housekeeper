@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { computeMonthlySpending, type SpendingLotRow } from "./stats";
+import {
+  computeMonthlySpending,
+  computeWeeklyWasteDigest,
+  type RawWasteDigestItem,
+  type SpendingLotRow,
+} from "./stats";
 
 // --- computeMonthlySpending (#633, timezone regression #710) ---
 
@@ -111,5 +116,102 @@ describe("computeMonthlySpending", () => {
     expect(fixed.getFullYear()).toBe(2026);
     expect(fixed.getMonth()).toBe(7);
     expect(fixed.getDate()).toBe(1);
+  });
+});
+
+// --- computeWeeklyWasteDigest (#925) ---
+
+describe("computeWeeklyWasteDigest", () => {
+  // Monday. Current (target) week = 2026-08-31 〜 2026-09-06, previous week =
+  // 2026-08-24 〜 2026-08-30 (see utcWeekStart's UTC/Monday-start semantics).
+  const now = new Date("2026-09-07T08:00:00Z");
+
+  const wasteItem = (name: string, deletedAt: string): RawWasteDigestItem => ({
+    name,
+    deleted_at: deletedAt,
+  });
+
+  test("returns a zero/empty result when there are no waste logs at all", () => {
+    const result = computeWeeklyWasteDigest([], now);
+    expect(result).toEqual({
+      currentWeekCount: 0,
+      previousWeekCount: 0,
+      changePercent: null,
+      topWasted: [],
+    });
+  });
+
+  test("counts a single week of data with no prior week as an unknown (null) comparison", () => {
+    const items: RawWasteDigestItem[] = [
+      wasteItem("卵", "2026-09-01T10:00:00Z"),
+      wasteItem("牛乳", "2026-09-02T10:00:00Z"),
+    ];
+    const result = computeWeeklyWasteDigest(items, now);
+    expect(result.currentWeekCount).toBe(2);
+    expect(result.previousWeekCount).toBe(0);
+    expect(result.changePercent).toBeNull();
+  });
+
+  test("computes the week-over-week percentage comparison", () => {
+    const items: RawWasteDigestItem[] = [
+      // Current week (2026-08-31〜09-06): 4 items
+      wasteItem("卵", "2026-09-01T00:00:00Z"),
+      wasteItem("卵", "2026-09-02T00:00:00Z"),
+      wasteItem("牛乳", "2026-09-03T00:00:00Z"),
+      wasteItem("パン", "2026-09-04T00:00:00Z"),
+      // Previous week (2026-08-24〜08-30): 2 items → +100%
+      wasteItem("卵", "2026-08-25T00:00:00Z"),
+      wasteItem("牛乳", "2026-08-26T00:00:00Z"),
+      // Outside both windows — must not be counted either way.
+      wasteItem("味噌", "2026-08-10T00:00:00Z"),
+    ];
+    const result = computeWeeklyWasteDigest(items, now);
+    expect(result.currentWeekCount).toBe(4);
+    expect(result.previousWeekCount).toBe(2);
+    expect(result.changePercent).toBe(100);
+  });
+
+  test("computes a negative percentage when this week wasted less than last week", () => {
+    const items: RawWasteDigestItem[] = [
+      wasteItem("卵", "2026-09-01T00:00:00Z"),
+      wasteItem("卵", "2026-08-25T00:00:00Z"),
+      wasteItem("牛乳", "2026-08-26T00:00:00Z"),
+      wasteItem("パン", "2026-08-27T00:00:00Z"),
+    ];
+    const result = computeWeeklyWasteDigest(items, now);
+    expect(result.currentWeekCount).toBe(1);
+    expect(result.previousWeekCount).toBe(3);
+    expect(result.changePercent).toBe(-67); // Math.round((1-3)/3 * 100)
+  });
+
+  test("ranks the top-3 most-wasted item names in the target week, ties broken alphabetically", () => {
+    const items: RawWasteDigestItem[] = [
+      wasteItem("卵", "2026-09-01T00:00:00Z"),
+      wasteItem("卵", "2026-09-01T00:00:00Z"),
+      wasteItem("卵", "2026-09-01T00:00:00Z"),
+      wasteItem("牛乳", "2026-09-02T00:00:00Z"),
+      wasteItem("牛乳", "2026-09-02T00:00:00Z"),
+      // Three-way tie at count=1: パン / にんじん / キャベツ. Only one of them
+      // fits in the top-3, so which one is picked must be deterministic
+      // (alphabetical, via localeCompare) rather than insertion-order luck.
+      wasteItem("パン", "2026-09-03T00:00:00Z"),
+      wasteItem("にんじん", "2026-09-03T00:00:00Z"),
+      wasteItem("キャベツ", "2026-09-04T00:00:00Z"),
+    ];
+    const result = computeWeeklyWasteDigest(items, now);
+    expect(result.topWasted).toEqual([
+      { name: "卵", count: 3 },
+      { name: "牛乳", count: 2 },
+      { name: "キャベツ", count: 1 },
+    ]);
+  });
+
+  test("excludes items outside the current-week window from the top-wasted ranking", () => {
+    const items: RawWasteDigestItem[] = [
+      wasteItem("先週の廃棄", "2026-08-25T00:00:00Z"),
+      wasteItem("今週の廃棄", "2026-09-01T00:00:00Z"),
+    ];
+    const result = computeWeeklyWasteDigest(items, now);
+    expect(result.topWasted).toEqual([{ name: "今週の廃棄", count: 1 }]);
   });
 });
