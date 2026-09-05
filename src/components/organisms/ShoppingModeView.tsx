@@ -77,10 +77,16 @@ export const ShoppingModeView = ({
     return <p className="py-8 text-center text-muted-foreground">{t("shoppingModeAllClear")}</p>;
   }
 
-  // 見込み合計金額（#982）: resolveCheapestStore が値を返すアイテムのみを合算する。
-  // 未指定、もしくは1件も比較データが無い場合は表示しない。
+  // 各アイテムの最安店舗ヒントは行表示（cheapestStore）と見込み合計金額（#982）の
+  // 両方で使うため、ここで1回だけ解決してMapに持たせ、二重呼び出しを避ける。
+  const cheapestStoreHints = new Map(
+    plannedItems.map((item) => [item.id, resolveCheapestStore?.(item) ?? null]),
+  );
   const estimatedTotal = resolveCheapestStore
-    ? calculateShoppingModeEstimatedTotal(plannedItems, resolveCheapestStore)
+    ? calculateShoppingModeEstimatedTotal(
+        plannedItems,
+        (item) => cheapestStoreHints.get(item.id) ?? null,
+      )
     : null;
 
   return (
@@ -105,7 +111,7 @@ export const ShoppingModeView = ({
                 desiredUnits={item.desired_units}
                 note={item.note}
                 isAutoAdded={item.auto_added}
-                cheapestStore={resolveCheapestStore?.(item) ?? null}
+                cheapestStore={cheapestStoreHints.get(item.id) ?? null}
                 touchTarget
                 onPurchase={onPurchase}
                 onDelete={onDelete}

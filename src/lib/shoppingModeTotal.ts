@@ -2,7 +2,7 @@ import type { CheapestStoreHint } from "@/components/molecules/ShoppingRow";
 import type { ShoppingItem } from "@/types/shopping";
 
 /** 買い物中モードの見込み合計金額（#982）の算出結果。 */
-export interface ShoppingModeEstimatedTotal {
+export interface ShoppingModeEstimatedTotalResult {
   /** 最安値ベースで合算した見込み合計金額。 */
   total: number;
   /** 合計に含めた（＝比較データがあった）アイテム数。0件なら表示側は非表示にする。 */
@@ -19,7 +19,7 @@ export interface ShoppingModeEstimatedTotal {
 export const calculateShoppingModeEstimatedTotal = (
   items: readonly ShoppingItem[],
   resolveCheapestStore: (item: ShoppingItem) => CheapestStoreHint | null,
-): ShoppingModeEstimatedTotal => {
+): ShoppingModeEstimatedTotalResult => {
   let total = 0;
   let matchedCount = 0;
   let hasExcludedItems = false;
