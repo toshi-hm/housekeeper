@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { ShoppingModeAlertRow } from "@/components/molecules/ShoppingModeAlertRow";
+import { ShoppingModeEstimatedTotal } from "@/components/molecules/ShoppingModeEstimatedTotal";
 import { type CheapestStoreHint, ShoppingRow } from "@/components/molecules/ShoppingRow";
+import { calculateShoppingModeEstimatedTotal } from "@/lib/shoppingModeTotal";
 import type { ShoppingItem } from "@/types/shopping";
 
 export interface ShoppingModeAlertEntry {
@@ -75,6 +77,12 @@ export const ShoppingModeView = ({
     return <p className="py-8 text-center text-muted-foreground">{t("shoppingModeAllClear")}</p>;
   }
 
+  // 見込み合計金額（#982）: resolveCheapestStore が値を返すアイテムのみを合算する。
+  // 未指定、もしくは1件も比較データが無い場合は表示しない。
+  const estimatedTotal = resolveCheapestStore
+    ? calculateShoppingModeEstimatedTotal(plannedItems, resolveCheapestStore)
+    : null;
+
   return (
     <div className="space-y-6">
       {plannedItems.length > 0 && (
@@ -82,6 +90,12 @@ export const ShoppingModeView = ({
           <h2 className="text-sm font-semibold text-muted-foreground">
             {t("shoppingModeListTitle")}
           </h2>
+          {estimatedTotal && estimatedTotal.matchedCount > 0 && (
+            <ShoppingModeEstimatedTotal
+              total={estimatedTotal.total}
+              hasExcludedItems={estimatedTotal.hasExcludedItems}
+            />
+          )}
           <div className="space-y-2">
             {plannedItems.map((item) => (
               <ShoppingRow
