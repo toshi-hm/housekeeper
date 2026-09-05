@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
+import { useCartCheckOff } from "@/hooks/useCartCheckOff";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
@@ -152,6 +153,9 @@ export const ShoppingPage = () => {
   const deleteTemplate = useDeleteShoppingTemplate();
   const applyTemplate = useApplyShoppingTemplate();
   const { lookup, error: lookupError } = useBarcodeLookup();
+  // 「カートに入れた」軽量チェックオフ（#983）。端末内 localStorage のみで管理し、
+  // 購入確定・削除されたアイテムのチェック状態は下の handlePurchase / handleDelete で消す。
+  const cartCheckOff = useCartCheckOff();
 
   // 買い物リストのアイテム削除の取り消し（#478）。shopping_list_items は
   // ソフトデリートを持たないため、Undo時は restoreShoppingItem で同じ内容を
@@ -198,6 +202,8 @@ export const ShoppingPage = () => {
     try {
       await deleteItem.mutateAsync(deleteId);
       setDeleteId(null);
+      // 削除されたアイテムの「カートに入れた」チェック状態も消す（#983）
+      cartCheckOff.clear(deleteId);
       // Success toast (with an Undo action) is shown by deleteUndo.start
       // when we have a snapshot to restore from; otherwise fall back to a
       // plain success toast.
@@ -282,6 +288,8 @@ export const ShoppingPage = () => {
 
       clearPendingPurchaseImage();
       setPendingPurchaseId(null);
+      // 購入確定されたアイテムの「カートに入れた」チェック状態も消す（#983）
+      cartCheckOff.clear(id);
       toast(t("purchaseSuccess"), "success");
     } catch {
       // Error toast is handled by usePurchaseShoppingItem.onError
@@ -758,6 +766,8 @@ export const ShoppingPage = () => {
           addingItemId={addingAlertId}
           isLoading={shoppingModeLoading}
           resolveCheapestStore={resolveCheapestStore}
+          checkedCartItemIds={cartCheckOff.checkedIds}
+          onToggleCartCheck={cartCheckOff.toggle}
         />
       ) : (
         <>

@@ -150,3 +150,18 @@ export const WithCheapestStoreHint: Story = {
       item.id === "s1" ? { storeName: "〇〇スーパー", unitPrice: 198 } : null,
   },
 };
+
+/** #983: 「カートに入れた」の軽量チェックオフ。onToggleCartCheck指定時のみ表示する。 */
+export const WithCartCheckOff: Story = {
+  args: {
+    plannedItems,
+    onPurchase: () => {},
+    onDelete: () => {},
+    lowStockItems: [],
+    expiringItems: [],
+    addedItemIds: new Set(),
+    onAddAlert: () => {},
+    checkedCartItemIds: new Set(["s1"]),
+    onToggleCartCheck: () => {},
+  },
+};

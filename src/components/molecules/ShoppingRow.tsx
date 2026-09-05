@@ -27,9 +27,13 @@ interface ShoppingRowProps {
   isSaving?: boolean;
   /** 片手・濡れた手での操作を想定するタップターゲット44px規約に揃える（買い物中モード、#980）。 */
   touchTarget?: boolean;
+  /** 「カートに入れた」の軽量チェックオフ状態（#983）。買い物中モード専用で、
+   *  onToggleCartCheck が指定されたときだけチェックボックスを表示する。 */
+  isCartChecked?: boolean;
   onPurchase?: (id: string) => void;
   onDelete?: (id: string) => void;
   onEdit?: (id: string) => void;
+  onToggleCartCheck?: (id: string) => void;
   onEditSave?: (
     id: string,
     data: { name: string; desiredUnits: number; note: string | null },
@@ -48,11 +52,13 @@ export const ShoppingRow = ({
   isEditing,
   isSaving,
   touchTarget,
+  isCartChecked,
   onPurchase,
   onDelete,
   onEdit,
   onEditSave,
   onEditCancel,
+  onToggleCartCheck,
 }: ShoppingRowProps) => {
   const { t } = useTranslation("shopping");
 
@@ -163,13 +169,24 @@ export const ShoppingRow = ({
     <div
       className={`flex items-center gap-3 rounded-lg border p-3 ${isPurchased ? "opacity-60" : ""}`}
     >
+      {onToggleCartCheck && (
+        <input
+          type="checkbox"
+          checked={!!isCartChecked}
+          onChange={() => onToggleCartCheck(id)}
+          className={cn("shrink-0 accent-primary", touchTarget ? "h-6 w-6" : "h-5 w-5")}
+          aria-label={t("cartCheckOffLabel")}
+        />
+      )}
       {isPurchased ? (
         <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
       ) : (
         <ShoppingCart className="h-5 w-5 shrink-0 text-muted-foreground" />
       )}
       <div className="min-w-0 flex-1">
-        <p className={`flex items-center gap-1.5 font-medium ${isPurchased ? "line-through" : ""}`}>
+        <p
+          className={`flex items-center gap-1.5 font-medium ${isPurchased || isCartChecked ? "line-through" : ""}`}
+        >
           {name}
           {isAutoAdded && (
             <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">

@@ -125,3 +125,29 @@ export const TouchTarget: Story = {
     onDelete: () => {},
   },
 };
+
+/** #983: 「カートに入れた」の軽量チェックオフ。onToggleCartCheck指定時のみ表示する。 */
+export const CartCheckOff: Story = {
+  args: {
+    id: "9",
+    name: "牛乳",
+    desiredUnits: 1,
+    touchTarget: true,
+    onPurchase: () => {},
+    onDelete: () => {},
+    onToggleCartCheck: () => {},
+  },
+};
+
+export const CartCheckOffChecked: Story = {
+  args: {
+    id: "10",
+    name: "牛乳",
+    desiredUnits: 1,
+    touchTarget: true,
+    onPurchase: () => {},
+    onDelete: () => {},
+    onToggleCartCheck: () => {},
+    isCartChecked: true,
+  },
+};

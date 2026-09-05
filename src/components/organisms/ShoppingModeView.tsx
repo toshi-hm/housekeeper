@@ -32,6 +32,11 @@ interface ShoppingModeViewProps {
   /** 買い物リストの行ごとの最安店舗ヒント（#697の集計を再利用、#854、#979）。
    *  比較対象データが無いアイテムは null を返す。未指定ならヒントを表示しない。 */
   resolveCheapestStore?: (item: ShoppingItem) => CheapestStoreHint | null;
+  /** 「カートに入れた」の軽量チェックオフ（#983）。チェック済みの shopping_list_items.id
+   *  集合。端末内 localStorage で管理され、サーバー同期はしない。未指定なら
+   *  チェックボックス自体を表示しない。 */
+  checkedCartItemIds?: ReadonlySet<string>;
+  onToggleCartCheck?: (id: string) => void;
 }
 
 /**
@@ -51,6 +56,8 @@ export const ShoppingModeView = ({
   addingItemId,
   isLoading,
   resolveCheapestStore,
+  checkedCartItemIds,
+  onToggleCartCheck,
 }: ShoppingModeViewProps) => {
   const { t } = useTranslation("shopping");
 
@@ -82,6 +89,9 @@ export const ShoppingModeView = ({
           <h2 className="text-sm font-semibold text-muted-foreground">
             {t("shoppingModeListTitle")}
           </h2>
+          {onToggleCartCheck && (
+            <p className="text-xs text-muted-foreground">{t("cartCheckOffHint")}</p>
+          )}
           <div className="space-y-2">
             {plannedItems.map((item) => (
               <ShoppingRow
@@ -95,6 +105,8 @@ export const ShoppingModeView = ({
                 touchTarget
                 onPurchase={onPurchase}
                 onDelete={onDelete}
+                isCartChecked={checkedCartItemIds?.has(item.id)}
+                onToggleCartCheck={onToggleCartCheck}
               />
             ))}
           </div>
