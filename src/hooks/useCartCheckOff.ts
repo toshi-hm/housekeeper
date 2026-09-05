@@ -2,7 +2,9 @@ import { useCallback, useState } from "react";
 
 const STORAGE_KEY = "shopping.cartCheckedIds";
 
-type StoredCheckedMap = Record<string, true>;
+interface StoredCheckedMap {
+  [id: string]: true;
+}
 
 const isStoredCheckedMap = (value: unknown): value is StoredCheckedMap =>
   typeof value === "object" &&
@@ -24,7 +26,13 @@ const readStoredCheckedIds = (): ReadonlySet<string> => {
 
 const writeStoredCheckedIds = (ids: ReadonlySet<string>) => {
   const map: StoredCheckedMap = Object.fromEntries(Array.from(ids, (id) => [id, true] as const));
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // 非致命: private browsing のストレージ制限・容量超過等でも、React state
+    // 側の checkedIds は更新済みのまま画面表示は継続させる（読み込み側と同様、
+    // 永続化の失敗でページ全体を壊さない）。
+  }
 };
 
 export interface UseCartCheckOffResult {

@@ -190,7 +190,7 @@ describe("ShoppingModeView", () => {
       { wrapper },
     );
     expect(container.querySelector('input[type="checkbox"]')).toBeNull();
-    expect(queryByText("shoppingMode:cartCheckOffHint", { exact: false })).toBeNull();
+    expect(queryByText(i18n.t("shopping:cartCheckOffHint"))).toBeNull();
   });
 
   it("shows a cart-check checkbox and hint for each planned item when onToggleCartCheck is provided", () => {

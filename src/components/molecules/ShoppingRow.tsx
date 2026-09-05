@@ -170,13 +170,23 @@ export const ShoppingRow = ({
       className={`flex items-center gap-3 rounded-lg border p-3 ${isPurchased ? "opacity-60" : ""}`}
     >
       {onToggleCartCheck && (
-        <input
-          type="checkbox"
-          checked={!!isCartChecked}
-          onChange={() => onToggleCartCheck(id)}
-          className={cn("shrink-0 accent-primary", touchTarget ? "h-6 w-6" : "h-5 w-5")}
-          aria-label={t("cartCheckOffLabel")}
-        />
+        // #980の44pxタップターゲット規約: チェックボックス自体を44x44まで
+        // 拡大すると視覚上不自然なため、ExpiryCheckItemと同じくlabelで包んで
+        // パディングにより有効タップ領域を広げる（クリック可能領域はlabel全体）。
+        <label
+          className={cn(
+            "flex shrink-0 cursor-pointer items-center justify-center",
+            touchTarget ? "h-11 w-11" : "h-5 w-5",
+          )}
+        >
+          <input
+            type="checkbox"
+            checked={!!isCartChecked}
+            onChange={() => onToggleCartCheck(id)}
+            className="h-5 w-5 shrink-0 accent-primary"
+            aria-label={t("cartCheckOffLabel")}
+          />
+        </label>
       )}
       {isPurchased ? (
         <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
