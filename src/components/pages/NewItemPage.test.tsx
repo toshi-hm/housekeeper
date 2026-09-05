@@ -1,14 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import React from "react";
+import { I18nextProvider } from "react-i18next";
 
 import * as MultiTagSelectModule from "@/components/molecules/MultiTagSelect";
 import * as ItemFormModule from "@/components/organisms/ItemForm";
+import * as useConsumeItemModule from "@/hooks/useConsumeItem";
 import * as useItemImageModule from "@/hooks/useItemImage";
+import * as useItemLotsModule from "@/hooks/useItemLots";
 import * as useItemsModule from "@/hooks/useItems";
 import * as useTagsModule from "@/hooks/useTags";
 import * as useUserSettingsModule from "@/hooks/useUserSettings";
+import i18n from "@/lib/i18n";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
 import type { Item, ItemFormValues } from "@/types/item";
 
@@ -128,6 +132,15 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => {
     </QueryClientProvider>
   );
 };
+
+// QuickConsumeSheet (unlike the stubbed ItemForm above) is exercised as the
+// real component below, so its `t()` calls need an actual i18n instance to
+// render matchable text instead of raw keys.
+const WrapperWithI18n = ({ children }: { children: React.ReactNode }) => (
+  <I18nextProvider i18n={i18n}>
+    <Wrapper>{children}</Wrapper>
+  </I18nextProvider>
+);
 
 describe("NewItemPage - default content unit", () => {
   let itemSpy: ReturnType<typeof spyOn>;
@@ -404,5 +417,164 @@ describe("NewItemPage - locks content amount while stacking onto a scanned item 
 
     await waitFor(() => expect(findActiveItemSpy).toHaveBeenCalled());
     expect(getByTestId("disable-content-amount").textContent).toBe("false");
+  });
+});
+
+// #924: scanning a barcode that matches an in-stock item opens QuickConsumeSheet
+// instead of only the passive AlreadyInStockBanner, offering a one-tap "consume
+// 1" shortcut that delegates to the existing consumeLot/consumeItem mutations
+// (docs/specs/features/quick-consume.md).
+describe("NewItemPage - quick consume sheet on barcode match (#924)", () => {
+  let itemSpy: ReturnType<typeof spyOn>;
+  let settingsSpy: ReturnType<typeof spyOn>;
+  let findActiveItemSpy: ReturnType<typeof spyOn>;
+  let itemLotsSpy: ReturnType<typeof spyOn>;
+  let consumeLotSpy: ReturnType<typeof spyOn>;
+  let consumeItemSpy: ReturnType<typeof spyOn>;
+  let consumeLotMutateAsync: ReturnType<typeof mock>;
+  let consumeItemMutateAsync: ReturnType<typeof mock>;
+
+  const matchedItem = {
+    id: "item-existing",
+    name: "醤油",
+    units: 1,
+    content_amount: 1000,
+    content_unit: "mL",
+    opened_remaining: null,
+    barcode: "4901234567890",
+  } as Item;
+
+  const mockLots = (data: unknown[]) => {
+    itemLotsSpy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data,
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>);
+  };
+
+  beforeEach(() => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+    settingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+    spyOn(useItemsModule, "useCreateItem").mockReturnValue({
+      mutateAsync: async () => ({}) as Item,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useCreateItem>);
+
+    consumeLotMutateAsync = mock(async () => ({}) as never);
+    consumeItemMutateAsync = mock(async () => ({}) as never);
+    consumeLotSpy = spyOn(useItemLotsModule, "useConsumeLot").mockReturnValue({
+      mutateAsync: consumeLotMutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useConsumeLot>);
+    consumeItemSpy = spyOn(useConsumeItemModule, "useConsumeItem").mockReturnValue({
+      mutateAsync: consumeItemMutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useConsumeItemModule.useConsumeItem>);
+  });
+
+  afterEach(() => {
+    itemSpy.mockRestore();
+    settingsSpy.mockRestore();
+    findActiveItemSpy.mockRestore();
+    itemLotsSpy.mockRestore();
+    consumeLotSpy.mockRestore();
+    consumeItemSpy.mockRestore();
+    cleanup();
+  });
+
+  it("opens the quick-consume sheet (not just the stack banner) when a scanned barcode matches an in-stock item", async () => {
+    findActiveItemSpy = spyOn(useItemsModule, "findActiveItemByBarcode").mockResolvedValue(
+      matchedItem,
+    );
+    mockLots([]);
+
+    const { getByTestId, findByRole } = render(<NewItemPage />, { wrapper: WrapperWithI18n });
+    fireEvent.click(getByTestId("scan-barcode"));
+
+    const dialog = await findByRole("dialog");
+    expect(dialog.textContent).toContain("醤油");
+  });
+
+  it("does not open the quick-consume sheet when the scanned barcode has no in-stock match", async () => {
+    findActiveItemSpy = spyOn(useItemsModule, "findActiveItemByBarcode").mockResolvedValue(null);
+    mockLots([]);
+
+    const { getByTestId, queryByRole } = render(<NewItemPage />, { wrapper: WrapperWithI18n });
+    fireEvent.click(getByTestId("scan-barcode"));
+
+    await waitFor(() => expect(findActiveItemSpy).toHaveBeenCalled());
+    expect(queryByRole("dialog")).toBeNull();
+  });
+
+  it("delegates '1点使う' to consumeLot with the FIFO (earliest purchase_date) lot", async () => {
+    findActiveItemSpy = spyOn(useItemsModule, "findActiveItemByBarcode").mockResolvedValue(
+      matchedItem,
+    );
+    const olderLot = {
+      id: "lot-older",
+      item_id: "item-existing",
+      units: 1,
+      opened_remaining: null,
+      purchase_date: "2026-01-01",
+      created_at: "2026-01-01T00:00:00.000Z",
+    };
+    const newerLot = {
+      id: "lot-newer",
+      item_id: "item-existing",
+      units: 1,
+      opened_remaining: null,
+      purchase_date: "2026-02-01",
+      created_at: "2026-02-01T00:00:00.000Z",
+    };
+    mockLots([newerLot, olderLot]);
+
+    const { getByTestId, findByRole } = render(<NewItemPage />, { wrapper: WrapperWithI18n });
+    fireEvent.click(getByTestId("scan-barcode"));
+    const dialog = await findByRole("dialog");
+    fireEvent.click(within(dialog).getByText(/1点使う|Use 1 \(/));
+
+    await waitFor(() => expect(consumeLotMutateAsync).toHaveBeenCalledTimes(1));
+    const call = consumeLotMutateAsync.mock.calls[0]?.[0] as { lot: { id: string } };
+    expect(call.lot.id).toBe("lot-older");
+    expect(consumeItemMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("falls back to consumeItem directly when the matched item has no lots yet", async () => {
+    findActiveItemSpy = spyOn(useItemsModule, "findActiveItemByBarcode").mockResolvedValue(
+      matchedItem,
+    );
+    mockLots([]);
+
+    const { getByTestId, findByRole } = render(<NewItemPage />, { wrapper: WrapperWithI18n });
+    fireEvent.click(getByTestId("scan-barcode"));
+    const dialog = await findByRole("dialog");
+    fireEvent.click(within(dialog).getByText(/1点使う|Use 1 \(/));
+
+    await waitFor(() => expect(consumeItemMutateAsync).toHaveBeenCalledTimes(1));
+    expect(consumeLotMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("dismisses the sheet via the escape link without clearing the stack-banner state", async () => {
+    findActiveItemSpy = spyOn(useItemsModule, "findActiveItemByBarcode").mockResolvedValue(
+      matchedItem,
+    );
+    mockLots([]);
+
+    const { getByTestId, findByRole, queryByRole } = render(<NewItemPage />, {
+      wrapper: WrapperWithI18n,
+    });
+    fireEvent.click(getByTestId("scan-barcode"));
+    const dialog = await findByRole("dialog");
+    fireEvent.click(within(dialog).getByText(/新規登録として追加する|Add as a new item instead/));
+
+    await waitFor(() => expect(queryByRole("dialog")).toBeNull());
+    // AlreadyInStockBanner / disableContentAmount is driven by `existingItem`,
+    // which the escape link must not clear (#924).
+    expect(getByTestId("disable-content-amount").textContent).toBe("true");
   });
 });

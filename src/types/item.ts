@@ -458,6 +458,38 @@ export const getLotRemainingAmount = (
     ? Math.max(0, units - 1) * contentAmount + openedRemaining
     : units * contentAmount;
 
+/**
+ * 複数ロットの中から即時消費（バーコード即時消費、`QuickConsumeSheet`）の対象として
+ * 提示する1件をFIFO（`purchase_date` 昇順）で選ぶ（docs/specs/features/quick-consume.md）。
+ * - `purchase_date` が同値、または双方 null の場合は `created_at` 昇順でタイブレークする
+ * - `purchase_date` が null のロットは（購入日不明として）最後尾に回す
+ * - 先頭から見て残量（{@link getLotRemainingAmount}）が0のロット（使い切り済み）は
+ *   スキップし、次に古いロットへフォールバックする
+ *
+ * 実際の消費対象ロット選択（`consumeItem`）は消費期限優先（FEFO）で別途行っており、
+ * この関数はあくまで確認シートに「どのロットを消費するか」を提示するための選定。
+ * 消費デクリメント自体のアルゴリズムはここでは持たず、既存の `consumeLot` /
+ * `useConsumeItem` にそのまま委譲する。
+ */
+export const pickFifoConsumableLot = (
+  lots: readonly ItemLot[],
+  contentAmount: number,
+): ItemLot | null => {
+  const sorted = [...lots].sort((a, b) => {
+    const aDate = a.purchase_date ?? null;
+    const bDate = b.purchase_date ?? null;
+    if (aDate === null && bDate !== null) return 1;
+    if (aDate !== null && bDate === null) return -1;
+    if (aDate !== null && bDate !== null && aDate !== bDate) return aDate.localeCompare(bDate);
+    return a.created_at.localeCompare(b.created_at);
+  });
+  return (
+    sorted.find(
+      (lot) => getLotRemainingAmount(lot.units, contentAmount, lot.opened_remaining ?? null) > 0,
+    ) ?? null
+  );
+};
+
 /** カードや一覧で使う「残量」の合計値を文字列として返す。 */
 export const formatRemaining = (
   units: number,

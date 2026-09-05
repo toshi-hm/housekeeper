@@ -7,11 +7,14 @@ import { useTranslation } from "react-i18next";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { AlreadyInStockBanner } from "@/components/molecules/AlreadyInStockBanner";
 import { MultiTagSelect } from "@/components/molecules/MultiTagSelect";
+import { QuickConsumeSheet } from "@/components/molecules/QuickConsumeSheet";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useConsumeItem } from "@/hooks/useConsumeItem";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
+import { useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import {
   countRecentExpiredWaste,
   findActiveItemByBarcode,
@@ -29,6 +32,7 @@ import {
   isAlreadyInStock,
   type Item,
   type ItemFormValues,
+  pickFifoConsumableLot,
   targetsExistingItem,
 } from "@/types/item";
 
@@ -46,6 +50,12 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const pendingImageUrlRef = useRef<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingItem, setExistingItem] = useState<Item | null>(null);
+  // #924: バーコードスキャンが在庫ありの既存アイテムに一致したときに表示する
+  // クイック消費シート（QuickConsumeSheet）。existingItem とは独立に持つ:
+  // シートを閉じて「新規登録として追加する」を選んだ後も existingItem（＝
+  // AlreadyInStockBanner とスタック確認ダイアログ）はそのまま既存の登録フロー
+  // 通りに動かし続けたいため。
+  const [quickConsumeItem, setQuickConsumeItem] = useState<Item | null>(null);
   const [pendingValues, setPendingValues] = useState<ItemFormValues | null>(null);
   const { data: tags = [] } = useTags();
   const createTag = useCreateTag();
@@ -60,6 +70,17 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const { data: cloneSource, isLoading: isCloneLoading } = useItem(cloneFrom ?? "");
   const { data: userSettings, isLoading: isSettingsLoading } = useUserSettings();
   const { data: locations = [] } = useStorageLocations();
+
+  // #924: クイック消費シート用。対象ロットの選定はFIFO（purchase_date昇順）で
+  // 行い（docs/specs/features/quick-consume.md）、実際の消費デクリメントは
+  // 既存の consumeLot / consumeItem にそのまま委譲する。
+  const { data: quickConsumeLots = [] } = useItemLots(quickConsumeItem?.id ?? "");
+  const quickConsumeFifoLot = quickConsumeItem
+    ? pickFifoConsumableLot(quickConsumeLots, quickConsumeItem.content_amount)
+    : null;
+  const consumeLot = useConsumeLot();
+  const consumeItemDirect = useConsumeItem();
+  const isQuickConsuming = consumeLot.isPending || consumeItemDirect.isPending;
 
   // #735: 直近90日以内に同一商品を期限切れ廃棄していれば、購入量の見直しを促す
   // トーストを表示する（バーコード一致 or 名前一致）。既存の在庫チェック等と
@@ -79,16 +100,66 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
     void warnIfRepeatWaste({ barcode });
     if (source !== "db") {
       setExistingItem(null);
+      setQuickConsumeItem(null);
       return;
     }
     const found = await findActiveItemByBarcode(barcode);
     // 使い切り済み（在庫なし）のアイテムまでバナー表示すると誤ってスタックを
     // 迷わせるため、実在庫がある場合のみ「すでに在庫あり」として扱う (#559)。
-    setExistingItem(found && isAlreadyInStock(found) ? found : null);
+    const matched = found && isAlreadyInStock(found) ? found : null;
+    setExistingItem(matched);
+    // #924: 在庫ありの既存アイテムに一致した場合、新規登録フォームへ進む代わりに
+    // クイック消費シートを提示する（docs/specs/features/quick-consume.md）。
+    // 非一致時（matched=null）は既存の新規登録フローへそのままフォールバックする。
+    setQuickConsumeItem(matched);
   };
 
   const handleNameBlur = (name: string) => {
     void warnIfRepeatWaste({ name });
+  };
+
+  // #924: 「1点使う」。ロットが1件以上あればFIFO先頭ロットを対象に既存の
+  // consumeLot へ委譲し、ロットがまだ無い旧アイテムは既存の consumeItem の
+  // フォールバック経路（items行を直接更新）へ委譲する。デクリメント自体の
+  // アルゴリズムはどちらも再実装しない。
+  const handleQuickConsumeOne = async () => {
+    if (!quickConsumeItem) return;
+    try {
+      if (quickConsumeFifoLot) {
+        await consumeLot.mutateAsync({
+          lot: quickConsumeFifoLot,
+          item: quickConsumeItem,
+          deltaAmount: quickConsumeItem.content_amount,
+        });
+      } else {
+        await consumeItemDirect.mutateAsync({
+          item: quickConsumeItem,
+          deltaAmount: quickConsumeItem.content_amount,
+        });
+      }
+      toast(t("quickConsumeSuccess", { name: quickConsumeItem.name }), "success");
+      setQuickConsumeItem(null);
+      void navigate({ to: "/" });
+    } catch {
+      // Error toast is handled by useConsumeLot/useConsumeItem's onError
+    }
+  };
+
+  // #924: 「一部使用」。数量入力は既存の消費画面（ConsumeForm相当のUI）をそのまま
+  // 再利用するため、FIFO先頭ロットをプリセットして遷移するだけに留める。
+  const handleQuickConsumePartial = () => {
+    if (!quickConsumeItem) return;
+    const itemId = quickConsumeItem.id;
+    const lotId = quickConsumeFifoLot?.id;
+    setQuickConsumeItem(null);
+    void navigate({ to: "/items/$itemId/consume", params: { itemId }, search: { lotId } });
+  };
+
+  // #924: 「新規登録として追加する」の脱出リンク・シートを閉じる操作。いずれも
+  // クイック消費シートを閉じるだけで、AlreadyInStockBanner + 既存の新規登録
+  // フォームはそのまま従来通り操作できる状態を保つ（existingItem は変えない）。
+  const handleQuickConsumeDismiss = () => {
+    setQuickConsumeItem(null);
   };
 
   const existingItemLocationName = existingItem?.storage_location_id
@@ -224,6 +295,26 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
           }}
         />
       )}
+
+      {/* #924: バーコード即時消費 — 在庫ありの既存アイテムに一致した場合に、
+          新規登録フォームへ進む代わりに表示するクイック消費シート
+          （docs/specs/features/quick-consume.md）。QuickMemoSheet等と同様、
+          マウント自体は維持したまま open で表示を切り替える。 */}
+      <QuickConsumeSheet
+        open={quickConsumeItem !== null}
+        itemName={quickConsumeItem?.name ?? ""}
+        units={quickConsumeItem?.units ?? 0}
+        contentAmount={quickConsumeItem?.content_amount ?? 1}
+        contentUnit={quickConsumeItem?.content_unit ?? ""}
+        openedRemaining={quickConsumeItem?.opened_remaining ?? null}
+        isConsuming={isQuickConsuming}
+        onConsumeOne={() => {
+          void handleQuickConsumeOne();
+        }}
+        onConsumePartial={handleQuickConsumePartial}
+        onAddNewItem={handleQuickConsumeDismiss}
+        onClose={handleQuickConsumeDismiss}
+      />
 
       <ItemForm
         onSubmit={handleSubmit}
