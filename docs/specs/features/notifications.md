@@ -110,6 +110,53 @@ Service Worker は `vite-plugin-pwa` の `injectManifest` 戦略で書く（PWA 
   - Vault に `project_url` / `service_role_key` / `cron_secret` を登録（`select vault.create_secret(...)`）。
   - Edge Function 側に `supabase secrets set CRON_SECRET=<cron_secret と同じ値>` を設定。
 
+## 拡張: 開封後使用期限アラートの通知統合（#967）
+
+### 課題
+
+`src/components/atoms/OpenedAlertBadge.tsx` と `src/types/item.ts` の
+`resolveOpenedAlertThresholdDays` / `isOpenedAlertDue` は「開封してから推奨使用期限
+（既定日数）を過ぎている」状態を判定し、アイテムカード/一覧行にバッジとして表示
+している。一方、`send-expiry-notifications` の配信ロジックは `expiry_date` ベースの
+期限接近判定のみを対象としており、開封後経過日数（`opened_remaining` がセットされて
+からの経過）は通知対象に含まれていない。開封済みの調味料・食品などは `expiry_date`
+を持たないことが多く、アプリを開いてバッジを目視するまで気づけない「静かな」
+ロス要因になっている。
+
+### スコープ
+
+- やること: 既に実装済みの開封後アラート判定ロジック（`isOpenedAlertDue` 等）を
+  `send-expiry-notifications` の日次バッチにも組み込み、Web Push / Email で
+  「開封済みの○○が推奨使用期限を過ぎています」という通知を送れるようにする。
+  重複抑制は既存の `notification_logs`（1 ユーザー 1 日 1 通の制約、上記「定期送信」
+  節）にそのまま乗せ、期限接近通知と開封後アラート通知をまとめて1通に統合する
+  （同じユーザーに1日2通送らない）
+- やらないこと: 通知本文で期限接近と開封後アラートを別々の配信チャネル・別々の
+  時刻に分けることはしない（既存の1日1通ポリシーを維持する）。日用品
+  （`item_type = 'daily_goods'`）は `item-type.md` の既存方針（期限概念を持たない）
+  に合わせ、開封後アラート通知の対象からも除外する
+
+### データへの影響
+
+なし。既存 `items.opened_at` 等の読み取りのみ（`isOpenedAlertDue` が既に参照している
+カラム）。
+
+### エラー
+
+- 開封後アラート対象・期限接近対象のいずれも0件の場合は従来通り送信をスキップする
+
+### 対象範囲（v1）
+
+- `send-expiry-notifications` の対象抽出クエリに `isOpenedAlertDue` 相当の判定を
+  追加し、本文テンプレートに開封後アラート分のセクションを追加する
+- Edge Function 用に `isOpenedAlertDue` 相当のロジックを `supabase/functions/_shared/`
+  へ移植する（既存の `resolveItemType` 等と同じ、クライアント/Edge Function間の
+  ロジック複製パターンを踏襲）
+
+### 工数目安
+
+M
+
 ## Backlog
 
 - 通知種別の細分化（期限切れ / 在庫切れ / 補充提案）
