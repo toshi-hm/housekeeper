@@ -98,6 +98,13 @@ export const FloorPlanEditor = ({
     };
   };
 
+  // Starting point for keyboard-only drawing, used the first time the user
+  // nudges the cursor with no prior pointer/keyboard position to build on.
+  const getCenterPoint = (): Point => ({
+    x: snapToGrid(state.document.width / 2, state.document.gridSize, state.document.width),
+    y: snapToGrid(state.document.height / 2, state.document.gridSize, state.document.height),
+  });
+
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
     if (isMarkerMode) {
       event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -249,56 +256,97 @@ export const FloorPlanEditor = ({
       setCurrentPoint(null);
       dispatch({ type: "select", id: null, kind: null });
     } else if (
-      (event.key === "ArrowUp" ||
-        event.key === "ArrowDown" ||
-        event.key === "ArrowLeft" ||
-        event.key === "ArrowRight") &&
-      state.selectedId &&
-      state.selectedKind
+      event.key === "ArrowUp" ||
+      event.key === "ArrowDown" ||
+      event.key === "ArrowLeft" ||
+      event.key === "ArrowRight"
     ) {
-      // Keyboard alternative to pointer drag, for shapes/walls that are
-      // hard to nudge precisely (or reach at all) with a pointer — moves
-      // by one grid step per press.
-      event.preventDefault();
       const step = state.document.gridSize;
       const dx = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
       const dy = event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0;
-      if (state.selectedKind === "shape") {
-        const shape = state.document.shapes.find((candidate) => candidate.id === state.selectedId);
-        if (shape) {
-          const maxX = Math.max(0, state.document.width - shape.width);
-          const maxY = Math.max(0, state.document.height - shape.height);
-          dispatch({
-            type: "move-shape",
-            id: shape.id,
-            x: snapToGrid(shape.x + dx, step, maxX),
-            y: snapToGrid(shape.y + dy, step, maxY),
-          });
-        }
-      } else {
-        const wall = state.document.walls.find((candidate) => candidate.id === state.selectedId);
-        if (wall) {
-          const clamped = clampWallTranslation(
-            wall,
-            dx,
-            dy,
-            state.document.width,
-            state.document.height,
+      if (state.selectedId && state.selectedKind) {
+        // Keyboard alternative to pointer drag, for shapes/walls that are
+        // hard to nudge precisely (or reach at all) with a pointer — moves
+        // by one grid step per press.
+        event.preventDefault();
+        if (state.selectedKind === "shape") {
+          const shape = state.document.shapes.find(
+            (candidate) => candidate.id === state.selectedId,
           );
-          dispatch({
-            type: "move-wall",
-            id: wall.id,
-            start: {
-              x: snapToGrid(wall.start.x + clamped.dx, step),
-              y: snapToGrid(wall.start.y + clamped.dy, step),
-            },
-            end: {
-              x: snapToGrid(wall.end.x + clamped.dx, step),
-              y: snapToGrid(wall.end.y + clamped.dy, step),
-            },
-          });
+          if (shape) {
+            const maxX = Math.max(0, state.document.width - shape.width);
+            const maxY = Math.max(0, state.document.height - shape.height);
+            dispatch({
+              type: "move-shape",
+              id: shape.id,
+              x: snapToGrid(shape.x + dx, step, maxX),
+              y: snapToGrid(shape.y + dy, step, maxY),
+            });
+          }
+        } else {
+          const wall = state.document.walls.find((candidate) => candidate.id === state.selectedId);
+          if (wall) {
+            const clamped = clampWallTranslation(
+              wall,
+              dx,
+              dy,
+              state.document.width,
+              state.document.height,
+            );
+            dispatch({
+              type: "move-wall",
+              id: wall.id,
+              start: {
+                x: snapToGrid(wall.start.x + clamped.dx, step),
+                y: snapToGrid(wall.start.y + clamped.dy, step),
+              },
+              end: {
+                x: snapToGrid(wall.end.x + clamped.dx, step),
+                y: snapToGrid(wall.end.y + clamped.dy, step),
+              },
+            });
+          }
         }
+      } else if (tool !== "select" && !isMarkerMode) {
+        // Nothing selected and a drawing tool is active: arrow keys move a
+        // keyboard-only cursor (rendered as a crosshair) instead, so a
+        // wall/shape can be started and finished without a pointer.
+        event.preventDefault();
+        const base = currentPoint ?? getCenterPoint();
+        setCurrentPoint({
+          x: snapToGrid(base.x + dx, step, state.document.width),
+          y: snapToGrid(base.y + dy, step, state.document.height),
+        });
       }
+    } else if ((event.key === "Enter" || event.key === " ") && tool !== "select" && !isMarkerMode) {
+      // Keyboard equivalent of the pointer down → up drawing gesture: the
+      // first press sets the start point (at the crosshair cursor), the
+      // second commits the wall/shape from that start to the cursor's new
+      // position.
+      event.preventDefault();
+      const point = currentPoint ?? getCenterPoint();
+      if (!start) {
+        setStart(point);
+        setCurrentPoint(point);
+        return;
+      }
+      if (tool === "wall") {
+        dispatch({ type: "add-wall", wall: { id: newId(), start, end: point, thickness: 8 } });
+      } else {
+        const rect = normalizeRect(start, point, state.document.gridSize);
+        dispatch({
+          type: "add-shape",
+          shape: {
+            ...rect,
+            id: newId(),
+            kind: tool,
+            rotation: 0,
+            label: tool === "label" ? t("mapNewShape") : null,
+          },
+        });
+      }
+      setStart(null);
+      setCurrentPoint(null);
     }
   };
 
@@ -452,8 +500,19 @@ export const FloorPlanEditor = ({
                 stroke={state.selectedId === wall.id ? "hsl(var(--destructive))" : "currentColor"}
                 strokeWidth={wall.thickness}
                 strokeLinecap="round"
-                className={tool === "select" ? "cursor-move" : undefined}
+                className={`${tool === "select" ? "cursor-move " : ""}outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={state.selectedId === wall.id}
+                aria-label={toolLabel.wall}
                 onPointerDown={(event) => handleWallPointerDown(event, wall.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    dispatch({ type: "select", id: wall.id, kind: "wall" });
+                  }
+                }}
               />
             );
           })}
@@ -471,12 +530,26 @@ export const FloorPlanEditor = ({
             const shapeY = isDragging
               ? snapToGrid(drag.origin.y + dy, state.document.gridSize, maxY)
               : shape.y;
+            const shapeLabel = shape.label
+              ? `${toolLabel[shape.kind]}: ${shape.label}`
+              : toolLabel[shape.kind];
             return (
               <g
                 key={shape.id}
                 transform={`rotate(${shape.rotation} ${shapeX + shape.width / 2} ${shapeY + shape.height / 2})`}
-                className={tool === "select" ? "cursor-move" : undefined}
+                className={`${tool === "select" ? "cursor-move " : ""}outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={state.selectedId === shape.id}
+                aria-label={shapeLabel}
                 onPointerDown={(event) => handleShapePointerDown(event, shape.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    dispatch({ type: "select", id: shape.id, kind: "shape" });
+                  }
+                }}
               >
                 <rect
                   x={shapeX}
@@ -504,6 +577,32 @@ export const FloorPlanEditor = ({
               </g>
             );
           })}
+          {!start &&
+            currentPoint &&
+            tool !== "select" &&
+            !isMarkerMode && (
+              // Keyboard-only cursor: shown while a drawing tool is active but
+              // no start point has been placed yet (arrow keys move it, Enter
+              // /Space places the start point — see handleKeyDown).
+              <g data-testid="floor-plan-keyboard-cursor" pointerEvents="none">
+                <line
+                  x1={currentPoint.x - 10}
+                  y1={currentPoint.y}
+                  x2={currentPoint.x + 10}
+                  y2={currentPoint.y}
+                  stroke="hsl(var(--accent))"
+                  strokeWidth="2"
+                />
+                <line
+                  x1={currentPoint.x}
+                  y1={currentPoint.y - 10}
+                  x2={currentPoint.x}
+                  y2={currentPoint.y + 10}
+                  stroke="hsl(var(--accent))"
+                  strokeWidth="2"
+                />
+              </g>
+            )}
           {start && currentPoint && tool !== "select" && (
             <g data-testid="floor-plan-drawing-preview" pointerEvents="none">
               {tool === "wall" ? (
@@ -594,6 +693,7 @@ export const FloorPlanEditor = ({
       <p className="text-xs text-muted-foreground">
         {t("mapEditorHelp", { count: state.document.walls.length + state.document.shapes.length })}
       </p>
+      <p className="text-xs text-muted-foreground">{t("mapEditorKeyboardHelp")}</p>
     </div>
   );
 };

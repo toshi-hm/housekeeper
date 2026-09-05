@@ -26,6 +26,7 @@
   "mapCreateSharedFloorPlan": "共通の2D間取りを作成",
   "mapEditorAriaLabel": "グリッド上の間取り編集領域",
   "mapEditorHelp_other": "図形 {{count}} 個。ツールを選んでグリッド上をドラッグしてください。",
+  "mapEditorKeyboardHelp": "キーボード操作: Tab で壁・図形を選択し、Enter/Space で選択を確定、矢印キーで選択中の要素を1マスずつ移動できます。線・図形ツールを選んでいるときは、矢印キーでカーソルを移動し、Enter/Space で開始点と終了点を確定して新規作成できます。",
   "mapEditorToolbar": "間取り編集ツール",
   "mapEditSharedFloorPlan": "共通の2D間取りを編集",
   "mapFloorPlan": "2D間取り",
