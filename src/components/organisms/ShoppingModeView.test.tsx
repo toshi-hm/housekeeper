@@ -192,4 +192,63 @@ describe("ShoppingModeView", () => {
     );
     expect(getByText(/〇〇スーパー/)).toBeTruthy();
   });
+
+  // #982: the shopping-list section shows an estimated total, summed from the
+  // cheapest-store unit price of items resolveCheapestStore has data for.
+  it("shows the estimated total summed from items with comparison data", () => {
+    const secondItem = { ...plannedItem, id: "s2", name: "卵", desired_units: 2 };
+    const { getByText } = render(
+      <ShoppingModeView
+        plannedItems={[plannedItem, secondItem]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        resolveCheapestStore={(item) =>
+          item.id === "s1" ? { storeName: "〇〇スーパー", unitPrice: 128 } : null
+        }
+      />,
+      { wrapper },
+    );
+    // s1: 128 × 1 = 128 (s2 has no comparison data and is excluded)
+    expect(
+      getByText(i18n.t("shopping:shoppingModeEstimatedTotalValue", { price: "128" })),
+    ).toBeTruthy();
+    expect(getByText(i18n.t("shopping:shoppingModeEstimatedTotalPartialNote"))).toBeTruthy();
+  });
+
+  it("does not show the estimated total when no planned item has comparison data", () => {
+    const { queryByText } = render(
+      <ShoppingModeView
+        plannedItems={[plannedItem]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        resolveCheapestStore={() => null}
+      />,
+      { wrapper },
+    );
+    expect(queryByText(i18n.t("shopping:shoppingModeEstimatedTotalLabel"))).toBeNull();
+  });
+
+  it("does not show the estimated total when resolveCheapestStore is not provided", () => {
+    const { queryByText } = render(
+      <ShoppingModeView
+        plannedItems={[plannedItem]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+      />,
+      { wrapper },
+    );
+    expect(queryByText(i18n.t("shopping:shoppingModeEstimatedTotalLabel"))).toBeNull();
+  });
 });
