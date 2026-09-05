@@ -145,7 +145,8 @@ export const MapPage = () => {
                   >
                     <span className="font-medium">{item.name}</span>
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      {locationNames.get(item.storage_location_id) ?? t("mapUnknownItem")}
+                      {locationNames.get(item.storage_location_id) ??
+                        t("mapUnknownStorageLocation")}
                     </span>
                   </Link>
                 ) : (
