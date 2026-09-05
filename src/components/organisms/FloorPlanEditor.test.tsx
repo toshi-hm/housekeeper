@@ -228,4 +228,256 @@ describe("FloorPlanEditor", () => {
       }),
     );
   });
+
+  it("壁要素はTab移動可能でEnterキーのみで選択・矢印キーで移動できる (#987)", () => {
+    const onSave = mock(() => undefined);
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      walls: [{ id: "wall-1", start: { x: 10, y: 10 }, end: { x: 110, y: 10 }, thickness: 8 }],
+    };
+    const { getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={onSave} />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+
+    const line = container.querySelector("line");
+    expect(line).not.toBeNull();
+    expect(line?.getAttribute("tabindex")).toBe("0");
+    expect(line?.getAttribute("role")).toBe("button");
+
+    // No pointer interaction at all: focus reaches the wall via Tab order
+    // (tabIndex=0) and Enter selects it, matching keyboard-only usage.
+    fireEvent.keyDown(line as Element, { key: "Enter" });
+    fireEvent.keyDown(svg, { key: "ArrowDown" });
+
+    fireEvent.click(getByRole("button", { name: i18n.t("common:save") }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        walls: [
+          expect.objectContaining({
+            id: "wall-1",
+            start: { x: 10, y: 10 + initialDocument.gridSize },
+            end: { x: 110, y: 10 + initialDocument.gridSize },
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("図形要素はTab移動可能でSpaceキーのみで選択・矢印キーで移動できる (#987)", () => {
+    const onSave = mock(() => undefined);
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      shapes: [
+        {
+          id: "shape-1",
+          kind: "rectangle" as const,
+          x: 50,
+          y: 60,
+          width: 40,
+          height: 30,
+          rotation: 0,
+          label: null,
+        },
+      ],
+    };
+    const { getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={onSave} />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+
+    const shapeGroup = container.querySelector("g rect")?.parentElement;
+    expect(shapeGroup).not.toBeNull();
+    expect(shapeGroup?.getAttribute("tabindex")).toBe("0");
+    expect(shapeGroup?.getAttribute("role")).toBe("button");
+
+    fireEvent.keyDown(shapeGroup as Element, { key: " " });
+    fireEvent.keyDown(svg, { key: "ArrowRight" });
+
+    const rect = container.querySelector("g rect");
+    expect(rect?.getAttribute("x")).toBe(String(50 + initialDocument.gridSize));
+    expect(rect?.getAttribute("y")).toBe("60");
+
+    fireEvent.click(getByRole("button", { name: i18n.t("common:save") }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shapes: [
+          expect.objectContaining({ id: "shape-1", x: 50 + initialDocument.gridSize, y: 60 }),
+        ],
+      }),
+    );
+  });
+
+  it("線ツール選択中はポインタ操作なしで矢印キー+Enterのみで壁を新規作成できる (#987)", () => {
+    const onSave = mock(() => undefined);
+    const { getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={createEmptyFloorPlanDocument()} onSave={onSave} />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+    fireEvent.click(getByRole("button", { name: i18n.t("common:mapToolWall") }));
+
+    // Center of the 600x400 canvas is (300, 200); moving the keyboard
+    // cursor left by one grid step (10) lands it at (290, 200) before any
+    // start point exists — the crosshair should reflect that.
+    fireEvent.keyDown(svg, { key: "ArrowLeft" });
+    const cursorLine = container.querySelector('[data-testid="floor-plan-keyboard-cursor"] line');
+    expect(cursorLine?.getAttribute("x1")).toBe("280");
+
+    fireEvent.keyDown(svg, { key: "Enter" });
+    expect(container.querySelector('[data-testid="floor-plan-keyboard-cursor"]')).toBeNull();
+
+    fireEvent.keyDown(svg, { key: "ArrowRight" });
+    fireEvent.keyDown(svg, { key: "Enter" });
+
+    fireEvent.click(getByRole("button", { name: i18n.t("common:save") }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        walls: [expect.objectContaining({ start: { x: 290, y: 200 }, end: { x: 300, y: 200 } })],
+      }),
+    );
+  });
+
+  it("矩形ツール選択中はポインタ操作なしで矢印キー+Enterのみで図形を新規作成できる (#987)", () => {
+    const onSave = mock(() => undefined);
+    const { getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={createEmptyFloorPlanDocument()} onSave={onSave} />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+    fireEvent.click(getByRole("button", { name: i18n.t("common:mapToolRectangle") }));
+
+    fireEvent.keyDown(svg, { key: "ArrowUp" });
+    fireEvent.keyDown(svg, { key: "Enter" });
+    fireEvent.keyDown(svg, { key: "ArrowDown" });
+    fireEvent.keyDown(svg, { key: "ArrowDown" });
+    fireEvent.keyDown(svg, { key: "Enter" });
+
+    expect(container.querySelector('[data-testid="floor-plan-drawing-preview"]')).toBeNull();
+    fireEvent.click(getByRole("button", { name: i18n.t("common:save") }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shapes: [
+          expect.objectContaining({ x: 300, y: 190, width: 0, height: 20, kind: "rectangle" }),
+        ],
+      }),
+    );
+  });
+
+  it("壁を選択した後にツールを切り替えても、矢印キーは新規描画用のキーボードカーソルを動かす (#987)", () => {
+    const onSave = mock(() => undefined);
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      walls: [{ id: "wall-1", start: { x: 10, y: 10 }, end: { x: 110, y: 10 }, thickness: 8 }],
+    };
+    const { getAllByRole, getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={onSave} />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+
+    // Select the existing wall via keyboard first (Tab+Enter), same as a
+    // real keyboard-only user would before deciding to draw a new one.
+    const line = container.querySelector("line");
+    fireEvent.keyDown(line as Element, { key: "Enter" });
+
+    // Switch to the wall tool to draw a *new* wall, without ever pressing
+    // Escape to clear the previous selection.
+    fireEvent.click(getAllByRole("button", { name: i18n.t("common:mapToolWall") })[0]);
+    fireEvent.keyDown(svg, { key: "ArrowRight" });
+
+    // The arrow key must move the new-drawing keyboard cursor, not nudge the
+    // still-selected pre-existing wall (regression: it used to move the
+    // wall instead, silently blocking keyboard-only creation of a new one).
+    expect(container.querySelector('[data-testid="floor-plan-keyboard-cursor"]')).not.toBeNull();
+
+    fireEvent.click(getAllByRole("button", { name: i18n.t("common:save") })[0]);
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        walls: [
+          expect.objectContaining({
+            id: "wall-1",
+            start: { x: 10, y: 10 },
+            end: { x: 110, y: 10 },
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("壁・図形が複数あっても一意なaria-labelを持つ (Tabで区別できる)", () => {
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      walls: [
+        { id: "wall-1", start: { x: 10, y: 10 }, end: { x: 110, y: 10 }, thickness: 8 },
+        { id: "wall-2", start: { x: 10, y: 30 }, end: { x: 110, y: 30 }, thickness: 8 },
+      ],
+      shapes: [
+        {
+          id: "shape-1",
+          kind: "rectangle" as const,
+          x: 50,
+          y: 60,
+          width: 40,
+          height: 30,
+          rotation: 0,
+          label: null,
+        },
+        {
+          id: "shape-2",
+          kind: "rectangle" as const,
+          x: 150,
+          y: 60,
+          width: 40,
+          height: 30,
+          rotation: 0,
+          label: null,
+        },
+      ],
+    };
+    const { container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={mock(() => undefined)} />
+      </I18nextProvider>,
+    );
+
+    const wallLabels = Array.from(container.querySelectorAll("line")).map((el) =>
+      el.getAttribute("aria-label"),
+    );
+    expect(wallLabels).toHaveLength(2);
+    expect(new Set(wallLabels).size).toBe(wallLabels.length);
+
+    const shapeLabels = Array.from(container.querySelectorAll("g > rect")).map((rect) =>
+      rect.parentElement?.getAttribute("aria-label"),
+    );
+    expect(shapeLabels).toHaveLength(2);
+    expect(new Set(shapeLabels).size).toBe(shapeLabels.length);
+  });
 });

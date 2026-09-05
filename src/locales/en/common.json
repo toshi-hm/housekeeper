@@ -27,6 +27,7 @@
   "mapEditorAriaLabel": "Floor plan editing area on a grid",
   "mapEditorHelp_one": "1 shape. Choose a tool and drag on the grid.",
   "mapEditorHelp_other": "{{count}} shapes. Choose a tool and drag on the grid.",
+  "mapEditorKeyboardHelp": "Keyboard: press Tab to cycle through walls and shapes, then Enter/Space to select one and the arrow keys to move it one grid step at a time. While a line or shape tool is active, the arrow keys move the cursor, and Enter/Space sets the start and end points to create a new one.",
   "mapEditorToolbar": "Floor plan editing tools",
   "mapEditSharedFloorPlan": "Edit shared 2D floor plan",
   "mapFloorPlan": "2D floor plan",
