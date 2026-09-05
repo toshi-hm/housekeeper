@@ -511,27 +511,27 @@ describe("NewItemPage - quick consume sheet on barcode match (#924)", () => {
     expect(queryByRole("dialog")).toBeNull();
   });
 
-  it("delegates '1点使う' to consumeLot with the FIFO (earliest purchase_date) lot", async () => {
+  it("delegates '1点使う' to consumeLot with the FEFO (earliest expiry_date) lot", async () => {
     findActiveItemSpy = spyOn(useItemsModule, "findActiveItemByBarcode").mockResolvedValue(
       matchedItem,
     );
-    const olderLot = {
-      id: "lot-older",
+    const soonExpiringLot = {
+      id: "lot-soon",
       item_id: "item-existing",
       units: 1,
       opened_remaining: null,
-      purchase_date: "2026-01-01",
+      expiry_date: "2026-01-01",
       created_at: "2026-01-01T00:00:00.000Z",
     };
-    const newerLot = {
-      id: "lot-newer",
+    const laterExpiringLot = {
+      id: "lot-later",
       item_id: "item-existing",
       units: 1,
       opened_remaining: null,
-      purchase_date: "2026-02-01",
+      expiry_date: "2026-02-01",
       created_at: "2026-02-01T00:00:00.000Z",
     };
-    mockLots([newerLot, olderLot]);
+    mockLots([laterExpiringLot, soonExpiringLot]);
 
     const { getByTestId, findByRole } = render(<NewItemPage />, { wrapper: WrapperWithI18n });
     fireEvent.click(getByTestId("scan-barcode"));
@@ -540,7 +540,7 @@ describe("NewItemPage - quick consume sheet on barcode match (#924)", () => {
 
     await waitFor(() => expect(consumeLotMutateAsync).toHaveBeenCalledTimes(1));
     const call = consumeLotMutateAsync.mock.calls[0]?.[0] as { lot: { id: string } };
-    expect(call.lot.id).toBe("lot-older");
+    expect(call.lot.id).toBe("lot-soon");
     expect(consumeItemMutateAsync).not.toHaveBeenCalled();
   });
 
@@ -557,6 +557,64 @@ describe("NewItemPage - quick consume sheet on barcode match (#924)", () => {
 
     await waitFor(() => expect(consumeItemMutateAsync).toHaveBeenCalledTimes(1));
     expect(consumeLotMutateAsync).not.toHaveBeenCalled();
+  });
+
+  // A mistaken "1点使う" tap (wrong item scanned, or meant to tap "一部使用")
+  // must be reversible like every other quick-consume entry point in the app
+  // (dashboard's handleQuickConsume, useCalendarConsume — both via
+  // useUndoableAction, #478). Regression test for the review finding that
+  // this entry point originally showed a plain, non-undoable toast.
+  it("shows an Undo-able toast (not a plain one) after '1点使う', matching the dashboard's quick-consume", async () => {
+    findActiveItemSpy = spyOn(useItemsModule, "findActiveItemByBarcode").mockResolvedValue(
+      matchedItem,
+    );
+    mockLots([]);
+    consumeItemMutateAsync = mock(
+      async () =>
+        ({
+          _undo: {
+            kind: "direct",
+            itemId: matchedItem.id,
+            unitsBefore: 1,
+            openedRemainingBefore: null,
+            openedAtBefore: null,
+            logId: null,
+          },
+        }) as never,
+    );
+    consumeItemSpy = spyOn(useConsumeItemModule, "useConsumeItem").mockReturnValue({
+      mutateAsync: consumeItemMutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useConsumeItemModule.useConsumeItem>);
+
+    const toastMock = mock(() => "toast-id");
+    const WrapperWithUndoableToast = ({ children }: { children: React.ReactNode }) => (
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={new QueryClient()}>
+          <routerContext.Provider value={stubRouter}>
+            <ToastContext.Provider value={{ toasts: [], toast: toastMock, dismiss: () => {} }}>
+              {children}
+            </ToastContext.Provider>
+          </routerContext.Provider>
+        </QueryClientProvider>
+      </I18nextProvider>
+    );
+
+    const { getByTestId, findByRole } = render(<NewItemPage />, {
+      wrapper: WrapperWithUndoableToast,
+    });
+    fireEvent.click(getByTestId("scan-barcode"));
+    const dialog = await findByRole("dialog");
+    fireEvent.click(within(dialog).getByText(/1点使う|Use 1 \(/));
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalled());
+    const [message, , options] = toastMock.mock.calls[0] as [
+      string,
+      string,
+      { action?: { label: string } },
+    ];
+    expect(message).toContain(matchedItem.name);
+    expect(options?.action?.label).toBeTruthy();
   });
 
   it("dismisses the sheet via the escape link without clearing the stack-banner state", async () => {

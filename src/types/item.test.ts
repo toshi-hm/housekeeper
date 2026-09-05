@@ -18,7 +18,7 @@ import {
   itemFormSchema,
   type ItemLot,
   itemLotSchema,
-  pickFifoConsumableLot,
+  pickFefoConsumableLot,
   resolveItemType,
   resolveOpenedAlertThresholdDays,
   roundFloat,
@@ -179,9 +179,9 @@ describe("getLotRemainingAmount", () => {
   });
 });
 
-// --- pickFifoConsumableLot (#924, docs/specs/features/quick-consume.md) ---
+// --- pickFefoConsumableLot (#924, docs/specs/features/quick-consume.md) ---
 
-describe("pickFifoConsumableLot", () => {
+describe("pickFefoConsumableLot", () => {
   const makeLot = (overrides: Partial<ItemLot>): ItemLot => ({
     id: overrides.id ?? "lot-1",
     user_id: "user-1",
@@ -198,62 +198,62 @@ describe("pickFifoConsumableLot", () => {
   });
 
   test("returns null when there are no lots", () => {
-    expect(pickFifoConsumableLot([], 1000)).toBeNull();
+    expect(pickFefoConsumableLot([], 1000)).toBeNull();
   });
 
-  test("picks the lot with the earliest purchase_date", () => {
-    const older = makeLot({ id: "lot-older", purchase_date: "2026-01-01" });
-    const newer = makeLot({ id: "lot-newer", purchase_date: "2026-02-01" });
-    expect(pickFifoConsumableLot([newer, older], 1000)?.id).toBe("lot-older");
+  test("picks the lot with the earliest expiry_date", () => {
+    const soonExpiring = makeLot({ id: "lot-soon", expiry_date: "2026-01-01" });
+    const laterExpiring = makeLot({ id: "lot-later", expiry_date: "2026-02-01" });
+    expect(pickFefoConsumableLot([laterExpiring, soonExpiring], 1000)?.id).toBe("lot-soon");
   });
 
-  test("ties on purchase_date break by created_at ascending", () => {
+  test("ties on expiry_date break by created_at ascending", () => {
     const earlyCreated = makeLot({
       id: "lot-early-created",
-      purchase_date: "2026-01-01",
+      expiry_date: "2026-01-01",
       created_at: "2026-01-01T00:00:00.000Z",
     });
     const lateCreated = makeLot({
       id: "lot-late-created",
-      purchase_date: "2026-01-01",
+      expiry_date: "2026-01-01",
       created_at: "2026-01-02T00:00:00.000Z",
     });
-    expect(pickFifoConsumableLot([lateCreated, earlyCreated], 1000)?.id).toBe("lot-early-created");
+    expect(pickFefoConsumableLot([lateCreated, earlyCreated], 1000)?.id).toBe("lot-early-created");
   });
 
-  test("lots with a null purchase_date are treated as least-priority (last)", () => {
+  test("lots with a null expiry_date are treated as least-priority (last)", () => {
     const noDate = makeLot({
       id: "lot-no-date",
-      purchase_date: null,
+      expiry_date: null,
       created_at: "2020-01-01T00:00:00.000Z",
     });
     const dated = makeLot({
       id: "lot-dated",
-      purchase_date: "2026-06-01",
+      expiry_date: "2026-06-01",
       created_at: "2026-06-01T00:00:00.000Z",
     });
-    expect(pickFifoConsumableLot([noDate, dated], 1000)?.id).toBe("lot-dated");
+    expect(pickFefoConsumableLot([noDate, dated], 1000)?.id).toBe("lot-dated");
   });
 
-  test("skips a depleted (fully consumed) earliest lot and falls back to the next one", () => {
-    const depleted = makeLot({ id: "lot-depleted", purchase_date: "2026-01-01", units: 0 });
-    const active = makeLot({ id: "lot-active", purchase_date: "2026-02-01", units: 1 });
-    expect(pickFifoConsumableLot([depleted, active], 1000)?.id).toBe("lot-active");
+  test("skips a depleted (fully consumed) soonest-expiring lot and falls back to the next one", () => {
+    const depleted = makeLot({ id: "lot-depleted", expiry_date: "2026-01-01", units: 0 });
+    const active = makeLot({ id: "lot-active", expiry_date: "2026-02-01", units: 1 });
+    expect(pickFefoConsumableLot([depleted, active], 1000)?.id).toBe("lot-active");
   });
 
   test("a lot with units=0 but a nonzero opened_remaining still counts as active", () => {
     const openedOnly = makeLot({
       id: "lot-opened-only",
-      purchase_date: "2026-01-01",
+      expiry_date: "2026-01-01",
       units: 0,
       opened_remaining: 250,
     });
-    expect(pickFifoConsumableLot([openedOnly], 1000)?.id).toBe("lot-opened-only");
+    expect(pickFefoConsumableLot([openedOnly], 1000)?.id).toBe("lot-opened-only");
   });
 
   test("returns null when every lot is depleted", () => {
     const depleted = makeLot({ id: "lot-depleted", units: 0, opened_remaining: null });
-    expect(pickFifoConsumableLot([depleted], 1000)).toBeNull();
+    expect(pickFefoConsumableLot([depleted], 1000)).toBeNull();
   });
 });
 

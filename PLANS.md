@@ -717,8 +717,11 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 - [x] `BarcodeScanner` 呼び出し元に `onMatch` コールバックを追加し、既存アイテム一致判定を分岐 <!-- issue:#924 -->
 - [x] `QuickConsumeSheet` molecule（1点使う / 一部使用 / 新規登録への脱出リンク）+ Story <!-- issue:#924 -->
-- [x] 複数ロットFIFO選択（`purchased_at` 昇順で先頭ロットを対象にする） <!-- issue:#924 -->
+- [x] 複数ロットFEFO選択（`expiry_date` 昇順で先頭ロットを対象にする、既存の
+      `consumeItem`/#446 と同じ優先順位） <!-- issue:#924 -->
 - [x] 既存 `useConsumeItem` / `consumeLot` への委譲（消費ロジック自体は変更しない） <!-- issue:#924 -->
+- [x] 誤タップ用のUndo可能トースト（`useUndoableAction`、ダッシュボードの
+      クイック消費と同一パターン） <!-- issue:#924 -->
 - [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#924 -->
 
 ### v1.13 — 食品ロス削減ダッシュボード＆週次ダイジェスト通知
