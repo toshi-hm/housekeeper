@@ -16,5 +16,7 @@
   "testNotificationSuccess": "テスト通知を送信しました",
   "thresholdDays": "通知する日数前",
   "timezone": "タイムゾーン",
-  "timezoneHelp": "通知時刻はこのタイムゾーンで解釈されます"
+  "timezoneHelp": "通知時刻はこのタイムゾーンで解釈されます",
+  "wasteDigestEnabled": "週次ダイジェストを受け取る",
+  "wasteDigestHelp": "毎週月曜、上記の通知時刻に先週の食品ロス件数・前週比・よく廃棄した食材トップ3をお知らせします"
 }
