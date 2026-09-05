@@ -7,11 +7,14 @@ import { useTranslation } from "react-i18next";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { AlreadyInStockBanner } from "@/components/molecules/AlreadyInStockBanner";
 import { MultiTagSelect } from "@/components/molecules/MultiTagSelect";
+import { QuickConsumeSheet } from "@/components/molecules/QuickConsumeSheet";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { type ConsumeItemUndo, undoConsumeItem, useConsumeItem } from "@/hooks/useConsumeItem";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
+import { LOTS_KEY, useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import {
   countRecentExpiredWaste,
   findActiveItemByBarcode,
@@ -21,6 +24,7 @@ import {
 } from "@/hooks/useItems";
 import { useStorageLocations } from "@/hooks/useMasterData";
 import { setItemTags, useCreateTag, useTags } from "@/hooks/useTags";
+import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { clearItemFormDraft } from "@/lib/itemFormDraft";
 import { OfflineError } from "@/lib/requireOnline";
@@ -29,6 +33,7 @@ import {
   isAlreadyInStock,
   type Item,
   type ItemFormValues,
+  pickFefoConsumableLot,
   targetsExistingItem,
 } from "@/types/item";
 
@@ -36,8 +41,15 @@ interface NewItemPageProps {
   cloneFrom?: string;
 }
 
+interface QuickConsumeUndoPayload {
+  itemId: string;
+  itemName: string;
+  undo: ConsumeItemUndo;
+}
+
 export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const { t } = useTranslation("items");
+  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const qc = useQueryClient();
   const createItem = useCreateItem();
@@ -46,6 +58,12 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const pendingImageUrlRef = useRef<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingItem, setExistingItem] = useState<Item | null>(null);
+  // #924: バーコードスキャンが在庫ありの既存アイテムに一致したときに表示する
+  // クイック消費シート（QuickConsumeSheet）。existingItem とは独立に持つ:
+  // シートを閉じて「新規登録として追加する」を選んだ後も existingItem（＝
+  // AlreadyInStockBanner とスタック確認ダイアログ）はそのまま既存の登録フロー
+  // 通りに動かし続けたいため。
+  const [quickConsumeItem, setQuickConsumeItem] = useState<Item | null>(null);
   const [pendingValues, setPendingValues] = useState<ItemFormValues | null>(null);
   const { data: tags = [] } = useTags();
   const createTag = useCreateTag();
@@ -60,6 +78,41 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
   const { data: cloneSource, isLoading: isCloneLoading } = useItem(cloneFrom ?? "");
   const { data: userSettings, isLoading: isSettingsLoading } = useUserSettings();
   const { data: locations = [] } = useStorageLocations();
+
+  // #924: クイック消費シート用。対象ロットの選定はFEFO（expiry_date昇順）で行い
+  // （docs/specs/features/quick-consume.md、既存の consumeItem/#446 と同じ優先順位）、
+  // 実際の消費デクリメントは既存の consumeLot / consumeItem にそのまま委譲する。
+  const { data: quickConsumeLots = [] } = useItemLots(quickConsumeItem?.id ?? "");
+  const quickConsumeFefoLot = quickConsumeItem
+    ? pickFefoConsumableLot(quickConsumeLots, quickConsumeItem.content_amount)
+    : null;
+  const consumeLot = useConsumeLot();
+  const consumeItemDirect = useConsumeItem();
+  const isQuickConsuming = consumeLot.isPending || consumeItemDirect.isPending;
+
+  // クイック消費の取り消し（#478 と同じ仕組み。ダッシュボードの
+  // handleQuickConsume/quickConsumeUndo と同一パターンで、誤タップを数秒の
+  // Undoウィンドウ内であればトーストのアクションボタンから元に戻せる）。
+  const quickConsumeUndo = useUndoableAction<QuickConsumeUndoPayload>({
+    durationMs: 6000,
+    message: (payload) => t("quickConsumeSuccess", { name: payload.itemName }),
+    undoLabel: tc("undo"),
+    onUndo: async (_id, payload) => {
+      try {
+        await undoConsumeItem(payload.undo);
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["items"] }),
+          qc.invalidateQueries({ queryKey: [...LOTS_KEY, payload.itemId] }),
+          qc.invalidateQueries({ queryKey: ["consumption-logs", payload.itemId] }),
+          qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
+        ]);
+        toast(tc("undoSuccess"), "success");
+      } catch (err) {
+        toast(err instanceof OfflineError ? tc("offlineError") : tc("unknownError"), "error");
+        throw err;
+      }
+    },
+  });
 
   // #735: 直近90日以内に同一商品を期限切れ廃棄していれば、購入量の見直しを促す
   // トーストを表示する（バーコード一致 or 名前一致）。既存の在庫チェック等と
@@ -79,16 +132,89 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
     void warnIfRepeatWaste({ barcode });
     if (source !== "db") {
       setExistingItem(null);
+      setQuickConsumeItem(null);
       return;
     }
     const found = await findActiveItemByBarcode(barcode);
     // 使い切り済み（在庫なし）のアイテムまでバナー表示すると誤ってスタックを
     // 迷わせるため、実在庫がある場合のみ「すでに在庫あり」として扱う (#559)。
-    setExistingItem(found && isAlreadyInStock(found) ? found : null);
+    const matched = found && isAlreadyInStock(found) ? found : null;
+    setExistingItem(matched);
+    // #924: 在庫ありの既存アイテムに一致した場合、新規登録フォームへ進む代わりに
+    // クイック消費シートを提示する（docs/specs/features/quick-consume.md）。
+    // 非一致時（matched=null）は既存の新規登録フローへそのままフォールバックする。
+    setQuickConsumeItem(matched);
   };
 
   const handleNameBlur = (name: string) => {
     void warnIfRepeatWaste({ name });
+  };
+
+  // #924: 「1点使う」。ロットが1件以上あればFEFO先頭ロットを対象に既存の
+  // consumeLot へ委譲し、ロットがまだ無い旧アイテムは既存の consumeItem の
+  // フォールバック経路（items行を直接更新）へ委譲する。デクリメント自体の
+  // アルゴリズムはどちらも再実装しない。誤タップ時に備え、ダッシュボードの
+  // クイック消費と同じくUndo可能なトーストで結果を通知する（#478と同じ仕組み）。
+  const handleQuickConsumeOne = async () => {
+    if (!quickConsumeItem) return;
+    const item = quickConsumeItem;
+    try {
+      let undo: ConsumeItemUndo;
+      if (quickConsumeFefoLot) {
+        const lot = quickConsumeFefoLot;
+        const result = await consumeLot.mutateAsync({
+          lot,
+          item,
+          deltaAmount: item.content_amount,
+        });
+        undo = {
+          kind: "lot",
+          itemId: item.id,
+          lotId: lot.id,
+          unitsBefore: lot.units,
+          openedRemainingBefore: lot.opened_remaining ?? null,
+          openedAtBefore: lot.opened_at ?? null,
+          unitsAfter: result.units,
+          openedRemainingAfter: result.opened_remaining ?? null,
+          logId: result._logId ?? null,
+        };
+      } else {
+        const result = await consumeItemDirect.mutateAsync({
+          item,
+          deltaAmount: item.content_amount,
+        });
+        undo = result._undo;
+      }
+      // Success toast (with an Undo action) is shown by quickConsumeUndo.start
+      // instead of a plain toast() call here, so a mistaken tap can be
+      // reversed within the undo window (#478).
+      quickConsumeUndo.start(crypto.randomUUID(), {
+        itemId: item.id,
+        itemName: item.name,
+        undo,
+      });
+      setQuickConsumeItem(null);
+      void navigate({ to: "/" });
+    } catch {
+      // Error toast is handled by useConsumeLot/useConsumeItem's onError
+    }
+  };
+
+  // #924: 「一部使用」。数量入力は既存の消費画面（ConsumeForm相当のUI）をそのまま
+  // 再利用するため、FEFO先頭ロットをプリセットして遷移するだけに留める。
+  const handleQuickConsumePartial = () => {
+    if (!quickConsumeItem) return;
+    const itemId = quickConsumeItem.id;
+    const lotId = quickConsumeFefoLot?.id;
+    setQuickConsumeItem(null);
+    void navigate({ to: "/items/$itemId/consume", params: { itemId }, search: { lotId } });
+  };
+
+  // #924: 「新規登録として追加する」の脱出リンク・シートを閉じる操作。いずれも
+  // クイック消費シートを閉じるだけで、AlreadyInStockBanner + 既存の新規登録
+  // フォームはそのまま従来通り操作できる状態を保つ（existingItem は変えない）。
+  const handleQuickConsumeDismiss = () => {
+    setQuickConsumeItem(null);
   };
 
   const existingItemLocationName = existingItem?.storage_location_id
@@ -224,6 +350,26 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
           }}
         />
       )}
+
+      {/* #924: バーコード即時消費 — 在庫ありの既存アイテムに一致した場合に、
+          新規登録フォームへ進む代わりに表示するクイック消費シート
+          （docs/specs/features/quick-consume.md）。QuickMemoSheet等と同様、
+          マウント自体は維持したまま open で表示を切り替える。 */}
+      <QuickConsumeSheet
+        open={quickConsumeItem !== null}
+        itemName={quickConsumeItem?.name ?? ""}
+        units={quickConsumeItem?.units ?? 0}
+        contentAmount={quickConsumeItem?.content_amount ?? 1}
+        contentUnit={quickConsumeItem?.content_unit ?? ""}
+        openedRemaining={quickConsumeItem?.opened_remaining ?? null}
+        isConsuming={isQuickConsuming}
+        onConsumeOne={() => {
+          void handleQuickConsumeOne();
+        }}
+        onConsumePartial={handleQuickConsumePartial}
+        onAddNewItem={handleQuickConsumeDismiss}
+        onClose={handleQuickConsumeDismiss}
+      />
 
       <ItemForm
         onSubmit={handleSubmit}

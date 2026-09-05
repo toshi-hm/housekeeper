@@ -16,7 +16,9 @@ import {
   isItemUnverified,
   isOpenedAlertDue,
   itemFormSchema,
+  type ItemLot,
   itemLotSchema,
+  pickFefoConsumableLot,
   resolveItemType,
   resolveOpenedAlertThresholdDays,
   roundFloat,
@@ -174,6 +176,84 @@ describe("getLotRemainingAmount", () => {
 
   test("units=2 and opened_remaining=0 => remaining sealed unit still counts", () => {
     expect(getLotRemainingAmount(2, 500, 0)).toBe(500);
+  });
+});
+
+// --- pickFefoConsumableLot (#924, docs/specs/features/quick-consume.md) ---
+
+describe("pickFefoConsumableLot", () => {
+  const makeLot = (overrides: Partial<ItemLot>): ItemLot => ({
+    id: overrides.id ?? "lot-1",
+    user_id: "user-1",
+    item_id: "item-1",
+    units: overrides.units ?? 1,
+    opened_remaining: overrides.opened_remaining ?? null,
+    unit_price: null,
+    purchase_date: overrides.purchase_date ?? null,
+    expiry_date: overrides.expiry_date ?? null,
+    store_name: null,
+    opened_at: null,
+    created_at: overrides.created_at ?? "2026-01-01T00:00:00.000Z",
+    updated_at: overrides.created_at ?? "2026-01-01T00:00:00.000Z",
+  });
+
+  test("returns null when there are no lots", () => {
+    expect(pickFefoConsumableLot([], 1000)).toBeNull();
+  });
+
+  test("picks the lot with the earliest expiry_date", () => {
+    const soonExpiring = makeLot({ id: "lot-soon", expiry_date: "2026-01-01" });
+    const laterExpiring = makeLot({ id: "lot-later", expiry_date: "2026-02-01" });
+    expect(pickFefoConsumableLot([laterExpiring, soonExpiring], 1000)?.id).toBe("lot-soon");
+  });
+
+  test("ties on expiry_date break by created_at ascending", () => {
+    const earlyCreated = makeLot({
+      id: "lot-early-created",
+      expiry_date: "2026-01-01",
+      created_at: "2026-01-01T00:00:00.000Z",
+    });
+    const lateCreated = makeLot({
+      id: "lot-late-created",
+      expiry_date: "2026-01-01",
+      created_at: "2026-01-02T00:00:00.000Z",
+    });
+    expect(pickFefoConsumableLot([lateCreated, earlyCreated], 1000)?.id).toBe("lot-early-created");
+  });
+
+  test("lots with a null expiry_date are treated as least-priority (last)", () => {
+    const noDate = makeLot({
+      id: "lot-no-date",
+      expiry_date: null,
+      created_at: "2020-01-01T00:00:00.000Z",
+    });
+    const dated = makeLot({
+      id: "lot-dated",
+      expiry_date: "2026-06-01",
+      created_at: "2026-06-01T00:00:00.000Z",
+    });
+    expect(pickFefoConsumableLot([noDate, dated], 1000)?.id).toBe("lot-dated");
+  });
+
+  test("skips a depleted (fully consumed) soonest-expiring lot and falls back to the next one", () => {
+    const depleted = makeLot({ id: "lot-depleted", expiry_date: "2026-01-01", units: 0 });
+    const active = makeLot({ id: "lot-active", expiry_date: "2026-02-01", units: 1 });
+    expect(pickFefoConsumableLot([depleted, active], 1000)?.id).toBe("lot-active");
+  });
+
+  test("a lot with units=0 but a nonzero opened_remaining still counts as active", () => {
+    const openedOnly = makeLot({
+      id: "lot-opened-only",
+      expiry_date: "2026-01-01",
+      units: 0,
+      opened_remaining: 250,
+    });
+    expect(pickFefoConsumableLot([openedOnly], 1000)?.id).toBe("lot-opened-only");
+  });
+
+  test("returns null when every lot is depleted", () => {
+    const depleted = makeLot({ id: "lot-depleted", units: 0, opened_remaining: null });
+    expect(pickFefoConsumableLot([depleted], 1000)).toBeNull();
   });
 });
 
