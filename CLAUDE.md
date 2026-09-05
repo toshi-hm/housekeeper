@@ -56,6 +56,12 @@ Read the relevant spec file before implementing any feature.
 - Household sharing (multi-user, planned): docs/specs/features/household-sharing.md
 - Receipt scan bulk registration (planned): docs/specs/features/receipt-scan.md
 - Floor-plan map (v1.9): docs/specs/features/floor-plan-map.md
+- Shopping mode (existing) + offline queue / est. total / cart check-off (planned): docs/specs/features/shopping-mode.md
+- Quick consume via barcode (planned): docs/specs/features/quick-consume.md
+- Waste reduction dashboard & weekly digest (planned): docs/specs/features/waste-reduction-dashboard.md
+- Shelf scan (photo-based inventory reconciliation, planned): docs/specs/features/shelf-scan.md
+- Similar item name suggestion (planned): docs/specs/features/similar-item-suggestion.md
+- Monthly budget alert (planned): docs/specs/features/budget-alert.md
 
 ## TODO / Progress
 
