@@ -264,12 +264,21 @@ export const FloorPlanEditor = ({
       const step = state.document.gridSize;
       const dx = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
       const dy = event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0;
-      if (state.selectedId && state.selectedKind) {
-        // Keyboard alternative to pointer drag, for shapes/walls that are
-        // hard to nudge precisely (or reach at all) with a pointer — moves
-        // by one grid step per press.
-        event.preventDefault();
-        if (state.selectedKind === "shape") {
+      // Branch on `tool`, not on whether something happens to be selected:
+      // switching to a drawing tool doesn't clear a prior selection (`select`
+      // is a separate action from `setTool`), so keying off `selectedId`
+      // here would keep nudging that stale selection instead of moving the
+      // new-shape keyboard cursor once a drawing tool is active (PR #996
+      // review).
+      if (tool === "select") {
+        if (!state.selectedId || !state.selectedKind) {
+          // Nothing selected in select mode — no-op, don't preventDefault
+          // (matches prior behavior; lets the key do nothing special).
+        } else if (state.selectedKind === "shape") {
+          // Keyboard alternative to pointer drag, for shapes/walls that are
+          // hard to nudge precisely (or reach at all) with a pointer — moves
+          // by one grid step per press.
+          event.preventDefault();
           const shape = state.document.shapes.find(
             (candidate) => candidate.id === state.selectedId,
           );
@@ -307,10 +316,11 @@ export const FloorPlanEditor = ({
             });
           }
         }
-      } else if (tool !== "select" && !isMarkerMode) {
-        // Nothing selected and a drawing tool is active: arrow keys move a
-        // keyboard-only cursor (rendered as a crosshair) instead, so a
-        // wall/shape can be started and finished without a pointer.
+      } else if (!isMarkerMode) {
+        // A drawing tool is active (the `tool === "select"` branch above
+        // already returned): arrow keys move a keyboard-only cursor
+        // (rendered as a crosshair) instead, so a wall/shape can be started
+        // and finished without a pointer.
         event.preventDefault();
         const base = currentPoint ?? getCenterPoint();
         setCurrentPoint({
@@ -461,7 +471,7 @@ export const FloorPlanEditor = ({
             height={state.document.height}
             fill="url(#floor-plan-editor-grid)"
           />
-          {state.document.walls.map((wall) => {
+          {state.document.walls.map((wall, wallIndex) => {
             // While this wall is being dragged, render it at the live
             // pointer offset (clamped/snapped the same way the eventual
             // move-wall dispatch will be) instead of its committed
@@ -504,7 +514,7 @@ export const FloorPlanEditor = ({
                 role="button"
                 tabIndex={0}
                 aria-pressed={state.selectedId === wall.id}
-                aria-label={toolLabel.wall}
+                aria-label={`${toolLabel.wall} ${wallIndex + 1}`}
                 onPointerDown={(event) => handleWallPointerDown(event, wall.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -516,7 +526,7 @@ export const FloorPlanEditor = ({
               />
             );
           })}
-          {state.document.shapes.map((shape) => {
+          {state.document.shapes.map((shape, shapeIndex) => {
             // Same live-preview treatment as walls, for the shape being
             // dragged (rectangle/circle/label all share x/y/width/height).
             const isDragging = drag?.kind === "shape" && drag.id === shape.id && currentPoint;
@@ -530,9 +540,12 @@ export const FloorPlanEditor = ({
             const shapeY = isDragging
               ? snapToGrid(drag.origin.y + dy, state.document.gridSize, maxY)
               : shape.y;
+            // Index-qualified so same-kind shapes (or same-kind labelless
+            // shapes) get distinct accessible names for Tab navigation
+            // (PR #996 review) instead of colliding on a shared kind label.
             const shapeLabel = shape.label
-              ? `${toolLabel[shape.kind]}: ${shape.label}`
-              : toolLabel[shape.kind];
+              ? `${toolLabel[shape.kind]} ${shapeIndex + 1}: ${shape.label}`
+              : `${toolLabel[shape.kind]} ${shapeIndex + 1}`;
             return (
               <g
                 key={shape.id}

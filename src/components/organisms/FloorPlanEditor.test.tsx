@@ -385,4 +385,94 @@ describe("FloorPlanEditor", () => {
       }),
     );
   });
+
+  it("壁を選択した後に線ツールへ切り替えると、矢印キーは既存の壁ではなく新規作成用カーソルを動かす (PR #996 review)", () => {
+    const onSave = mock(() => undefined);
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      walls: [{ id: "wall-1", start: { x: 10, y: 10 }, end: { x: 110, y: 10 }, thickness: 8 }],
+    };
+    const { getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={onSave} />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+
+    // Select the wall (leaves state.selectedId set — switching tools below
+    // does not clear it, since `select` is a separate action from `setTool`).
+    const line = container.querySelector("line");
+    fireEvent.keyDown(line as Element, { key: "Enter" });
+
+    // Switch to the wall-drawing tool without clearing the selection first.
+    fireEvent.click(getByRole("button", { name: i18n.t("common:mapToolWall") }));
+    fireEvent.keyDown(svg, { key: "ArrowRight" });
+
+    // The keyboard-only drawing cursor should appear (arrow keys move it)…
+    expect(container.querySelector('[data-testid="floor-plan-keyboard-cursor"]')).not.toBeNull();
+    // …and the still-selected wall must NOT have been nudged.
+    fireEvent.click(getByRole("button", { name: i18n.t("common:save") }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        walls: [
+          expect.objectContaining({
+            id: "wall-1",
+            start: { x: 10, y: 10 },
+            end: { x: 110, y: 10 },
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("同種の壁・図形が複数あってもそれぞれ一意なアクセシブルネームを持つ (PR #996 review)", () => {
+    const onSave = mock(() => undefined);
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      walls: [
+        { id: "wall-1", start: { x: 10, y: 10 }, end: { x: 110, y: 10 }, thickness: 8 },
+        { id: "wall-2", start: { x: 10, y: 50 }, end: { x: 110, y: 50 }, thickness: 8 },
+      ],
+      shapes: [
+        {
+          id: "shape-1",
+          kind: "rectangle" as const,
+          x: 50,
+          y: 60,
+          width: 40,
+          height: 30,
+          rotation: 0,
+          label: null,
+        },
+        {
+          id: "shape-2",
+          kind: "rectangle" as const,
+          x: 150,
+          y: 60,
+          width: 40,
+          height: 30,
+          rotation: 0,
+          label: null,
+        },
+      ],
+    };
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={onSave} />
+      </I18nextProvider>,
+    );
+
+    const wallLabel = i18n.t("common:mapToolWall");
+    const rectangleLabel = i18n.t("common:mapToolRectangle");
+    // Each element gets an index-qualified name distinct from its siblings
+    // and from the (identically-labeled) toolbar buttons.
+    expect(getByRole("button", { name: `${wallLabel} 1` })).not.toBeNull();
+    expect(getByRole("button", { name: `${wallLabel} 2` })).not.toBeNull();
+    expect(getByRole("button", { name: `${rectangleLabel} 1` })).not.toBeNull();
+    expect(getByRole("button", { name: `${rectangleLabel} 2` })).not.toBeNull();
+  });
 });
