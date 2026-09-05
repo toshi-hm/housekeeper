@@ -385,4 +385,99 @@ describe("FloorPlanEditor", () => {
       }),
     );
   });
+
+  it("壁を選択した後にツールを切り替えても、矢印キーは新規描画用のキーボードカーソルを動かす (#987)", () => {
+    const onSave = mock(() => undefined);
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      walls: [{ id: "wall-1", start: { x: 10, y: 10 }, end: { x: 110, y: 10 }, thickness: 8 }],
+    };
+    const { getAllByRole, getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={onSave} />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+
+    // Select the existing wall via keyboard first (Tab+Enter), same as a
+    // real keyboard-only user would before deciding to draw a new one.
+    const line = container.querySelector("line");
+    fireEvent.keyDown(line as Element, { key: "Enter" });
+
+    // Switch to the wall tool to draw a *new* wall, without ever pressing
+    // Escape to clear the previous selection.
+    fireEvent.click(getAllByRole("button", { name: i18n.t("common:mapToolWall") })[0]);
+    fireEvent.keyDown(svg, { key: "ArrowRight" });
+
+    // The arrow key must move the new-drawing keyboard cursor, not nudge the
+    // still-selected pre-existing wall (regression: it used to move the
+    // wall instead, silently blocking keyboard-only creation of a new one).
+    expect(container.querySelector('[data-testid="floor-plan-keyboard-cursor"]')).not.toBeNull();
+
+    fireEvent.click(getAllByRole("button", { name: i18n.t("common:save") })[0]);
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        walls: [
+          expect.objectContaining({
+            id: "wall-1",
+            start: { x: 10, y: 10 },
+            end: { x: 110, y: 10 },
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("壁・図形が複数あっても一意なaria-labelを持つ (Tabで区別できる)", () => {
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      walls: [
+        { id: "wall-1", start: { x: 10, y: 10 }, end: { x: 110, y: 10 }, thickness: 8 },
+        { id: "wall-2", start: { x: 10, y: 30 }, end: { x: 110, y: 30 }, thickness: 8 },
+      ],
+      shapes: [
+        {
+          id: "shape-1",
+          kind: "rectangle" as const,
+          x: 50,
+          y: 60,
+          width: 40,
+          height: 30,
+          rotation: 0,
+          label: null,
+        },
+        {
+          id: "shape-2",
+          kind: "rectangle" as const,
+          x: 150,
+          y: 60,
+          width: 40,
+          height: 30,
+          rotation: 0,
+          label: null,
+        },
+      ],
+    };
+    const { container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor initialDocument={initialDocument} onSave={mock(() => undefined)} />
+      </I18nextProvider>,
+    );
+
+    const wallLabels = Array.from(container.querySelectorAll("line")).map((el) =>
+      el.getAttribute("aria-label"),
+    );
+    expect(wallLabels).toHaveLength(2);
+    expect(new Set(wallLabels).size).toBe(wallLabels.length);
+
+    const shapeLabels = Array.from(container.querySelectorAll("g > rect")).map((rect) =>
+      rect.parentElement?.getAttribute("aria-label"),
+    );
+    expect(shapeLabels).toHaveLength(2);
+    expect(new Set(shapeLabels).size).toBe(shapeLabels.length);
+  });
 });

@@ -264,7 +264,7 @@ export const FloorPlanEditor = ({
       const step = state.document.gridSize;
       const dx = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
       const dy = event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0;
-      if (state.selectedId && state.selectedKind) {
+      if (tool === "select" && state.selectedId && state.selectedKind) {
         // Keyboard alternative to pointer drag, for shapes/walls that are
         // hard to nudge precisely (or reach at all) with a pointer — moves
         // by one grid step per press.
@@ -308,9 +308,11 @@ export const FloorPlanEditor = ({
           }
         }
       } else if (tool !== "select" && !isMarkerMode) {
-        // Nothing selected and a drawing tool is active: arrow keys move a
-        // keyboard-only cursor (rendered as a crosshair) instead, so a
-        // wall/shape can be started and finished without a pointer.
+        // A drawing tool is active: arrow keys move a keyboard-only cursor
+        // (rendered as a crosshair) instead, so a wall/shape can be started
+        // and finished without a pointer. Gated on `tool`, not on the
+        // absence of a selection — a wall/shape selected before switching
+        // tools must not keep soaking up arrow-key input here.
         event.preventDefault();
         const base = currentPoint ?? getCenterPoint();
         setCurrentPoint({
@@ -461,7 +463,7 @@ export const FloorPlanEditor = ({
             height={state.document.height}
             fill="url(#floor-plan-editor-grid)"
           />
-          {state.document.walls.map((wall) => {
+          {state.document.walls.map((wall, wallIndex) => {
             // While this wall is being dragged, render it at the live
             // pointer offset (clamped/snapped the same way the eventual
             // move-wall dispatch will be) instead of its committed
@@ -504,7 +506,11 @@ export const FloorPlanEditor = ({
                 role="button"
                 tabIndex={0}
                 aria-pressed={state.selectedId === wall.id}
-                aria-label={toolLabel.wall}
+                // Include the 1-based index so multiple walls (which share
+                // no other distinguishing label) get unique accessible
+                // names — otherwise every wall reads identically to a
+                // screen reader when tabbing through them.
+                aria-label={`${toolLabel.wall} ${wallIndex + 1}`}
                 onPointerDown={(event) => handleWallPointerDown(event, wall.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -516,7 +522,7 @@ export const FloorPlanEditor = ({
               />
             );
           })}
-          {state.document.shapes.map((shape) => {
+          {state.document.shapes.map((shape, shapeIndex) => {
             // Same live-preview treatment as walls, for the shape being
             // dragged (rectangle/circle/label all share x/y/width/height).
             const isDragging = drag?.kind === "shape" && drag.id === shape.id && currentPoint;
@@ -530,9 +536,16 @@ export const FloorPlanEditor = ({
             const shapeY = isDragging
               ? snapToGrid(drag.origin.y + dy, state.document.gridSize, maxY)
               : shape.y;
+            // Unlabeled shapes of the same kind would otherwise share an
+            // identical accessible name — number them (1-based, within
+            // their own kind) so Tab-cycling through them is distinguishable.
+            const sameKindIndex =
+              state.document.shapes
+                .slice(0, shapeIndex)
+                .filter((candidate) => candidate.kind === shape.kind).length + 1;
             const shapeLabel = shape.label
               ? `${toolLabel[shape.kind]}: ${shape.label}`
-              : toolLabel[shape.kind];
+              : `${toolLabel[shape.kind]} ${sameKindIndex}`;
             return (
               <g
                 key={shape.id}
