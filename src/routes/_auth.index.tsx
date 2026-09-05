@@ -236,26 +236,26 @@ export const DashboardPage = () => {
   const [sort, setSort] = useState<ItemSortKey>(
     () => (localStorage.getItem("dashboard.sort") as ItemSortKey) ?? "created_at",
   );
-
   // 日用品タブでは dropExpiryForDailyGoods により expiry_date/expiry_type が
-  // 常にnull扱いになるため、期限フィルタ・期限順ソートは意味を持たない (#998)。
-  // 食料品タブで設定した期限フィルタ/ソートが日用品タブに残ったまま一覧が
-  // 0件に見えてしまう事故を防ぐため、日用品タブへの切り替え時にリセットする。
+  // 常にnull扱いになるため、期限順ソートは意味を持たない (#998)。保存された
+  // `sort` 自体は書き換えず（食料品タブへ戻したときの利用者の選択を保つ）、
+  // 日用品タブを見ている間だけクエリ・並び替えSelect双方に効く実効値を導出する。
+  const effectiveSort: ItemSortKey =
+    itemTypeTab === "daily_goods" && sort === "expiry_date" ? "created_at" : sort;
+
   const setItemTypeTab = (v: ItemTypeTab) => {
-    if (v === "daily_goods") {
-      if (sort === "expiry_date") {
-        setSort("created_at");
-        localStorage.setItem("dashboard.sort", "created_at");
-      }
-      void navigate({
-        to: "/",
-        search: (prev) => ({ ...prev, type: v, expiry: "" }),
-        replace: true,
-      });
-      return;
-    }
     void navigate({ to: "/", search: (prev) => ({ ...prev, type: v }), replace: true });
   };
+
+  // 日用品タブでは期限フィルタも意味を持たない (#998)。タブ切り替え時に限らず、
+  // 直接URL遷移・ブックマーク・PWA復元など itemTypeTab が daily_goods になり
+  // 得るあらゆる経路で、食料品タブ由来の期限フィルタが残ったまま一覧が0件に
+  // 見えてしまう事故を防ぐため、itemTypeTab 自体を起点にリセットする
+  // （クリックハンドラ内だけに置くとそれ以外の経路をすり抜ける）。
+  useEffect(() => {
+    if (itemTypeTab !== "daily_goods" || expiryFilter === "") return;
+    void navigate({ to: "/", search: (prev) => ({ ...prev, expiry: "" }), replace: true });
+  }, [itemTypeTab, expiryFilter, navigate]);
 
   const [showFilters, setShowFilters] = useState(false);
   const { viewMode, setViewMode } = useViewMode();
@@ -340,7 +340,7 @@ export const DashboardPage = () => {
   // Alerts must not disappear when the visible list is narrowed by search,
   // category, location, expiry, sorting, or the hide-empty preference.
   const { data: rawAllItems = [] } = useItems({}, "created_at");
-  const { data: rawItems = [], isLoading, error } = useItems(filters, sort);
+  const { data: rawItems = [], isLoading, error } = useItems(filters, effectiveSort);
 
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   const locationMap = Object.fromEntries(locations.map((l) => [l.id, l.name]));
@@ -385,7 +385,7 @@ export const DashboardPage = () => {
   };
   const filtered = typeFiltered.filter(matchesExpiryFilter);
 
-  const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${itemTypeTab}|${hideEmpty}|${sort}`;
+  const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${itemTypeTab}|${hideEmpty}|${effectiveSort}`;
   const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -974,7 +974,7 @@ export const DashboardPage = () => {
                 </label>
                 <Select
                   id={sortFilterId}
-                  value={sort}
+                  value={effectiveSort}
                   onChange={(e) => {
                     const v = e.target.value as ItemSortKey;
                     setSort(v);
