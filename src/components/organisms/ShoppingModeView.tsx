@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { ShoppingModeAlertRow } from "@/components/molecules/ShoppingModeAlertRow";
+import { ShoppingModeEstimatedTotal } from "@/components/molecules/ShoppingModeEstimatedTotal";
 import { type CheapestStoreHint, ShoppingRow } from "@/components/molecules/ShoppingRow";
+import { calculateShoppingModeEstimatedTotal } from "@/lib/shoppingModeTotal";
 import type { ShoppingItem } from "@/types/shopping";
 
 export interface ShoppingModeAlertEntry {
@@ -82,6 +84,18 @@ export const ShoppingModeView = ({
     return <p className="py-8 text-center text-muted-foreground">{t("shoppingModeAllClear")}</p>;
   }
 
+  // 各アイテムの最安店舗ヒントは行表示（cheapestStore）と見込み合計金額（#982）の
+  // 両方で使うため、ここで1回だけ解決してMapに持たせ、二重呼び出しを避ける。
+  const cheapestStoreHints = new Map(
+    plannedItems.map((item) => [item.id, resolveCheapestStore?.(item) ?? null]),
+  );
+  const estimatedTotal = resolveCheapestStore
+    ? calculateShoppingModeEstimatedTotal(
+        plannedItems,
+        (item) => cheapestStoreHints.get(item.id) ?? null,
+      )
+    : null;
+
   return (
     <div className="space-y-6">
       {plannedItems.length > 0 && (
@@ -89,6 +103,12 @@ export const ShoppingModeView = ({
           <h2 className="text-sm font-semibold text-muted-foreground">
             {t("shoppingModeListTitle")}
           </h2>
+          {estimatedTotal && estimatedTotal.matchedCount > 0 && (
+            <ShoppingModeEstimatedTotal
+              total={estimatedTotal.total}
+              hasExcludedItems={estimatedTotal.hasExcludedItems}
+            />
+          )}
           {onToggleCartCheck && (
             <p className="text-xs text-muted-foreground">{t("cartCheckOffHint")}</p>
           )}
@@ -101,7 +121,7 @@ export const ShoppingModeView = ({
                 desiredUnits={item.desired_units}
                 note={item.note}
                 isAutoAdded={item.auto_added}
-                cheapestStore={resolveCheapestStore?.(item) ?? null}
+                cheapestStore={cheapestStoreHints.get(item.id) ?? null}
                 touchTarget
                 onPurchase={onPurchase}
                 onDelete={onDelete}

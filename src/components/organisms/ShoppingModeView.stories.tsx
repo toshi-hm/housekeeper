@@ -165,3 +165,38 @@ export const WithCartCheckOff: Story = {
     onToggleCartCheck: () => {},
   },
 };
+
+/** #982: 全アイテムに比較データがある場合、見込み合計金額のみを表示し
+ *  「一部のアイテムは概算に含まれていません」の注記は出さない。 */
+export const WithEstimatedTotalAllMatched: Story = {
+  args: {
+    plannedItems,
+    onPurchase: () => {},
+    onDelete: () => {},
+    lowStockItems: [],
+    expiringItems: [],
+    addedItemIds: new Set(),
+    onAddAlert: () => {},
+    resolveCheapestStore: (item) =>
+      item.id === "s1"
+        ? { storeName: "〇〇スーパー", unitPrice: 198 }
+        : { storeName: "△△マート", unitPrice: 25 },
+  },
+};
+
+/** #982: 一部のアイテムに比較データが無い場合、見込み合計金額と「一部のアイテムは
+ *  概算に含まれていません」の注記を上部に表示する（WithCheapestStoreHint と同じ
+ *  比較データで、上部の合計表示に焦点を当てたStory）。 */
+export const WithEstimatedTotalPartial: Story = {
+  args: {
+    plannedItems,
+    onPurchase: () => {},
+    onDelete: () => {},
+    lowStockItems: [],
+    expiringItems: [],
+    addedItemIds: new Set(),
+    onAddAlert: () => {},
+    resolveCheapestStore: (item) =>
+      item.id === "s1" ? { storeName: "〇〇スーパー", unitPrice: 198 } : null,
+  },
+};
