@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import * as useFloorPlansModule from "@/hooks/useFloorPlans";
 import * as useItemsModule from "@/hooks/useItems";
 import * as useMasterDataModule from "@/hooks/useMasterData";
-import type { StorageLocation } from "@/types/item";
+import type { Item, StorageLocation } from "@/types/item";
 
 // Import routerContext via relative path (not in public package exports) to provide
 // a minimal router stub so that useNavigate/Link inside MapPage don't throw.
@@ -24,6 +24,36 @@ const stubRouter = {
   state: { location: { href: "/", pathname: "/" }, matches: [], pendingMatches: [] },
 } as unknown as Parameters<typeof routerContext.Provider>[0]["value"];
 
+// A fuller router stub for cases that render a real <Link> (e.g. an item row
+// linking to /locations/$locationId) — <Link> reads history/buildLocation/
+// stores.location, none of which the minimal stubRouter above provides.
+const fakeLocationState = {
+  href: "/",
+  pathname: "/",
+  search: {},
+  searchStr: "",
+  hash: "",
+  state: {},
+};
+const stubRouterWithLink = {
+  ...stubRouter,
+  basepath: "",
+  protocolAllowlist: ["http:", "https:"],
+  history: { createHref: (href: string) => href },
+  buildLocation: () => ({
+    href: "/locations/loc-missing",
+    publicHref: "/locations/loc-missing",
+    pathname: "/locations/loc-missing",
+    search: {},
+    searchStr: "",
+    hash: "",
+    state: {},
+    external: false,
+  }),
+  stores: { __store: new Store({ matches: [] }), location: new Store(fakeLocationState) },
+  state: { location: fakeLocationState, matches: [], pendingMatches: [] },
+} as unknown as Parameters<typeof routerContext.Provider>[0]["value"];
+
 const Wrapper = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
@@ -33,11 +63,32 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+const LinkWrapper = ({ children }: { children: React.ReactNode }) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return (
+    <QueryClientProvider client={queryClient}>
+      <routerContext.Provider value={stubRouterWithLink}>{children}</routerContext.Provider>
+    </QueryClientProvider>
+  );
+};
+
 const baseLocation: StorageLocation = {
   id: "loc-1",
   user_id: "test-user-id",
   name: "冷蔵庫",
   photo_path: null,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+};
+
+const baseItem: Item = {
+  id: "item-1",
+  user_id: "test-user-id",
+  name: "牛乳",
+  storage_location_id: "loc-missing",
+  units: 1,
+  content_amount: 1,
+  content_unit: "本",
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };
@@ -142,5 +193,28 @@ describe("MapPage", () => {
       ),
     ).toBeNull();
     expect(getAllByRole("status").length).toBeGreaterThan(0);
+  });
+
+  it("保管場所IDが解決できないとき、アイテム名はそのまま表示しつつ保管場所名だけ「不明な保管場所」にする(#999)", () => {
+    itemsSpy.mockReturnValue({
+      data: [baseItem],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getByText, queryByText } = render(<MapPage />, {
+      wrapper: LinkWrapper as React.ComponentType,
+    });
+
+    // The item itself resolved fine — its own name must render as-is, not a
+    // fallback for an unresolved item/marker.
+    expect(getByText("牛乳")).toBeDefined();
+    // Only the storage LOCATION reference failed to resolve (dangling
+    // storage_location_id), so the subtitle must use the location fallback
+    // label, not the item fallback label ("不明な在庫" / "Unknown item").
+    expect(
+      getByText(/mapUnknownStorageLocation|不明な保管場所|Unknown storage location/),
+    ).toBeDefined();
+    expect(queryByText(/不明な在庫|Unknown item/)).toBeNull();
   });
 });
