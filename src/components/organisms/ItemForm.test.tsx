@@ -7,6 +7,7 @@ import { I18nextProvider } from "react-i18next";
 
 import * as useCustomUnitsModule from "@/hooks/useCustomUnits";
 import * as useItemLotsModule from "@/hooks/useItemLots";
+import * as useItemsModule from "@/hooks/useItems";
 import * as useMasterDataModule from "@/hooks/useMasterData";
 import * as useSuggestedLocationModule from "@/hooks/useSuggestedLocation";
 import i18n from "@/lib/i18n";
@@ -672,6 +673,110 @@ describe("ItemForm — 保管場所の自動サジェスト (#814)", () => {
     expect(handleSubmit).toHaveBeenCalledTimes(1);
     const submitted = handleSubmit.mock.calls[0]?.[0] as { storage_location_id: unknown };
     expect(submitted.storage_location_id).toBe("loc-fridge");
+  });
+});
+
+describe("ItemForm — 類似アイテム名のマージ提案 (#990)", () => {
+  beforeEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+    spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: [{ id: "item-1", name: "たまねぎ" }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+  });
+
+  afterEach(() => {
+    spyOn(useMasterDataModule, "useCategories").mockRestore();
+    spyOn(useMasterDataModule, "useStorageLocations").mockRestore();
+    spyOn(useCustomUnitsModule, "useCustomUnits").mockRestore();
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockRestore();
+    spyOn(useItemsModule, "useItems").mockRestore();
+  });
+
+  it("enableSimilarItemSuggestion=trueで、名前確定(blur)後に近い既存アイテムがあれば通知を表示する", () => {
+    const { container, getByText } = render(
+      <ItemForm onSubmit={() => {}} enableSimilarItemSuggestion />,
+      {
+        wrapper,
+      },
+    );
+    const input = container.querySelector("#name") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "たまねき" } });
+    fireEvent.blur(input);
+
+    expect(
+      getByText(i18n.t("items:similarItemSuggestion.body", { name: "たまねぎ" })),
+    ).toBeDefined();
+  });
+
+  it("enableSimilarItemSuggestion=falseなら、名前が一致しても通知を表示しない", () => {
+    const { container, queryByRole } = render(<ItemForm onSubmit={() => {}} />, { wrapper });
+    const input = container.querySelector("#name") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "たまねぎ" } });
+    fireEvent.blur(input);
+
+    expect(queryByRole("status")).toBeNull();
+  });
+
+  it("似た既存アイテムが無ければ通知を表示しない", () => {
+    const { container, queryByRole } = render(
+      <ItemForm onSubmit={() => {}} enableSimilarItemSuggestion />,
+      {
+        wrapper,
+      },
+    );
+    const input = container.querySelector("#name") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "醤油" } });
+    fireEvent.blur(input);
+
+    expect(queryByRole("status")).toBeNull();
+  });
+
+  it("「見に行く」操作でonViewSimilarItemに一致したアイテムのidが渡される", () => {
+    const onViewSimilarItem = mock(() => {});
+    const { container, getByRole } = render(
+      <ItemForm
+        onSubmit={() => {}}
+        enableSimilarItemSuggestion
+        onViewSimilarItem={onViewSimilarItem}
+      />,
+      { wrapper },
+    );
+    const input = container.querySelector("#name") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "たまねき" } });
+    fireEvent.blur(input);
+
+    fireEvent.click(getByRole("button", { name: i18n.t("items:similarItemSuggestion.viewLink") }));
+    expect(onViewSimilarItem).toHaveBeenCalledWith("item-1");
+  });
+
+  it("入力を続けて非類似の名前に変えても、再度blurするまでは直前の通知を保持する", () => {
+    const { container, getByRole } = render(
+      <ItemForm onSubmit={() => {}} enableSimilarItemSuggestion />,
+      { wrapper },
+    );
+    const input = container.querySelector("#name") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "たまねき" } });
+    fireEvent.blur(input);
+    expect(getByRole("status")).toBeDefined();
+
+    fireEvent.change(input, { target: { value: "醤油" } });
+    expect(getByRole("status")).toBeDefined();
   });
 });
 

@@ -393,6 +393,10 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         defaultValues={cloneDefaultValues}
         draftKey={cloneFrom ? undefined : "new-item"}
         enableLocationSuggestion
+        enableSimilarItemSuggestion
+        onViewSimilarItem={(itemId) => {
+          void navigate({ to: "/items/$itemId", params: { itemId } });
+        }}
         extraFields={
           <div className="space-y-2">
             <Label>{t("tags")}</Label>

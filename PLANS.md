@@ -768,10 +768,10 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 詳細: `docs/specs/features/similar-item-suggestion.md`（親 Issue: #990）
 
-- [ ] `src/lib/similarItemMatch.ts`（正規化 + Levenshtein 距離）+ 単体テスト <!-- issue:#990 -->
-- [ ] `SimilarItemSuggestion` molecule + Story <!-- issue:#990 -->
-- [ ] `ItemForm`（新規登録時のみ）への組み込み <!-- issue:#990 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#990 -->
+- [x] `src/lib/similarItemMatch.ts`（正規化 + Levenshtein 距離）+ 単体テスト <!-- issue:#990 -->
+- [x] `SimilarItemSuggestion` molecule + Story <!-- issue:#990 -->
+- [x] `ItemForm`（新規登録時のみ）への組み込み <!-- issue:#990 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#990 -->
 
 ### v1.18 — 月次予算超過アラート
 

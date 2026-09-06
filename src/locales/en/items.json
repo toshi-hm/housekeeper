@@ -251,6 +251,10 @@
   "searchPlaceholder": "Search by name or barcode",
   "selectLot": "Select lot to use",
   "selectLotHint": "Select a lot above to continue",
+  "similarItemSuggestion": {
+    "body": "A similar item \"{{name}}\" already exists",
+    "viewLink": "View it"
+  },
   "sortByCreatedAt": "Added (newest)",
   "sortByExpiry": "Expiry (soonest)",
   "sortByPurchaseDate": "Purchase date (newest)",
