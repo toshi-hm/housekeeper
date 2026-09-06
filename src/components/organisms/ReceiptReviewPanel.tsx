@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { useStoreNameSuggestions } from "@/hooks/useItemLots";
 import { useCreateItem } from "@/hooks/useItems";
 import { useCategories, useStorageLocations } from "@/hooks/useMasterData";
+import { useReceiptPriceHistory } from "@/hooks/useReceiptPriceHistory";
+import { computeReceiptPriceIncreaseAlert } from "@/lib/receiptPriceAlert";
 import {
   createBlankDraftItem,
   draftItemToFormValues,
@@ -35,7 +37,10 @@ interface ReceiptReviewPanelProps {
 
 /** レビュー一覧全体。読み込み中/空状態、フッター固定の一括登録ボタンを持つ
  *  organism（receipt-scan.md「フロントエンド」節）。カテゴリ/保管場所の
- *  選択肢取得と一括登録（既存 `useCreateItem` へのループ委譲）を自分で持つ。 */
+ *  選択肢取得と一括登録（既存 `useCreateItem` へのループ委譲）を自分で持つ。
+ *  各行の店舗別価格上昇アラート（#941）も、`useReceiptPriceHistory` で取得した
+ *  履歴と行ごとの商品名/現在の店舗名/単価から `computeReceiptPriceIncreaseAlert`
+ *  でここで判定し、`ReceiptLineItemRow` に渡す（登録はブロックしない）。 */
 export const ReceiptReviewPanel = ({
   drafts,
   storeName,
@@ -48,6 +53,7 @@ export const ReceiptReviewPanel = ({
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
   const { data: storeNameSuggestions = [] } = useStoreNameSuggestions();
+  const { data: priceHistory = [] } = useReceiptPriceHistory();
   const createItem = useCreateItem();
 
   const [rowStatus, setRowStatus] = useState<Record<string, ReceiptRowStatus>>({});
@@ -171,6 +177,12 @@ export const ReceiptReviewPanel = ({
             categories={categories}
             locations={locations}
             status={rowStatus[draft.id] ?? "pending"}
+            priceAlert={computeReceiptPriceIncreaseAlert(
+              priceHistory,
+              draft.name,
+              storeName,
+              draft.unitPrice,
+            )}
             onChange={(patch) => updateDraft(draft.id, patch)}
             onRemove={() => removeDraft(draft.id)}
           />

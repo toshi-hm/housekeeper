@@ -60,3 +60,10 @@ export const Success: Story = {
 export const Failed: Story = {
   args: { draft: baseDraft, status: "failed" },
 };
+
+export const PriceIncreaseAlert: Story = {
+  args: {
+    draft: baseDraft,
+    priceAlert: { baselinePrice: 200, currentPrice: 248, increasePercent: 24 },
+  },
+};

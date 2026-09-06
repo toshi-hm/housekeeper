@@ -12,6 +12,8 @@
   "lowConfidenceHint": "Low confidence in this reading. Please double-check it.",
   "noItemsFound": "Couldn't read any items from the receipt. Add rows manually instead.",
   "offlineError": "Can't do this while offline",
+  "priceIncreaseBadge": "Up {{percent}}%",
+  "priceIncreaseTooltip": "This is {{percent}}% higher than the recent purchase price at this store (avg. ¥{{baseline}} → now ¥{{current}})",
   "quantity": "Quantity",
   "rateLimited": "Too many scans. Please try again in a bit.",
   "receiptScanShortcut": "Receipt",
