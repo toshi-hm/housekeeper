@@ -549,7 +549,7 @@ export interface RawWasteDigestItem {
   deleted_at: string;
 }
 
-export interface WeeklyWasteTopItem {
+interface WeeklyWasteTopItem {
   name: string;
   count: number;
 }
