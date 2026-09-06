@@ -106,10 +106,7 @@ export const queryGeminiShelfScan = async (
 
     const parsed: unknown = JSON.parse(text);
     if (!isValidShelfScanResult(parsed)) {
-      console.error(
-        "[shelf-scan] Response schema mismatch:",
-        JSON.stringify(parsed).slice(0, 200),
-      );
+      console.error("[shelf-scan] Response schema mismatch:", JSON.stringify(parsed).slice(0, 200));
       return { kind: "error" };
     }
 
