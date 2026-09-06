@@ -1,19 +1,11 @@
-import {
-  getElapsedDays,
-  isOpenedAlertDue,
-  resolveOpenedAlertThresholdDays,
-} from "../_shared/openedAlert.ts";
 import { fetchAllPages } from "../_shared/pagination.ts";
 import { type ItemType, resolveItemType } from "../_shared/itemType.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
-import {
-  buildMergedNotificationContent,
-  isSupportedLanguage,
-  type OpenedAlertNotificationItem,
-} from "./content.ts";
+import { buildMergedNotificationContent, isSupportedLanguage } from "./content.ts";
 import { zonedDateString, zonedNow } from "./date.ts";
 import { shouldClaimNotificationSlot, wasAnyPushDelivered } from "./deliveryClaim.ts";
 import { buildNotificationTargetUrl } from "./notificationUrl.ts";
+import { type OpenedAlertItemRow, selectOpenedAlertItems } from "./openedAlertSelection.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,19 +44,6 @@ interface ExpiringItem {
   // 通知対象からは除外する（ダッシュボード側の dropExpiryForDailyGoods と同様）。
   item_type: ItemType | null;
   categories: { kind: ItemType | null } | null;
-}
-
-// #967: 開封後アラート対象を抽出するための元データ。expiry_date ベースの
-// ExpiringItem とは別クエリ・別テーブル行として取得する（対象アイテムの重なりが
-// あってもよい — 期限接近と開封後アラートは独立した条件のため、同じアイテムが
-// 両方の集合に入ることもある）。
-interface OpenedAlertItemRow {
-  id: string;
-  name: string;
-  opened_at: string | null;
-  days_use_after_opening: number | null;
-  item_type: ItemType | null;
-  categories: { kind: ItemType | null; days_use_after_opening: number | null } | null;
 }
 
 export const handler = async (req: Request): Promise<Response> => {
@@ -198,17 +177,9 @@ export const handler = async (req: Request): Promise<Response> => {
         return;
       }
 
-      // #937と同様、日用品は開封後アラート通知の対象からも除外する。
-      const openedAlertItems: OpenedAlertNotificationItem[] = openedAlertRows
-        .filter((row) => resolveItemType(row.item_type, row.categories?.kind) !== "daily_goods")
-        .flatMap((row) => {
-          const thresholdDays = resolveOpenedAlertThresholdDays(
-            { days_use_after_opening: row.days_use_after_opening },
-            row.categories,
-          );
-          if (!isOpenedAlertDue(row.opened_at, thresholdDays)) return [];
-          return [{ id: row.id, name: row.name, elapsedDays: getElapsedDays(row.opened_at)! }];
-        });
+      // #937と同様、日用品は開封後アラート通知の対象からも除外する
+      // （selectOpenedAlertItems、openedAlertSelection.test.ts でカバー）。
+      const openedAlertItems = selectOpenedAlertItems(openedAlertRows);
 
       // 期限接近・開封後アラートのいずれも0件の場合のみスキップする（どちらか
       // 一方でも非0件なら送信する）。
