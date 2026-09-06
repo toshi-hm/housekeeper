@@ -27,6 +27,7 @@ import { useCartCheckOff } from "@/hooks/useCartCheckOff";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
+import { useOfflineActionQueue } from "@/hooks/useOfflineActionQueue";
 import { useRovingTabs } from "@/hooks/useRovingTabs";
 import {
   QUERY_KEY as SHOPPING_QUERY_KEY,
@@ -156,6 +157,15 @@ export const ShoppingPage = () => {
   // 「カートに入れた」軽量チェックオフ（#983）。端末内 localStorage のみで管理し、
   // 購入確定・削除されたアイテムのチェック状態は下の handlePurchase / handleDelete で消す。
   const cartCheckOff = useCartCheckOff();
+  // 買い物中モードのオフライン耐性強化（#981）。「購入確定」「アラートから買い物リストへ
+  // 追加」の2アクションだけをオフライン対応でラップする（docs/specs/features/pwa.md の
+  // 「編集系はオフライン時にエラー表示で抑止」という既存方針に対する、この画面だけの例外）。
+  // 渡す関数は既存の purchase/upsert mutation の mutateAsync（クエリ無効化・エラートースト
+  // はそのまま活きる）。useShoppingList.ts 自体は変更しない。
+  const offlineQueue = useOfflineActionQueue({
+    purchase: purchase.mutateAsync,
+    addAlert: upsert.mutateAsync,
+  });
 
   // 買い物リストのアイテム削除の取り消し（#478）。shopping_list_items は
   // ソフトデリートを持たないため、Undo時は restoreShoppingItem で同じ内容を
@@ -256,12 +266,25 @@ export const ShoppingPage = () => {
   const handlePurchase = async (values: ItemFormValues, applyMergeFields: boolean) => {
     if (!pendingPurchaseId) return;
     const id = pendingPurchaseId;
+    const purchaseInput = { shoppingItemId: id, itemValues: values, applyMergeFields };
     try {
-      const newItem = await purchase.mutateAsync({
-        shoppingItemId: id,
-        itemValues: values,
-        applyMergeFields,
-      });
+      // #981: 買い物中モードからの購入確定はオフライン時にローカルキューへ積み、再接続時に
+      // 自動でリプレイする（店内・電波の弱い場所での利用を想定したこの画面だけの例外、
+      // docs/specs/features/pwa.md）。通常のリストタブ（買い物中モードではない）からの
+      // 購入確定は従来通り requireOnline() の OfflineError で即座に失敗させる。
+      const outcome = shoppingMode
+        ? await offlineQueue.queuePurchase(purchaseInput)
+        : { status: "sent" as const, result: await purchase.mutateAsync(purchaseInput) };
+
+      if (outcome.status === "queued") {
+        clearPendingPurchaseImage();
+        setPendingPurchaseId(null);
+        // 購入確定されたアイテムの「カートに入れた」チェック状態も消す（#983）
+        cartCheckOff.clear(id);
+        toast(t("offlineQueuedPurchase"), "default");
+        return;
+      }
+      const newItem = outcome.result;
 
       // 購入で作成したアイテムに、ダイアログで選択された画像をアップロードする (#453)。
       // NewItemPage と同じく、アイテム作成後に itemId 指定で uploadItemImage する。
@@ -346,8 +369,18 @@ export const ShoppingPage = () => {
   const handleAddAlertToList = async (entry: ShoppingModeAlertEntry) => {
     setAddingAlertId(entry.id);
     try {
-      await upsert.mutateAsync({ name: entry.name, linked_item_id: entry.id });
-      toast(t("restockSuccess"), "success");
+      // #981: 買い物中モードの低在庫/期限間近アラートから買い物リストへの追加は、
+      // オフライン時はローカルキューへ積み、再接続時に自動でリプレイする
+      // （docs/specs/features/pwa.md の既存方針に対するこの画面だけの例外）。
+      const outcome = await offlineQueue.queueAddAlert({
+        name: entry.name,
+        linked_item_id: entry.id,
+      });
+      if (outcome.status === "queued") {
+        toast(t("offlineQueuedAddAlert"), "default");
+      } else {
+        toast(t("restockSuccess"), "success");
+      }
     } catch {
       // Error toast is handled by useUpsertShoppingItem.onError
     } finally {
