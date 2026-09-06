@@ -185,6 +185,45 @@ export const checkReceiptScanRateLimit = async (
   return { allowed: data.allowed, retryAfterSeconds: data.retry_after_seconds };
 };
 
+/**
+ * Per-user rate limit for the shelf-scan Edge Function (#927), guarding
+ * Gemini Vision calls — the same shared GEMINI_API_KEY quota concern as
+ * checkReceiptScanRateLimit's — against exhaustion from a valid
+ * session/access token.
+ *
+ * Backed by the `check_shelf_scan_rate_limit` Postgres function, which
+ * derives the user from the caller's own JWT (auth.uid()) rather than
+ * trusting a client-supplied identifier, and atomically tracks a
+ * fixed-window request count per user in `shelf_scan_rate_limits` (same
+ * window as receipt-scan: 60s/5, since both are Gemini Vision calls against
+ * the same quota). Intended to be called with the user-scoped (anon key +
+ * JWT / RLS) Supabase client that shelf-scan already builds — no
+ * service-role key needed.
+ */
+export interface ShelfScanRateLimitResult {
+  allowed: boolean;
+  retryAfterSeconds: number;
+}
+
+const SHELF_SCAN_RATE_LIMIT_RETRY_SECONDS = 60;
+
+export const checkShelfScanRateLimit = async (
+  supabase: SupabaseClient,
+): Promise<ShelfScanRateLimitResult> => {
+  const { data, error } = await supabase
+    .rpc("check_shelf_scan_rate_limit")
+    .single<{ allowed: boolean; retry_after_seconds: number }>();
+
+  if (error || !data) {
+    // Fail closed: if the rate-limit check itself is broken, don't let the
+    // request bypass throttling entirely.
+    console.error("[shelf-scan] rate limit check failed", error);
+    return { allowed: false, retryAfterSeconds: SHELF_SCAN_RATE_LIMIT_RETRY_SECONDS };
+  }
+
+  return { allowed: data.allowed, retryAfterSeconds: data.retry_after_seconds };
+};
+
 /** Constant-time string comparison to avoid leaking hash match info via timing. */
 export const timingSafeEqual = async (a: string, b: string): Promise<boolean> => {
   const { timingSafeEqual: nodeTimingSafeEqual } = await import("node:crypto");
