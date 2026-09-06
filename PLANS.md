@@ -728,12 +728,12 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 詳細: `docs/specs/features/waste-reduction-dashboard.md`（親 Issue: #925）
 
-- [ ] migration: `waste_streaks` テーブル新設（RLS込み） <!-- issue:#925 -->
-- [ ] `computeWeeklyWasteDigest`（`src/types/stats.ts`）+ 単体テスト <!-- issue:#925 -->
-- [ ] 新規 Edge Function `send-waste-digest`（`pg_cron` 週次、月曜配信） <!-- issue:#925 -->
-- [ ] `WasteStreakBadge` atom + Story、統計ページへの組み込み <!-- issue:#925 -->
-- [ ] `NotificationSettings` に週次ダイジェストの受信トグルを追加 <!-- issue:#925 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#925 -->
+- [x] migration: `waste_streaks` テーブル新設（RLS込み） <!-- issue:#925 -->
+- [x] `computeWeeklyWasteDigest`（`src/types/stats.ts`）+ 単体テスト <!-- issue:#925 -->
+- [x] 新規 Edge Function `send-waste-digest`（`pg_cron` 週次、月曜配信） <!-- issue:#925 -->
+- [x] `WasteStreakBadge` atom + Story、統計ページへの組み込み <!-- issue:#925 -->
+- [x] `NotificationSettings` に週次ダイジェストの受信トグルを追加 <!-- issue:#925 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#925 -->
 
 ### v1.14 — 棚卸し写真チェック（シェルフスキャン）
 
