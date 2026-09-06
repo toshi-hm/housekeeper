@@ -234,6 +234,10 @@
   "searchPlaceholder": "商品名・バーコードで検索",
   "selectLot": "使うロットを選択",
   "selectLotHint": "上からロットを選んでください",
+  "similarItemSuggestion": {
+    "body": "似たアイテム「{{name}}」が既にあります",
+    "viewLink": "見に行く"
+  },
   "sortByCreatedAt": "登録日が新しい順",
   "sortByExpiry": "期限が近い順",
   "sortByPurchaseDate": "購入日が新しい順",

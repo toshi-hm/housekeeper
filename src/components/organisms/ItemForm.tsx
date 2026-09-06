@@ -9,6 +9,7 @@ import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { LocationPinPicker } from "@/components/molecules/LocationPinPicker";
 import { ProductLookupResult } from "@/components/molecules/ProductLookupResult";
 import { QuickAddSelect } from "@/components/molecules/QuickAddSelect";
+import { SimilarItemSuggestion } from "@/components/molecules/SimilarItemSuggestion";
 import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
 import { ExpiryDateScanner } from "@/components/organisms/ExpiryDateScanner";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { type ProductInfo, useBarcodeLookup } from "@/hooks/useBarcodeLookup";
 import { useCreateCustomUnit, useCustomUnits, useDeleteCustomUnit } from "@/hooks/useCustomUnits";
 import { useSignedItemImage } from "@/hooks/useItemImage";
 import { useStoreNameSuggestions } from "@/hooks/useItemLots";
+import { useItems } from "@/hooks/useItems";
 import { useSignedLocationPhoto } from "@/hooks/useLocationPhoto";
 import {
   checkCategoryUsage,
@@ -33,6 +35,7 @@ import {
 import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { useSuggestedLocation } from "@/hooks/useSuggestedLocation";
 import { clearItemFormDraft, loadItemFormDraft, saveItemFormDraft } from "@/lib/itemFormDraft";
+import { findSimilarItem } from "@/lib/similarItemMatch";
 import { useToast } from "@/lib/toast-context";
 import {
   CONTENT_UNITS,
@@ -76,6 +79,14 @@ interface ItemFormProps {
    * 既存アイテムの編集画面では実データが既にあるため対象外、省略時はfalse。
    */
   enableLocationSuggestion?: boolean;
+  /**
+   * #990: name フィールド確定時に、既存アイテムとの表記揺れ・近い名前を
+   * クライアント側で判定し、気づきを与える非モーダル通知を表示する。
+   * 新規登録時のみを想定（編集時に対象外にするため省略時はfalse）。
+   */
+  enableSimilarItemSuggestion?: boolean;
+  /** #990: 類似アイテム通知の「見に行く」操作時のコールバック（ナビゲーションは呼び出し側に委ねる）。 */
+  onViewSimilarItem?: (itemId: string) => void;
 }
 
 export const ItemForm = ({
@@ -91,6 +102,8 @@ export const ItemForm = ({
   disableContentAmount = false,
   draftKey,
   enableLocationSuggestion = false,
+  enableSimilarItemSuggestion = false,
+  onViewSimilarItem,
 }: ItemFormProps) => {
   const { t } = useTranslation("items");
   const { t: tc } = useTranslation("common");
@@ -208,6 +221,17 @@ export const ItemForm = ({
   const effectiveStorageLocationId = isLocationSuggested
     ? (suggestedLocationId ?? null)
     : values.storage_location_id;
+
+  // #990: name 確定（blur）時点の値に対してのみ判定する。キー入力ごとに毎回
+  // 計算しないことで、既存の VoiceInputButton 等と同様に入力体験を阻害しない。
+  const [similarItemQueryName, setSimilarItemQueryName] = useState<string | null>(null);
+  const { data: itemsForSimilarityCheck } = useItems(undefined, undefined, {
+    enabled: enableSimilarItemSuggestion,
+  });
+  const similarItemMatch =
+    enableSimilarItemSuggestion && similarItemQueryName
+      ? findSimilarItem(itemsForSimilarityCheck ?? [], similarItemQueryName)
+      : null;
 
   const { data: existingImageUrl } = useSignedItemImage(
     localPreviewUrl ? null : values.image_path || null,
@@ -555,6 +579,7 @@ export const ItemForm = ({
                   if (trimmed) {
                     onNameBlur?.(e.target.value);
                     setNameForSuggestion(trimmed);
+                    setSimilarItemQueryName(trimmed);
                   }
                 }}
                 placeholder={t("namePlaceholder")}
@@ -574,6 +599,12 @@ export const ItemForm = ({
             <p id="name-error" className="text-sm text-destructive">
               {nameError}
             </p>
+          )}
+          {similarItemMatch && (
+            <SimilarItemSuggestion
+              matchName={similarItemMatch.name}
+              onViewMatch={() => onViewSimilarItem?.(similarItemMatch.id)}
+            />
           )}
         </div>
 

@@ -581,11 +581,16 @@ export const applyItemToListCaches = (qc: QueryClient, item: Item) => {
   }
 };
 
-export const useItems = (filters: ItemFilters = {}, sort: ItemSortKey = "created_at") =>
+export const useItems = (
+  filters: ItemFilters = {},
+  sort: ItemSortKey = "created_at",
+  options?: { enabled?: boolean },
+) =>
   useQuery({
     queryKey: [...ITEMS_KEY, filters, sort],
     queryFn: () => fetchItems(filters, sort),
     staleTime: 30_000,
+    enabled: options?.enabled,
   });
 
 export const useItem = (id: string) =>
