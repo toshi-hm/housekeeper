@@ -1,7 +1,7 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
 import { type ItemType, resolveItemType } from "../_shared/itemType.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
-import { buildMergedNotificationContent, isSupportedLanguage } from "./content.ts";
+import { buildMergedNotificationContent, type ExpiryType, isSupportedLanguage } from "./content.ts";
 import { zonedDateString, zonedNow } from "./date.ts";
 import { shouldClaimNotificationSlot, wasAnyPushDelivered } from "./deliveryClaim.ts";
 import { buildNotificationTargetUrl } from "./notificationUrl.ts";
@@ -29,8 +29,6 @@ interface PushSubscription {
   p256dh: string;
   auth: string;
 }
-
-type ExpiryType = "best_before" | "use_by" | null;
 
 interface ExpiringItem {
   id: string;
@@ -156,6 +154,9 @@ export const handler = async (req: Request): Promise<Response> => {
       // クエリで取得し、通知本文の別セクションとしてマージする（同じユーザーに
       // 1日2通は送らない、既存の notification_logs 1日1通ポリシーに乗せる）。
       // #787と同様、PostgRESTの行数上限対策でfetchAllPagesを使う。
+      // opened_remaining = 0（開封済み・空、使い切り済み）の item は上の期限接近
+      // クエリと同じ理由（#445）で対象外とする — 空になったアイテムに「使い切って
+      // ください」と通知するのは無意味なため。
       let openedAlertRows: OpenedAlertItemRow[];
       try {
         openedAlertRows = await fetchAllPages(async (from, to) => {
@@ -167,6 +168,7 @@ export const handler = async (req: Request): Promise<Response> => {
             .eq("user_id", pref.user_id)
             .not("opened_at", "is", null)
             .gt("units", 0)
+            .or("opened_remaining.is.null,opened_remaining.neq.0")
             .order("id", { ascending: true })
             .range(from, to);
           if (error) throw error;
@@ -185,7 +187,15 @@ export const handler = async (req: Request): Promise<Response> => {
       // 一方でも非0件なら送信する）。
       if (items.length === 0 && openedAlertItems.length === 0) return;
 
-      const count = items.length + openedAlertItems.length;
+      // #967: 期限接近と開封後アラートは独立した条件のため、同じアイテムが両方の
+      // 集合に含まれることがある（例: 開封済みで賞味期限も近い調味料）。件数と
+      // 通知リンク（#671、1件ならアイテム詳細へ）の両方でこの重複を除いた
+      // ユニークなアイテムID集合を使う。
+      const uniqueItemIds = new Set([
+        ...items.map((item) => item.id),
+        ...openedAlertItems.map((item) => item.id),
+      ]);
+      const count = uniqueItemIds.size;
 
       const { data: userSettings } = await supabase
         .from("user_settings")
@@ -218,7 +228,7 @@ export const handler = async (req: Request): Promise<Response> => {
       });
       if (!content) return;
       const { title, body, emailText } = content;
-      const notificationUrl = buildNotificationTargetUrl([...items, ...openedAlertItems]);
+      const notificationUrl = buildNotificationTargetUrl([...uniqueItemIds].map((id) => ({ id })));
 
       // Send push notifications
       let pushDelivered = false;
