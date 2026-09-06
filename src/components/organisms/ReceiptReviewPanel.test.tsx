@@ -7,6 +7,7 @@ import { I18nextProvider } from "react-i18next";
 import * as useItemLotsModule from "@/hooks/useItemLots";
 import * as useItemsModule from "@/hooks/useItems";
 import * as useMasterDataModule from "@/hooks/useMasterData";
+import * as useReceiptPriceHistoryModule from "@/hooks/useReceiptPriceHistory";
 import i18n from "@/lib/i18n";
 import type { ReceiptDraftItem } from "@/types/receipt";
 
@@ -53,6 +54,11 @@ describe("ReceiptReviewPanel remove (#923)", () => {
     spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
       data: [],
     } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+    spyOn(useReceiptPriceHistoryModule, "useReceiptPriceHistory").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useReceiptPriceHistoryModule.useReceiptPriceHistory>);
     spyOn(useItemsModule, "useCreateItem").mockReturnValue({
       mutateAsync: async () => {
         throw new Error("simulated registration failure");
@@ -103,6 +109,11 @@ describe("ReceiptReviewPanel remove (#923)", () => {
     spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
       data: [],
     } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+    spyOn(useReceiptPriceHistoryModule, "useReceiptPriceHistory").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useReceiptPriceHistoryModule.useReceiptPriceHistory>);
 
     let resolveB: () => void = () => {};
     const bGate = new Promise<void>((resolve) => {
@@ -179,5 +190,137 @@ describe("ReceiptReviewPanel remove (#923)", () => {
     // draftA must stay removed — it must not reappear from the loop's own
     // final onDraftsChange call filtering a stale `drafts` snapshot.
     expect(currentDrafts.find((d) => d.id === draftA.id)).toBeUndefined();
+  });
+});
+
+// #941: ReceiptReviewPanel wires each row's price-increase alert from
+// useReceiptPriceHistory + computeReceiptPriceIncreaseAlert (exact item name
+// x current store name match, mirroring #697's "2件以上のデータ" gate).
+describe("ReceiptReviewPanel price increase alert wiring (#941)", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  const mockCommonHooks = () => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+    spyOn(useItemsModule, "useCreateItem").mockReturnValue({
+      mutateAsync: async () => {},
+    } as unknown as ReturnType<typeof useItemsModule.useCreateItem>);
+  };
+
+  test("shows the price increase badge when the row's item x store has 2+ prior purchases above the threshold", async () => {
+    mockCommonHooks();
+    spyOn(useReceiptPriceHistoryModule, "useReceiptPriceHistory").mockReturnValue({
+      data: [
+        {
+          itemName: "牛乳",
+          storeName: "スーパーA",
+          unitPrice: 200,
+          purchaseDate: "2026-07-01",
+          createdAt: "2026-07-01T00:00:00.000Z",
+        },
+        {
+          itemName: "牛乳",
+          storeName: "スーパーA",
+          unitPrice: 200,
+          purchaseDate: "2026-08-01",
+          createdAt: "2026-08-01T00:00:00.000Z",
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useReceiptPriceHistoryModule.useReceiptPriceHistory>);
+
+    const { findByText } = render(
+      <ReceiptReviewPanel
+        // draft.unitPrice = 248 -> +24% over the 200 baseline (>10% threshold)
+        drafts={[draft]}
+        storeName="スーパーA"
+        onDraftsChange={() => {}}
+        onStoreNameChange={() => {}}
+        onDone={() => {}}
+      />,
+      { wrapper: Wrapper },
+    );
+
+    expect(await findByText(/24/)).toBeTruthy();
+  });
+
+  test("shows no badge when there is only 1 prior purchase for the item x store", async () => {
+    mockCommonHooks();
+    spyOn(useReceiptPriceHistoryModule, "useReceiptPriceHistory").mockReturnValue({
+      data: [
+        {
+          itemName: "牛乳",
+          storeName: "スーパーA",
+          unitPrice: 200,
+          purchaseDate: "2026-08-01",
+          createdAt: "2026-08-01T00:00:00.000Z",
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useReceiptPriceHistoryModule.useReceiptPriceHistory>);
+
+    const { queryByText, findByDisplayValue } = render(
+      <ReceiptReviewPanel
+        drafts={[draft]}
+        storeName="スーパーA"
+        onDraftsChange={() => {}}
+        onStoreNameChange={() => {}}
+        onDone={() => {}}
+      />,
+      { wrapper: Wrapper },
+    );
+
+    await findByDisplayValue(draft.name);
+    expect(queryByText(/%/)).toBeNull();
+  });
+
+  test("shows no badge when the item name does not match exactly (no fuzzy matching)", async () => {
+    mockCommonHooks();
+    spyOn(useReceiptPriceHistoryModule, "useReceiptPriceHistory").mockReturnValue({
+      data: [
+        {
+          itemName: "成分無調整牛乳",
+          storeName: "スーパーA",
+          unitPrice: 200,
+          purchaseDate: "2026-07-01",
+          createdAt: "2026-07-01T00:00:00.000Z",
+        },
+        {
+          itemName: "成分無調整牛乳",
+          storeName: "スーパーA",
+          unitPrice: 200,
+          purchaseDate: "2026-08-01",
+          createdAt: "2026-08-01T00:00:00.000Z",
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useReceiptPriceHistoryModule.useReceiptPriceHistory>);
+
+    const { queryByText, findByDisplayValue } = render(
+      <ReceiptReviewPanel
+        // draft.name is "牛乳", which does not exactly match "成分無調整牛乳"
+        drafts={[draft]}
+        storeName="スーパーA"
+        onDraftsChange={() => {}}
+        onStoreNameChange={() => {}}
+        onDone={() => {}}
+      />,
+      { wrapper: Wrapper },
+    );
+
+    await findByDisplayValue(draft.name);
+    expect(queryByText(/%/)).toBeNull();
   });
 });
