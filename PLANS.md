@@ -739,13 +739,13 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 詳細: `docs/specs/features/shelf-scan.md`（親 Issue: #927）
 
-- [ ] 新規 Edge Function `shelf-scan`（Gemini Vision、`receipt-scan` のパターンを踏襲） <!-- issue:#927 -->
-- [ ] `src/lib/shelfScanMatch.ts`（在庫との差分マッチングロジック）+ 単体テスト <!-- issue:#927 -->
-- [ ] `ShelfScanCapturePage` ルート（保管場所選択 + カメラ起動） <!-- issue:#927 -->
-- [ ] `ShelfScanReviewPanel` organism（差分候補一覧 + 一括補正）+ Story <!-- issue:#927 -->
-- [ ] ダッシュボードの Scan メニューへの導線追加 <!-- issue:#927 -->
-- [ ] i18n `shelfScan` 名前空間 <!-- issue:#927 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#927 -->
+- [x] 新規 Edge Function `shelf-scan`（Gemini Vision、`receipt-scan` のパターンを踏襲） <!-- issue:#927 -->
+- [x] `src/lib/shelfScanMatch.ts`（在庫との差分マッチングロジック）+ 単体テスト <!-- issue:#927 -->
+- [x] `ShelfScanCapturePage` ルート（保管場所選択 + カメラ起動） <!-- issue:#927 -->
+- [x] `ShelfScanReviewPanel` organism（差分候補一覧 + 一括補正）+ Story <!-- issue:#927 -->
+- [x] ダッシュボードの Scan メニューへの導線追加 <!-- issue:#927 -->
+- [x] i18n `shelfScan` 名前空間 <!-- issue:#927 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#927 -->
 
 ### v1.15 — レシートレビューでの店舗別価格上昇アラート
 
