@@ -574,10 +574,10 @@ export interface StorePriceComparison {
 // --- 月次予算超過アラート（#991） ---
 
 /** 予算に対する支出率がこの値（%）以上になったら注意表示にする。 */
-export const BUDGET_CAUTION_THRESHOLD_PERCENT = 80;
+const BUDGET_CAUTION_THRESHOLD_PERCENT = 80;
 
 /** 予算に対する支出率がこの値（%）以上になったら警告表示にする（予算超過）。 */
-export const BUDGET_OVER_THRESHOLD_PERCENT = 100;
+const BUDGET_OVER_THRESHOLD_PERCENT = 100;
 
 export type BudgetTier = "normal" | "caution" | "over";
 
