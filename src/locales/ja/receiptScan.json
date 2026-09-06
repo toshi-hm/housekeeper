@@ -10,6 +10,8 @@
   "lowConfidenceHint": "読み取りに自信がありません。内容を確認してください。",
   "noItemsFound": "レシートから商品を読み取れませんでした。手動で行を追加してください。",
   "offlineError": "オフラインのため実行できません",
+  "priceIncreaseBadge": "値上がり +{{percent}}%",
+  "priceIncreaseTooltip": "この店舗での直近の購入価格（目安単価: ¥{{baseline}}）より{{percent}}%値上がりしています（今回: ¥{{current}}）",
   "quantity": "個数",
   "rateLimited": "解析回数の上限に達しました。しばらくしてから再度お試しください",
   "receiptScanShortcut": "レシート",
