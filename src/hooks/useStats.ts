@@ -4,10 +4,13 @@ import { useAllConsumptionLogs } from "@/hooks/useConsumptionLogs";
 import { LOTS_KEY } from "@/hooks/useItemLots";
 import { useItems, useItemsForExport } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
+import { useUserSettings } from "@/hooks/useUserSettings";
 import { supabase } from "@/lib/supabase";
 import { fetchAllPages } from "@/lib/supabasePagination";
 import type { Item } from "@/types/item";
 import {
+  type BudgetStatus,
+  computeBudgetStatus,
   computeCategoryStats,
   computeCategoryValueStats,
   computeConsumptionSpeedRanking,
@@ -103,6 +106,27 @@ export const useMonthlySpending = (months = 6) => {
     staleTime: 30_000,
   });
   return { data: computeMonthlySpending(lots, months), isLoading, isError };
+};
+
+/**
+ * 月次予算超過アラート（#991）。当月分の支出のみ（`useMonthlySpending(1)`）を
+ * `user_settings.monthly_budget` と比較する。予算未設定の場合は `status: null` を返し、
+ * `BudgetBanner` はこれを非表示の合図として使う。
+ */
+export const useBudgetStatus = () => {
+  const { data: settings, isLoading: settingsLoading, isError: settingsError } = useUserSettings();
+  const {
+    data: monthlySpending,
+    isLoading: spendingLoading,
+    isError: spendingError,
+  } = useMonthlySpending(1);
+  const currentSpend = monthlySpending[0]?.total ?? 0;
+  const status: BudgetStatus | null = computeBudgetStatus(currentSpend, settings?.monthly_budget);
+  return {
+    status,
+    isLoading: settingsLoading || spendingLoading,
+    isError: settingsError || spendingError,
+  };
 };
 
 /** カテゴリ別在庫総額（#342）。単価未設定のロットは集計から除外される。 */

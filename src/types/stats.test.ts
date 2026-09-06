@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { computeMonthlySpending, type SpendingLotRow } from "./stats";
+import { computeBudgetStatus, computeMonthlySpending, type SpendingLotRow } from "./stats";
 
 // --- computeMonthlySpending (#633, timezone regression #710) ---
 
@@ -111,5 +111,81 @@ describe("computeMonthlySpending", () => {
     expect(fixed.getFullYear()).toBe(2026);
     expect(fixed.getMonth()).toBe(7);
     expect(fixed.getDate()).toBe(1);
+  });
+});
+
+// --- computeBudgetStatus（月次予算超過アラート #991） ---
+
+describe("computeBudgetStatus", () => {
+  test("returns null when monthly_budget is unset (null) — no banner", () => {
+    expect(computeBudgetStatus(5000, null)).toBeNull();
+  });
+
+  test("returns null when monthly_budget is undefined — no banner", () => {
+    expect(computeBudgetStatus(5000, undefined)).toBeNull();
+  });
+
+  test("returns null when monthly_budget is 0 — avoids a division-by-zero banner", () => {
+    expect(computeBudgetStatus(0, 0)).toBeNull();
+    expect(computeBudgetStatus(100, 0)).toBeNull();
+  });
+
+  test("0 spend against a set budget is 0% and tier normal", () => {
+    expect(computeBudgetStatus(0, 30000)).toEqual({
+      monthlyBudget: 30000,
+      currentSpend: 0,
+      percentUsed: 0,
+      tier: "normal",
+    });
+  });
+
+  test("spend under 80% of budget is tier normal", () => {
+    expect(computeBudgetStatus(15000, 30000)).toEqual({
+      monthlyBudget: 30000,
+      currentSpend: 15000,
+      percentUsed: 50,
+      tier: "normal",
+    });
+  });
+
+  test("spend at exactly 80% of budget is tier caution", () => {
+    expect(computeBudgetStatus(24000, 30000)).toEqual({
+      monthlyBudget: 30000,
+      currentSpend: 24000,
+      percentUsed: 80,
+      tier: "caution",
+    });
+  });
+
+  test("spend between 80% and 100% of budget is tier caution", () => {
+    expect(computeBudgetStatus(27000, 30000)).toEqual({
+      monthlyBudget: 30000,
+      currentSpend: 27000,
+      percentUsed: 90,
+      tier: "caution",
+    });
+  });
+
+  test("spend at exactly 100% of budget is tier over", () => {
+    expect(computeBudgetStatus(30000, 30000)).toEqual({
+      monthlyBudget: 30000,
+      currentSpend: 30000,
+      percentUsed: 100,
+      tier: "over",
+    });
+  });
+
+  test("spend over 100% of budget is tier over", () => {
+    expect(computeBudgetStatus(45000, 30000)).toEqual({
+      monthlyBudget: 30000,
+      currentSpend: 45000,
+      percentUsed: 150,
+      tier: "over",
+    });
+  });
+
+  test("rounds percentUsed to the nearest whole percent", () => {
+    const result = computeBudgetStatus(10000, 30000);
+    expect(result?.percentUsed).toBe(33);
   });
 });
