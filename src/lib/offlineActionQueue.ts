@@ -3,14 +3,14 @@ import type { PurchaseInput, UpsertShoppingItemInput } from "@/types/shopping";
 /** localStorageに保持するキューのキー。 */
 const STORAGE_KEY = "shopping.offlineActionQueue";
 
-export interface OfflineQueuedPurchaseAction {
+interface OfflineQueuedPurchaseAction {
   id: string;
   kind: "purchase";
   payload: PurchaseInput;
   queuedAt: string;
 }
 
-export interface OfflineQueuedAddAlertAction {
+interface OfflineQueuedAddAlertAction {
   id: string;
   kind: "add-alert";
   payload: UpsertShoppingItemInput;

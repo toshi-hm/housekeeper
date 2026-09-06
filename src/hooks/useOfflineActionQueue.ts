@@ -13,9 +13,7 @@ import type { PurchaseInput, UpsertShoppingItemInput } from "@/types/shopping";
 
 /** `queuePurchase`/`queueAddAlert` の呼び出し結果。`"sent"` はオンラインで実際に
  *  実行できたことを、`"queued"` はオフラインのためキューに積んだだけであることを表す。 */
-export type OfflineQueueSendResult<TResult> =
-  | { status: "sent"; result: TResult }
-  | { status: "queued" };
+type OfflineQueueSendResult<TResult> = { status: "sent"; result: TResult } | { status: "queued" };
 
 export interface UseOfflineActionQueueOptions<TPurchaseResult, TAddAlertResult> {
   /** オンライン時に実際に呼び出す `purchaseShoppingItem` 相当の関数。
