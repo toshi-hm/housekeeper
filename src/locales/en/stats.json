@@ -1,4 +1,9 @@
 {
+  "budgetBannerAmounts": "{{spend}} / {{budget}}",
+  "budgetBannerMessage": "This month's spending is {{percent}}% of your budget",
+  "budgetTierCaution": "Caution",
+  "budgetTierNormal": "On track",
+  "budgetTierOver": "Over budget",
   "categoryBreakdown": "Items by Category",
   "categoryValueBreakdown": "Inventory Value by Category",
   "categoryValueHint": "Excludes items without a recorded price",
