@@ -759,10 +759,10 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 詳細: `docs/specs/features/notifications.md`「拡張: 開封後使用期限アラートの通知統合」節（親 Issue: #967）
 
-- [ ] `isOpenedAlertDue` 相当のロジックを `supabase/functions/_shared/` へ移植 <!-- issue:#967 -->
-- [ ] `send-expiry-notifications` の対象抽出・本文テンプレートに開封後アラート分を追加 <!-- issue:#967 -->
-- [ ] 日用品（`item_type = 'daily_goods'`）を対象から除外 <!-- issue:#967 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#967 -->
+- [x] `isOpenedAlertDue` 相当のロジックを `supabase/functions/_shared/` へ移植 <!-- issue:#967 -->
+- [x] `send-expiry-notifications` の対象抽出・本文テンプレートに開封後アラート分を追加 <!-- issue:#967 -->
+- [x] 日用品（`item_type = 'daily_goods'`）を対象から除外 <!-- issue:#967 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#967 -->
 
 ### v1.17 — 類似アイテム名のマージ提案（表記揺れ対策）
 
