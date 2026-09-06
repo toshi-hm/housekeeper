@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
   CalendarDays,
+  Camera,
   CheckSquare,
   ChefHat,
   Download,
@@ -586,6 +587,11 @@ export const DashboardPage = () => {
                   aria-label={t("receiptScan:receiptScanShortcut")}
                 >
                   <Receipt className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to="/items/shelf-scan">
+                <Button size="icon" variant="outline" aria-label={t("shelfScan:shelfScanShortcut")}>
+                  <Camera className="h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/items/new">
