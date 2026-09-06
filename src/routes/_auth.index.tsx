@@ -29,6 +29,7 @@ import { ItemCard } from "@/components/molecules/ItemCard";
 import { ItemListRow } from "@/components/molecules/ItemListRow";
 import { ItemTypeTabs } from "@/components/molecules/ItemTypeTabs";
 import { QuickMemoSheet } from "@/components/molecules/QuickMemoSheet";
+import { BudgetBanner } from "@/components/organisms/BudgetBanner";
 import {
   DashboardNotificationCenter,
   type NotificationChip,
@@ -629,6 +630,9 @@ export const DashboardPage = () => {
       )}
 
       <DashboardNotificationCenter chips={visibleNotificationChips}>
+        {/* 月次予算超過アラート（#991）。予算未設定なら何も表示しない。 */}
+        <BudgetBanner />
+
         {/* Expiry alert banner */}
         {urgentCount > 0 && (
           <div className="space-y-3 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">

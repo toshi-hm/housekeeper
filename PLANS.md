@@ -777,12 +777,12 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 詳細: `docs/specs/features/budget-alert.md`（親 Issue: #991）
 
-- [ ] migration: `user_settings.monthly_budget numeric null` <!-- issue:#991 -->
-- [ ] `useBudgetStatus()` hook（既存の月別支出集計ロジックの当月抽出ラッパー） <!-- issue:#991 -->
-- [ ] `BudgetBanner` organism + Story <!-- issue:#991 -->
-- [ ] `SettingsPage` に予算入力欄を追加 <!-- issue:#991 -->
-- [ ] i18n キー追加 <!-- issue:#991 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#991 -->
+- [x] migration: `user_settings.monthly_budget numeric null` <!-- issue:#991 -->
+- [x] `useBudgetStatus()` hook（既存の月別支出集計ロジックの当月抽出ラッパー） <!-- issue:#991 -->
+- [x] `BudgetBanner` organism + Story <!-- issue:#991 -->
+- [x] `SettingsPage` に予算入力欄を追加 <!-- issue:#991 -->
+- [x] i18n キー追加 <!-- issue:#991 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#991 -->
 
 ### v1.19 — CI: bun test カバレッジ回帰ゲート導入
 
