@@ -751,9 +751,9 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 詳細: `docs/specs/features/receipt-scan.md`「9. 拡張: レビュー画面での店舗別価格上昇アラート」節（親 Issue: #941）
 
-- [ ] レビュー画面の各行での商品名（完全一致）× `storeName` の直近単価クエリ追加 <!-- issue:#941 -->
-- [ ] 値上がりバッジ + ツールチップ UI（`ReceiptLineItemRow`） <!-- issue:#941 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#941 -->
+- [x] レビュー画面の各行での商品名（完全一致）× `storeName` の直近単価クエリ追加 <!-- issue:#941 -->
+- [x] 値上がりバッジ + ツールチップ UI（`ReceiptLineItemRow`） <!-- issue:#941 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#941 -->
 
 ### v1.16 — 開封後使用期限アラートのプッシュ/メール通知統合
 
