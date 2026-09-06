@@ -1,3 +1,14 @@
 [test]
 preload = ["./src/test/setup.ts"]
 root = "./src"
+# #992: bun test --coverage の回帰検知ゲート。
+# bunのcoverageThresholdは全体平均ではなくファイル単位で判定されるため、全体平均
+# (現状 lines 86.8% / functions 78.7%)を基準にすると、Storybookやplaywright E2Eで
+# のみ確認され単体テストを持たないファイル（例: BulkActionBar.tsx、functions 0%）で
+# 必ず失敗してしまう。そのため現状の全ファイル中の最低値（lines 4.76%）よりわずかに
+# 低い値を初期閾値とし、「あるファイルの単体テストが丸ごと失われる」ような大幅な
+# 回帰のみを検知する。
+# 注意: functionsはlinesと独立の閾値を明示しないと暗黙に厳しい既定値が適用され
+# ほぼ全ファイルで失敗する（bunの挙動、要検証確認済み）。functionsが既に0%の
+# ファイルが複数存在するため、functionsは0（実質チェックなし）を明示している。
+coverageThreshold = { lines = 0.03, functions = 0 }

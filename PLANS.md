@@ -788,9 +788,9 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 親 Issue: #992。ユーザー向け機能ではないため spec ドラフトは作成しない（CI設定のみ）。
 
-- [ ] 現状のカバレッジ実測値を確認し、少し余裕を持たせた初期閾値を決定 <!-- issue:#992 -->
-- [ ] `bunfig.toml` の `[test]` に `coverageThreshold` を追加 <!-- issue:#992 -->
-- [ ] CI で意図的にカバレッジを下げて正しく失敗することを確認 <!-- issue:#992 -->
+- [x] 現状のカバレッジ実測値を確認し、少し余裕を持たせた初期閾値を決定 <!-- issue:#992 -->
+- [x] `bunfig.toml` の `[test]` に `coverageThreshold` を追加 <!-- issue:#992 -->
+- [x] CI で意図的にカバレッジを下げて正しく失敗することを確認（ローカルで `bun test --coverage` を用いて検証） <!-- issue:#992 -->
 
 ### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
 
