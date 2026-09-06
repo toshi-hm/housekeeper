@@ -386,6 +386,8 @@ export interface Database {
           stocktake_alert_enabled: boolean;
           stocktake_alert_days: number;
           last_backup_export_at: string | null;
+          /** 月次支出の上限（円）。null = 未設定（BudgetBanner は非表示） (#991) */
+          monthly_budget: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -400,6 +402,7 @@ export interface Database {
           stocktake_alert_enabled?: boolean;
           stocktake_alert_days?: number;
           last_backup_export_at?: string | null;
+          monthly_budget?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -414,6 +417,7 @@ export interface Database {
           stocktake_alert_enabled?: boolean;
           stocktake_alert_days?: number;
           last_backup_export_at?: string | null;
+          monthly_budget?: number | null;
           updated_at?: string;
         };
         Relationships: [];

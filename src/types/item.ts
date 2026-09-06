@@ -178,6 +178,8 @@ export interface UserSettings {
   stocktake_alert_days: number;
   /** 手動JSONエクスポート（唯一のバックアップ導線）が最後に成功した日時。null = 未実行 (#815) */
   last_backup_export_at: string | null;
+  /** 月次支出の上限（円）。null = 未設定（`BudgetBanner` は非表示） (#991) */
+  monthly_budget: number | null;
   created_at: string;
   updated_at: string;
 }
