@@ -13,11 +13,11 @@ import {
   useUpsertFloorPlanStorageLocationMarker,
 } from "@/hooks/useFloorPlans";
 import { useStorageLocations } from "@/hooks/useMasterData";
-import { FloorPlanConflictError } from "@/lib/requireOnline";
+import { FloorPlanConflictError, OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import { createEmptyFloorPlanDocument } from "@/types/floorPlan";
 
-const FloorPlanEditorPage = () => {
+export const FloorPlanEditorPage = () => {
   const { locationId } = Route.useParams();
   const { t } = useTranslation("common");
   const navigate = useNavigate();
@@ -107,6 +107,10 @@ const FloorPlanEditorPage = () => {
                       },
                     },
                   });
+                  return;
+                }
+                if (error instanceof OfflineError) {
+                  toast(t("offlineError"), "error");
                   return;
                 }
                 toast(t("unknownError"), "error");
