@@ -10,15 +10,28 @@ interface SupabaseResponse {
 
 const responseQueues: Record<string, SupabaseResponse[]> = {};
 
+/** テーブルごとのクエリビルダーメソッド呼び出し（メソッド名 + 引数）を記録する。
+ *  「削除済みアイテムのロットが混入する」(#1023) の再発防止には、突き合わせ後の
+ *  結果だけでなく、`items` クエリに `deleted_at IS NULL` 相当のフィルタが実際に
+ *  かかっていることの検証が必要なため。 */
+const queryCalls: Record<string, string[]> = {};
+
 const makeBuilder = (table: string) => {
   const builder: Record<string, unknown> = {};
-  const chainMethod = () => () => builder;
+  const chainMethod =
+    (method: string) =>
+    (...args: unknown[]) => {
+      (queryCalls[table] ??= []).push(
+        `${method}(${args.map((arg) => JSON.stringify(arg)).join(", ")})`,
+      );
+      return builder;
+    };
   Object.assign(builder, {
-    select: chainMethod(),
-    eq: chainMethod(),
-    not: chainMethod(),
-    is: chainMethod(),
-    order: chainMethod(),
+    select: chainMethod("select"),
+    eq: chainMethod("eq"),
+    not: chainMethod("not"),
+    is: chainMethod("is"),
+    order: chainMethod("order"),
     range: () => {
       const queue = responseQueues[table];
       const response = queue && queue.length > 0 ? queue.shift()! : { data: [], error: null };
@@ -44,6 +57,7 @@ const makeWrapper = (queryClient: QueryClient) => {
 
 beforeEach(() => {
   for (const key of Object.keys(responseQueues)) delete responseQueues[key];
+  for (const key of Object.keys(queryCalls)) delete queryCalls[key];
 });
 
 describe("useReceiptPriceHistory (#1023)", () => {
@@ -94,5 +108,11 @@ describe("useReceiptPriceHistory (#1023)", () => {
         createdAt: "2026-07-01T00:00:00.000Z",
       },
     ]);
+
+    // 上のアサーションは「items クエリが最初から deleted_at IS NULL でフィルタされている」
+    // という前提（モックの responseQueues.items）に依存しているため、その前提自体が
+    // 崩れていないか（`useActiveItemNames` が実際にそのフィルタを発行しているか）を
+    // 直接検証する。これが無いと、フィルタを丸ごと消しても本テストは通ってしまう。
+    expect(queryCalls.items).toContain('is("deleted_at", null)');
   });
 });
