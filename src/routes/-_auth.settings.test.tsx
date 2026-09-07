@@ -332,3 +332,133 @@ describe("SettingsPage - default unit", () => {
     expect(toastFn).toHaveBeenCalledWith("設定を保存しました", "success");
   });
 });
+
+describe("SettingsPage - monthlyBudget validation (#991)", () => {
+  let settingsSpy: ReturnType<typeof spyOn>;
+  let updateSpy: ReturnType<typeof spyOn>;
+  let notifSpy: ReturnType<typeof spyOn>;
+  let updateNotifSpy: ReturnType<typeof spyOn>;
+  let mfaSpies: readonly ReturnType<typeof spyOn>[];
+  let testNotifSpy: ReturnType<typeof spyOn>;
+
+  beforeAll(async () => {
+    await i18n.changeLanguage("ja");
+  });
+
+  // bun test preloads src/test/setup.ts once and runs every test file in the
+  // same process, so leaving the shared `i18n` singleton on "ja" here leaks
+  // into whichever file runs next (see #772).
+  afterAll(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  beforeEach(() => {
+    settingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: { expiry_warning_days: 3, language: "ja", monthly_budget: 30000 },
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    updateSpy = spyOn(useUserSettingsModule, "useUpdateUserSettings").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
+
+    notifSpy = spyOn(useNotifModule, "useNotificationPreferences").mockReturnValue({
+      data: null,
+      isLoading: false,
+    } as ReturnType<typeof useNotifModule.useNotificationPreferences>);
+
+    updateNotifSpy = spyOn(useNotifModule, "useUpdateNotificationPreferences").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useNotifModule.useUpdateNotificationPreferences>);
+
+    mfaSpies = mockMfaHooks();
+    testNotifSpy = spyOn(useNotifModule, "useTestNotification").mockReturnValue({
+      mutate: mock(() => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useNotifModule.useTestNotification>);
+  });
+
+  afterEach(() => {
+    settingsSpy.mockRestore();
+    updateSpy.mockRestore();
+    notifSpy.mockRestore();
+    updateNotifSpy.mockRestore();
+    mfaSpies.forEach((s) => s.mockRestore());
+    testNotifSpy.mockRestore();
+    cleanup();
+  });
+
+  // spinbutton order on the page: [0] expiryWarningDays, [1] lowStockForecastDays,
+  // [2] monthlyBudget.
+  const getMonthlyBudgetInput = (spinbuttons: HTMLElement[]) => spinbuttons[2]!;
+
+  it("shows the current monthly budget value", () => {
+    const { stub } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const input = getMonthlyBudgetInput(getAllByRole("spinbutton")) as HTMLInputElement;
+    expect(input.value).toBe("30000");
+  });
+
+  it("shows error toast when value is negative", () => {
+    const { stub, toastFn } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const input = getMonthlyBudgetInput(getAllByRole("spinbutton"));
+    fireEvent.blur(input, { target: { value: "-1" } });
+
+    expect(toastFn).toHaveBeenCalledWith("予算は0以上の数値で入力してください", "error");
+  });
+
+  it("does not call updateSettings for an invalid negative value", async () => {
+    const mutateAsync = mock(async () => {});
+    updateSpy.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
+    const { stub } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const input = getMonthlyBudgetInput(getAllByRole("spinbutton"));
+    fireEvent.blur(input, { target: { value: "-5" } });
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("calls updateSettings with valid value and shows success toast", async () => {
+    const mutateAsync = mock(async () => {});
+    updateSpy.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
+    const { stub, toastFn } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const input = getMonthlyBudgetInput(getAllByRole("spinbutton"));
+    fireEvent.blur(input, { target: { value: "50000" } });
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(mutateAsync).toHaveBeenCalledWith({ monthly_budget: 50000 });
+    expect(toastFn).toHaveBeenCalledWith("設定を保存しました", "success");
+  });
+
+  it("clears the budget back to unset (null) when the input is left blank (#991)", async () => {
+    const mutateAsync = mock(async () => {});
+    updateSpy.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
+    const { stub, toastFn } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const input = getMonthlyBudgetInput(getAllByRole("spinbutton"));
+    fireEvent.blur(input, { target: { value: "" } });
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(mutateAsync).toHaveBeenCalledWith({ monthly_budget: null });
+    expect(toastFn).toHaveBeenCalledWith("設定を保存しました", "success");
+  });
+});
