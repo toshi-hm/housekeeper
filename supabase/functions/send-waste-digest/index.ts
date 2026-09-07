@@ -122,35 +122,53 @@ export const handler = async (req: Request): Promise<Response> => {
 
       if (wasteItems.length === 0) return;
 
-      const { data: streakRow } = await supabase
+      const { data: streakRow, error: streakReadError } = await supabase
         .from("waste_streaks")
         .select("current_streak_weeks, longest_streak_weeks, last_evaluated_week")
         .eq("user_id", pref.user_id)
         .maybeSingle();
+      if (streakReadError) {
+        // A transient read failure must not be treated as "no streak row yet"
+        // (prevStreak defaulting to {0, 0} below) — that would silently reset
+        // a user's real streak back to 0 once the upsert below runs. Skip this
+        // user for this run instead; nothing has been written yet, so the next
+        // scheduled run retries safely.
+        console.error("Failed to read waste_streaks for user", pref.user_id, streakReadError);
+        return;
+      }
       const prevStreak: WasteStreakState = {
         current_streak_weeks: streakRow?.current_streak_weeks ?? 0,
         longest_streak_weeks: streakRow?.longest_streak_weeks ?? 0,
       };
       const lastEvaluatedWeek: string | null = streakRow?.last_evaluated_week ?? null;
 
-      // #827と同じ考え方: 定期実行時のみ、この対象週が既に評価済みなら
-      // スキップする（重複評価防止）。手動呼び出しは常に評価・送信する。
-      if (scheduled && !shouldEvaluateWasteWeek(lastEvaluatedWeek, targetWeekStart)) return;
+      // 対象週が既に評価済みなら、ストリークは二度と再評価・再書き込みしない
+      // (spec「複数デバイスでの二重カウント防止」と同じ理由 — 手動呼び出しの
+      // 繰り返し実行で二重カウントしてはならない)。定期実行(scheduled)はここで
+      // 送信自体もスキップして重複送信を防ぐが、手動呼び出しは既存のストリーク値の
+      // まま(再インクリメントせず)ダイジェスト送信のみ行う(即時再送のテスト・
+      // デバッグ用途、#827の「手動呼び出しは常に送信する」と同じ考え方)。
+      const alreadyEvaluatedThisWeek = !shouldEvaluateWasteWeek(lastEvaluatedWeek, targetWeekStart);
+      if (scheduled && alreadyEvaluatedThisWeek) return;
 
       const digest = computeWeeklyWasteDigest(wasteItems, now);
 
-      // ストリーク評価は週次バッチ実行時のみ・クライアント側では再計算しない
-      // (spec「やらないこと」、複数デバイスでの二重カウント防止)。実送信の成否とは
-      // 独立して更新する(通知チャネル未設定でも実際の廃棄行動の記録は継続する)。
-      const nextStreak = computeNextWasteStreak(prevStreak, digest.currentWeekCount);
-      const { error: streakError } = await supabase.from("waste_streaks").upsert({
-        user_id: pref.user_id,
-        current_streak_weeks: nextStreak.current_streak_weeks,
-        longest_streak_weeks: nextStreak.longest_streak_weeks,
-        last_evaluated_week: targetWeekStart,
-      });
-      if (streakError) {
-        console.error("Failed to update waste_streaks for user", pref.user_id, streakError);
+      // ストリーク評価は対象週ごとに1回だけ・週次バッチ実行時のみ更新し、
+      // クライアント側では再計算しない(spec「やらないこと」、複数デバイスでの
+      // 二重カウント防止)。実送信の成否とは独立して更新する(通知チャネル未設定でも
+      // 実際の廃棄行動の記録は継続する)。
+      let nextStreak = prevStreak;
+      if (!alreadyEvaluatedThisWeek) {
+        nextStreak = computeNextWasteStreak(prevStreak, digest.currentWeekCount);
+        const { error: streakError } = await supabase.from("waste_streaks").upsert({
+          user_id: pref.user_id,
+          current_streak_weeks: nextStreak.current_streak_weeks,
+          longest_streak_weeks: nextStreak.longest_streak_weeks,
+          last_evaluated_week: targetWeekStart,
+        });
+        if (streakError) {
+          console.error("Failed to update waste_streaks for user", pref.user_id, streakError);
+        }
       }
 
       const { data: userSettings } = await supabase
