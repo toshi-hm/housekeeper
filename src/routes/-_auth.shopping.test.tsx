@@ -10,7 +10,13 @@ import * as useShoppingTemplatesModule from "@/hooks/useShoppingTemplates";
 import * as useStatsModule from "@/hooks/useStats";
 import * as useUserSettingsModule from "@/hooks/useUserSettings";
 import i18n from "@/lib/i18n";
-import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
+import { readOfflineActionQueue } from "@/lib/offlineActionQueue";
+import {
+  ToastContext,
+  type ToastContextValue,
+  type ToastOptions,
+  type ToastVariant,
+} from "@/lib/toast-context";
 
 import { ShoppingPage } from "./_auth.shopping";
 
@@ -232,5 +238,154 @@ describe("ShoppingPage - 「カートに入れた」チェック状態のクリ�
 
     const stored: unknown = JSON.parse(window.localStorage.getItem(CART_CHECK_STORAGE_KEY) ?? "{}");
     expect(stored).toEqual({});
+  });
+});
+
+describe("ShoppingPage - 買い物中モードのオフライン耐性強化 (#981)", () => {
+  const OFFLINE_QUEUE_STORAGE_KEY = "shopping.offlineActionQueue";
+  const lowStockItem = {
+    id: "item-1",
+    user_id: "u1",
+    name: "醤油",
+    units: 0,
+    content_amount: 1,
+    content_unit: "本",
+    minimum_stock: 1,
+  };
+
+  let shoppingListSpy: ReturnType<typeof spyOn>;
+  let itemsSpy: ReturnType<typeof spyOn>;
+  let categoriesSpy: ReturnType<typeof spyOn>;
+  let userSettingsSpy: ReturnType<typeof spyOn>;
+  let templatesSpy: ReturnType<typeof spyOn>;
+  let forecastAlertsSpy: ReturnType<typeof spyOn>;
+  let storePriceComparisonsSpy: ReturnType<typeof spyOn>;
+  let upsertSpy: ReturnType<typeof spyOn>;
+  let purchaseSpy: ReturnType<typeof spyOn>;
+  let upsertMutateAsync: ReturnType<typeof mock>;
+  let toastCalls: { message: string; variant?: ToastVariant; options?: ToastOptions }[];
+  let originalOnLine: boolean;
+
+  const setOnline = (value: boolean) => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value });
+  };
+
+  const OfflineQueueWrapper = ({ children }: { children: React.ReactNode }) => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const toast = mock((message: string, variant?: ToastVariant, options?: ToastOptions) => {
+      toastCalls.push({ message, variant, options });
+      return `toast-${toastCalls.length}`;
+    });
+    const value: ToastContextValue = { toasts: [], toast, dismiss: () => {} };
+    return (
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ToastContext.Provider value={value}>{children}</ToastContext.Provider>
+        </I18nextProvider>
+      </QueryClientProvider>
+    );
+  };
+
+  const renderOfflineQueuePage = () =>
+    render(<ShoppingPage />, { wrapper: OfflineQueueWrapper as React.ComponentType });
+
+  beforeEach(() => {
+    originalOnLine = navigator.onLine;
+    toastCalls = [];
+    localStorage.setItem("shopping.mode", "1");
+    window.localStorage.removeItem(OFFLINE_QUEUE_STORAGE_KEY);
+
+    shoppingListSpy = spyOn(useShoppingListModule, "useShoppingList").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useShoppingListModule.useShoppingList>);
+
+    itemsSpy = spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: [lowStockItem],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+
+    categoriesSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useMasterDataModule.useCategories>);
+
+    userSettingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    templatesSpy = spyOn(useShoppingTemplatesModule, "useShoppingTemplates").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useShoppingTemplatesModule.useShoppingTemplates>);
+
+    forecastAlertsSpy = spyOn(useStatsModule, "useForecastAlerts").mockReturnValue({
+      alerts: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useForecastAlerts>);
+
+    storePriceComparisonsSpy = spyOn(useStatsModule, "useStorePriceComparisons").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useStorePriceComparisons>);
+
+    upsertMutateAsync = mock(async () => ({ id: "shopping-new" }));
+    upsertSpy = spyOn(useShoppingListModule, "useUpsertShoppingItem").mockReturnValue({
+      mutateAsync: upsertMutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useShoppingListModule.useUpsertShoppingItem>);
+
+    purchaseSpy = spyOn(useShoppingListModule, "usePurchaseShoppingItem").mockReturnValue({
+      mutateAsync: mock(async () => ({ id: "created-item" })),
+      isPending: false,
+    } as unknown as ReturnType<typeof useShoppingListModule.usePurchaseShoppingItem>);
+  });
+
+  afterEach(() => {
+    setOnline(originalOnLine);
+    shoppingListSpy.mockRestore();
+    itemsSpy.mockRestore();
+    categoriesSpy.mockRestore();
+    userSettingsSpy.mockRestore();
+    templatesSpy.mockRestore();
+    forecastAlertsSpy.mockRestore();
+    storePriceComparisonsSpy.mockRestore();
+    upsertSpy.mockRestore();
+    purchaseSpy.mockRestore();
+    localStorage.removeItem("shopping.mode");
+    window.localStorage.removeItem(OFFLINE_QUEUE_STORAGE_KEY);
+    cleanup();
+  });
+
+  it("オフライン時にアラートから「リストに追加」すると、実際の追加は呼ばずキューに積んでその旨のトーストを出す", async () => {
+    setOnline(false);
+    const { getByRole } = renderOfflineQueuePage();
+
+    await act(async () => {
+      fireEvent.click(getByRole("button", { name: /リストに追加|Add to list/i }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(upsertMutateAsync).not.toHaveBeenCalled();
+    expect(readOfflineActionQueue()).toHaveLength(1);
+    expect(
+      toastCalls.some((c) => c.message.includes("キューに積みました") || /queued/i.test(c.message)),
+    ).toBe(true);
+  });
+
+  it("オンライン時にアラートから「リストに追加」すると、通常通り実際に追加され成功トーストを出す", async () => {
+    setOnline(true);
+    const { getByRole } = renderOfflineQueuePage();
+
+    await act(async () => {
+      fireEvent.click(getByRole("button", { name: /リストに追加|Add to list/i }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(upsertMutateAsync).toHaveBeenCalledWith({ name: "醤油", linked_item_id: "item-1" });
+    expect(readOfflineActionQueue()).toHaveLength(0);
   });
 });

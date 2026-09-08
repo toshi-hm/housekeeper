@@ -1,9 +1,11 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
 import { type ItemType, resolveItemType } from "../_shared/itemType.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
+import { buildMergedNotificationContent, type ExpiryType, isSupportedLanguage } from "./content.ts";
 import { zonedDateString, zonedNow } from "./date.ts";
 import { shouldClaimNotificationSlot, wasAnyPushDelivered } from "./deliveryClaim.ts";
 import { buildNotificationTargetUrl } from "./notificationUrl.ts";
+import { type OpenedAlertItemRow, selectOpenedAlertItems } from "./openedAlertSelection.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,8 +30,6 @@ interface PushSubscription {
   auth: string;
 }
 
-type ExpiryType = "best_before" | "use_by" | null;
-
 interface ExpiringItem {
   id: string;
   name: string;
@@ -43,52 +43,6 @@ interface ExpiringItem {
   item_type: ItemType | null;
   categories: { kind: ItemType | null } | null;
 }
-
-// #630: Edge Functions can't use react-i18next, so notification copy is kept
-// in a small static per-language map instead of hardcoding Japanese.
-// #714: title()/itemLine() take expiry_type-aware inputs so wording/priority
-// can reflect 賞味期限 (best-before, mild) vs 消費期限 (use-by, urgent) without
-// touching the hour-matching / scheduling logic above (kept untouched to avoid
-// conflicting with #708, which is also editing this file).
-const EXPIRY_NOTIFICATION_TEXT: Record<
-  "ja" | "en",
-  {
-    title: (count: number, hasUrgent: boolean) => string;
-    itemLine: (name: string, expiryDate: string, expiryType: ExpiryType) => string;
-    emailIntro: string;
-  }
-> = {
-  ja: {
-    // 消費期限（安全性）を含む場合は従来通りの表現、賞味期限のみなら穏やかな表現にする
-    title: (count, hasUrgent) =>
-      hasUrgent
-        ? `${count}件の食材が期限間近です`
-        : `${count}件の食材の賞味期限（品質の目安）が近づいています`,
-    itemLine: (name, expiryDate, expiryType) =>
-      expiryType === "best_before"
-        ? `${name} (${expiryDate}, 賞味期限)`
-        : expiryType === "use_by"
-          ? `${name} (${expiryDate}, 消費期限)`
-          : `${name} (${expiryDate})`,
-    emailIntro: "期限間近の食材:",
-  },
-  en: {
-    title: (count, hasUrgent) =>
-      hasUrgent
-        ? `${count} item(s) are expiring soon`
-        : `${count} item(s) are approaching their best-before (quality) date`,
-    itemLine: (name, expiryDate, expiryType) =>
-      expiryType === "best_before"
-        ? `${name} (${expiryDate}, best-before)`
-        : expiryType === "use_by"
-          ? `${name} (${expiryDate}, use-by)`
-          : `${name} (${expiryDate})`,
-    emailIntro: "Items expiring soon:",
-  },
-};
-
-const isSupportedLanguage = (value: unknown): value is "ja" | "en" =>
-  value === "ja" || value === "en";
 
 export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -195,9 +149,53 @@ export const handler = async (req: Request): Promise<Response> => {
         (item) => resolveItemType(item.item_type, item.categories?.kind) !== "daily_goods",
       );
 
-      if (items.length === 0) return;
+      // #967: 開封後アラート対象を取得する。expiry_date ベースの期限接近判定とは
+      // 独立した条件（opened_at からの経過日数 vs 開封後使用推奨日数）なので別
+      // クエリで取得し、通知本文の別セクションとしてマージする（同じユーザーに
+      // 1日2通は送らない、既存の notification_logs 1日1通ポリシーに乗せる）。
+      // #787と同様、PostgRESTの行数上限対策でfetchAllPagesを使う。
+      // opened_remaining = 0（開封済み・空、使い切り済み）の item は上の期限接近
+      // クエリと同じ理由（#445）で対象外とする — 空になったアイテムに「使い切って
+      // ください」と通知するのは無意味なため。
+      let openedAlertRows: OpenedAlertItemRow[];
+      try {
+        openedAlertRows = await fetchAllPages(async (from, to) => {
+          const { data, error } = await supabase
+            .from("items")
+            .select(
+              "id, name, opened_at, days_use_after_opening, item_type, categories(kind, days_use_after_opening)",
+            )
+            .eq("user_id", pref.user_id)
+            .not("opened_at", "is", null)
+            .gt("units", 0)
+            .or("opened_remaining.is.null,opened_remaining.neq.0")
+            .order("id", { ascending: true })
+            .range(from, to);
+          if (error) throw error;
+          return (data ?? []) as OpenedAlertItemRow[];
+        });
+      } catch (error) {
+        console.error("Failed to fetch opened-alert items for user", pref.user_id, error);
+        return;
+      }
 
-      const count = items.length;
+      // #937と同様、日用品は開封後アラート通知の対象からも除外する
+      // （selectOpenedAlertItems、openedAlertSelection.test.ts でカバー）。
+      const openedAlertItems = selectOpenedAlertItems(openedAlertRows);
+
+      // 期限接近・開封後アラートのいずれも0件の場合のみスキップする（どちらか
+      // 一方でも非0件なら送信する）。
+      if (items.length === 0 && openedAlertItems.length === 0) return;
+
+      // #967: 期限接近と開封後アラートは独立した条件のため、同じアイテムが両方の
+      // 集合に含まれることがある（例: 開封済みで賞味期限も近い調味料）。件数と
+      // 通知リンク（#671、1件ならアイテム詳細へ）の両方でこの重複を除いた
+      // ユニークなアイテムID集合を使う。
+      const uniqueItemIds = new Set([
+        ...items.map((item) => item.id),
+        ...openedAlertItems.map((item) => item.id),
+      ]);
+      const count = uniqueItemIds.size;
 
       const { data: userSettings } = await supabase
         .from("user_settings")
@@ -205,7 +203,6 @@ export const handler = async (req: Request): Promise<Response> => {
         .eq("user_id", pref.user_id)
         .maybeSingle();
       const language = isSupportedLanguage(userSettings?.language) ? userSettings.language : "ja";
-      const text = EXPIRY_NOTIFICATION_TEXT[language];
 
       // 定期実行時は notification_logs を見て、当日分が既に確定済み（＝実送信に
       // 成功済み）ならスキップする（重複送信防止）。
@@ -223,16 +220,15 @@ export const handler = async (req: Request): Promise<Response> => {
         if (existingLog) return;
       }
 
-      // #714: 消費期限（use_by）または区別未設定（null, 既存アイテム互換）の item が
-      // 1件でもあれば、通知全体を従来通りの「緊急」文言・優先度にする。賞味期限
-      // （best_before）のみで構成される場合だけ穏やかな文言にする。
-      const hasUrgentItem = items.some((i) => i.expiry_type !== "best_before");
-      const title = text.title(count, hasUrgentItem);
-      const body = items
-        .slice(0, 3)
-        .map((i) => text.itemLine(i.name, i.expiry_date, i.expiry_type))
-        .join(", ");
-      const notificationUrl = buildNotificationTargetUrl(items);
+      // #967: 期限接近セットと開封後アラートセットを1件の通知本文にマージする。
+      const content = buildMergedNotificationContent({
+        language,
+        expiringItems: items,
+        openedAlertItems,
+      });
+      if (!content) return;
+      const { title, body, emailText } = content;
+      const notificationUrl = buildNotificationTargetUrl([...uniqueItemIds].map((id) => ({ id })));
 
       // Send push notifications
       let pushDelivered = false;
@@ -301,7 +297,7 @@ export const handler = async (req: Request): Promise<Response> => {
             from: resendFrom,
             to: pref.email_address,
             subject: title,
-            text: `${text.emailIntro}\n${items.map((i) => `- ${text.itemLine(i.name, i.expiry_date, i.expiry_type)}`).join("\n")}`,
+            text: emailText,
           }),
         });
         if (res.ok) {

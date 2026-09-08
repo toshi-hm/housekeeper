@@ -23,6 +23,7 @@ import { Route as AuthStatsRouteImport } from './routes/_auth.stats'
 import { Route as AuthItemsItemIdRouteImport } from './routes/_auth.items.$itemId'
 import { Route as AuthItemsNewRouteImport } from './routes/_auth.items.new'
 import { Route as AuthItemsReceiptScanRouteImport } from './routes/_auth.items.receipt-scan'
+import { Route as AuthItemsShelfScanRouteImport } from './routes/_auth.items.shelf-scan'
 import { Route as AuthLocationsLocationIdRouteImport } from './routes/_auth.locations.$locationId'
 import { Route as AuthSettingsArchivedItemsRouteImport } from './routes/_auth.settings.archived-items'
 import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
@@ -102,6 +103,11 @@ const AuthItemsReceiptScanRoute = AuthItemsReceiptScanRouteImport.update({
   path: '/items/receipt-scan',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthItemsShelfScanRoute = AuthItemsShelfScanRouteImport.update({
+  id: '/items/shelf-scan',
+  path: '/items/shelf-scan',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthLocationsLocationIdRoute = AuthLocationsLocationIdRouteImport.update({
   id: '/locations/$locationId',
   path: '/locations/$locationId',
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
   '/items/receipt-scan': typeof AuthItemsReceiptScanRoute
+  '/items/shelf-scan': typeof AuthItemsShelfScanRoute
   '/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
   '/items/receipt-scan': typeof AuthItemsReceiptScanRoute
+  '/items/shelf-scan': typeof AuthItemsShelfScanRoute
   '/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
@@ -215,6 +223,7 @@ export interface FileRoutesById {
   '/_auth/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/_auth/items/new': typeof AuthItemsNewRoute
   '/_auth/items/receipt-scan': typeof AuthItemsReceiptScanRoute
+  '/_auth/items/shelf-scan': typeof AuthItemsShelfScanRoute
   '/_auth/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/_auth/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/_auth/settings/categories': typeof AuthSettingsCategoriesRoute
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/items/$itemId'
     | '/items/new'
     | '/items/receipt-scan'
+    | '/items/shelf-scan'
     | '/locations/$locationId'
     | '/settings/archived-items'
     | '/settings/categories'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/items/$itemId'
     | '/items/new'
     | '/items/receipt-scan'
+    | '/items/shelf-scan'
     | '/locations/$locationId'
     | '/settings/archived-items'
     | '/settings/categories'
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/_auth/items/$itemId'
     | '/_auth/items/new'
     | '/_auth/items/receipt-scan'
+    | '/_auth/items/shelf-scan'
     | '/_auth/locations/$locationId'
     | '/_auth/settings/archived-items'
     | '/_auth/settings/categories'
@@ -405,6 +417,13 @@ declare module '@tanstack/react-router' {
       path: '/items/receipt-scan'
       fullPath: '/items/receipt-scan'
       preLoaderRoute: typeof AuthItemsReceiptScanRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/items/shelf-scan': {
+      id: '/_auth/items/shelf-scan'
+      path: '/items/shelf-scan'
+      fullPath: '/items/shelf-scan'
+      preLoaderRoute: typeof AuthItemsShelfScanRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/locations/$locationId': {
@@ -533,6 +552,7 @@ interface AuthRouteChildren {
   AuthItemsItemIdRoute: typeof AuthItemsItemIdRouteWithChildren
   AuthItemsNewRoute: typeof AuthItemsNewRoute
   AuthItemsReceiptScanRoute: typeof AuthItemsReceiptScanRoute
+  AuthItemsShelfScanRoute: typeof AuthItemsShelfScanRoute
   AuthLocationsLocationIdRoute: typeof AuthLocationsLocationIdRouteWithChildren
 }
 
@@ -548,6 +568,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthItemsItemIdRoute: AuthItemsItemIdRouteWithChildren,
   AuthItemsNewRoute: AuthItemsNewRoute,
   AuthItemsReceiptScanRoute: AuthItemsReceiptScanRoute,
+  AuthItemsShelfScanRoute: AuthItemsShelfScanRoute,
   AuthLocationsLocationIdRoute: AuthLocationsLocationIdRouteWithChildren,
 }
 

@@ -3,6 +3,7 @@ import { describe, expect, mock, test } from "bun:test";
 import { I18nextProvider } from "react-i18next";
 
 import i18n from "@/lib/i18n";
+import type { ReceiptPriceIncreaseAlert } from "@/lib/receiptPriceAlert";
 import type { ReceiptDraftItem } from "@/types/receipt";
 
 import { ReceiptLineItemRow, type ReceiptRowStatus } from "./ReceiptLineItemRow";
@@ -61,5 +62,43 @@ describe("ReceiptLineItemRow delete button (#923)", () => {
   test("does not show the delete button once succeeded", () => {
     const { queryByRole } = renderRow("success");
     expect(queryByRole("button", { name: i18n.t("removeRow", { ns: "receiptScan" }) })).toBeNull();
+  });
+});
+
+// #941: the price-increase badge is purely informational (never blocks
+// registration) and only ever renders when the parent has already computed
+// an alert for this row.
+describe("ReceiptLineItemRow price increase badge (#941)", () => {
+  const renderWithAlert = (priceAlert: ReceiptPriceIncreaseAlert | null | undefined) =>
+    render(
+      <I18nextProvider i18n={i18n}>
+        <ReceiptLineItemRow
+          draft={draft}
+          categories={[]}
+          locations={[]}
+          priceAlert={priceAlert}
+          onChange={() => {}}
+          onRemove={() => {}}
+        />
+      </I18nextProvider>,
+    );
+
+  test("shows no badge when priceAlert is not provided", () => {
+    const { queryByText } = renderWithAlert(undefined);
+    expect(queryByText(/%/)).toBeNull();
+  });
+
+  test("shows no badge when priceAlert is null", () => {
+    const { queryByText } = renderWithAlert(null);
+    expect(queryByText(/%/)).toBeNull();
+  });
+
+  test("shows the badge with the increase percentage when priceAlert is set", () => {
+    const { getByText } = renderWithAlert({
+      baselinePrice: 200,
+      currentPrice: 248,
+      increasePercent: 24,
+    });
+    expect(getByText(/24/)).toBeTruthy();
   });
 });

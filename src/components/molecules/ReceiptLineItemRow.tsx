@@ -2,8 +2,10 @@ import { AlertTriangle, Check, Loader2, Trash2, X } from "lucide-react";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
+import { PriceIncreaseBadge } from "@/components/atoms/PriceIncreaseBadge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import type { ReceiptPriceIncreaseAlert } from "@/lib/receiptPriceAlert";
 import type { Category, StorageLocation } from "@/types/item";
 import type { ReceiptDraftItem } from "@/types/receipt";
 
@@ -14,6 +16,9 @@ interface ReceiptLineItemRowProps {
   categories: Pick<Category, "id" | "name">[];
   locations: Pick<StorageLocation, "id" | "name">[];
   status?: ReceiptRowStatus;
+  /** 商品名（完全一致）×店舗名での値上がり判定結果。無し/未判定ならnull/undefined
+   *  で、その場合バッジは何も表示しない（#941）。 */
+  priceAlert?: ReceiptPriceIncreaseAlert | null;
   onChange: (patch: Partial<ReceiptDraftItem>) => void;
   onRemove: () => void;
 }
@@ -25,6 +30,7 @@ export const ReceiptLineItemRow = ({
   categories,
   locations,
   status = "pending",
+  priceAlert,
   onChange,
   onRemove,
 }: ReceiptLineItemRowProps) => {
@@ -90,6 +96,12 @@ export const ReceiptLineItemRow = ({
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           {t("lowConfidenceHint")}
         </p>
+      )}
+
+      {priceAlert && (
+        <div>
+          <PriceIncreaseBadge alert={priceAlert} />
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-2">

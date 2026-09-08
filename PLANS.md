@@ -707,7 +707,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 詳細: `docs/specs/features/shopping-mode.md`（既存の買い物中モード本体を追認 + 3件の拡張）
 
-- [ ] オフライン耐性強化: 購入確定・アラート追加のローカルキュー + 再接続時自動同期 <!-- issue:#981 -->
+- [x] オフライン耐性強化: 購入確定・アラート追加のローカルキュー + 再接続時自動同期 <!-- issue:#981 -->
 - [x] 見込み合計金額表示: 買い物リストの最安値ベース合算をモード上部に表示 <!-- issue:#982 -->
 - [x] 「カートに入れた」軽量チェックオフ: `localStorage` ベースの端末内一時状態 <!-- issue:#983 -->
 
@@ -739,30 +739,30 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 詳細: `docs/specs/features/shelf-scan.md`（親 Issue: #927）
 
-- [ ] 新規 Edge Function `shelf-scan`（Gemini Vision、`receipt-scan` のパターンを踏襲） <!-- issue:#927 -->
-- [ ] `src/lib/shelfScanMatch.ts`（在庫との差分マッチングロジック）+ 単体テスト <!-- issue:#927 -->
-- [ ] `ShelfScanCapturePage` ルート（保管場所選択 + カメラ起動） <!-- issue:#927 -->
-- [ ] `ShelfScanReviewPanel` organism（差分候補一覧 + 一括補正）+ Story <!-- issue:#927 -->
-- [ ] ダッシュボードの Scan メニューへの導線追加 <!-- issue:#927 -->
-- [ ] i18n `shelfScan` 名前空間 <!-- issue:#927 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#927 -->
+- [x] 新規 Edge Function `shelf-scan`（Gemini Vision、`receipt-scan` のパターンを踏襲） <!-- issue:#927 -->
+- [x] `src/lib/shelfScanMatch.ts`（在庫との差分マッチングロジック）+ 単体テスト <!-- issue:#927 -->
+- [x] `ShelfScanCapturePage` ルート（保管場所選択 + カメラ起動） <!-- issue:#927 -->
+- [x] `ShelfScanReviewPanel` organism（差分候補一覧 + 一括補正）+ Story <!-- issue:#927 -->
+- [x] ダッシュボードの Scan メニューへの導線追加 <!-- issue:#927 -->
+- [x] i18n `shelfScan` 名前空間 <!-- issue:#927 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#927 -->
 
 ### v1.15 — レシートレビューでの店舗別価格上昇アラート
 
 > 詳細: `docs/specs/features/receipt-scan.md`「9. 拡張: レビュー画面での店舗別価格上昇アラート」節（親 Issue: #941）
 
-- [ ] レビュー画面の各行での商品名（完全一致）× `storeName` の直近単価クエリ追加 <!-- issue:#941 -->
-- [ ] 値上がりバッジ + ツールチップ UI（`ReceiptLineItemRow`） <!-- issue:#941 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#941 -->
+- [x] レビュー画面の各行での商品名（完全一致）× `storeName` の直近単価クエリ追加 <!-- issue:#941 -->
+- [x] 値上がりバッジ + ツールチップ UI（`ReceiptLineItemRow`） <!-- issue:#941 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#941 -->
 
 ### v1.16 — 開封後使用期限アラートのプッシュ/メール通知統合
 
 > 詳細: `docs/specs/features/notifications.md`「拡張: 開封後使用期限アラートの通知統合」節（親 Issue: #967）
 
-- [ ] `isOpenedAlertDue` 相当のロジックを `supabase/functions/_shared/` へ移植 <!-- issue:#967 -->
-- [ ] `send-expiry-notifications` の対象抽出・本文テンプレートに開封後アラート分を追加 <!-- issue:#967 -->
-- [ ] 日用品（`item_type = 'daily_goods'`）を対象から除外 <!-- issue:#967 -->
-- [ ] テスト / CI 整備と PR CI グリーン化 <!-- issue:#967 -->
+- [x] `isOpenedAlertDue` 相当のロジックを `supabase/functions/_shared/` へ移植 <!-- issue:#967 -->
+- [x] `send-expiry-notifications` の対象抽出・本文テンプレートに開封後アラート分を追加 <!-- issue:#967 -->
+- [x] 日用品（`item_type = 'daily_goods'`）を対象から除外 <!-- issue:#967 -->
+- [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#967 -->
 
 ### v1.17 — 類似アイテム名のマージ提案（表記揺れ対策）
 
@@ -788,9 +788,9 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 
 > 親 Issue: #992。ユーザー向け機能ではないため spec ドラフトは作成しない（CI設定のみ）。
 
-- [ ] 現状のカバレッジ実測値を確認し、少し余裕を持たせた初期閾値を決定 <!-- issue:#992 -->
-- [ ] `bunfig.toml` の `[test]` に `coverageThreshold` を追加 <!-- issue:#992 -->
-- [ ] CI で意図的にカバレッジを下げて正しく失敗することを確認 <!-- issue:#992 -->
+- [x] 現状のカバレッジ実測値を確認し、少し余裕を持たせた初期閾値を決定 <!-- issue:#992 -->
+- [x] `bunfig.toml` の `[test]` に `coverageThreshold` を追加 <!-- issue:#992 -->
+- [x] CI で意図的にカバレッジを下げて正しく失敗することを確認（ローカルで `bun test --coverage` を用いて検証） <!-- issue:#992 -->
 
 ### v2 — 多人数共有（Household Sharing）+ Alexa マルチユーザー対応
 

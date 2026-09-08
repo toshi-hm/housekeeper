@@ -146,6 +146,8 @@ interface UpsertFloorPlanStorageLocationMarkerInput {
 
 export const useUpsertFloorPlanStorageLocationMarker = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: async (
       input: UpsertFloorPlanStorageLocationMarkerInput,
@@ -177,6 +179,10 @@ export const useUpsertFloorPlanStorageLocationMarker = () => {
         queryKey: ["floor-plan-storage-location-markers", marker.floor_plan_id],
       });
     },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
+    },
   });
 };
 
@@ -192,6 +198,8 @@ interface UpsertPlacementInput {
 
 export const useUpsertFloorPlanPlacement = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
   return useMutation({
     mutationFn: async (input: UpsertPlacementInput): Promise<FloorPlanItemPlacement> => {
       requireOnline();
@@ -220,6 +228,10 @@ export const useUpsertFloorPlanPlacement = () => {
       void queryClient.invalidateQueries({
         queryKey: ["floor-plan-placements", placement.floor_plan_id],
       });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
     },
   });
 };
