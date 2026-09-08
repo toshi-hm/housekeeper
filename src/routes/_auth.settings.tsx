@@ -90,6 +90,12 @@ export const SettingsPage = () => {
     (settings?.stocktake_alert_days !== undefined
       ? String(settings.stocktake_alert_days)
       : String(DEFAULT_STOCKTAKE_ALERT_DAYS));
+  const [monthlyBudget, setMonthlyBudget] = useState<string | null>(null);
+  const monthlyBudgetValue =
+    monthlyBudget ??
+    (settings?.monthly_budget !== null && settings?.monthly_budget !== undefined
+      ? String(settings.monthly_budget)
+      : "");
 
   const handleLanguageChange = async (lang: "ja" | "en") => {
     try {
@@ -169,6 +175,25 @@ export const SettingsPage = () => {
     try {
       await updateSettings.mutateAsync({ low_stock_forecast_days: days });
       setForecastDays(null);
+      toast(t("saveSuccess"), "success");
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+    }
+  };
+
+  const handleMonthlyBudgetChange = async (value: string) => {
+    const trimmed = value.trim();
+    // 未入力 = 未設定（null）に戻す（#991: BudgetBannerを非表示にする）
+    const amount = trimmed === "" ? null : Number(trimmed);
+    if (amount !== null && (isNaN(amount) || amount < 0)) {
+      toast(t("invalidMonthlyBudget"), "error");
+      return;
+    }
+    try {
+      await updateSettings.mutateAsync({ monthly_budget: amount });
+      setMonthlyBudget(null);
       toast(t("saveSuccess"), "success");
     } catch (error) {
       if (!(error instanceof OfflineError)) {
@@ -321,6 +346,27 @@ export const SettingsPage = () => {
                 }}
               />
               <Label>{t("daysBefore")}</Label>
+            </div>
+          </section>
+
+          {/* Monthly budget (#991) */}
+          <section>
+            <h2 className="mb-1 text-sm font-semibold text-muted-foreground">
+              {t("monthlyBudget")}
+            </h2>
+            <p className="mb-2 text-xs text-muted-foreground">{t("monthlyBudgetHelp")}</p>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                value={monthlyBudgetValue}
+                className="w-32"
+                onChange={(e) => setMonthlyBudget(e.target.value)}
+                onBlur={(e) => {
+                  void handleMonthlyBudgetChange(e.target.value);
+                }}
+              />
+              <Label>{t("monthlyBudgetUnit")}</Label>
             </div>
           </section>
 

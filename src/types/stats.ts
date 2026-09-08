@@ -660,6 +660,48 @@ export interface StorePriceComparison {
  * 比較の意味が無いため結果から除外する（#697 spec: 「複数店舗の unit_price が
  * 記録されている場合のみ表示」）。
  */
+// --- 月次予算超過アラート（#991） ---
+
+/** 予算に対する支出率がこの値（%）以上になったら注意表示にする。 */
+const BUDGET_CAUTION_THRESHOLD_PERCENT = 80;
+
+/** 予算に対する支出率がこの値（%）以上になったら警告表示にする（予算超過）。 */
+const BUDGET_OVER_THRESHOLD_PERCENT = 100;
+
+export type BudgetTier = "normal" | "caution" | "over";
+
+export interface BudgetStatus {
+  monthlyBudget: number;
+  currentSpend: number;
+  /** 予算に対する支出の割合（%）。小数点以下は四捨五入。 */
+  percentUsed: number;
+  tier: BudgetTier;
+}
+
+/**
+ * 当月の支出額と月次予算上限から予算消化状況を計算する。
+ * `monthlyBudget` が未設定（null/undefined）、または 0 以下の場合は「予算機能を
+ * 使わない」ものとして扱い null を返す（`BudgetBanner` はこれを非表示の合図として使う）。
+ */
+export const computeBudgetStatus = (
+  currentSpend: number,
+  monthlyBudget: number | null | undefined,
+): BudgetStatus | null => {
+  if (monthlyBudget === null || monthlyBudget === undefined || monthlyBudget <= 0) {
+    return null;
+  }
+
+  const percentUsed = Math.round((currentSpend / monthlyBudget) * 100);
+  const tier: BudgetTier =
+    percentUsed >= BUDGET_OVER_THRESHOLD_PERCENT
+      ? "over"
+      : percentUsed >= BUDGET_CAUTION_THRESHOLD_PERCENT
+        ? "caution"
+        : "normal";
+
+  return { monthlyBudget, currentSpend, percentUsed, tier };
+};
+
 export const computeStorePriceComparisons = (
   lots: StorePriceLotRow[],
   itemNameMap: Record<string, string>,
