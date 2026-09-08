@@ -58,7 +58,7 @@ export const computeReceiptPriceIncreaseAlert = (
   const matching = history.filter(
     (row) =>
       row.itemName === normalizedName &&
-      (row.storeName ?? "") === normalizedStore &&
+      (row.storeName?.trim() ?? "") === normalizedStore &&
       row.unitPrice !== null,
   );
   // 「2件以上のデータがある場合のみ」— #697の店舗別価格比較カードと同じ条件を踏襲。

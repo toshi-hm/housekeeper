@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { createElement, type ReactNode } from "react";
 
-import { FloorPlanConflictError } from "@/lib/requireOnline";
+import { FloorPlanConflictError, OfflineError } from "@/lib/requireOnline";
 import { createEmptyFloorPlanDocument } from "@/types/floorPlan";
 
 interface SupabaseResponse {
@@ -55,12 +55,19 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { useUpsertFloorPlan, useUpsertFloorPlanStorageLocationMarker, useDeleteFloorPlanPlacement } =
-  await import("@/hooks/useFloorPlans");
+const {
+  useUpsertFloorPlan,
+  useUpsertFloorPlanStorageLocationMarker,
+  useUpsertFloorPlanPlacement,
+  useDeleteFloorPlanPlacement,
+} = await import("@/hooks/useFloorPlans");
 const { ToastContext } = await import("@/lib/toast-context");
 
-const makeWrapper = (queryClient: QueryClient) => {
-  const stubToast = { toasts: [], toast: () => "", dismiss: () => {} };
+const makeWrapper = (
+  queryClient: QueryClient,
+  toastSpy?: (message: string, kind: string) => void,
+) => {
+  const stubToast = { toasts: [], toast: toastSpy ?? (() => ""), dismiss: () => {} };
   return ({ children }: { children: ReactNode }) =>
     createElement(
       QueryClientProvider,
@@ -152,6 +159,85 @@ describe("useUpsertFloorPlanStorageLocationMarker", () => {
         { onConflict: "floor_plan_id,storage_location_id" },
       ],
     });
+  });
+
+  test("オフライン時はofflineErrorトーストを表示する(#1007)", async () => {
+    getUserMock.mockImplementationOnce(() => Promise.reject(new OfflineError()));
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const toastSpy = mock(() => "");
+    const { result } = renderHook(() => useUpsertFloorPlanStorageLocationMarker(), {
+      wrapper: makeWrapper(queryClient, toastSpy),
+    });
+
+    act(() => {
+      result.current.mutate({
+        floorPlanId: "plan-1",
+        storageLocationId: "location-1",
+        x: 120,
+        y: 80,
+      });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(OfflineError);
+    expect(toastSpy).toHaveBeenCalledWith(expect.any(String), "error");
+  });
+});
+
+describe("useUpsertFloorPlanPlacement", () => {
+  test("アイテムピンの配置を保存し、対象の間取りの配置一覧キャッシュを無効化する", async () => {
+    responseQueues.floor_plan_item_placements = [
+      {
+        data: {
+          id: "placement-1",
+          user_id: "user-1",
+          floor_plan_id: "plan-1",
+          item_id: "item-1",
+          object_id: null,
+          x: 10,
+          y: 20,
+          z: 0,
+          rotation: 0,
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        },
+        error: null,
+      },
+    ];
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    queryClient.invalidateQueries =
+      invalidateSpy as unknown as typeof queryClient.invalidateQueries;
+    const { result } = renderHook(() => useUpsertFloorPlanPlacement(), {
+      wrapper: makeWrapper(queryClient),
+    });
+
+    act(() => {
+      result.current.mutate({ floorPlanId: "plan-1", itemId: "item-1", x: 10, y: 20 });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["floor-plan-placements", "plan-1"]);
+  });
+
+  test("オフライン時はofflineErrorトーストを表示する(#1007)", async () => {
+    getUserMock.mockImplementationOnce(() => Promise.reject(new OfflineError()));
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const toastSpy = mock(() => "");
+    const { result } = renderHook(() => useUpsertFloorPlanPlacement(), {
+      wrapper: makeWrapper(queryClient, toastSpy),
+    });
+
+    act(() => {
+      result.current.mutate({ floorPlanId: "plan-1", itemId: "item-1", x: 10, y: 20 });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(OfflineError);
+    expect(toastSpy).toHaveBeenCalledWith(expect.any(String), "error");
   });
 });
 

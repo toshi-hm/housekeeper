@@ -111,6 +111,16 @@ describe("computeReceiptPriceIncreaseAlert (#941)", () => {
     expect(computeReceiptPriceIncreaseAlert(history, "牛乳", "   ", 250)).toBeNull();
   });
 
+  test("stored store name with surrounding whitespace still matches after trimming(#1024)", () => {
+    const history = [
+      row({ storeName: "スーパーA ", unitPrice: 200, purchaseDate: "2026-07-01" }),
+      row({ storeName: "スーパーA\n", unitPrice: 200, purchaseDate: "2026-08-01" }),
+    ];
+    const alert = computeReceiptPriceIncreaseAlert(history, "牛乳", "スーパーA", 250);
+    expect(alert).not.toBeNull();
+    expect(alert?.baselinePrice).toBe(200);
+  });
+
   test("baseline uses the average of only the most recent RECENT_HISTORY_LIMIT (5) entries", () => {
     // 6件の履歴のうち、最新5件の平均が基準単価になる（最古の1件=100円は除外される）。
     const history = [
