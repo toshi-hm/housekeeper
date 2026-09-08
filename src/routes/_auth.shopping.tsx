@@ -9,6 +9,7 @@ import { ShareButton } from "@/components/atoms/ShareButton";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { OfflineQueuePanel } from "@/components/molecules/OfflineQueuePanel";
 import { ScanToShoppingDialog } from "@/components/molecules/ScanToShoppingDialog";
 import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
 import { ShoppingRow } from "@/components/molecules/ShoppingRow";
@@ -49,6 +50,7 @@ import { useForecastAlerts, useStorePriceComparisons } from "@/hooks/useStats";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { parseLocalDate } from "@/lib/dateUtils";
+import type { OfflineQueuedAction } from "@/lib/offlineActionQueue";
 import { OfflineError } from "@/lib/requireOnline";
 import {
   type CategoryResolver,
@@ -123,6 +125,9 @@ export const ShoppingPage = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showClearPurchased, setShowClearPurchased] = useState(false);
+  // 買い物中モードのオフラインキュー（#981）の個別破棄確認（#1021）。誤タップで
+  // 未同期の操作を失わないよう、破棄には確認ダイアログを挟む。
+  const [discardQueueAction, setDiscardQueueAction] = useState<OfflineQueuedAction | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null);
   const [sort, setSort] = useState<ShoppingSortKey>(() => {
@@ -235,6 +240,14 @@ export const ShoppingPage = () => {
     } catch {
       // Error toast is handled by useDeleteAllPurchasedItems.onError
     }
+  };
+
+  // #1021: 買い物中モードのオフラインキューに残っている未同期アクションの手動破棄。
+  // 確認ダイアログでの確定後に呼ばれる。同期はせず、そのアクションの内容は失われる。
+  const handleDiscardQueueAction = () => {
+    if (!discardQueueAction) return;
+    offlineQueue.discardQueuedAction(discardQueueAction.id);
+    setDiscardQueueAction(null);
   };
 
   const handleEdit = async (
@@ -597,6 +610,15 @@ export const ShoppingPage = () => {
         }}
         onCancel={() => setShowClearPurchased(false)}
       />
+      <ConfirmDialog
+        open={!!discardQueueAction}
+        title={t("offlineQueueDiscardConfirmTitle")}
+        message={t("offlineQueueDiscardConfirmMessage")}
+        confirmLabel={t("offlineQueuePanelDiscard")}
+        variant="destructive"
+        onConfirm={handleDiscardQueueAction}
+        onCancel={() => setDiscardQueueAction(null)}
+      />
 
       {pendingPurchaseId && (
         <PurchaseDialog
@@ -783,25 +805,33 @@ export const ShoppingPage = () => {
       )}
 
       {shoppingMode ? (
-        <ShoppingModeView
-          plannedItems={plannedItems}
-          onPurchase={(id) => {
-            clearPendingPurchaseImage();
-            setPendingPurchaseId(id);
-          }}
-          onDelete={(id) => setDeleteId(id)}
-          lowStockItems={lowStockAlerts}
-          expiringItems={expiringAlerts}
-          addedItemIds={addedAlertItemIds}
-          onAddAlert={(entry) => {
-            void handleAddAlertToList(entry);
-          }}
-          addingItemId={addingAlertId}
-          isLoading={shoppingModeLoading}
-          resolveCheapestStore={resolveCheapestStore}
-          checkedCartItemIds={cartCheckOff.checkedIds}
-          onToggleCartCheck={cartCheckOff.toggle}
-        />
+        <>
+          {/* #1021: 買い物中モードのオフラインキューに残っている未同期アクション
+              （購入確定・買い物リストへの追加）の確認・個別破棄の導線。 */}
+          <OfflineQueuePanel
+            actions={offlineQueue.queuedActions}
+            onRequestDiscard={(action) => setDiscardQueueAction(action)}
+          />
+          <ShoppingModeView
+            plannedItems={plannedItems}
+            onPurchase={(id) => {
+              clearPendingPurchaseImage();
+              setPendingPurchaseId(id);
+            }}
+            onDelete={(id) => setDeleteId(id)}
+            lowStockItems={lowStockAlerts}
+            expiringItems={expiringAlerts}
+            addedItemIds={addedAlertItemIds}
+            onAddAlert={(entry) => {
+              void handleAddAlertToList(entry);
+            }}
+            addingItemId={addingAlertId}
+            isLoading={shoppingModeLoading}
+            resolveCheapestStore={resolveCheapestStore}
+            checkedCartItemIds={cartCheckOff.checkedIds}
+            onToggleCartCheck={cartCheckOff.toggle}
+          />
+        </>
       ) : (
         <>
           {/* Tabs */}

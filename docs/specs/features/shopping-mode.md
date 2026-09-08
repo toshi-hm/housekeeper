@@ -68,6 +68,31 @@
 
 M
 
+### 追補（#1021 / #1022）: オフライン判定の穴とキュー詰まりの修正
+
+実装後に見つかった2つの不具合を修正した:
+
+- **#1022**: `navigator.onLine` は「OS/ブラウザがネットワークインターフェースを
+  検出しているか」の粗い判定でしかなく、弱電波・輻輳等で `true` のまま実際の
+  fetch自体が失敗するケースがあった。この場合、fetch失敗（ブラウザの `fetch()`
+  がネットワークレベルの失敗で reject する `TypeError`、`isNetworkFetchError`
+  で判定）由来のエラーが一般エラーとして再スローされ、キューに積まれず操作内容が
+  失われていた。`queuePurchase`/`queueAddAlert` の事前チェック（`navigator.onLine`）
+  に加えて、実行時の `TypeError` もキュー対象に含めるよう修正した。
+- **#1021**: `replay` は `ConcurrentUpdateError` 以外の全エラー（恒久的なバリデーション
+  エラーを含む）でリプレイ全体を打ち切っていたため、恒久的に失敗し続けるアクションが
+  先頭に残ると以降の全アクションが永久に同期されなくなっていた。`isPermanentReplayError`
+  （PostgreSQLの制約違反等、同じペイロードで再送しても確実に同じ結果になると判断
+  できるエラーのみの狭い許可リスト方式、判定基準は `src/lib/supabaseErrors.ts` 参照）
+  で恒久的エラーを検出した場合は、該当アクションのみ破棄してユーザーへトースト通知し、
+  残りのリプレイを継続するようにした。それ以外の判別できないエラー（一時的な
+  ネットワークエラー等）は従来通り保守的にキューへ残してリプレイを打ち切る。
+  また、`queueLength` がUI上どこにも表示されず、キュー内容の確認・個別破棄の手段が
+  無かったため、`useOfflineActionQueue` に `queuedActions`（キュー内容）と
+  `discardQueuedAction`（個別の手動破棄）を追加し、買い物中モード画面に
+  `OfflineQueuePanel` molecule（`src/components/molecules/OfflineQueuePanel.tsx`）
+  として表示・破棄導線を追加した（破棄は `ConfirmDialog` での確認を挟む）。
+
 ---
 
 ## 拡張 2: 見込み合計金額表示（#982）

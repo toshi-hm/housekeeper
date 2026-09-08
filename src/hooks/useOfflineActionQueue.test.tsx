@@ -315,4 +315,184 @@ describe("useOfflineActionQueue", () => {
     expect(purchase).toHaveBeenCalledTimes(1);
     expect(readOfflineActionQueue()).toHaveLength(2);
   });
+
+  // #1022: navigator.onLine は true のままでも、実際のfetch自体が失敗する
+  // (弱電波・輻輳等)ケースの回帰テスト。
+  test("オンライン判定がtrueでも、fetch失敗(TypeError)ならキューへ積む(purchase)", async () => {
+    const toastCalls: ToastCall[] = [];
+    const { Wrapper } = makeWrapper(toastCalls);
+    const purchase = mock(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    const addAlert = mock(async () => ({ id: "shopping-1" }));
+
+    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+      wrapper: Wrapper,
+    });
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.queuePurchase(purchaseInput("s1"));
+    });
+
+    expect(outcome).toEqual({ status: "queued" });
+    expect(readOfflineActionQueue()).toHaveLength(1);
+  });
+
+  test("オンライン判定がtrueでも、fetch失敗(TypeError)ならキューへ積む(addAlert)", async () => {
+    const toastCalls: ToastCall[] = [];
+    const { Wrapper } = makeWrapper(toastCalls);
+    const purchase = mock(async () => ({ id: "created-item" }));
+    const addAlert = mock(async () => {
+      throw new TypeError("NetworkError when attempting to fetch resource.");
+    });
+
+    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+      wrapper: Wrapper,
+    });
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.queueAddAlert(addAlertInput("item-1"));
+    });
+
+    expect(outcome).toEqual({ status: "queued" });
+    expect(readOfflineActionQueue()).toHaveLength(1);
+  });
+
+  test("fetch失敗と無関係なTypeErrorはキューに積まずそのまま伝播する", async () => {
+    const toastCalls: ToastCall[] = [];
+    const { Wrapper } = makeWrapper(toastCalls);
+    const purchase = mock(async () => {
+      throw new TypeError("Cannot read properties of undefined (reading 'foo')");
+    });
+    const addAlert = mock(async () => ({ id: "shopping-1" }));
+
+    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+      wrapper: Wrapper,
+    });
+
+    await expect(result.current.queuePurchase(purchaseInput("s1"))).rejects.toThrow();
+    expect(readOfflineActionQueue()).toHaveLength(0);
+  });
+
+  // #1021: 恒久的エラー(バリデーション等)は該当アクションだけ破棄して以降の
+  // リプレイを継続する回帰テスト。
+  test("リプレイ中に1件が恒久的エラー(NOT NULL制約違反)で失敗した場合、そのアクションを破棄して残りは継続する", async () => {
+    setOnline(false);
+    const toastCalls: ToastCall[] = [];
+    const purchase = mock(async (input: PurchaseInput) => {
+      if (input.shoppingItemId === "invalid") {
+        throw new Error('null value in column "name" violates not-null constraint');
+      }
+      return { id: "created-item" };
+    });
+    const addAlert = mock(async () => ({ id: "shopping-1" }));
+    const { Wrapper } = makeWrapper(toastCalls);
+
+    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.queuePurchase(purchaseInput("invalid"));
+      await result.current.queuePurchase(purchaseInput("ok"));
+    });
+    expect(readOfflineActionQueue()).toHaveLength(2);
+
+    setOnline(true);
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(purchase).toHaveBeenCalledTimes(2);
+    });
+    // 恒久的エラーの分・成功した分の両方がキューから除去され、残らない
+    // (1件目の恒久的失敗で止まらず、2件目が同期される)
+    expect(readOfflineActionQueue()).toHaveLength(0);
+    await waitFor(() => {
+      expect(toastCalls.some((c) => c.variant === "error" && c.message.includes("1"))).toBe(true);
+    });
+  });
+
+  test("恒久的エラーで破棄されたアクションの後続も、通常のネットワークエラーが起きればそこで打ち切られキューに残る", async () => {
+    setOnline(false);
+    const toastCalls: ToastCall[] = [];
+    const purchase = mock(async (input: PurchaseInput) => {
+      if (input.shoppingItemId === "invalid") {
+        throw new Error('null value in column "name" violates not-null constraint');
+      }
+      throw new TypeError("Failed to fetch");
+    });
+    const addAlert = mock(async () => ({ id: "shopping-1" }));
+    const { Wrapper } = makeWrapper(toastCalls);
+
+    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.queuePurchase(purchaseInput("invalid"));
+      await result.current.queuePurchase(purchaseInput("transient"));
+    });
+    expect(readOfflineActionQueue()).toHaveLength(2);
+
+    setOnline(true);
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(purchase).toHaveBeenCalledTimes(2);
+    });
+    // 恒久的エラーの1件目は破棄されるが、2件目は一時的なネットワークエラーの
+    // ためキューに残ったままリプレイが打ち切られる。
+    const remaining = readOfflineActionQueue();
+    expect(remaining).toHaveLength(1);
+    const remainingAction = remaining[0];
+    expect(remainingAction?.kind).toBe("purchase");
+    expect(
+      remainingAction?.kind === "purchase" ? remainingAction.payload.shoppingItemId : undefined,
+    ).toBe("transient");
+  });
+
+  // #1021: キュー内容の公開・個別破棄API
+  test("queuedActionsでキュー内容を取得でき、discardQueuedActionで個別に手動破棄できる", async () => {
+    setOnline(false);
+    const toastCalls: ToastCall[] = [];
+    const purchase = mock(async () => ({ id: "created-item" }));
+    const addAlert = mock(async () => ({ id: "shopping-1" }));
+    const { Wrapper } = makeWrapper(toastCalls);
+
+    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.queuePurchase(purchaseInput("s1"));
+      await result.current.queueAddAlert(addAlertInput("item-1"));
+    });
+
+    expect(result.current.queuedActions).toHaveLength(2);
+    expect(result.current.queuedActions.map((a) => a.kind)).toEqual(["purchase", "add-alert"]);
+
+    const idToDiscard = result.current.queuedActions[0]?.id;
+    expect(idToDiscard).toBeTruthy();
+    act(() => {
+      if (idToDiscard) result.current.discardQueuedAction(idToDiscard);
+    });
+
+    expect(result.current.queuedActions).toHaveLength(1);
+    expect(result.current.queuedActions[0]?.kind).toBe("add-alert");
+    expect(readOfflineActionQueue()).toHaveLength(1);
+    // 手動破棄はネットワーク同期を試みない
+    expect(purchase).not.toHaveBeenCalled();
+  });
 });
