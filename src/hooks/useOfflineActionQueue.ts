@@ -8,6 +8,7 @@ import {
   readOfflineActionQueue,
 } from "@/lib/offlineActionQueue";
 import { ConcurrentUpdateError, OfflineError } from "@/lib/requireOnline";
+import { isNetworkFetchError, isPermanentReplayError } from "@/lib/supabaseErrors";
 import { useToast } from "@/lib/toast-context";
 import type { PurchaseInput, UpsertShoppingItemInput } from "@/types/shopping";
 
@@ -28,6 +29,13 @@ export interface UseOfflineActionQueueOptions<TPurchaseResult, TAddAlertResult> 
 export interface UseOfflineActionQueueResult<TPurchaseResult, TAddAlertResult> {
   /** 現在キューに積まれているオフラインアクション数。 */
   queueLength: number;
+  /** 現在キューに積まれているアクションそのもの（#1021）。UI側で内容の確認・
+   *  個別破棄（`discardQueuedAction`）の導線を出すために公開している。積まれた順。 */
+  queuedActions: OfflineQueuedAction[];
+  /** 指定したアクションをユーザー操作でキューから取り除く（#1021）。`replay` の
+   *  自動判定とは独立した、UIからの明示的な手動破棄用。同期は行わない —
+   *  そのアクションの内容は失われる。 */
+  discardQueuedAction: (id: string) => void;
   /** `purchaseShoppingItem` 呼び出しをオフライン対応でラップする。オンラインなら
    *  そのまま実行し、オフライン（またはリクエスト直前にオフラインへ変わった場合）は
    *  キューへ積んで `{ status: "queued" }` を返す。 */
@@ -56,10 +64,21 @@ export interface UseOfflineActionQueueResult<TPurchaseResult, TAddAlertResult> {
  * - `ConcurrentUpdateError`（#952の楽観的排他制御パターン）: このアクションだけ諦めて
  *   キューから取り除き、次のアクションのリプレイを継続する（自動マージはしない。ユーザーへの
  *   通知は渡された `purchase`/`addAlert` 自体の `onError` に委ねる）
- * - `OfflineError`（リプレイ中に再びオフラインへ変わった）: このアクション・残りは
- *   キューに残したままリプレイを打ち切り、次の `online` イベントを待つ
- * - その他の想定外のエラー: ユーザーの操作を失わないよう、このアクション・残りをキューに
- *   残したままリプレイを打ち切る
+ * - 恒久的エラー（`isPermanentReplayError`、#1021。PostgreSQLの制約違反等、同じ
+ *   ペイロードで再送しても確実に同じ結果になると判断できるエラーのみの狭い許可
+ *   リスト方式、判定基準は `src/lib/supabaseErrors.ts` 参照）: このアクションを
+ *   キューから取り除いてユーザーへトースト通知し、次のアクションのリプレイを継続する。
+ *   1件の恒久的失敗が先頭に残り続けて以降の同期が完全に止まる事態を防ぐ
+ * - `OfflineError` / ネットワーク起因のfetch失敗（`isNetworkFetchError`, #1022）
+ *   （リプレイ中に再びオフラインへ変わった、または一時的な通信断）: このアクション・
+ *   残りはキューに残したままリプレイを打ち切り、次の `online` イベントを待つ
+ * - その他の判別できない想定外のエラー: 恒久的と誤判定してユーザーの操作を失わない
+ *   よう、保守的にこのアクション・残りをキューに残したままリプレイを打ち切る
+ *
+ * キューの内容は `queuedActions` で公開しており、`_auth.shopping.tsx` の
+ * `OfflineQueuePanel` から確認・`discardQueuedAction` による個別の手動破棄ができる
+ * （#1021: 恒久的エラーの自動判定に該当しない、長時間残り続けるアクションの
+ * リカバリ手段）。
  */
 export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
   options: UseOfflineActionQueueOptions<TPurchaseResult, TAddAlertResult>,
@@ -99,6 +118,7 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
       // リプレイ中に新規enqueueされた分は対象に含めない（次回のreplayに回す）。
       const snapshot = queueRef.current;
       let succeeded = 0;
+      let discarded = 0;
       for (const action of snapshot) {
         try {
           if (action.kind === "purchase") {
@@ -115,13 +135,26 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
             dequeue(action.id);
             continue;
           }
-          // OfflineError（再びオフラインに戻った）、またはその他の想定外のエラー。
-          // どちらもユーザーの操作を失わないようキューに残し、リプレイを打ち切る。
+          if (isPermanentReplayError(err)) {
+            // #1021: 恒久的エラー（バリデーション等、同じ内容で再送しても確実に
+            // 失敗すると判断できるもの）はこのアクションだけ諦めてキューから
+            // 取り除く。先頭で永久に詰まって以降の同期が完全停止するのを防ぐため、
+            // 残りのリプレイは継続する。
+            dequeue(action.id);
+            discarded += 1;
+            continue;
+          }
+          // OfflineError、ネットワーク起因のfetch失敗（#1022）、またはその他の
+          // 判別できない想定外のエラー。恒久的と誤判定してユーザーの操作を失わない
+          // よう、保守的にこのアクション・残りをキューに残したままリプレイを打ち切る。
           break;
         }
       }
       if (succeeded > 0) {
         toast(t("offlineQueueReplaySuccess", { count: succeeded }), "success");
+      }
+      if (discarded > 0) {
+        toast(t("offlineQueueReplayDiscarded", { count: discarded }), "error");
       }
     } finally {
       replayingRef.current = false;
@@ -153,7 +186,10 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
         const result = await optionsRef.current.purchase(input);
         return { status: "sent", result };
       } catch (err) {
-        if (err instanceof OfflineError) {
+        // #1022: navigator.onLine は true のままでも、弱電波・輻輳等で実際の
+        // fetch自体が失敗することがある（`isNetworkFetchError`）。この場合も
+        // OfflineError と同様にキューへ積み、操作内容を失わないようにする。
+        if (err instanceof OfflineError || isNetworkFetchError(err)) {
           enqueue({ kind: "purchase", payload: input });
           return { status: "queued" };
         }
@@ -173,7 +209,9 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
         const result = await optionsRef.current.addAlert(input);
         return { status: "sent", result };
       } catch (err) {
-        if (err instanceof OfflineError) {
+        // #1022: queuePurchase と同様、navigator.onLine が true でも実際の
+        // fetch失敗はキュー対象に含める。
+        if (err instanceof OfflineError || isNetworkFetchError(err)) {
           enqueue({ kind: "add-alert", payload: input });
           return { status: "queued" };
         }
@@ -183,5 +221,11 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
     [enqueue],
   );
 
-  return { queueLength: queue.length, queuePurchase, queueAddAlert };
+  return {
+    queueLength: queue.length,
+    queuedActions: queue,
+    discardQueuedAction: dequeue,
+    queuePurchase,
+    queueAddAlert,
+  };
 };
