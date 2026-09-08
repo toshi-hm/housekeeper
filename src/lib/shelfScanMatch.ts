@@ -9,10 +9,23 @@
  * - possiblyUnregistered: 写真にあるがシステムに未登録（未登録候補）
  *
  * 名前の類似度判定は #990 で追加された `similarItemMatch.ts` の
- * `findSimilarItem`（正規化 + Levenshtein距離）をそのまま再利用し、表記揺れ
- * 判定ロジックを重複実装しない。
+ * `findSimilarItem`（正規化 + Levenshtein距離）をベースに再利用し、表記揺れ
+ * 判定ロジックを重複実装しない。ただし #1025 で判明した通り、シェルフスキャンの
+ * Gemini プロンプトはパッケージ表記から読み取れる範囲でブランド名込みの具体的な
+ * 商品名を返す一方、ユーザー登録の `items.name` はそこまで詳細でないことが多い
+ * （例:「牛乳」 vs. OCR側「明治おいしい牛乳 1000ml」）。この文字数差は
+ * `findSimilarItem` の事前フィルタ（`MAX_LENGTH_DIFF_RATIO`）を容易に超えてしまい
+ * 表記揺れとして拾えないため、`findSimilarItem` で見つからなかった場合のみ、
+ * シェルフスキャン専用の追加判定として「正規化後の包含関係（`includes`）」も見る
+ * （`findContainedItem`）。この追加ロジックは shelfScanMatch 内に閉じており、
+ * `findSimilarItem` 自体の挙動・他の呼び出し元（`SimilarItemSuggestion` /
+ * `ItemForm`、#990）には影響しない。
  */
-import { findSimilarItem, type SimilarItemCandidate } from "@/lib/similarItemMatch";
+import {
+  findSimilarItem,
+  normalizeItemName,
+  type SimilarItemCandidate,
+} from "@/lib/similarItemMatch";
 
 export interface ShelfScanMatchItem {
   id: string;
@@ -27,11 +40,54 @@ export interface ShelfScanMatchResult {
 }
 
 /**
+ * 正規化後の文字数が1文字などの極端に短い名前は、無関係な語にも容易に包含され
+ * 誤マッチしやすいため、包含判定の対象から除外する下限値。
+ */
+const MIN_CONTAINMENT_LENGTH = 2;
+
+/**
+ * `findSimilarItem`（表記揺れ検出、#990）では拾えない、シェルフスキャン特有の
+ * 「詳細度の差」によるマッチ漏れを補うための追加判定（#1025）。正規化後の
+ * どちらか一方の文字列が他方を包含していれば、同一商品とみなす（例:
+ * 登録名「牛乳」⊂ OCR名「明治おいしい牛乳1000ml」）。候補が複数ある場合は
+ * 文字数差が最も小さいもの（＝最も詳細度が近いもの）を採用する。
+ */
+const findContainedItem = (
+  candidates: SimilarItemCandidate[],
+  queryName: string,
+): SimilarItemCandidate | null => {
+  const normalizedQuery = normalizeItemName(queryName);
+  if (normalizedQuery.length < MIN_CONTAINMENT_LENGTH) return null;
+
+  let best: SimilarItemCandidate | null = null;
+  let bestLengthDiff = Number.POSITIVE_INFINITY;
+
+  for (const candidate of candidates) {
+    const normalizedCandidate = normalizeItemName(candidate.name);
+    if (normalizedCandidate.length < MIN_CONTAINMENT_LENGTH) continue;
+
+    const isContained =
+      normalizedCandidate.includes(normalizedQuery) ||
+      normalizedQuery.includes(normalizedCandidate);
+    if (!isContained) continue;
+
+    const lengthDiff = Math.abs(normalizedCandidate.length - normalizedQuery.length);
+    if (lengthDiff < bestLengthDiff) {
+      best = candidate;
+      bestLengthDiff = lengthDiff;
+    }
+  }
+
+  return best;
+};
+
+/**
  * `existingItems` と `photoCandidateNames` を突き合わせ、2種類の差分候補を返す。
- * 写真候補ごとに `findSimilarItem` で最も近い既存アイテムを探し、見つかれば
- * その既存アイテムを「写真に写っていた」ものとしてマークする。1つの既存
- * アイテムに複数の写真候補が一致してもマークは1回で十分なため、マッチした
- * アイテムIDの集合で管理する。
+ * 写真候補ごとにまず `findSimilarItem` で表記揺れ込みの近い既存アイテムを探し、
+ * 見つからなければ `findContainedItem` で詳細度の差（包含関係）によるマッチを
+ * 試みる。見つかれば、その既存アイテムを「写真に写っていた」ものとしてマークする。
+ * 1つの既存アイテムに複数の写真候補が一致してもマークは1回で十分なため、
+ * マッチしたアイテムIDの集合で管理する。
  */
 export const matchShelfScanCandidates = (
   photoCandidateNames: string[],
@@ -42,7 +98,7 @@ export const matchShelfScanCandidates = (
   const matchedCandidateIndices = new Set<number>();
 
   photoCandidateNames.forEach((name, index) => {
-    const match = findSimilarItem(candidates, name);
+    const match = findSimilarItem(candidates, name) ?? findContainedItem(candidates, name);
     if (!match) return;
     matchedItemIds.add(match.id);
     matchedCandidateIndices.add(index);
