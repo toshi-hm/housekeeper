@@ -7,6 +7,11 @@
 // expiry-date-based set and the opened-alert set — the spec explicitly says
 // not to split this into a second daily send, so both sets share one
 // title/body/email built here.
+// #1026: when both sets are non-empty, the title must state both counts
+// (via combinedTitle) — previously it used expiringItems.length only, so
+// the opened-alert count silently vanished from the title while still being
+// counted into notification_logs.item_count (dedup'd union), making the
+// title's count disagree with the body/log.
 export type ExpiryType = "best_before" | "use_by" | null;
 
 export interface ExpiringNotificationItem {
@@ -31,6 +36,12 @@ interface NotificationTextSet {
   openedAlertSectionLabel: string;
   openedAlertLine: (name: string, elapsedDays: number) => string;
   openedAlertEmailIntro: string;
+  /**
+   * #1026: 期限接近セットと開封後アラートセットの両方が非空のときに使う
+   * タイトル。どちらか一方の件数だけを使うと、もう一方の件数が通知タイトル
+   * から欠落してしまうため、両方の件数を明示する。
+   */
+  combinedTitle: (expiringCount: number, openedCount: number, hasUrgent: boolean) => string;
 }
 
 export const EXPIRY_NOTIFICATION_TEXT: Record<"ja" | "en", NotificationTextSet> = {
@@ -51,6 +62,10 @@ export const EXPIRY_NOTIFICATION_TEXT: Record<"ja" | "en", NotificationTextSet> 
     openedAlertSectionLabel: "開封済み",
     openedAlertLine: (name, elapsedDays) => `${name} (開封から${elapsedDays}日)`,
     openedAlertEmailIntro: "開封後の推奨使用期限を過ぎている食材:",
+    combinedTitle: (expiringCount, openedCount, hasUrgent) =>
+      hasUrgent
+        ? `期限間近の食材が${expiringCount}件、開封済みで推奨使用期限を過ぎたものが${openedCount}件あります`
+        : `賞味期限（品質の目安）が近い食材が${expiringCount}件、開封済みで推奨使用期限を過ぎたものが${openedCount}件あります`,
   },
   en: {
     title: (count, hasUrgent) =>
@@ -68,6 +83,10 @@ export const EXPIRY_NOTIFICATION_TEXT: Record<"ja" | "en", NotificationTextSet> 
     openedAlertSectionLabel: "Opened items",
     openedAlertLine: (name, elapsedDays) => `${name} (opened ${elapsedDays} day(s) ago)`,
     openedAlertEmailIntro: "Opened items past their recommended use-by date:",
+    combinedTitle: (expiringCount, openedCount, hasUrgent) =>
+      hasUrgent
+        ? `${expiringCount} item(s) are expiring soon and ${openedCount} opened item(s) are past their use-by date`
+        : `${expiringCount} item(s) are approaching their best-before date and ${openedCount} opened item(s) are past their use-by date`,
   },
 };
 
@@ -98,10 +117,14 @@ export const buildMergedNotificationContent = (params: {
   const text = EXPIRY_NOTIFICATION_TEXT[language];
   const hasUrgentItem = expiringItems.some((item) => item.expiry_type !== "best_before");
 
+  // #1026: 両方非空なら両方の件数を明示するcombinedTitleを使う。どちらか
+  // 一方のみ非空なら従来通りの単一セット用タイトルのまま。
   const title =
-    expiringItems.length > 0
-      ? text.title(expiringItems.length, hasUrgentItem)
-      : text.openedAlertTitle(openedAlertItems.length);
+    expiringItems.length > 0 && openedAlertItems.length > 0
+      ? text.combinedTitle(expiringItems.length, openedAlertItems.length, hasUrgentItem)
+      : expiringItems.length > 0
+        ? text.title(expiringItems.length, hasUrgentItem)
+        : text.openedAlertTitle(openedAlertItems.length);
 
   const bodySections: string[] = [];
   if (expiringItems.length > 0) {
