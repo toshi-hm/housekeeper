@@ -751,6 +751,7 @@ export interface Database {
           timezone: string;
           updated_at: string;
           user_id: string;
+          waste_digest_enabled: boolean;
         };
         Insert: {
           email_address?: string | null;
@@ -761,6 +762,7 @@ export interface Database {
           timezone?: string;
           updated_at?: string;
           user_id: string;
+          waste_digest_enabled?: boolean;
         };
         Update: {
           email_address?: string | null;
@@ -771,6 +773,7 @@ export interface Database {
           timezone?: string;
           updated_at?: string;
           user_id?: string;
+          waste_digest_enabled?: boolean;
         };
         Relationships: [];
       };
@@ -1176,6 +1179,30 @@ export interface Database {
           notify_at?: string;
           stocktake_alert_days?: number;
           stocktake_alert_enabled?: boolean;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      waste_streaks: {
+        Row: {
+          current_streak_weeks: number;
+          last_evaluated_week: string | null;
+          longest_streak_weeks: number;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          current_streak_weeks?: number;
+          last_evaluated_week?: string | null;
+          longest_streak_weeks?: number;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          current_streak_weeks?: number;
+          last_evaluated_week?: string | null;
+          longest_streak_weeks?: number;
           updated_at?: string;
           user_id?: string;
         };

@@ -540,6 +540,95 @@ export const computeMonthlyWasteStats = (
   return result;
 };
 
+// --- 週次食品ロスダイジェスト（#925） ---
+
+/** ソフトデリート済みアイテムのうち `deletion_reason = 'expired_waste'` のもの。
+ *  `computeMonthlyWasteStats` の `RawWasteItem` に `name`（トップ3集計用）を加えたもの。 */
+export interface RawWasteDigestItem {
+  name: string;
+  deleted_at: string;
+}
+
+interface WeeklyWasteTopItem {
+  name: string;
+  count: number;
+}
+
+export interface WeeklyWasteDigest {
+  /** 直近の完了週（対象週）の廃棄件数。 */
+  currentWeekCount: number;
+  /** 対象週の1つ前の週の廃棄件数（前週比の算出に使う）。 */
+  previousWeekCount: number;
+  /** 前週比（%、四捨五入）。previousWeekCount が 0 の場合は比較不能として null。 */
+  changePercent: number | null;
+  /** 対象週によく廃棄された食材トップ3（件数降順、同数は名前の昇順で安定ソート）。 */
+  topWasted: WeeklyWasteTopItem[];
+}
+
+/** 月曜始まりの週の開始日時（UTC 0時）を返す。
+ *  `send-waste-digest` Edge Function（Deno, UTC実行）と bun test の両方で
+ *  実行環境のローカルタイムゾーンに依存せず決定的に計算できるよう、UTC基準で
+ *  週境界を揃える（#710 のようなタイムゾーンずれの再発を避ける）。 */
+const utcWeekStart = (date: Date): Date => {
+  const utcMidnight = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const day = new Date(utcMidnight).getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  return new Date(utcMidnight - diffToMonday * MS_PER_DAY);
+};
+
+/**
+ * `computeMonthlyWasteStats` と同じ廃棄データ（`items.deletion_reason = 'expired_waste'`）を
+ * 週次で再集計する（既存の月次集計ロジック自体は変更しない、spec の「やらないこと」）。
+ *
+ * `now` を含む週の直前に完了した週を対象週とし、そのさらに1つ前の週と比較する。
+ * `send-waste-digest` は毎週月曜に実行されるため、通常は「先週」対「先々週」の比較になる。
+ */
+export const computeWeeklyWasteDigest = (
+  items: RawWasteDigestItem[],
+  now = new Date(),
+): WeeklyWasteDigest => {
+  const partialWeekStart = utcWeekStart(now);
+  const currentWeekStart = new Date(partialWeekStart.getTime() - 7 * MS_PER_DAY);
+  const currentWeekEnd = partialWeekStart; // exclusive
+  const previousWeekStart = new Date(currentWeekStart.getTime() - 7 * MS_PER_DAY);
+  const previousWeekEnd = currentWeekStart; // exclusive
+
+  const inRange = (isoDate: string, start: Date, end: Date): boolean => {
+    const t = new Date(isoDate).getTime();
+    return t >= start.getTime() && t < end.getTime();
+  };
+
+  const currentWeekItems = items.filter((item) =>
+    inRange(item.deleted_at, currentWeekStart, currentWeekEnd),
+  );
+  const previousWeekItems = items.filter((item) =>
+    inRange(item.deleted_at, previousWeekStart, previousWeekEnd),
+  );
+
+  const changePercent =
+    previousWeekItems.length === 0
+      ? null
+      : Math.round(
+          ((currentWeekItems.length - previousWeekItems.length) / previousWeekItems.length) * 100,
+        );
+
+  const countByName = new Map<string, number>();
+  for (const item of currentWeekItems) {
+    countByName.set(item.name, (countByName.get(item.name) ?? 0) + 1);
+  }
+  const topWasted: WeeklyWasteTopItem[] = [...countByName.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, 3);
+
+  return {
+    currentWeekCount: currentWeekItems.length,
+    previousWeekCount: previousWeekItems.length,
+    changePercent,
+    topWasted,
+  };
+};
+
 // --- 店舗別価格比較（#697） ---
 
 export interface StorePriceLotRow {

@@ -1,4 +1,4 @@
-import { Bell, Loader2, Mail, Send } from "lucide-react";
+import { Bell, Loader2, Mail, Recycle, Send } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -151,6 +151,16 @@ export const NotificationSettings = () => {
     setNotifyAtDraft(normalized);
     try {
       await updatePrefs.mutateAsync({ notify_at: normalized });
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+    }
+  };
+
+  const handleWasteDigestToggle = async () => {
+    try {
+      await updatePrefs.mutateAsync({ waste_digest_enabled: !prefs?.waste_digest_enabled });
     } catch (error) {
       if (!(error instanceof OfflineError)) {
         toast(t("common:unknownError"), "error");
@@ -313,6 +323,24 @@ export const NotificationSettings = () => {
           </Select>
           <p className="text-xs text-muted-foreground">{t("timezoneHelp")}</p>
         </div>
+      </div>
+
+      {/* Weekly waste digest (#925) */}
+      <div className="rounded-lg border p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Recycle className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">{t("wasteDigestEnabled")}</span>
+          </div>
+          <Button
+            variant={prefs?.waste_digest_enabled ? "default" : "outline"}
+            size="sm"
+            onClick={() => void handleWasteDigestToggle()}
+          >
+            {prefs?.waste_digest_enabled ? t("common:enabled") : t("common:disabled")}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("wasteDigestHelp")}</p>
       </div>
     </div>
   );

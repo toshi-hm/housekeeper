@@ -33,6 +33,7 @@ describe("NotificationSettings", () => {
       email_enabled: boolean;
       email_address: string | null;
       notify_at: string;
+      waste_digest_enabled: boolean;
     }> = {},
   ) => {
     prefsSpy.mockReturnValue({
@@ -43,6 +44,7 @@ describe("NotificationSettings", () => {
         email_address: null,
         threshold_days: 3,
         notify_at: "08:00",
+        waste_digest_enabled: false,
         ...overrides,
       },
     } as unknown as ReturnType<typeof useNotificationPreferencesModule.useNotificationPreferences>);
@@ -256,5 +258,36 @@ describe("NotificationSettings", () => {
     const { getByLabelText } = render(<NotificationSettings />, { wrapper });
     const timezoneSelect = getByLabelText(/タイムゾーン|Timezone/i) as HTMLSelectElement;
     expect(timezoneSelect.value).toBe("America/Los_Angeles");
+  });
+
+  // --- 週次ダイジェスト受信トグル (#925) ---
+
+  it("初期状態では週次ダイジェストのトグルは無効表示になる", () => {
+    setPrefs({ waste_digest_enabled: false });
+    const { getByText } = render(<NotificationSettings />, { wrapper });
+    const toggle = getByText(/週次ダイジェストを受け取る|Receive weekly digest/i)
+      .closest("div")
+      ?.parentElement?.querySelector("button");
+    expect(toggle?.textContent).toMatch(/無効|Disabled/i);
+  });
+
+  it("週次ダイジェストのトグルを押すと有効化され保存される", () => {
+    setPrefs({ waste_digest_enabled: false });
+    const { getByText } = render(<NotificationSettings />, { wrapper });
+    const toggle = getByText(/週次ダイジェストを受け取る|Receive weekly digest/i)
+      .closest("div")
+      ?.parentElement?.querySelector("button") as HTMLButtonElement;
+    fireEvent.click(toggle);
+    expect(mutateAsync).toHaveBeenCalledWith({ waste_digest_enabled: true });
+  });
+
+  it("有効な場合はトグルを押すと無効化され保存される", () => {
+    setPrefs({ waste_digest_enabled: true });
+    const { getByText } = render(<NotificationSettings />, { wrapper });
+    const toggle = getByText(/週次ダイジェストを受け取る|Receive weekly digest/i)
+      .closest("div")
+      ?.parentElement?.querySelector("button") as HTMLButtonElement;
+    fireEvent.click(toggle);
+    expect(mutateAsync).toHaveBeenCalledWith({ waste_digest_enabled: false });
   });
 });

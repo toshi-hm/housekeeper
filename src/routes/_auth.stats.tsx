@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { WasteStreakBadge } from "@/components/atoms/WasteStreakBadge";
 import { CategoryChart } from "@/components/organisms/CategoryChart";
 import { CategoryValueChart } from "@/components/organisms/CategoryValueChart";
 import { ConsumptionChart } from "@/components/organisms/ConsumptionChart";
@@ -20,18 +21,22 @@ import {
   useMonthlySpending,
   useStorePriceComparisons,
   useWasteStats,
+  useWasteStreak,
 } from "@/hooks/useStats";
 import { useUserSettings } from "@/hooks/useUserSettings";
 
 const ChartCard = ({
   title,
   subtitle,
+  headerRight,
   isLoading,
   isError,
   children,
 }: {
   title: string;
   subtitle?: string;
+  /** #925: WasteStreakBadgeのような、タイトル右側に添える小さな要素（任意）。 */
+  headerRight?: React.ReactNode;
   isLoading: boolean;
   isError: boolean;
   children: React.ReactNode;
@@ -40,7 +45,10 @@ const ChartCard = ({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">{title}</CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base">{title}</CardTitle>
+          {headerRight}
+        </div>
         {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
       </CardHeader>
       <CardContent>
@@ -90,6 +98,7 @@ const StatsPage = () => {
     isError: speedError,
   } = useConsumptionSpeedRanking();
   const { data: wasteData, isLoading: wasteLoading, isError: wasteError } = useWasteStats(6);
+  const { data: currentStreakWeeks } = useWasteStreak();
   const {
     data: spendingData,
     isLoading: spendingLoading,
@@ -158,6 +167,7 @@ const StatsPage = () => {
       <ChartCard
         title={t("wasteBreakdown")}
         subtitle={t("last6Months")}
+        headerRight={<WasteStreakBadge currentStreakWeeks={currentStreakWeeks ?? 0} />}
         isLoading={wasteLoading}
         isError={wasteError}
       >

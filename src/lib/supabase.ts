@@ -431,6 +431,7 @@ export interface Database {
           threshold_days: number;
           notify_at: string;
           timezone: string;
+          waste_digest_enabled: boolean;
           updated_at: string;
         };
         Insert: {
@@ -441,6 +442,7 @@ export interface Database {
           threshold_days?: number;
           notify_at?: string;
           timezone?: string;
+          waste_digest_enabled?: boolean;
           updated_at?: string;
         };
         Update: {
@@ -451,6 +453,7 @@ export interface Database {
           threshold_days?: number;
           notify_at?: string;
           timezone?: string;
+          waste_digest_enabled?: boolean;
           updated_at?: string;
         };
         Relationships: [];
@@ -846,6 +849,30 @@ export interface Database {
             referencedColumns: ["id"];
           },
         ];
+      };
+      waste_streaks: {
+        Row: {
+          user_id: string;
+          current_streak_weeks: number;
+          longest_streak_weeks: number;
+          last_evaluated_week: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          current_streak_weeks?: number;
+          longest_streak_weeks?: number;
+          last_evaluated_week?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          current_streak_weeks?: number;
+          longest_streak_weeks?: number;
+          last_evaluated_week?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

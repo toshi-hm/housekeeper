@@ -16,5 +16,7 @@
   "testNotificationSuccess": "Test notification sent",
   "thresholdDays": "Days before to notify",
   "timezone": "Timezone",
-  "timezoneHelp": "Notification time is interpreted in this timezone"
+  "timezoneHelp": "Notification time is interpreted in this timezone",
+  "wasteDigestEnabled": "Receive weekly digest",
+  "wasteDigestHelp": "Every Monday, at the notification time above, get last week's food-waste count, the change from the week before, and your top-3 most-wasted items"
 }
