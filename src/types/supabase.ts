@@ -1142,6 +1142,7 @@ export interface Database {
           language: string;
           last_backup_export_at: string | null;
           low_stock_forecast_days: number;
+          monthly_budget: number | null;
           notify_at: string;
           stocktake_alert_days: number;
           stocktake_alert_enabled: boolean;
@@ -1156,6 +1157,7 @@ export interface Database {
           language?: string;
           last_backup_export_at?: string | null;
           low_stock_forecast_days?: number;
+          monthly_budget?: number | null;
           notify_at?: string;
           stocktake_alert_days?: number;
           stocktake_alert_enabled?: boolean;
@@ -1170,6 +1172,7 @@ export interface Database {
           language?: string;
           last_backup_export_at?: string | null;
           low_stock_forecast_days?: number;
+          monthly_budget?: number | null;
           notify_at?: string;
           stocktake_alert_days?: number;
           stocktake_alert_enabled?: boolean;

@@ -1,4 +1,9 @@
 {
+  "budgetBannerAmounts": "{{spend}} / {{budget}}",
+  "budgetBannerMessage": "今月の支出は予算の{{percent}}%です",
+  "budgetTierCaution": "注意",
+  "budgetTierNormal": "順調",
+  "budgetTierOver": "予算超過",
   "categoryBreakdown": "カテゴリ別在庫",
   "categoryValueBreakdown": "カテゴリ別在庫金額",
   "categoryValueHint": "単価未設定の在庫は含まれません",
