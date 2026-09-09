@@ -22,6 +22,7 @@ interface FloorPlanEditorProps {
   selectedStorageLocationId?: string;
   onSelectStorageLocation?: (storageLocationId: string) => void;
   onStorageLocationMarkerChange?: (point: Point) => void;
+  onDeleteStorageLocationMarker?: (marker: FloorPlanStorageLocationMarker) => void;
 }
 
 interface Point {
@@ -61,6 +62,7 @@ export const FloorPlanEditor = ({
   selectedStorageLocationId,
   onSelectStorageLocation,
   onStorageLocationMarkerChange,
+  onDeleteStorageLocationMarker,
 }: FloorPlanEditorProps) => {
   const { t } = useTranslation("common");
   const toolLabel = {
@@ -119,8 +121,13 @@ export const FloorPlanEditor = ({
   };
 
   const handleShapePointerDown = (event: React.PointerEvent<SVGGElement>, shapeId: string) => {
+    // Marker placement takes priority over selecting the shape underneath
+    // the tap, matching handlePointerDown's own isMarkerMode-first check —
+    // otherwise tapping a shape while placing a marker left it selected
+    // (red highlight) even though the tap was meant to place the marker (#1034).
+    if (isMarkerMode) return;
     dispatch({ type: "select", id: shapeId, kind: "shape" });
-    if (tool !== "select" || isMarkerMode) return;
+    if (tool !== "select") return;
     const shape = state.document.shapes.find((candidate) => candidate.id === shapeId);
     if (!shape) return;
     event.stopPropagation();
@@ -135,8 +142,11 @@ export const FloorPlanEditor = ({
   };
 
   const handleWallPointerDown = (event: React.PointerEvent<SVGLineElement>, wallId: string) => {
+    // See handleShapePointerDown above: marker mode must not select the
+    // wall underneath the tap (#1034).
+    if (isMarkerMode) return;
     dispatch({ type: "select", id: wallId, kind: "wall" });
-    if (tool !== "select" || isMarkerMode) return;
+    if (tool !== "select") return;
     const wall = state.document.walls.find((candidate) => candidate.id === wallId);
     if (!wall) return;
     event.stopPropagation();
@@ -264,7 +274,18 @@ export const FloorPlanEditor = ({
       const step = state.document.gridSize;
       const dx = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
       const dy = event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0;
-      if (tool === "select" && state.selectedId && state.selectedKind) {
+      if (isMarkerMode) {
+        // Keyboard alternative to pointer movement while placing a storage
+        // location marker (#1033). Checked first, ahead of `tool`, because
+        // marker mode is orthogonal to the draw tool and pointer handling
+        // already gives it the same priority (see handlePointerDown).
+        event.preventDefault();
+        const base = currentPoint ?? getCenterPoint();
+        setCurrentPoint({
+          x: snapToGrid(base.x + dx, step, state.document.width),
+          y: snapToGrid(base.y + dy, step, state.document.height),
+        });
+      } else if (tool === "select" && state.selectedId && state.selectedKind) {
         // Keyboard alternative to pointer drag, for shapes/walls that are
         // hard to nudge precisely (or reach at all) with a pointer — moves
         // by one grid step per press.
@@ -307,12 +328,13 @@ export const FloorPlanEditor = ({
             });
           }
         }
-      } else if (tool !== "select" && !isMarkerMode) {
+      } else if (tool !== "select") {
         // A drawing tool is active: arrow keys move a keyboard-only cursor
         // (rendered as a crosshair) instead, so a wall/shape can be started
         // and finished without a pointer. Gated on `tool`, not on the
         // absence of a selection — a wall/shape selected before switching
-        // tools must not keep soaking up arrow-key input here.
+        // tools must not keep soaking up arrow-key input here. (isMarkerMode
+        // can't be true here — handled in the branch above.)
         event.preventDefault();
         const base = currentPoint ?? getCenterPoint();
         setCurrentPoint({
@@ -320,13 +342,31 @@ export const FloorPlanEditor = ({
           y: snapToGrid(base.y + dy, step, state.document.height),
         });
       }
-    } else if ((event.key === "Enter" || event.key === " ") && tool !== "select" && !isMarkerMode) {
+    } else if (
+      (event.key === "Enter" || event.key === " ") &&
+      (isMarkerMode || tool !== "select")
+    ) {
+      event.preventDefault();
+      const point = currentPoint ?? getCenterPoint();
+      if (isMarkerMode) {
+        // Keyboard equivalent of the pointer up → commit gesture for marker
+        // placement (#1033). Unlike wall/shape drawing this commits in a
+        // single step (no start point), matching handlePointerUp's own
+        // isMarkerMode handling.
+        onStorageLocationMarkerChange?.(point);
+        setIsMarkerMode(false);
+        setCurrentPoint(null);
+        return;
+      }
+      // Unreachable (the outer `isMarkerMode || tool !== "select"` guard
+      // guarantees `tool !== "select"` once isMarkerMode is false) — kept so
+      // TypeScript narrows `tool` below, since it can't derive that from a
+      // disjunctive condition across an earlier branch's early return.
+      if (tool === "select") return;
       // Keyboard equivalent of the pointer down → up drawing gesture: the
       // first press sets the start point (at the crosshair cursor), the
       // second commits the wall/shape from that start to the cursor's new
       // position.
-      event.preventDefault();
-      const point = currentPoint ?? getCenterPoint();
       if (!start) {
         setStart(point);
         setCurrentPoint(point);
@@ -351,6 +391,13 @@ export const FloorPlanEditor = ({
       setCurrentPoint(null);
     }
   };
+
+  // #1034: surfaces a delete affordance for the marker already placed at the
+  // currently selected storage location — there is otherwise no way to
+  // remove a marker once placed (only re-placing/moving it via upsert).
+  const existingMarkerForSelectedLocation = storageLocationMarkers.find(
+    (marker) => marker.storage_location_id === selectedStorageLocationId,
+  );
 
   return (
     <div className="space-y-3">
@@ -414,6 +461,21 @@ export const FloorPlanEditor = ({
           >
             {isMarkerMode ? t("mapPlaceMarkerActive") : t("mapPlaceMarker")}
           </Button>
+          {onDeleteStorageLocationMarker && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!existingMarkerForSelectedLocation || isMarkerMode}
+              onClick={() => {
+                if (existingMarkerForSelectedLocation) {
+                  onDeleteStorageLocationMarker(existingMarkerForSelectedLocation);
+                }
+              }}
+            >
+              {t("mapDeleteMarker")}
+            </Button>
+          )}
           <p className="basis-full text-xs text-muted-foreground">{t("mapPlaceMarkerHelp")}</p>
         </div>
       )}

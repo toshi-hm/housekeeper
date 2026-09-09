@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { FloorPlanEditor } from "@/components/organisms/FloorPlanEditor";
 import { Button } from "@/components/ui/button";
 import {
+  useDeleteFloorPlanStorageLocationMarker,
   useFloorPlan,
   useFloorPlanStorageLocationMarkers,
   useUpsertFloorPlan,
@@ -15,7 +17,10 @@ import {
 import { useStorageLocations } from "@/hooks/useMasterData";
 import { FloorPlanConflictError, OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
-import { createEmptyFloorPlanDocument } from "@/types/floorPlan";
+import {
+  createEmptyFloorPlanDocument,
+  type FloorPlanStorageLocationMarker,
+} from "@/types/floorPlan";
 
 export const FloorPlanEditorPage = () => {
   const { locationId } = Route.useParams();
@@ -23,6 +28,7 @@ export const FloorPlanEditorPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedStorageLocationId, setSelectedStorageLocationId] = useState(locationId);
+  const [markerToDelete, setMarkerToDelete] = useState<FloorPlanStorageLocationMarker | null>(null);
   const { data: locations = [], isLoading: locationsLoading } = useStorageLocations();
   const {
     data: floorPlan,
@@ -34,6 +40,7 @@ export const FloorPlanEditorPage = () => {
     useFloorPlanStorageLocationMarkers(floorPlan?.id ?? null);
   const saveFloorPlan = useUpsertFloorPlan();
   const saveStorageLocationMarker = useUpsertFloorPlanStorageLocationMarker();
+  const deleteStorageLocationMarker = useDeleteFloorPlanStorageLocationMarker();
   const location = locations.find((item) => item.id === locationId);
 
   if (locationsLoading || floorPlanLoading || markersLoading) {
@@ -50,6 +57,21 @@ export const FloorPlanEditorPage = () => {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
+      <ConfirmDialog
+        open={markerToDelete !== null}
+        title={t("confirmDeleteTitle")}
+        message={t("mapDeleteMarkerConfirm")}
+        confirmLabel={t("delete")}
+        isConfirming={deleteStorageLocationMarker.isPending}
+        onConfirm={() => {
+          if (!markerToDelete) return;
+          deleteStorageLocationMarker.mutate(
+            { id: markerToDelete.id, floorPlanId: markerToDelete.floor_plan_id },
+            { onSuccess: () => setMarkerToDelete(null) },
+          );
+        }}
+        onCancel={() => setMarkerToDelete(null)}
+      />
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
@@ -72,6 +94,7 @@ export const FloorPlanEditorPage = () => {
         storageLocations={locations}
         selectedStorageLocationId={selectedStorageLocationId}
         onSelectStorageLocation={setSelectedStorageLocationId}
+        onDeleteStorageLocationMarker={setMarkerToDelete}
         onStorageLocationMarkerChange={(point) => {
           if (!floorPlan) {
             toast(t("mapSaveBeforeMarker"), "error");
