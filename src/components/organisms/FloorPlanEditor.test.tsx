@@ -3,9 +3,38 @@ import { describe, expect, it, mock } from "bun:test";
 import { I18nextProvider } from "react-i18next";
 
 import i18n from "@/lib/i18n";
-import { createEmptyFloorPlanDocument } from "@/types/floorPlan";
+import {
+  createEmptyFloorPlanDocument,
+  type FloorPlanStorageLocationMarker,
+} from "@/types/floorPlan";
+import type { StorageLocation } from "@/types/item";
 
 import { FloorPlanEditor } from "./FloorPlanEditor";
+
+const storageLocation: StorageLocation = {
+  id: "location-1",
+  user_id: "user-1",
+  name: "冷蔵庫",
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+};
+
+const makeMarker = (
+  overrides: Partial<FloorPlanStorageLocationMarker> = {},
+): FloorPlanStorageLocationMarker => ({
+  id: "marker-1",
+  user_id: "user-1",
+  floor_plan_id: "plan-1",
+  storage_location_id: "location-1",
+  object_id: null,
+  x: 100,
+  y: 100,
+  z: 0,
+  rotation: 0,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+  ...overrides,
+});
 
 describe("FloorPlanEditor", () => {
   it("ドラッグ中は線のプレビューを表示し、同じツールで連続して確定できる", () => {
@@ -479,5 +508,143 @@ describe("FloorPlanEditor", () => {
     );
     expect(shapeLabels).toHaveLength(2);
     expect(new Set(shapeLabels).size).toBe(shapeLabels.length);
+  });
+
+  it("マーカー配置モード中に既存の図形をポインタ操作しても選択状態にならない (#1034)", () => {
+    const onSave = mock(() => undefined);
+    const onStorageLocationMarkerChange = mock(() => undefined);
+    const initialDocument = {
+      ...createEmptyFloorPlanDocument(),
+      shapes: [
+        {
+          id: "shape-1",
+          kind: "rectangle" as const,
+          x: 50,
+          y: 60,
+          width: 40,
+          height: 30,
+          rotation: 0,
+          label: null,
+        },
+      ],
+    };
+    const { getByRole, container } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor
+          initialDocument={initialDocument}
+          onSave={onSave}
+          storageLocations={[storageLocation]}
+          selectedStorageLocationId={storageLocation.id}
+          onSelectStorageLocation={() => undefined}
+          onStorageLocationMarkerChange={onStorageLocationMarkerChange}
+        />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+
+    fireEvent.click(getByRole("button", { name: i18n.t("common:mapPlaceMarker") }));
+
+    const shapeGroup = container.querySelector("g rect")?.parentElement as Element;
+    fireEvent.pointerDown(shapeGroup, { clientX: 60, clientY: 70, pointerId: 9 });
+    fireEvent.pointerUp(svg, { clientX: 60, clientY: 70, pointerId: 9 });
+
+    // Tapping the shape while placing a marker must place the marker (via
+    // the bubbled event reaching the canvas), not select the shape.
+    expect(onStorageLocationMarkerChange).toHaveBeenCalledWith({ x: 60, y: 70 });
+    const rect = container.querySelector("g rect");
+    expect(rect?.getAttribute("fill")).toBe("hsl(var(--primary) / 0.12)");
+    expect(shapeGroup.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("マーカー配置モード中は矢印キーでプレビュー位置を移動し、Enterで配置できる (#1033)", () => {
+    const onSave = mock(() => undefined);
+    const onStorageLocationMarkerChange = mock(() => undefined);
+    const { getByRole, container, queryByTestId } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor
+          initialDocument={createEmptyFloorPlanDocument()}
+          onSave={onSave}
+          storageLocations={[storageLocation]}
+          selectedStorageLocationId={storageLocation.id}
+          onSelectStorageLocation={() => undefined}
+          onStorageLocationMarkerChange={onStorageLocationMarkerChange}
+        />
+      </I18nextProvider>,
+    );
+    const svg = getByRole("application");
+    Object.defineProperty(svg, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 600, height: 400 }),
+    });
+
+    fireEvent.click(getByRole("button", { name: i18n.t("common:mapPlaceMarker") }));
+
+    // Center of the 600x400 canvas is (300, 200); one ArrowLeft step (grid
+    // size 10) should move the marker preview to (290, 200).
+    fireEvent.keyDown(svg, { key: "ArrowLeft" });
+    const preview = container.querySelector('[data-testid="floor-plan-marker-preview"]');
+    expect(preview?.getAttribute("cx")).toBe("290");
+    expect(preview?.getAttribute("cy")).toBe("200");
+
+    fireEvent.keyDown(svg, { key: "Enter" });
+
+    expect(onStorageLocationMarkerChange).toHaveBeenCalledWith({ x: 290, y: 200 });
+    // Marker mode is exited and the preview cleared after commit, matching
+    // pointerUp's handling of marker placement.
+    expect(queryByTestId("floor-plan-marker-preview")).toBeNull();
+    expect(getByRole("button", { name: i18n.t("common:mapPlaceMarker") })).not.toBeNull();
+  });
+
+  it("選択中の保管場所に既存マーカーがあるときだけ削除ボタンが有効になる (#1034)", () => {
+    const onSave = mock(() => undefined);
+    const onDeleteStorageLocationMarker = mock(() => undefined);
+    const marker = makeMarker();
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor
+          initialDocument={createEmptyFloorPlanDocument()}
+          onSave={onSave}
+          storageLocations={[storageLocation]}
+          selectedStorageLocationId={storageLocation.id}
+          onSelectStorageLocation={() => undefined}
+          storageLocationMarkers={[marker]}
+          onDeleteStorageLocationMarker={onDeleteStorageLocationMarker}
+        />
+      </I18nextProvider>,
+    );
+
+    const deleteButton = getByRole("button", {
+      name: i18n.t("common:mapDeleteMarker"),
+    }) as HTMLButtonElement;
+    expect(deleteButton.disabled).toBe(false);
+    fireEvent.click(deleteButton);
+    expect(onDeleteStorageLocationMarker).toHaveBeenCalledWith(marker);
+  });
+
+  it("選択中の保管場所にマーカーがなければ削除ボタンは無効になる (#1034)", () => {
+    const onSave = mock(() => undefined);
+    const onDeleteStorageLocationMarker = mock(() => undefined);
+    const { getByRole } = render(
+      <I18nextProvider i18n={i18n}>
+        <FloorPlanEditor
+          initialDocument={createEmptyFloorPlanDocument()}
+          onSave={onSave}
+          storageLocations={[storageLocation]}
+          selectedStorageLocationId={storageLocation.id}
+          onSelectStorageLocation={() => undefined}
+          storageLocationMarkers={[]}
+          onDeleteStorageLocationMarker={onDeleteStorageLocationMarker}
+        />
+      </I18nextProvider>,
+    );
+
+    const deleteButton = getByRole("button", {
+      name: i18n.t("common:mapDeleteMarker"),
+    }) as HTMLButtonElement;
+    expect(deleteButton.disabled).toBe(true);
   });
 });

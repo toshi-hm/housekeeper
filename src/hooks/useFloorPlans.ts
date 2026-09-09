@@ -186,6 +186,36 @@ export const useUpsertFloorPlanStorageLocationMarker = () => {
   });
 };
 
+interface DeleteFloorPlanStorageLocationMarkerInput {
+  id: string;
+  floorPlanId: string;
+}
+
+export const useDeleteFloorPlanStorageLocationMarker = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
+  return useMutation({
+    mutationFn: async ({ id }: DeleteFloorPlanStorageLocationMarkerInput): Promise<void> => {
+      requireOnline();
+      const { error } = await supabase
+        .from("floor_plan_storage_location_markers")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["floor-plan-storage-location-markers", variables.floorPlanId],
+      });
+    },
+    onError: (error) => {
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
+    },
+  });
+};
+
 interface UpsertPlacementInput {
   floorPlanId: string;
   itemId: string;

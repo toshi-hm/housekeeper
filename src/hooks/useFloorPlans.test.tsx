@@ -58,6 +58,7 @@ mock.module("@/lib/supabase", () => ({
 const {
   useUpsertFloorPlan,
   useUpsertFloorPlanStorageLocationMarker,
+  useDeleteFloorPlanStorageLocationMarker,
   useUpsertFloorPlanPlacement,
   useDeleteFloorPlanPlacement,
 } = await import("@/hooks/useFloorPlans");
@@ -181,6 +182,41 @@ describe("useUpsertFloorPlanStorageLocationMarker", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(OfflineError);
     expect(toastSpy).toHaveBeenCalledWith(expect.any(String), "error");
+  });
+});
+
+describe("useDeleteFloorPlanStorageLocationMarker", () => {
+  test("マーカーを削除し、対象の間取りのマーカー一覧キャッシュを無効化する", async () => {
+    responseQueues.floor_plan_storage_location_markers = [{ data: null, error: null }];
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    queryClient.invalidateQueries =
+      invalidateSpy as unknown as typeof queryClient.invalidateQueries;
+
+    const { result } = renderHook(() => useDeleteFloorPlanStorageLocationMarker(), {
+      wrapper: makeWrapper(queryClient),
+    });
+
+    act(() => {
+      result.current.mutate({ id: "marker-1", floorPlanId: "plan-1" });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(callLog).toContainEqual({
+      table: "floor_plan_storage_location_markers",
+      method: "delete",
+      args: [],
+    });
+    expect(callLog).toContainEqual({
+      table: "floor_plan_storage_location_markers",
+      method: "eq",
+      args: ["id", "marker-1"],
+    });
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["floor-plan-storage-location-markers", "plan-1"]);
   });
 });
 
