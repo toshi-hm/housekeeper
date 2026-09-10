@@ -25,6 +25,7 @@
   "deleteLocationConfirm": "この保管場所を削除しますか？",
   "deleteTag": "タグを削除",
   "deleteTagConfirm": "このタグを削除しますか？すべてのアイテムから外れます。",
+  "deleteTagConfirmWithCount": "このタグを削除しますか？{{count}}件のアイテムから外れます。",
   "duplicateCategoryName": "同名のカテゴリがあります",
   "duplicateCustomUnitName": "同名のカスタム単位があります",
   "duplicateLocationName": "同名の保管場所があります",

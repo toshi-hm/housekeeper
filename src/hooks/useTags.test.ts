@@ -24,10 +24,16 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     eq: chainMethod("eq"),
     insert: chainMethod("insert"),
     update: chainMethod("update"),
+    is: chainMethod("is"),
     single: () => {
       callLog.push({ table, method: "single", args: [] });
       return Promise.resolve(response);
     },
+    // `.single()` を挟まず直接 await されるクエリ用に、ビルダー自体を thenable にする。
+    then: (
+      onFulfilled: (value: SupabaseResponse) => unknown,
+      onRejected?: (reason: unknown) => unknown,
+    ) => Promise.resolve(response).then(onFulfilled, onRejected),
   });
   return builder;
 };
@@ -44,7 +50,7 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { createTag, updateTag, DuplicateNameError, InvalidNameLengthError } =
+const { createTag, updateTag, fetchTagUsageCounts, DuplicateNameError, InvalidNameLengthError } =
   await import("@/hooks/useTags");
 
 beforeEach(() => {
@@ -90,5 +96,29 @@ describe("updateTag", () => {
     ];
     const result = await updateTag("tag-1", "日用品");
     expect(result).toEqual({ id: "tag-1", name: "日用品", color: null });
+  });
+});
+
+describe("fetchTagUsageCounts (#1040)", () => {
+  test("タグIDごとに未削除アイテムの件数を集計する", async () => {
+    responseQueues.items_to_tags = [
+      {
+        data: [{ tag_id: "tag-1" }, { tag_id: "tag-1" }, { tag_id: "tag-2" }],
+        error: null,
+      },
+    ];
+    const result = await fetchTagUsageCounts();
+    expect(result).toEqual({ "tag-1": 2, "tag-2": 1 });
+  });
+
+  test("該当が無い場合は空オブジェクトを返す", async () => {
+    responseQueues.items_to_tags = [{ data: [], error: null }];
+    const result = await fetchTagUsageCounts();
+    expect(result).toEqual({});
+  });
+
+  test("エラー時はthrowする", async () => {
+    responseQueues.items_to_tags = [{ data: null, error: new Error("boom") }];
+    await expect(fetchTagUsageCounts()).rejects.toThrow("boom");
   });
 });
