@@ -9,6 +9,7 @@ interface SupabaseResponse {
 }
 
 let responsesByRange: Record<string, unknown[]> = {};
+let orderCalls: Array<[string, Record<string, unknown> | undefined]> = [];
 
 const makeBuilder = () => {
   const builder: Record<string, unknown> = {};
@@ -21,7 +22,10 @@ const makeBuilder = () => {
     not: chainMethod(),
     gt: chainMethod(),
     or: chainMethod(),
-    order: chainMethod(),
+    order: (column: string, options?: Record<string, unknown>) => {
+      orderCalls.push([column, options]);
+      return builder;
+    },
     range: (from: number, to: number) => {
       const key = `${from}-${to}`;
       const data = responsesByRange[key] ?? [];
@@ -52,6 +56,7 @@ describe("fetchItems pagination (#622)", () => {
   beforeEach(() => {
     fromMock.mockClear();
     responsesByRange = {};
+    orderCalls = [];
   });
 
   test("1000件ちょうどのページが返ると次のページも取得し、結合した全件を返す", async () => {
@@ -73,6 +78,32 @@ describe("fetchItems pagination (#622)", () => {
     const result = await fetchItems();
 
     expect(result.length).toBe(2);
+  });
+});
+
+describe("fetchItems の並び順とnull扱い (#1038)", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    responsesByRange = { "0-999": [] };
+    orderCalls = [];
+  });
+
+  test("purchase_date降順ソートはnullsFirst:falseを指定する（クライアント側の再ソートと揃える）", async () => {
+    await fetchItems({}, "purchase_date");
+
+    expect(orderCalls).toContainEqual(["purchase_date", { ascending: false, nullsFirst: false }]);
+  });
+
+  test("created_at降順ソート（デフォルト）もnullsFirst:falseを指定する", async () => {
+    await fetchItems({}, "created_at");
+
+    expect(orderCalls).toContainEqual(["created_at", { ascending: false, nullsFirst: false }]);
+  });
+
+  test("expiry_dateソートは従来通り昇順・nullsFirst:falseのまま", async () => {
+    await fetchItems({}, "expiry_date");
+
+    expect(orderCalls).toContainEqual(["expiry_date", { ascending: true, nullsFirst: false }]);
   });
 });
 
