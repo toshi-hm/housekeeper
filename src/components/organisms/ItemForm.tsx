@@ -580,6 +580,10 @@ export const ItemForm = ({
                     onNameBlur?.(e.target.value);
                     setNameForSuggestion(trimmed);
                     setSimilarItemQueryName(trimmed);
+                  } else {
+                    // 名前欄を空にしてblurした場合、直前の一致結果を残さず
+                    // サジェストを消す（#1045）。
+                    setSimilarItemQueryName(null);
                   }
                 }}
                 placeholder={t("namePlaceholder")}

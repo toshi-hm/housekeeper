@@ -69,7 +69,7 @@
   "importSuccess": "Import complete: {{created}} added, {{updated}} updated, {{skipped}} skipped",
   "invalidAutoArchiveDays": "Archive days must be between 1 and 365",
   "invalidLowStockForecastDays": "Forecast days must be between 0 and 90",
-  "invalidMonthlyBudget": "Budget must be a number of 0 or more",
+  "invalidMonthlyBudget": "Budget must be a number of 1 or more",
   "invalidStocktakeAlertDays": "Days must be between 1 and 365",
   "invalidWarningDays": "Warning days must be between 1 and 30",
   "language": "Language",

@@ -42,8 +42,9 @@
 
 - `monthly_budget` が未設定の場合は `BudgetBanner` 自体を表示しない
   （予算機能を使わないユーザーへの影響ゼロ）
-- 入力値のバリデーション（0以上の数値、Zod）は既存の `userSettingsSchema` に
-  沿って追加する
+- 入力値のバリデーション（1以上の数値、Zod）は既存の `userSettingsSchema` に
+  沿って追加する。`0` は `monthlyBudget` 未設定と表示上区別できず
+  `BudgetBanner` が常に非表示になってしまうため、無効値として拒否する（#1046）
 
 ## 対象範囲（v1）
 

@@ -409,7 +409,35 @@ describe("SettingsPage - monthlyBudget validation (#991)", () => {
     const input = getMonthlyBudgetInput(getAllByRole("spinbutton"));
     fireEvent.blur(input, { target: { value: "-1" } });
 
-    expect(toastFn).toHaveBeenCalledWith("予算は0以上の数値で入力してください", "error");
+    expect(toastFn).toHaveBeenCalledWith("予算は1以上の数値で入力してください", "error");
+  });
+
+  // #1046: 0は保存自体は成功するのに BudgetBanner が常に非表示になり、ユーザーが
+  // 気づけないまま機能が無効化された状態になるため、無効値として拒否する。
+  it("shows error toast when value is 0 (#1046)", () => {
+    const { stub, toastFn } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const input = getMonthlyBudgetInput(getAllByRole("spinbutton"));
+    fireEvent.blur(input, { target: { value: "0" } });
+
+    expect(toastFn).toHaveBeenCalledWith("予算は1以上の数値で入力してください", "error");
+  });
+
+  it("does not call updateSettings for an invalid 0 value (#1046)", async () => {
+    const mutateAsync = mock(async () => {});
+    updateSpy.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
+    const { stub } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const input = getMonthlyBudgetInput(getAllByRole("spinbutton"));
+    fireEvent.blur(input, { target: { value: "0" } });
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(mutateAsync).not.toHaveBeenCalled();
   });
 
   it("does not call updateSettings for an invalid negative value", async () => {
