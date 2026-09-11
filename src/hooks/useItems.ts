@@ -131,7 +131,10 @@ export const fetchItems = async (
     if (sort === "expiry_date") {
       query = query.order("expiry_date", { ascending: true, nullsFirst: false });
     } else {
-      query = query.order(sort, { ascending: false });
+      // #1038: purchase_date / created_at の降順ソートでは、PostgREST のデフォルト
+      // （降順時 NULLS FIRST）だとクライアント側の再ソート（compareNullableDatesDesc、
+      // null を末尾固定）と食い違うため、明示的に null を末尾へ揃える。
+      query = query.order(sort, { ascending: false, nullsFirst: false });
     }
     // #622: tiebreaker so pagination (.range()) is deterministic even when
     // many rows share the same sort value.

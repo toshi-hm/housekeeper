@@ -6,10 +6,17 @@ import { useTranslation } from "react-i18next";
 import { ColorPicker } from "@/components/atoms/ColorPicker";
 import { Spinner } from "@/components/atoms/Spinner";
 import { TagBadge } from "@/components/atoms/TagBadge";
+import { UsageCountBadge } from "@/components/atoms/UsageCountBadge";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCreateTag, useDeleteTag, useTags, useUpdateTag } from "@/hooks/useTags";
+import {
+  useCreateTag,
+  useDeleteTag,
+  useTags,
+  useTagUsageCounts,
+  useUpdateTag,
+} from "@/hooks/useTags";
 import { useToast } from "@/lib/toast-context";
 
 export const TagsPage = () => {
@@ -17,6 +24,9 @@ export const TagsPage = () => {
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const { data: tags = [], isLoading } = useTags();
+  /** #1040: 削除確認ダイアログに使用件数を出すためのヒント表示専用。
+   *  タグ削除自体は items_to_tags が ON DELETE CASCADE のためブロックはしない。 */
+  const { data: usageCounts = {} } = useTagUsageCounts();
   const createTag = useCreateTag();
   const updateTag = useUpdateTag();
   const deleteTag = useDeleteTag();
@@ -68,7 +78,11 @@ export const TagsPage = () => {
       <ConfirmDialog
         open={!!deleteId}
         title={t("deleteTag")}
-        message={t("deleteTagConfirm")}
+        message={
+          deleteId && (usageCounts[deleteId] ?? 0) > 0
+            ? t("deleteTagConfirmWithCount", { count: usageCounts[deleteId] })
+            : t("deleteTagConfirm")
+        }
         confirmLabel={tc("delete")}
         isConfirming={deleteTag.isPending}
         onConfirm={() => {
@@ -159,8 +173,9 @@ export const TagsPage = () => {
                 </>
               ) : (
                 <div className="flex items-center gap-3">
-                  <div className="flex-1">
+                  <div className="flex flex-1 items-center gap-2">
                     <TagBadge name={tag.name} color={tag.color} />
+                    <UsageCountBadge count={usageCounts[tag.id] ?? 0} />
                   </div>
                   <Button
                     size="icon"

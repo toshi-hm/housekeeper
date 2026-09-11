@@ -8,6 +8,7 @@ import type { Tag } from "@/types/item";
 
 const TAGS_KEY = ["item-tags"] as const;
 const ITEM_TAGS_KEY = ["item-tags-of-item"] as const;
+const TAG_USAGE_COUNTS_KEY = ["items", "tag-usage-counts"] as const;
 
 const MAX_NAME_LENGTH = 40;
 
@@ -42,6 +43,31 @@ const fetchTags = async (): Promise<Tag[]> => {
 
 export const useTags = () =>
   useQuery({ queryKey: TAGS_KEY, queryFn: fetchTags, staleTime: 5 * 60_000 });
+
+/** タグごとの使用中（未削除）アイテム数を一括取得する（#1040）。カテゴリ/保管場所と
+ *  異なりタグ削除はカスケードで安全なため削除ブロックには使わず、削除確認ダイアログの
+ *  文言に件数を出すためのヒント表示専用。`items_to_tags` は論理削除された `items` の
+ *  行も cascade 対象外でそのまま残るため、`items!inner` で結合し `deleted_at is null`
+ *  のものだけを数える。 */
+export const fetchTagUsageCounts = async (): Promise<Record<string, number>> => {
+  const { data, error } = await supabase
+    .from("items_to_tags")
+    .select("tag_id, items!inner(deleted_at)")
+    .is("items.deleted_at", null);
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { tag_id: string }[]) {
+    counts[row.tag_id] = (counts[row.tag_id] ?? 0) + 1;
+  }
+  return counts;
+};
+
+export const useTagUsageCounts = () =>
+  useQuery({
+    queryKey: TAG_USAGE_COUNTS_KEY,
+    queryFn: fetchTagUsageCounts,
+    staleTime: 30_000,
+  });
 
 export const createTag = async (name: string, color?: string | null): Promise<Tag> => {
   requireOnline();
