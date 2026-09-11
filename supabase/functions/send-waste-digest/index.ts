@@ -97,10 +97,29 @@ export const handler = async (req: Request): Promise<Response> => {
         if (notifyHour !== zonedNowHour(timezone)) return;
       }
 
+      // spec(waste-reduction-dashboard.md エラー処理節)の「直近の消費ログが無い
+      // (新規ユーザー等)場合はダイジェスト送信をスキップする」は、消費ログ
+      // (consumption_logs)そのものの有無を指す。廃棄アイテムが0件のユーザー
+      // (=廃棄ゼロを継続中のユーザー)は本来称えるべき対象であり、ここでスキップ
+      // してはならない(#1044)。
+      const { data: consumptionLogRows, error: consumptionLogsError } = await supabase
+        .from("consumption_logs")
+        .select("id")
+        .eq("user_id", pref.user_id)
+        .limit(1);
+      if (consumptionLogsError) {
+        console.error(
+          "Failed to check consumption_logs for user",
+          pref.user_id,
+          consumptionLogsError,
+        );
+        return;
+      }
+      if ((consumptionLogRows ?? []).length === 0) return;
+
       // #925: 対象ユーザーの廃棄アイテム(items.deletion_reason = 'expired_waste')を
       // 全件取得する（useWasteStats/fetchAllWasteItemsと同じ方針。日付範囲での
-      // 絞り込みはしない）。1件も無ければ「直近の消費ログが無い(新規ユーザー等)」
-      // ケースとしてダイジェスト送信自体をスキップする(spec エラー処理節)。
+      // 絞り込みはしない）。0件でもストリーク評価・ダイジェスト送信は継続する。
       let wasteItems: WasteItemRow[];
       try {
         wasteItems = await fetchAllPages(async (from, to) => {
@@ -119,8 +138,6 @@ export const handler = async (req: Request): Promise<Response> => {
         console.error("Failed to fetch waste items for user", pref.user_id, error);
         return;
       }
-
-      if (wasteItems.length === 0) return;
 
       const { data: streakRow, error: streakReadError } = await supabase
         .from("waste_streaks")

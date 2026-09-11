@@ -187,7 +187,9 @@ export const SettingsPage = () => {
     const trimmed = value.trim();
     // 未入力 = 未設定（null）に戻す（#991: BudgetBannerを非表示にする）
     const amount = trimmed === "" ? null : Number(trimmed);
-    if (amount !== null && (isNaN(amount) || amount < 0)) {
+    // 0は「未設定」と見た目上区別できず、computeBudgetStatus側でも未設定と
+    // 同一視されてBudgetBannerが表示されないため、無効値として弾く（#1046）。
+    if (amount !== null && (isNaN(amount) || amount <= 0)) {
       toast(t("invalidMonthlyBudget"), "error");
       return;
     }
@@ -358,7 +360,7 @@ export const SettingsPage = () => {
             <div className="flex items-center gap-2">
               <Input
                 type="number"
-                min={0}
+                min={1}
                 value={monthlyBudgetValue}
                 className="w-32"
                 onChange={(e) => setMonthlyBudget(e.target.value)}

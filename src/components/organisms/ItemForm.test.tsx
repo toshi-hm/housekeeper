@@ -778,6 +778,21 @@ describe("ItemForm — 類似アイテム名のマージ提案 (#990)", () => {
     fireEvent.change(input, { target: { value: "醤油" } });
     expect(getByRole("status")).toBeDefined();
   });
+
+  it("名前欄を空にして再度blurすると、直前の一致通知は消える（#1045）", () => {
+    const { container, getByRole, queryByRole } = render(
+      <ItemForm onSubmit={() => {}} enableSimilarItemSuggestion />,
+      { wrapper },
+    );
+    const input = container.querySelector("#name") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "たまねき" } });
+    fireEvent.blur(input);
+    expect(getByRole("status")).toBeDefined();
+
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
+    expect(queryByRole("status")).toBeNull();
+  });
 });
 
 describe("ItemForm — アイテム種別（食料品 / 日用品）", () => {
