@@ -1,9 +1,19 @@
 import { fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, setSystemTime } from "bun:test";
 
+import i18n from "@/lib/i18n";
 import type { Category, Item } from "@/types/item";
 
 import { ExpiryCalendar } from "./ExpiryCalendar";
+
+// #1054セルフレビュー: このファイルの他のテストはt()を素朴なフォールバック
+// （i18nインスタンス未初期化時はキー名そのもの）に頼っているが、bun testは
+// 同一プロセス内でモジュールレジストリを共有するため、他のテストファイルが
+// 先に "@/lib/i18n" を読み込んでいると、実行順序次第でこのファイルの
+// useTranslation も実際に翻訳済みの文字列を返すようになる（フルスイート実行時
+// にのみ再現し、このファイル単体では再現しない）。年月ピッカーのボタン名は
+// 実行順序に依存させず、実際のi18nインスタンス経由で解決する。
+const selectYearMonthLabel = i18n.t("selectYearMonth", { ns: "calendar" });
 
 const categories: Category[] = [
   {
@@ -127,5 +137,64 @@ describe("ExpiryCalendar", () => {
     fireEvent.keyDown(document, { key: "Escape" });
 
     expect(document.activeElement === trigger).toBe(true);
+  });
+
+  // #1054: 年月ピッカーだけ useDialogA11y（Escapeで閉じる・フォーカストラップ・
+  // 初期フォーカス）が抜けていた問題の回帰テスト。日別ポップアップ（#763）と
+  // 同じパターンで揃える。
+  describe("年月ピッカー", () => {
+    it("dialog role と aria-modal を持つ", () => {
+      setSystemTime(new Date("2026-05-03"));
+      const { getByRole, container } = render(
+        <ExpiryCalendar items={[item]} categories={categories} labels={labels} />,
+      );
+
+      fireEvent.click(getByRole("button", { name: selectYearMonthLabel }));
+
+      const dialog = container.querySelector('[role="dialog"]');
+      expect(dialog).not.toBeNull();
+      expect(dialog?.getAttribute("aria-modal")).toBe("true");
+    });
+
+    it("Escapeキーで閉じる", () => {
+      setSystemTime(new Date("2026-05-03"));
+      const { getByRole, container } = render(
+        <ExpiryCalendar items={[item]} categories={categories} labels={labels} />,
+      );
+
+      fireEvent.click(getByRole("button", { name: selectYearMonthLabel }));
+      expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+
+      fireEvent.keyDown(document, { key: "Escape" });
+
+      expect(container.querySelector('[role="dialog"]')).toBeNull();
+    });
+
+    it("開いたときにピッカー内へ初期フォーカスが当たる", () => {
+      setSystemTime(new Date("2026-05-03"));
+      const { getByRole, container } = render(
+        <ExpiryCalendar items={[item]} categories={categories} labels={labels} />,
+      );
+
+      fireEvent.click(getByRole("button", { name: selectYearMonthLabel }));
+
+      const dialog = container.querySelector('[role="dialog"]');
+      expect(dialog?.contains(document.activeElement)).toBe(true);
+    });
+
+    it("閉じるとトリガーへフォーカスが戻る", () => {
+      setSystemTime(new Date("2026-05-03"));
+      const { getByRole } = render(
+        <ExpiryCalendar items={[item]} categories={categories} labels={labels} />,
+      );
+
+      const trigger = getByRole("button", { name: selectYearMonthLabel });
+      trigger.focus();
+      fireEvent.click(trigger);
+
+      fireEvent.keyDown(document, { key: "Escape" });
+
+      expect(document.activeElement === trigger).toBe(true);
+    });
   });
 });

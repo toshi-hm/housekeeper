@@ -24,8 +24,9 @@ export interface ShelfScanReviewPanelProps {
  *   `bulk_consume_items` RPCへ委譲）をそのまま再利用し、消費ロジック自体は
  *   再実装しない。
  * - 「未登録候補」は個数・内容量の推定をせず、既存の新規登録フォーム
- *   （`/items/new`）への遷移導線のみを提供する。詳細は手入力に委ねる
- *   （shelf-scan.md「やらないこと」節）。
+ *   （`/items/new`）への遷移導線のみを提供する。認識済みの商品名のみ
+ *   `prefillName` クエリパラメータで引き継ぎ、個数・内容量等の詳細は
+ *   引き続き手入力に委ねる（shelf-scan.md「やらないこと」節、#1027）。
  */
 export const ShelfScanReviewPanel = ({
   possiblyConsumed,
@@ -137,7 +138,7 @@ export const ShelfScanReviewPanel = ({
                 className="flex items-center justify-between gap-3 rounded-lg border p-3"
               >
                 <span className="text-sm">{name}</span>
-                <Link to="/items/new">
+                <Link to="/items/new" search={{ prefillName: name }}>
                   <Button size="sm" variant="outline">
                     {t("registerNew")}
                   </Button>

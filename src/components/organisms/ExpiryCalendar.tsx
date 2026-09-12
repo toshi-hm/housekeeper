@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ColorDot } from "@/components/atoms/ColorDot";
@@ -55,11 +55,17 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
   const [showPicker, setShowPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(today.getFullYear());
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
-  const pickerRef = useRef<HTMLDivElement>(null);
   const closeDatePopup = () => setSelectedDateKey(null);
   const datePopupRef = useDialogA11y<HTMLDivElement>({
     open: selectedDateKey !== null,
     onClose: closeDatePopup,
+  });
+  // #1054: 日付詳細ポップアップ（上記）と同じくEscapeキーでの閉鎖・
+  // フォーカストラップ・初期フォーカス移動を年月ピッカーにも適用する
+  // （これまでこのピッカーだけ useDialogA11y が抜けていた）。
+  const pickerRef = useDialogA11y<HTMLDivElement>({
+    open: showPicker,
+    onClose: () => setShowPicker(false),
   });
 
   const monthLabels = Array.from({ length: 12 }, (_, i) =>
@@ -147,6 +153,10 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
             />
             <div
               ref={pickerRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("selectYearMonth")}
+              tabIndex={-1}
               className="absolute left-1/2 top-full z-20 mt-1 w-64 -translate-x-1/2 rounded-lg border bg-background p-3 shadow-lg"
             >
               {/* Year selector */}

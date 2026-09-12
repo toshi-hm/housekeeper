@@ -48,7 +48,7 @@ const StubItemForm = ({
   disableContentAmount,
   extraFields,
 }: {
-  defaultValues?: { content_unit?: string };
+  defaultValues?: { content_unit?: string; name?: string };
   onSubmit: (values: ItemFormValues) => void;
   onPendingFileChange?: (file: File | null) => void;
   onBarcodeScanned?: (barcode: string, source: "db" | "api" | null) => void;
@@ -58,6 +58,7 @@ const StubItemForm = ({
 }) => (
   <div>
     <div data-testid="content-unit">{defaultValues?.content_unit ?? ""}</div>
+    <div data-testid="prefill-name">{defaultValues?.name ?? ""}</div>
     <div data-testid="is-submitting">{String(Boolean(isSubmitting))}</div>
     <div data-testid="disable-content-amount">{String(Boolean(disableContentAmount))}</div>
     {extraFields}
@@ -195,6 +196,59 @@ describe("NewItemPage - default content unit", () => {
     const { queryByTestId } = render(<NewItemPage />, { wrapper: Wrapper });
 
     expect(queryByTestId("content-unit")).toBeNull();
+  });
+});
+
+describe("NewItemPage - シェルフスキャンからの商品名プリフィル (#1027)", () => {
+  let itemSpy: ReturnType<typeof spyOn>;
+  let settingsSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+
+    settingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    spyOn(useItemsModule, "useCreateItem").mockReturnValue({
+      mutateAsync: async () => ({}) as Item,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useCreateItem>);
+  });
+
+  afterEach(() => {
+    itemSpy.mockRestore();
+    settingsSpy.mockRestore();
+    cleanup();
+  });
+
+  it("prefillName を渡すと商品名の初期値として引き継がれる", () => {
+    const { getByTestId } = render(<NewItemPage prefillName="醤油" />, { wrapper: Wrapper });
+
+    expect(getByTestId("prefill-name").textContent).toBe("醤油");
+  });
+
+  it("prefillName 未指定時は商品名を空のまま初期化する", () => {
+    const { getByTestId } = render(<NewItemPage />, { wrapper: Wrapper });
+
+    expect(getByTestId("prefill-name").textContent).toBe("");
+  });
+
+  it("cloneFrom 指定時は prefillName より clone元の商品名を優先する", () => {
+    itemSpy.mockReturnValue({
+      data: { id: "item-1", name: "クローン元", content_amount: 1, content_unit: "個" },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemsModule.useItem>);
+
+    const { getByTestId } = render(<NewItemPage cloneFrom="item-1" prefillName="醤油" />, {
+      wrapper: Wrapper,
+    });
+
+    expect(getByTestId("prefill-name").textContent).toBe("クローン元");
   });
 });
 

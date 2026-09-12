@@ -486,6 +486,42 @@ describe("buildConsumptionHistoryRows", () => {
     expect(rows[0]?.itemName).toBe("");
     expect(rows[0]?.categoryName).toBe("");
   });
+
+  // Regression test for #1052: `occurred_at` is a `timestamptz` (UTC), so
+  // naively slicing its ISO string (`.slice(0, 10)`) yields the *UTC*
+  // calendar date instead of the date the user actually experienced in
+  // their local timezone. The fix reads it back via `toLocalDateKey` (local
+  // getFullYear/getMonth/getDate), matching how `purchaseHistoryView.ts` and
+  // `WeeklyMealPlanner.tsx` already group by local day.
+  //
+  // Note: as documented in stats.test.ts (#710), mutating `process.env.TZ`
+  // at test time is unsafe under Bun/JavaScriptCore (the resolved timezone
+  // is cached process-wide and never reverts), so this can't assert the
+  // actual day-shift under a non-UTC host here. It instead pins the
+  // function to `toLocalDateKey`-based (local-getter) date derivation
+  // rather than a raw UTC string slice, so a regression back to
+  // `.slice(0, 10)` — the exact bug this test guards against — would show
+  // up the moment this suite runs under a non-UTC TZ (e.g. in CI/local
+  // dev configured for JST).
+  test("consumption date is derived from local calendar getters, not a raw UTC string slice", () => {
+    const rows = buildConsumptionHistoryRows(
+      [
+        {
+          item_id: "item-1",
+          delta_amount: 1,
+          delta_unit: "個",
+          occurred_at: "2026-07-10T23:30:00Z",
+        },
+      ],
+      new Map(),
+      new Map(),
+    );
+    const expected = new Date("2026-07-10T23:30:00Z");
+    const y = expected.getFullYear();
+    const m = String(expected.getMonth() + 1).padStart(2, "0");
+    const d = String(expected.getDate()).padStart(2, "0");
+    expect(rows[0]?.date).toBe(`${y}-${m}-${d}`);
+  });
 });
 
 describe("buildPurchaseHistoryRows", () => {

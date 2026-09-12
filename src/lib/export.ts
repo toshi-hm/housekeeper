@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { toLocalDateKey } from "@/lib/dateUtils";
 import {
   type Category,
   dropExpiryForDailyGoods,
@@ -410,7 +411,10 @@ export const buildConsumptionHistoryRows = (
     const item = itemMap.get(log.item_id);
     return {
       type: "consumption",
-      date: log.occurred_at.slice(0, 10),
+      // #1052: occurred_at はtimestamptz（UTC）なので、そのままslice(0, 10)すると
+      // ローカル日付（JST等）とずれる。他の日付グルーピング（purchaseHistoryView等）
+      // と同じくローカルの暦日に変換する。
+      date: toLocalDateKey(new Date(log.occurred_at)),
       itemName: item?.name ?? "",
       categoryName: resolveCategoryName(item, categoryMap),
       amount: log.delta_amount,

@@ -88,3 +88,19 @@ export const dequeueOfflineAction = (
   writeOfflineActionQueue(next);
   return next;
 };
+
+/**
+ * #1053: このキューは `user_id` を含まない固定キーで永続化されるため、同一ブラウザで
+ * 別アカウントへログインし直すと前のユーザーのキューがそのまま引き継がれ、RLSにより
+ * 対象行が見えないエラーでリプレイが詰まる可能性がある。`AuthProvider` の
+ * `SIGNED_OUT` ハンドラから呼び、ログアウト時に必ず空にする。
+ */
+export const clearOfflineActionQueue = (): void => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // 非致命: private browsing 等でlocalStorageにアクセスできない場合も、
+    // ログアウト処理自体は継続させる。
+  }
+};

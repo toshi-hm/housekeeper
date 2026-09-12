@@ -35,6 +35,21 @@ const writeStoredCheckedIds = (ids: ReadonlySet<string>) => {
   }
 };
 
+/**
+ * #1053: このチェック状態は `user_id` を含まない固定キーで永続化されるため、同一
+ * ブラウザで別アカウントへログインし直すと前のユーザーの選択がそのまま引き継がれる。
+ * `AuthProvider` の `SIGNED_OUT` ハンドラから呼び、ログアウト時に必ず空にする。
+ */
+export const clearCartCheckOffStorage = (): void => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // 非致命: private browsing 等でlocalStorageにアクセスできない場合も、
+    // ログアウト処理自体は継続させる。
+  }
+};
+
 export interface UseCartCheckOffResult {
   /** カートに入れた（チェック済み）の shopping_list_items.id 集合。 */
   checkedIds: ReadonlySet<string>;
