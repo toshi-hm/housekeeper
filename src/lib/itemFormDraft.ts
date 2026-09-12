@@ -56,3 +56,24 @@ export const loadItemFormDraft = (draftKey: string): ItemFormDraft | null => {
 export const clearItemFormDraft = (draftKey: string): void => {
   localStorage.removeItem(STORAGE_KEY_PREFIX + draftKey);
 };
+
+/**
+ * #1053: 下書きは `user_id` を含まない固定プレフィックスのキーで永続化されるため、
+ * 同一ブラウザで別アカウントへログインし直すと前のユーザーの入力途中の内容が
+ * そのまま次のユーザーのフォームに復元されかねない。`AuthProvider` の
+ * `SIGNED_OUT` ハンドラから呼び、ログアウト時にプレフィックス一致するキーを
+ * すべて消す（`draftKey` の具体的な値を呼び出し側が把握している必要はない）。
+ */
+export const clearAllItemFormDrafts = (): void => {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(STORAGE_KEY_PREFIX)) keysToRemove.push(key);
+    }
+    for (const key of keysToRemove) localStorage.removeItem(key);
+  } catch {
+    // 非致命: private browsing 等でlocalStorageにアクセスできない場合も、
+    // ログアウト処理自体は継続させる。
+  }
+};

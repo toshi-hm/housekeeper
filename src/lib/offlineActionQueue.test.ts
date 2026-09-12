@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
+  clearOfflineActionQueue,
   dequeueOfflineAction,
   enqueueOfflineAction,
   readOfflineActionQueue,
@@ -125,5 +126,21 @@ describe("offlineActionQueue", () => {
 
     const reloaded = readOfflineActionQueue();
     expect(reloaded).toEqual(queue);
+  });
+
+  // #1053: ログアウト時に前ユーザーのキューを消し、別アカウントへ引き継がれない
+  // ようにするための回帰テスト。
+  test("clearOfflineActionQueueでキューが空になる", () => {
+    enqueueOfflineAction([], { kind: "purchase", payload: purchasePayload });
+    expect(readOfflineActionQueue()).toHaveLength(1);
+
+    clearOfflineActionQueue();
+
+    expect(readOfflineActionQueue()).toEqual([]);
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  test("何も保存されていない状態でclearOfflineActionQueueを呼んでも例外を投げない", () => {
+    expect(() => clearOfflineActionQueue()).not.toThrow();
   });
 });

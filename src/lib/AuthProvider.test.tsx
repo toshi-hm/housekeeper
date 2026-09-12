@@ -25,6 +25,8 @@ mock.module("@/lib/supabase", () => ({
 const { AuthProvider } = await import("./AuthProvider");
 const { useAuthSession } = await import("./auth-context");
 const { persister, queryClient } = await import("./queryClient");
+const { enqueueOfflineAction, readOfflineActionQueue } = await import("./offlineActionQueue");
+const { loadItemFormDraft, saveItemFormDraft } = await import("./itemFormDraft");
 
 // mock.module replaces the module for the entire bun:test process (leaks across
 // files), so spy on the real queryClient/persister instances instead.
@@ -32,6 +34,8 @@ const queryClientClearSpy = spyOn(queryClient, "clear").mockImplementation(() =>
 const removeClientSpy = spyOn(persister, "removeClient").mockImplementation(() =>
   Promise.resolve(),
 );
+
+const CART_CHECK_OFF_STORAGE_KEY = "shopping.cartCheckedIds";
 
 const makeStore = <S,>(state: S) => ({
   state,
@@ -74,6 +78,7 @@ beforeEach(() => {
   navigateMock.mockClear();
   queryClientClearSpy.mockClear();
   removeClientSpy.mockClear();
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -124,7 +129,54 @@ describe("AuthProvider", () => {
     expect(removeClientSpy).toHaveBeenCalled();
   });
 
+  // #1053: 前ユーザーのオフラインキュー/カートチェック状態/フォーム下書きが
+  // user_idを含まない固定キーのlocalStorageに残り、別アカウントへの
+  // ログイン後も引き継がれてしまう問題の回帰テスト。スパイで置き換えるのではなく、
+  // 実際にlocalStorageへ書き込んだ上でSIGNED_OUTを発火し、実データが消えることを
+  // 確認する（spyOnで置き換えると、対象の関数を直接テストしている他のテスト
+  // ファイルにまで process 全体で漏れてしまうため、#672/#983/#1053それぞれの
+  // 単体テストに合わせて実データで検証する）。
+  test("clears offline-queue/cart-check-off/item-form-draft localStorage on SIGNED_OUT", async () => {
+    enqueueOfflineAction([], {
+      kind: "add-alert",
+      payload: { name: "醤油", linked_item_id: null },
+    });
+    window.localStorage.setItem(CART_CHECK_OFF_STORAGE_KEY, JSON.stringify({ s1: true }));
+    saveItemFormDraft("new-item", {
+      values: {
+        name: "牛乳",
+        units: 1,
+        content_amount: 1,
+        content_unit: "個",
+      },
+      unitsRaw: "1",
+      contentAmountRaw: "1",
+    });
+    expect(readOfflineActionQueue()).toHaveLength(1);
+    expect(window.localStorage.getItem(CART_CHECK_OFF_STORAGE_KEY)).not.toBeNull();
+    expect(loadItemFormDraft("new-item")).not.toBeNull();
+
+    renderWithRouter(
+      "/",
+      <AuthProvider>
+        <SessionProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(authChangeCallback).not.toBeNull());
+    authChangeCallback?.("SIGNED_OUT", null);
+
+    await waitFor(() => expect(readOfflineActionQueue()).toEqual([]));
+    expect(window.localStorage.getItem(CART_CHECK_OFF_STORAGE_KEY)).toBeNull();
+    expect(loadItemFormDraft("new-item")).toBeNull();
+  });
+
   test("does not clear the query cache on non-SIGNED_OUT events", async () => {
+    enqueueOfflineAction([], {
+      kind: "add-alert",
+      payload: { name: "醤油", linked_item_id: null },
+    });
+
     renderWithRouter(
       "/",
       <AuthProvider>
@@ -138,6 +190,7 @@ describe("AuthProvider", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(queryClientClearSpy).not.toHaveBeenCalled();
     expect(removeClientSpy).not.toHaveBeenCalled();
+    expect(readOfflineActionQueue()).toHaveLength(1);
   });
 
   test("does not redirect on SIGNED_OUT while already on /login", async () => {

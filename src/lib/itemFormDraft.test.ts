@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
+  clearAllItemFormDrafts,
   clearItemFormDraft,
   type ItemFormDraftPayload,
   loadItemFormDraft,
@@ -80,5 +81,33 @@ describe("itemFormDraft (#672)", () => {
 
     expect(loadItemFormDraft("new")?.payload.values.name).toBe("A");
     expect(loadItemFormDraft("edit-item-1")?.payload.values.name).toBe("B");
+  });
+
+  // #1053: ログアウト時に前ユーザーの下書きを消し、別アカウントへ引き継がれない
+  // ようにするための回帰テスト。draftKeyの具体的な値を知らなくても、プレフィックスが
+  // 一致する下書きをすべて消せることを確認する。
+  describe("clearAllItemFormDrafts", () => {
+    test("複数のdraftKeyの下書きをすべて消す", () => {
+      saveItemFormDraft("new", makePayload());
+      saveItemFormDraft("edit-item-1", makePayload());
+
+      clearAllItemFormDrafts();
+
+      expect(loadItemFormDraft("new")).toBeNull();
+      expect(loadItemFormDraft("edit-item-1")).toBeNull();
+    });
+
+    test("下書き以外のlocalStorageキーには影響しない", () => {
+      saveItemFormDraft("new", makePayload());
+      localStorage.setItem("unrelated-key", "keep-me");
+
+      clearAllItemFormDrafts();
+
+      expect(localStorage.getItem("unrelated-key")).toBe("keep-me");
+    });
+
+    test("下書きが無い状態で呼んでも例外を投げない", () => {
+      expect(() => clearAllItemFormDrafts()).not.toThrow();
+    });
   });
 });

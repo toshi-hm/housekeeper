@@ -1,7 +1,10 @@
 import { useRouter } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 
+import { clearCartCheckOffStorage } from "@/hooks/useCartCheckOff";
 import { AuthContext, type AuthContextValue } from "@/lib/auth-context";
+import { clearAllItemFormDrafts } from "@/lib/itemFormDraft";
+import { clearOfflineActionQueue } from "@/lib/offlineActionQueue";
 import { persister, queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 
@@ -42,6 +45,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // 残ったまま次のログインユーザーへ表示されるのを防ぐ。
         queryClient.clear();
         void persister.removeClient();
+        // #1053: 買い物オフラインキュー・カートチェック状態・アイテム下書きは
+        // user_idを含まない固定キーのlocalStorageに永続化されているため、上記の
+        // TanStack Query/IndexedDBのクリアだけでは前ユーザーの分が残る。同一
+        // ブラウザで別アカウントへログインし直した際に、前ユーザーの情報が次の
+        // ユーザーへ引き継がれたり、処理できないオフラインキューが先頭で
+        // 詰まったりするのを防ぐため、ここでまとめて消す。
+        clearOfflineActionQueue();
+        clearCartCheckOffStorage();
+        clearAllItemFormDrafts();
 
         if (!isPublicPath(router.state.location.pathname)) {
           void router.navigate({ to: "/login" });

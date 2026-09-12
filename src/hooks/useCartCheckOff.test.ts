@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, test } from "bun:test";
 
-import { useCartCheckOff } from "@/hooks/useCartCheckOff";
+import { clearCartCheckOffStorage, useCartCheckOff } from "@/hooks/useCartCheckOff";
 
 const STORAGE_KEY = "shopping.cartCheckedIds";
 
@@ -98,5 +98,25 @@ describe("useCartCheckOff", () => {
 
     const { result: result2 } = renderHook(() => useCartCheckOff());
     expect(result2.current.checkedIds.has("s1")).toBe(true);
+  });
+
+  // #1053: ログアウト時に前ユーザーのチェック状態を消し、別アカウントへ
+  // 引き継がれないようにするための回帰テスト。
+  test("clearCartCheckOffStorageでlocalStorageの保存内容が消える", () => {
+    const { result } = renderHook(() => useCartCheckOff());
+    act(() => {
+      result.current.toggle("s1");
+    });
+    expect(window.localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+
+    clearCartCheckOffStorage();
+
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    const { result: result2 } = renderHook(() => useCartCheckOff());
+    expect(result2.current.checkedIds.size).toBe(0);
+  });
+
+  test("何も保存されていない状態でclearCartCheckOffStorageを呼んでも例外を投げない", () => {
+    expect(() => clearCartCheckOffStorage()).not.toThrow();
   });
 });
