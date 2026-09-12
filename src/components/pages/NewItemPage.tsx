@@ -39,6 +39,8 @@ import {
 
 interface NewItemPageProps {
   cloneFrom?: string;
+  /** シェルフスキャンの「未登録候補」からの遷移時、OCR認識名をプリフィルする (#1027)。 */
+  prefillName?: string;
 }
 
 interface QuickConsumeUndoPayload {
@@ -47,7 +49,7 @@ interface QuickConsumeUndoPayload {
   undo: ConsumeItemUndo;
 }
 
-export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
+export const NewItemPage = ({ cloneFrom, prefillName }: NewItemPageProps) => {
   const { t } = useTranslation("items");
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
@@ -311,8 +313,11 @@ export const NewItemPage = ({ cloneFrom }: NewItemPageProps) => {
         expiry_date: "",
         notes: "",
       }
-    : userSettings?.default_unit
-      ? { content_unit: userSettings.default_unit }
+    : prefillName || userSettings?.default_unit
+      ? {
+          ...(prefillName ? { name: prefillName } : undefined),
+          ...(userSettings?.default_unit ? { content_unit: userSettings.default_unit } : undefined),
+        }
       : undefined;
 
   if ((cloneFrom && isCloneLoading) || (!cloneFrom && isSettingsLoading)) {

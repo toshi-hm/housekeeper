@@ -131,7 +131,7 @@ describe("ShelfScanReviewPanel", () => {
     expect(bulkButton.disabled).toBe(false);
   });
 
-  test("未登録候補を一覧表示し、新規登録ボタンが/items/newへのリンクになっている", async () => {
+  test("未登録候補を一覧表示し、新規登録ボタンが認識名をprefillNameとして引き継ぐ/items/newへのリンクになっている (#1027)", async () => {
     const { getByText, getByRole } = await renderPanel({
       possiblyConsumed: [],
       possiblyUnregistered: ["醤油"],
@@ -141,6 +141,8 @@ describe("ShelfScanReviewPanel", () => {
     const registerLink = getByRole("link", {
       name: i18n.t("registerNew", { ns: "shelfScan" }),
     });
-    expect(registerLink.getAttribute("href")).toBe("/items/new");
+    const href = registerLink.getAttribute("href");
+    expect(href).toStartWith("/items/new?");
+    expect(new URLSearchParams(href?.split("?")[1]).get("prefillName")).toBe("醤油");
   });
 });
