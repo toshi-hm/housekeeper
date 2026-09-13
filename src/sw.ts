@@ -8,6 +8,7 @@ import { NavigationRoute, registerRoute } from "workbox-routing";
 import { NetworkFirst } from "workbox-strategies";
 
 import { resolveNotificationTargetUrl } from "@/lib/notificationTarget";
+import { SUPABASE_REST_CACHE_NAME } from "@/lib/swCacheNames";
 import { registerSwAutoUpdateLifecycle } from "@/lib/swLifecycle";
 
 declare const self: ServiceWorkerGlobalScope;
@@ -53,7 +54,7 @@ registerRoute(
   ({ url }: { url: URL }) =>
     url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/rest/v1/"),
   new NetworkFirst({
-    cacheName: "supabase-rest-v1",
+    cacheName: SUPABASE_REST_CACHE_NAME,
     networkTimeoutSeconds: 5,
     plugins: [
       new ExpirationPlugin({
