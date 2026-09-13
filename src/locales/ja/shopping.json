@@ -34,6 +34,7 @@
   "offlineQueueDiscardConfirmMessage": "この操作を破棄すると同期されません。元に戻せませんが、破棄しますか？",
   "offlineQueueDiscardConfirmTitle": "未同期の操作を破棄しますか？",
   "offlineQueuedPurchase": "オフラインのため、購入確定をキューに積みました。オンラインに戻ると自動で同期します",
+  "offlineQueuedPurchaseImageNotSynced": "オフラインのため、購入確定をキューに積みました。選択した画像は同期されません",
   "offlineQueuePanelDiscard": "破棄",
   "offlineQueuePanelDiscardAriaLabel": "「{{name}}」を同期待ちキューから破棄",
   "offlineQueuePanelKindAddAlert": "リストへ追加",

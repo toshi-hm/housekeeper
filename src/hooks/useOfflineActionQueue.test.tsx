@@ -1,11 +1,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { createElement, type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
 import { useOfflineActionQueue } from "@/hooks/useOfflineActionQueue";
 import i18n from "@/lib/i18n";
 import { readOfflineActionQueue } from "@/lib/offlineActionQueue";
+import * as offlinePendingPurchaseImageModule from "@/lib/offlinePendingPurchaseImage";
 import { ConcurrentUpdateError, OfflineError } from "@/lib/requireOnline";
 import {
   ToastContext,
@@ -494,5 +495,181 @@ describe("useOfflineActionQueue", () => {
     expect(readOfflineActionQueue()).toHaveLength(1);
     // 手動破棄はネットワーク同期を試みない
     expect(purchase).not.toHaveBeenCalled();
+  });
+
+  // #1020: オフラインキュー経由の購入確定で選択済み画像が同期されず消失する問題の回帰テスト。
+  describe("画像添付の購入確定 (#1020)", () => {
+    test("オフライン時にpendingImageFileを渡すと、キューに積んだアクションのidをキーに画像を保存する", async () => {
+      const storeSpy = spyOn(
+        offlinePendingPurchaseImageModule,
+        "storePendingPurchaseImage",
+      ).mockResolvedValue(undefined);
+      setOnline(false);
+      const toastCalls: ToastCall[] = [];
+      const { Wrapper } = makeWrapper(toastCalls);
+      const purchase = mock(async () => ({ id: "created-item" }));
+      const addAlert = mock(async () => ({ id: "shopping-1" }));
+      const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+        wrapper: Wrapper,
+      });
+      const file = new File(["x"], "photo.jpg", { type: "image/jpeg" });
+
+      await act(async () => {
+        await result.current.queuePurchase(purchaseInput("s1"), file);
+      });
+
+      expect(storeSpy).toHaveBeenCalledTimes(1);
+      const [storedActionId, storedFile] = storeSpy.mock.calls[0] ?? [];
+      expect(storedFile).toBe(file);
+      expect(readOfflineActionQueue()[0]?.id).toBe(storedActionId);
+      storeSpy.mockRestore();
+    });
+
+    test("pendingImageFileを渡さない場合はstorePendingPurchaseImageを呼ばない", async () => {
+      const storeSpy = spyOn(
+        offlinePendingPurchaseImageModule,
+        "storePendingPurchaseImage",
+      ).mockResolvedValue(undefined);
+      setOnline(false);
+      const toastCalls: ToastCall[] = [];
+      const { Wrapper } = makeWrapper(toastCalls);
+      const purchase = mock(async () => ({ id: "created-item" }));
+      const addAlert = mock(async () => ({ id: "shopping-1" }));
+      const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+        wrapper: Wrapper,
+      });
+
+      await act(async () => {
+        await result.current.queuePurchase(purchaseInput("s1"));
+      });
+
+      expect(storeSpy).not.toHaveBeenCalled();
+      storeSpy.mockRestore();
+    });
+
+    test("リプレイ成功時にafterPurchaseReplayedがpurchaseの結果とactionIdで呼ばれる", async () => {
+      setOnline(false);
+      const toastCalls: ToastCall[] = [];
+      const { Wrapper } = makeWrapper(toastCalls);
+      const purchase = mock(async () => ({ id: "created-item" }));
+      const addAlert = mock(async () => ({ id: "shopping-1" }));
+      const afterPurchaseReplayed = mock(async () => {});
+      const { result } = renderHook(
+        () => useOfflineActionQueue({ purchase, addAlert, afterPurchaseReplayed }),
+        { wrapper: Wrapper },
+      );
+
+      await act(async () => {
+        await result.current.queuePurchase(purchaseInput("s1"));
+      });
+      const queuedId = result.current.queuedActions[0]?.id;
+      expect(queuedId).toBeTruthy();
+
+      setOnline(true);
+      await act(async () => {
+        window.dispatchEvent(new Event("online"));
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(afterPurchaseReplayed).toHaveBeenCalledTimes(1);
+      expect(afterPurchaseReplayed).toHaveBeenCalledWith({ id: "created-item" }, queuedId);
+    });
+
+    test("afterPurchaseReplayedが失敗しても、購入確定自体のリプレイ成功・キューからの除去は取り消されない", async () => {
+      setOnline(false);
+      const toastCalls: ToastCall[] = [];
+      const { Wrapper } = makeWrapper(toastCalls);
+      const purchase = mock(async () => ({ id: "created-item" }));
+      const addAlert = mock(async () => ({ id: "shopping-1" }));
+      const afterPurchaseReplayed = mock(async () => {
+        throw new Error("upload failed");
+      });
+      const { result } = renderHook(
+        () => useOfflineActionQueue({ purchase, addAlert, afterPurchaseReplayed }),
+        { wrapper: Wrapper },
+      );
+
+      await act(async () => {
+        await result.current.queuePurchase(purchaseInput("s1"));
+      });
+
+      setOnline(true);
+      await act(async () => {
+        window.dispatchEvent(new Event("online"));
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(afterPurchaseReplayed).toHaveBeenCalledTimes(1);
+      expect(readOfflineActionQueue()).toHaveLength(0);
+      await waitFor(() => {
+        expect(toastCalls.some((c) => c.variant === "success")).toBe(true);
+      });
+    });
+
+    test("discardQueuedActionで手動破棄すると、discardPendingPurchaseImageも同じidで呼ばれる", async () => {
+      const discardSpy = spyOn(
+        offlinePendingPurchaseImageModule,
+        "discardPendingPurchaseImage",
+      ).mockResolvedValue(undefined);
+      setOnline(false);
+      const toastCalls: ToastCall[] = [];
+      const { Wrapper } = makeWrapper(toastCalls);
+      const purchase = mock(async () => ({ id: "created-item" }));
+      const addAlert = mock(async () => ({ id: "shopping-1" }));
+      const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+        wrapper: Wrapper,
+      });
+
+      await act(async () => {
+        await result.current.queuePurchase(purchaseInput("s1"));
+      });
+      const queuedId = result.current.queuedActions[0]?.id;
+      expect(queuedId).toBeTruthy();
+
+      act(() => {
+        if (queuedId) result.current.discardQueuedAction(queuedId);
+      });
+
+      expect(discardSpy).toHaveBeenCalledWith(queuedId);
+      discardSpy.mockRestore();
+    });
+
+    test("恒久的エラーで破棄されたアクションも、discardPendingPurchaseImageが同じidで呼ばれる", async () => {
+      const discardSpy = spyOn(
+        offlinePendingPurchaseImageModule,
+        "discardPendingPurchaseImage",
+      ).mockResolvedValue(undefined);
+      setOnline(false);
+      const toastCalls: ToastCall[] = [];
+      const { Wrapper } = makeWrapper(toastCalls);
+      const purchase = mock(async () => {
+        throw new Error('null value in column "name" violates not-null constraint');
+      });
+      const addAlert = mock(async () => ({ id: "shopping-1" }));
+      const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
+        wrapper: Wrapper,
+      });
+
+      await act(async () => {
+        await result.current.queuePurchase(purchaseInput("invalid"));
+      });
+      const queuedId = result.current.queuedActions[0]?.id;
+      expect(queuedId).toBeTruthy();
+
+      setOnline(true);
+      await act(async () => {
+        window.dispatchEvent(new Event("online"));
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(discardSpy).toHaveBeenCalledWith(queuedId);
+      discardSpy.mockRestore();
+    });
   });
 });
