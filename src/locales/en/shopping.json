@@ -34,6 +34,7 @@
   "offlineQueueDiscardConfirmMessage": "This action will be permanently discarded and won't be synced. Continue?",
   "offlineQueueDiscardConfirmTitle": "Discard unsynced action?",
   "offlineQueuedPurchase": "You're offline — queued this purchase. It will sync automatically once you're back online",
+  "offlineQueuedPurchaseImageNotSynced": "You're offline — queued this purchase. The selected image won't be synced",
   "offlineQueuePanelDiscard": "Discard",
   "offlineQueuePanelDiscardAriaLabel": "Discard \"{{name}}\" from the sync queue",
   "offlineQueuePanelKindAddAlert": "Add to list",

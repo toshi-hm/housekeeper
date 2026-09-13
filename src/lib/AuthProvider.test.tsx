@@ -171,6 +171,58 @@ describe("AuthProvider", () => {
     expect(loadItemFormDraft("new-item")).toBeNull();
   });
 
+  // #1057: Service Worker（src/sw.ts）のSupabase RESTキャッシュ（Cache Storage）は
+  // URLのみをキーにしておりユーザーごとに分離されていないため、ログアウト時に
+  // 消さないと共有端末で前ユーザーのキャッシュ済み応答が次のユーザーへ返る恐れが
+  // あった。実行環境（テスト環境含む）には `caches` グローバルが無いことが多いため、
+  // このテストでのみ用意し、他のテストへ影響しないよう都度後始末する。
+  test("deletes the Service Worker's Supabase REST cache (Cache Storage) on SIGNED_OUT", async () => {
+    const cachesDeleteMock = mock(async () => true);
+    (globalThis as unknown as { caches?: { delete: typeof cachesDeleteMock } }).caches = {
+      delete: cachesDeleteMock,
+    };
+
+    try {
+      renderWithRouter(
+        "/",
+        <AuthProvider>
+          <SessionProbe />
+        </AuthProvider>,
+      );
+
+      await waitFor(() => expect(authChangeCallback).not.toBeNull());
+      authChangeCallback?.("SIGNED_OUT", null);
+
+      await waitFor(() => expect(cachesDeleteMock).toHaveBeenCalledWith("supabase-rest-v1"));
+    } finally {
+      delete (globalThis as { caches?: unknown }).caches;
+    }
+  });
+
+  test("does not touch Cache Storage on non-SIGNED_OUT events", async () => {
+    const cachesDeleteMock = mock(async () => true);
+    (globalThis as unknown as { caches?: { delete: typeof cachesDeleteMock } }).caches = {
+      delete: cachesDeleteMock,
+    };
+
+    try {
+      renderWithRouter(
+        "/",
+        <AuthProvider>
+          <SessionProbe />
+        </AuthProvider>,
+      );
+
+      await waitFor(() => expect(authChangeCallback).not.toBeNull());
+      authChangeCallback?.("TOKEN_REFRESHED", { user: { id: "u1" } });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(cachesDeleteMock).not.toHaveBeenCalled();
+    } finally {
+      delete (globalThis as { caches?: unknown }).caches;
+    }
+  });
+
   test("does not clear the query cache on non-SIGNED_OUT events", async () => {
     enqueueOfflineAction([], {
       kind: "add-alert",

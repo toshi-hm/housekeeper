@@ -7,6 +7,7 @@ import { clearAllItemFormDrafts } from "@/lib/itemFormDraft";
 import { clearOfflineActionQueue } from "@/lib/offlineActionQueue";
 import { persister, queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
+import { SUPABASE_REST_CACHE_NAME } from "@/lib/swCacheNames";
 
 // #828: リフレッシュトークンの失効時、supabase-jsは自動的にセッションを破棄して
 // "SIGNED_OUT" イベントを発火する（ユーザー自身のサインアウトと同じイベント）。
@@ -54,6 +55,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         clearOfflineActionQueue();
         clearCartCheckOffStorage();
         clearAllItemFormDrafts();
+        // #1057: Service Worker（src/sw.ts）のNetworkFirstキャッシュはURLのみを
+        // キーにしており、ユーザーごとに分離されていない。共有端末で別アカウントへ
+        // ログインし直した直後にオフライン/タイムアウトが起きると、前ユーザーの
+        // Supabase REST応答（在庫・買い物リスト等）がキャッシュフォールバックとして
+        // 次のユーザーに返ってしまう恐れがあるため、ログアウト時に消す。Cache Storage
+        // APIが無い環境（テスト環境等）では何もしない。
+        if (typeof caches !== "undefined") {
+          void caches.delete(SUPABASE_REST_CACHE_NAME);
+        }
 
         if (!isPublicPath(router.state.location.pathname)) {
           void router.navigate({ to: "/login" });

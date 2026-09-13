@@ -51,6 +51,7 @@ import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { parseLocalDate } from "@/lib/dateUtils";
 import type { OfflineQueuedAction } from "@/lib/offlineActionQueue";
+import { takePendingPurchaseImage } from "@/lib/offlinePendingPurchaseImage";
 import { OfflineError } from "@/lib/requireOnline";
 import {
   type CategoryResolver,
@@ -170,6 +171,22 @@ export const ShoppingPage = () => {
   const offlineQueue = useOfflineActionQueue({
     purchase: purchase.mutateAsync,
     addAlert: upsert.mutateAsync,
+    // #1020: キューに積まれた購入確定が再接続後にリプレイ成功した直後、保存しておいた
+    // 画像（あれば）を取り出してアップロードする。handlePurchase 内のオンライン即時
+    // 購入時の画像アップロード（#453）と同じガード・エラーハンドリングを踏襲する。
+    afterPurchaseReplayed: async (result, actionId) => {
+      const file = await takePendingPurchaseImage(actionId);
+      if (!file || targetsExistingItem(result)) return;
+      try {
+        await uploadItemImage({ itemId: result.id, file, queryClient: qc });
+        await qc.invalidateQueries({ queryKey: ["items"] });
+      } catch (err) {
+        toast(
+          err instanceof OfflineError ? t("common:offlineError") : t("items:imageUploadFailed"),
+          err instanceof OfflineError ? "error" : "warning",
+        );
+      }
+    },
   });
 
   // 買い物リストのアイテム削除の取り消し（#478）。shopping_list_items は
@@ -280,13 +297,18 @@ export const ShoppingPage = () => {
     if (!pendingPurchaseId) return;
     const id = pendingPurchaseId;
     const purchaseInput = { shoppingItemId: id, itemValues: values, applyMergeFields };
+    // #1020: キューへ積む場合、ダイアログで選択・撮影されたローカル画像（あれば）は
+    // 一緒にIndexedDBへ保存してリプレイ後にアップロードする。バーコード提案画像等の
+    // 外部URLはオフラインでは取得できないため対象外（下のトースト分岐で明示的に警告する）。
+    const pendingFileForQueue = pendingPurchaseFileRef.current;
+    const hasUnsyncableImageUrl = !pendingFileForQueue && !!pendingPurchaseImageUrlRef.current;
     try {
       // #981: 買い物中モードからの購入確定はオフライン時にローカルキューへ積み、再接続時に
       // 自動でリプレイする（店内・電波の弱い場所での利用を想定したこの画面だけの例外、
       // docs/specs/features/pwa.md）。通常のリストタブ（買い物中モードではない）からの
       // 購入確定は従来通り requireOnline() の OfflineError で即座に失敗させる。
       const outcome = shoppingMode
-        ? await offlineQueue.queuePurchase(purchaseInput)
+        ? await offlineQueue.queuePurchase(purchaseInput, pendingFileForQueue)
         : { status: "sent" as const, result: await purchase.mutateAsync(purchaseInput) };
 
       if (outcome.status === "queued") {
@@ -294,7 +316,12 @@ export const ShoppingPage = () => {
         setPendingPurchaseId(null);
         // 購入確定されたアイテムの「カートに入れた」チェック状態も消す（#983）
         cartCheckOff.clear(id);
-        toast(t("offlineQueuedPurchase"), "default");
+        toast(
+          hasUnsyncableImageUrl
+            ? t("offlineQueuedPurchaseImageNotSynced")
+            : t("offlineQueuedPurchase"),
+          hasUnsyncableImageUrl ? "warning" : "default",
+        );
         return;
       }
       const newItem = outcome.result;

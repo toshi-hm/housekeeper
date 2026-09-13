@@ -64,14 +64,21 @@ const writeOfflineActionQueue = (queue: readonly OfflineQueuedAction[]): void =>
   }
 };
 
-/** 新しいアクションをキュー末尾に積み、永続化した上で新しい配列を返す。 */
+/**
+ * 新しいアクションをキュー末尾に積み、永続化した上で新しい配列を返す。
+ *
+ * `id` は省略時に自動採番するが、`useOfflineActionQueue`（#1020）のように積む前に
+ * id を確定させ、その id をキーに別ストア（IndexedDBの画像等）へ関連データを保存したい
+ * 呼び出し元向けに明示指定もできる。
+ */
 export const enqueueOfflineAction = (
   queue: readonly OfflineQueuedAction[],
   action: OfflineActionInput,
+  id: string = crypto.randomUUID(),
 ): OfflineQueuedAction[] => {
   const entry: OfflineQueuedAction = {
     ...action,
-    id: crypto.randomUUID(),
+    id,
     queuedAt: new Date().toISOString(),
   };
   const next = [...queue, entry];

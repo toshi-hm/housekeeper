@@ -7,6 +7,10 @@ import {
   type OfflineQueuedAction,
   readOfflineActionQueue,
 } from "@/lib/offlineActionQueue";
+import {
+  discardPendingPurchaseImage,
+  storePendingPurchaseImage,
+} from "@/lib/offlinePendingPurchaseImage";
 import { ConcurrentUpdateError, OfflineError } from "@/lib/requireOnline";
 import { isNetworkFetchError, isPermanentReplayError } from "@/lib/supabaseErrors";
 import { useToast } from "@/lib/toast-context";
@@ -24,6 +28,15 @@ export interface UseOfflineActionQueueOptions<TPurchaseResult, TAddAlertResult> 
   /** オンライン時に実際に呼び出す `upsertShoppingItem` 相当の関数。
    *  `useUpsertShoppingItem().mutateAsync` を渡す想定。 */
   addAlert: (input: UpsertShoppingItemInput) => Promise<TAddAlertResult>;
+  /**
+   * #1020: キューに積んだ「購入確定」が再接続後にリプレイされ成功した直後に呼ばれる。
+   * ダイアログで選択された画像は `PurchaseInput` 自体に含められずキューに積めないため、
+   * `queuePurchase` の第2引数で渡された画像を（あれば）IndexedDBへ一時保存しておき、
+   * リプレイ成功時にこのコールバックへ purchase の結果と紐づけて渡す。呼び出し元
+   * （`_auth.shopping.tsx`）はここで `takePendingPurchaseImage` を使って画像を取り出し、
+   * アップロードする。失敗しても購入確定自体のリプレイ成功は取り消さない。
+   */
+  afterPurchaseReplayed?: (result: TPurchaseResult, actionId: string) => Promise<void> | void;
 }
 
 export interface UseOfflineActionQueueResult<TPurchaseResult, TAddAlertResult> {
@@ -38,8 +51,15 @@ export interface UseOfflineActionQueueResult<TPurchaseResult, TAddAlertResult> {
   discardQueuedAction: (id: string) => void;
   /** `purchaseShoppingItem` 呼び出しをオフライン対応でラップする。オンラインなら
    *  そのまま実行し、オフライン（またはリクエスト直前にオフラインへ変わった場合）は
-   *  キューへ積んで `{ status: "queued" }` を返す。 */
-  queuePurchase: (input: PurchaseInput) => Promise<OfflineQueueSendResult<TPurchaseResult>>;
+   *  キューへ積んで `{ status: "queued" }` を返す。
+   *  `pendingImageFile`（#1020）: 購入確定ダイアログで選択・撮影されたローカル画像。
+   *  キューへ積む場合のみ、生成したアクションidをキーにIndexedDBへ保存し、リプレイ
+   *  成功時に `afterPurchaseReplayed` へ引き継ぐ。外部URLから取得する画像（バーコード
+   *  提案画像等）はオフラインでは取得できないため対象外 — 呼び出し元で従来通り扱う。 */
+  queuePurchase: (
+    input: PurchaseInput,
+    pendingImageFile?: File | null,
+  ) => Promise<OfflineQueueSendResult<TPurchaseResult>>;
   /** `upsertShoppingItem`（アラートから買い物リストへ追加）呼び出しをオフライン対応で
    *  ラップする。挙動は `queuePurchase` と同様。 */
   queueAddAlert: (
@@ -101,8 +121,9 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
       action:
         | { kind: "purchase"; payload: PurchaseInput }
         | { kind: "add-alert"; payload: UpsertShoppingItemInput },
+      id?: string,
     ) => {
-      setQueue((prev) => enqueueOfflineAction(prev, action));
+      setQueue((prev) => enqueueOfflineAction(prev, action, id));
     },
     [],
   );
@@ -110,6 +131,16 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
   const dequeue = useCallback((id: string) => {
     setQueue((prev) => dequeueOfflineAction(prev, id));
   }, []);
+
+  // #1020: 手動破棄・恒久的エラー・楽観的排他の競合など、リプレイされずに諦める
+  // ケース共通の後始末。キューからの除去に加え、孤立し得るIndexedDB上の画像も消す。
+  const dequeueAndDiscardImage = useCallback(
+    (id: string) => {
+      dequeue(id);
+      void discardPendingPurchaseImage(id);
+    },
+    [dequeue],
+  );
 
   const replay = useCallback(async () => {
     if (replayingRef.current) return;
@@ -122,17 +153,26 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
       for (const action of snapshot) {
         try {
           if (action.kind === "purchase") {
-            await optionsRef.current.purchase(action.payload);
+            const result = await optionsRef.current.purchase(action.payload);
+            dequeue(action.id);
+            succeeded += 1;
+            // #1020: 画像アップロード等の後処理失敗は、購入確定自体のリプレイ成功を
+            // 取り消さない（キューへ戻さない）。エラー通知は呼び出し元に委ねる。
+            try {
+              await optionsRef.current.afterPurchaseReplayed?.(result, action.id);
+            } catch {
+              // 後処理側で握り潰されなかった想定外の失敗も、ここで無視して継続する。
+            }
           } else {
             await optionsRef.current.addAlert(action.payload);
+            dequeue(action.id);
+            succeeded += 1;
           }
-          dequeue(action.id);
-          succeeded += 1;
         } catch (err) {
           if (err instanceof ConcurrentUpdateError) {
             // #952: 競合はこのアクションだけ諦める。通知は渡された関数自身の
             // onError に委ね、自動マージはしない。残りのリプレイは継続する。
-            dequeue(action.id);
+            dequeueAndDiscardImage(action.id);
             continue;
           }
           if (isPermanentReplayError(err)) {
@@ -140,7 +180,7 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
             // 失敗すると判断できるもの）はこのアクションだけ諦めてキューから
             // 取り除く。先頭で永久に詰まって以降の同期が完全停止するのを防ぐため、
             // 残りのリプレイは継続する。
-            dequeue(action.id);
+            dequeueAndDiscardImage(action.id);
             discarded += 1;
             continue;
           }
@@ -159,7 +199,7 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
     } finally {
       replayingRef.current = false;
     }
-  }, [dequeue, t, toast]);
+  }, [dequeue, dequeueAndDiscardImage, t, toast]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -177,9 +217,19 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
   }, []);
 
   const queuePurchase = useCallback(
-    async (input: PurchaseInput): Promise<OfflineQueueSendResult<TPurchaseResult>> => {
+    async (
+      input: PurchaseInput,
+      pendingImageFile?: File | null,
+    ): Promise<OfflineQueueSendResult<TPurchaseResult>> => {
+      // #1020: キューに積む場合だけ id を先に確定し、選択済みの画像があれば同じ id で
+      // IndexedDBへ保存しておく。取り出しは replay 成功時の afterPurchaseReplayed で行う。
+      const enqueueWithPendingImage = async () => {
+        const id = crypto.randomUUID();
+        if (pendingImageFile) await storePendingPurchaseImage(id, pendingImageFile);
+        enqueue({ kind: "purchase", payload: input }, id);
+      };
       if (!navigator.onLine) {
-        enqueue({ kind: "purchase", payload: input });
+        await enqueueWithPendingImage();
         return { status: "queued" };
       }
       try {
@@ -190,7 +240,7 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
         // fetch自体が失敗することがある（`isNetworkFetchError`）。この場合も
         // OfflineError と同様にキューへ積み、操作内容を失わないようにする。
         if (err instanceof OfflineError || isNetworkFetchError(err)) {
-          enqueue({ kind: "purchase", payload: input });
+          await enqueueWithPendingImage();
           return { status: "queued" };
         }
         throw err;
@@ -224,7 +274,7 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
   return {
     queueLength: queue.length,
     queuedActions: queue,
-    discardQueuedAction: dequeue,
+    discardQueuedAction: dequeueAndDiscardImage,
     queuePurchase,
     queueAddAlert,
   };
