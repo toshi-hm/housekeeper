@@ -112,46 +112,49 @@ export interface Item {
 export const ITEM_DELETION_REASONS = ["consumed", "expired_waste", "other"] as const;
 export type ItemDeletionReason = (typeof ITEM_DELETION_REASONS)[number];
 
-export const itemFormSchema = z
-  .object({
-    name: z.string().min(1),
-    barcode: z.string().optional(),
-    category_id: z.string().uuid().nullable().optional(),
-    /** アイテム種別の個別上書き。未選択 = null（カテゴリ既定に追従）。 */
-    item_type: z.enum(ITEM_TYPES).nullable().optional(),
-    storage_location_id: z.string().uuid().nullable().optional(),
-    units: z.coerce.number().int().min(1).default(1),
-    content_amount: z.coerce.number().positive().default(1),
-    content_unit: z.string().default("個"),
-    opened_remaining: z.coerce.number().min(0).nullable().optional(),
-    purchase_date: z.string().optional(),
-    expiry_date: z.string().optional(),
-    /** 「賞味期限」/「消費期限」の区別。未選択 = null（区別なし、#714）。 */
-    expiry_type: z.enum(EXPIRY_TYPES).nullable().optional(),
-    notes: z.string().optional(),
-    image_path: z.string().optional(),
-    minimum_stock: z.coerce.number().int().min(0).nullable().optional(),
-    /** 開封後使用推奨日数（個別上書き）。任意入力、未設定 = null
-     *  （category.days_use_after_opening にフォールバック、#752）。 */
-    days_use_after_opening: z.coerce.number().int().positive().nullable().optional(),
-    /** 1点あたりの購入単価（円）。任意入力、未設定 = null。 */
-    unit_price: z.coerce.number().int().min(0).nullable().optional(),
-    /** 購入先の店舗名。任意入力、未設定 = null（#697）。 */
-    store_name: z.string().nullable().optional(),
-    auto_reorder: z.boolean().default(false),
-    reorder_threshold: z.coerce.number().int().min(0).nullable().optional(),
-    /** 予測残日数ベースの自動追加しきい値（日数）。未設定 = null（#853）。 */
-    reorder_lead_days: z.coerce.number().int().min(0).nullable().optional(),
-    pin_x: z.coerce.number().min(0).max(1).nullable().optional(),
-    pin_y: z.coerce.number().min(0).max(1).nullable().optional(),
-  })
-  .refine(
-    (form) => !form.purchase_date || !form.expiry_date || form.expiry_date >= form.purchase_date,
-    {
-      message: "expiry_date must be on or after purchase_date",
-      path: ["expiry_date"],
-    },
-  );
+/** `itemFormSchema` の形状のみのチェック（`.refine()` 抜き）。送信時の相互バリデーション
+ *  （expiry_date >= purchase_date 等）は入力途中の状態には適用したくない用途
+ *  （下書きのラウンドトリップ検証、`src/lib/itemFormDraft.ts`）向けに公開する。 */
+export const itemFormShapeSchema = z.object({
+  name: z.string().min(1),
+  barcode: z.string().optional(),
+  category_id: z.string().uuid().nullable().optional(),
+  /** アイテム種別の個別上書き。未選択 = null（カテゴリ既定に追従）。 */
+  item_type: z.enum(ITEM_TYPES).nullable().optional(),
+  storage_location_id: z.string().uuid().nullable().optional(),
+  units: z.coerce.number().int().min(1).default(1),
+  content_amount: z.coerce.number().positive().default(1),
+  content_unit: z.string().default("個"),
+  opened_remaining: z.coerce.number().min(0).nullable().optional(),
+  purchase_date: z.string().optional(),
+  expiry_date: z.string().optional(),
+  /** 「賞味期限」/「消費期限」の区別。未選択 = null（区別なし、#714）。 */
+  expiry_type: z.enum(EXPIRY_TYPES).nullable().optional(),
+  notes: z.string().optional(),
+  image_path: z.string().optional(),
+  minimum_stock: z.coerce.number().int().min(0).nullable().optional(),
+  /** 開封後使用推奨日数（個別上書き）。任意入力、未設定 = null
+   *  （category.days_use_after_opening にフォールバック、#752）。 */
+  days_use_after_opening: z.coerce.number().int().positive().nullable().optional(),
+  /** 1点あたりの購入単価（円）。任意入力、未設定 = null。 */
+  unit_price: z.coerce.number().int().min(0).nullable().optional(),
+  /** 購入先の店舗名。任意入力、未設定 = null（#697）。 */
+  store_name: z.string().nullable().optional(),
+  auto_reorder: z.boolean().default(false),
+  reorder_threshold: z.coerce.number().int().min(0).nullable().optional(),
+  /** 予測残日数ベースの自動追加しきい値（日数）。未設定 = null（#853）。 */
+  reorder_lead_days: z.coerce.number().int().min(0).nullable().optional(),
+  pin_x: z.coerce.number().min(0).max(1).nullable().optional(),
+  pin_y: z.coerce.number().min(0).max(1).nullable().optional(),
+});
+
+export const itemFormSchema = itemFormShapeSchema.refine(
+  (form) => !form.purchase_date || !form.expiry_date || form.expiry_date >= form.purchase_date,
+  {
+    message: "expiry_date must be on or after purchase_date",
+    path: ["expiry_date"],
+  },
+);
 
 export const itemLotSchema = z.object({
   id: z.string().uuid(),

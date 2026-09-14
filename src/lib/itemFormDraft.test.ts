@@ -69,6 +69,18 @@ describe("itemFormDraft (#672)", () => {
     expect(loadItemFormDraft("new")).toBeNull();
   });
 
+  // #1062: itemFormSchema に expiry_date >= purchase_date の refine が追加された後も、
+  // 入力途中で一時的にその関係が崩れた状態の下書きを復元できることの回帰テスト。
+  test("expiry_dateがpurchase_dateより前の入力途中の下書きも復元できる", () => {
+    const payload = makePayload({
+      values: makeValues({ purchase_date: "2026-06-10", expiry_date: "2026-06-01" }),
+    });
+    saveItemFormDraft("new", payload);
+
+    const draft = loadItemFormDraft("new");
+    expect(draft?.payload).toEqual(payload);
+  });
+
   test("clearItemFormDraftで削除できる", () => {
     saveItemFormDraft("new", makePayload());
     clearItemFormDraft("new");

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { itemFormSchema, type ItemFormValues } from "@/types/item";
+import { itemFormShapeSchema, type ItemFormValues } from "@/types/item";
 
 const STORAGE_KEY_PREFIX = "housekeeper:itemFormDraft:";
 
@@ -11,9 +11,15 @@ const STORAGE_KEY_PREFIX = "housekeeper:itemFormDraft:";
  * `values`（ItemFormValues）に加え、`units`/`content_amount` は送信時にしか
  * 数値へパースされない生の文字列入力（`unitsRaw`/`contentAmountRaw`）を別途
  * 保持することで、送信直前まで入力途中の内容を正確に復元できるようにする。
+ *
+ * 各フィールドの形状チェックのみ行う `itemFormShapeSchema` を使う
+ * （`itemFormSchema` の送信時相互バリデーション、例:
+ * expiry_date >= purchase_date は入力途中の状態には適用しない。保存前に
+ * 両者の順序が崩れた状態で保存された下書きも、破損扱いにせず復元できる
+ * 必要がある、#1062）。
  */
 const draftPayloadSchema = z.object({
-  values: itemFormSchema,
+  values: itemFormShapeSchema,
   unitsRaw: z.string(),
   contentAmountRaw: z.string(),
 });
