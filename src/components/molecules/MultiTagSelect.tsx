@@ -80,6 +80,8 @@ export const MultiTagSelect = ({
               key={tag.id}
               type="button"
               onClick={() => toggle(tag.id)}
+              aria-pressed={false}
+              aria-label={`${labels.addLabel}: ${tag.name}`}
               className="opacity-60 transition-opacity hover:opacity-100"
             >
               <TagBadge name={tag.name} color={tag.color} />
