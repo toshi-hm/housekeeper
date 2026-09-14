@@ -8,6 +8,7 @@
   "emptyHint": "Register a combination you use often to consume it all in one tap",
   "execute": "Run",
   "executeAnyway": "Run excluding shortages",
+  "executeDisabledNoItems": "Can't run: no ingredients are registered for this recipe",
   "executedFailed_one": "Failed to consume 1 item",
   "executedFailed_other": "Failed to consume {{count}} items",
   "executedPartial": "Consumed {{consumed}} item(s) ({{skipped}} skipped due to insufficient stock)",

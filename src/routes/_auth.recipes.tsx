@@ -25,7 +25,7 @@ interface PendingExecution {
   shortages: RecipeShortage[];
 }
 
-const RecipesPage = () => {
+export const RecipesPage = () => {
   const { t } = useTranslation("recipes");
   const { t: tc } = useTranslation("common");
   const { toast } = useToast();
@@ -211,11 +211,20 @@ const RecipesPage = () => {
                 <Button
                   size="sm"
                   disabled={executingId === recipe.id || recipe.items.length === 0}
+                  title={recipe.items.length === 0 ? t("executeDisabledNoItems") : undefined}
+                  aria-describedby={
+                    recipe.items.length === 0 ? `recipe-no-items-${recipe.id}` : undefined
+                  }
                   onClick={() => void runExecute(recipe, false)}
                 >
                   <Play className="mr-1 h-4 w-4" />
                   {executingId === recipe.id ? t("executing") : t("execute")}
                 </Button>
+                {recipe.items.length === 0 && (
+                  <span id={`recipe-no-items-${recipe.id}`} className="sr-only">
+                    {t("executeDisabledNoItems")}
+                  </span>
+                )}
                 <Button
                   size="icon"
                   variant="ghost"
