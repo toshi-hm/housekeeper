@@ -9,6 +9,7 @@
   "execute": "実行",
   "executeAnyway": "不足分を除いて実行",
   "executedFailed_other": "{{count}}件の消費に失敗しました",
+  "executeDisabledNoItems": "構成アイテムが登録されていないため実行できません",
   "executedPartial": "{{consumed}}件を消費しました（{{skipped}}件は在庫不足でスキップ）",
   "executedSuccess_other": "{{count}}件のアイテムを消費しました",
   "executing": "実行中…",
