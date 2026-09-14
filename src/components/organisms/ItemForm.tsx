@@ -160,6 +160,7 @@ export const ItemForm = ({
   const [unitPriceError, setUnitPriceError] = useState("");
   const [reorderThresholdError, setReorderThresholdError] = useState("");
   const [reorderLeadDaysError, setReorderLeadDaysError] = useState("");
+  const [expiryDateError, setExpiryDateError] = useState("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [barcodeImageUrl, setBarcodeImageUrl] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<ProductInfo | null | undefined>(undefined);
@@ -251,6 +252,7 @@ export const ItemForm = ({
   const set = <K extends keyof ItemFormValues>(field: K, value: ItemFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
     if (field === "name") setNameError("");
+    if (field === "purchase_date" || field === "expiry_date") setExpiryDateError("");
     if (field === "barcode") {
       setLookupResult(undefined);
       setLookupSource(null);
@@ -431,6 +433,11 @@ export const ItemForm = ({
       (isNaN(values.reorder_lead_days) || values.reorder_lead_days < 0)
     ) {
       setReorderLeadDaysError(t("reorderLeadDaysInvalid"));
+      hasError = true;
+    }
+
+    if (values.purchase_date && values.expiry_date && values.expiry_date < values.purchase_date) {
+      setExpiryDateError(t("expiryBeforePurchaseDate"));
       hasError = true;
     }
 
@@ -809,6 +816,8 @@ export const ItemForm = ({
                   type="date"
                   value={values.expiry_date ?? ""}
                   onChange={(e) => set("expiry_date", e.target.value)}
+                  aria-invalid={!!expiryDateError}
+                  aria-describedby={expiryDateError ? "expiry-date-error" : undefined}
                 />
                 <Button
                   type="button"
@@ -821,6 +830,11 @@ export const ItemForm = ({
                   <Camera className="h-4 w-4" />
                 </Button>
               </div>
+              {expiryDateError && (
+                <p id="expiry-date-error" className="text-sm text-destructive">
+                  {expiryDateError}
+                </p>
+              )}
             </div>
           )}
         </div>

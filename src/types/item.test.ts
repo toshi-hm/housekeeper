@@ -65,6 +65,38 @@ describe("itemFormSchema", () => {
     const result = itemFormSchema.safeParse({ ...validForm, name: "" });
     expect(result.success).toBe(false);
   });
+
+  test("expiry_date before purchase_date fails (#1062)", () => {
+    const result = itemFormSchema.safeParse({
+      ...validForm,
+      purchase_date: "2026-06-10",
+      expiry_date: "2026-06-01",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("expiry_date equal to purchase_date is valid", () => {
+    const result = itemFormSchema.safeParse({
+      ...validForm,
+      purchase_date: "2026-06-10",
+      expiry_date: "2026-06-10",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("expiry_date after purchase_date is valid", () => {
+    const result = itemFormSchema.safeParse({
+      ...validForm,
+      purchase_date: "2026-06-10",
+      expiry_date: "2026-06-20",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("only one of purchase_date/expiry_date set is valid", () => {
+    const result = itemFormSchema.safeParse({ ...validForm, expiry_date: "2026-01-01" });
+    expect(result.success).toBe(true);
+  });
 });
 
 // --- itemLotSchema ---
