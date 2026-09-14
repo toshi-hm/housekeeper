@@ -104,6 +104,7 @@
   "editItem": "Edit Item",
   "editLot": "Select lot to edit",
   "emptyStock": "Used up",
+  "expiryBeforePurchaseDate": "Enter a best-before/expiry date on or after the purchase date",
   "expiryDate": "Best Before / Expiry Date",
   "expiryScanButtonTitle": "Scan expiry date with camera",
   "expiryScanCapture": "Capture",

@@ -112,7 +112,10 @@ export interface Item {
 export const ITEM_DELETION_REASONS = ["consumed", "expired_waste", "other"] as const;
 export type ItemDeletionReason = (typeof ITEM_DELETION_REASONS)[number];
 
-export const itemFormSchema = z.object({
+/** `itemFormSchema` の形状のみのチェック（`.refine()` 抜き）。送信時の相互バリデーション
+ *  （expiry_date >= purchase_date 等）は入力途中の状態には適用したくない用途
+ *  （下書きのラウンドトリップ検証、`src/lib/itemFormDraft.ts`）向けに公開する。 */
+export const itemFormShapeSchema = z.object({
   name: z.string().min(1),
   barcode: z.string().optional(),
   category_id: z.string().uuid().nullable().optional(),
@@ -144,6 +147,14 @@ export const itemFormSchema = z.object({
   pin_x: z.coerce.number().min(0).max(1).nullable().optional(),
   pin_y: z.coerce.number().min(0).max(1).nullable().optional(),
 });
+
+export const itemFormSchema = itemFormShapeSchema.refine(
+  (form) => !form.purchase_date || !form.expiry_date || form.expiry_date >= form.purchase_date,
+  {
+    message: "expiry_date must be on or after purchase_date",
+    path: ["expiry_date"],
+  },
+);
 
 export const itemLotSchema = z.object({
   id: z.string().uuid(),

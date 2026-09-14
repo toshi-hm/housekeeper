@@ -94,6 +94,7 @@
   "editItem": "在庫を編集",
   "editLot": "編集するロットを選択",
   "emptyStock": "使い切り",
+  "expiryBeforePurchaseDate": "賞味期限/消費期限は購入日以降の日付を入力してください",
   "expiryDate": "賞味期限/消費期限",
   "expiryScanButtonTitle": "賞味期限をカメラで読み取る",
   "expiryScanCapture": "撮影する",

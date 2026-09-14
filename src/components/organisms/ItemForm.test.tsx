@@ -98,6 +98,51 @@ describe("ItemForm — aria-describedby / aria-invalid (#621)", () => {
     expect(minStockInput.getAttribute("aria-describedby")).toBe("minimum-stock-help");
   });
 
+  it("期限が購入日より前だと送信がブロックされ、expiry_dateフィールドがaria-invalidになる (#1062)", () => {
+    const handleSubmit = mock(() => {});
+    const { container } = render(
+      <ItemForm
+        onSubmit={handleSubmit}
+        defaultValues={{
+          name: "テスト",
+          units: 1,
+          purchase_date: "2026-06-10",
+          expiry_date: "2026-06-01",
+        }}
+      />,
+      { wrapper },
+    );
+    const form = container.querySelector("form")!;
+    fireEvent.submit(form);
+
+    expect(handleSubmit).not.toHaveBeenCalled();
+    const expiryInput = container.querySelector("#expiry_date") as HTMLInputElement;
+    expect(expiryInput.getAttribute("aria-invalid")).toBe("true");
+    const describedBy = expiryInput.getAttribute("aria-describedby");
+    expect(describedBy).toBe("expiry-date-error");
+    expect(container.querySelector(`#${describedBy}`)?.textContent).not.toBe("");
+  });
+
+  it("期限が購入日と同日以降なら送信できる", () => {
+    const handleSubmit = mock(() => {});
+    const { container } = render(
+      <ItemForm
+        onSubmit={handleSubmit}
+        defaultValues={{
+          name: "テスト",
+          units: 1,
+          purchase_date: "2026-06-10",
+          expiry_date: "2026-06-10",
+        }}
+      />,
+      { wrapper },
+    );
+    const form = container.querySelector("form")!;
+    fireEvent.submit(form);
+
+    expect(handleSubmit).toHaveBeenCalledTimes(1);
+  });
+
   it("バーコード欄が空の状態でEnterキーを押してもフォームは送信されない（#656）", () => {
     const onSubmit = spyOn({ onSubmit: () => {} }, "onSubmit");
     const { container } = render(<ItemForm onSubmit={onSubmit} />, { wrapper });
