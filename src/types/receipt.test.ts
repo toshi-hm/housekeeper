@@ -147,4 +147,14 @@ describe("draftItemToFormValues", () => {
     const values = draftItemToFormValues(makeDraft());
     expect(values.store_name).toBeNull();
   });
+
+  test("defaults purchase_date to the scan date so it isn't dropped from spending aggregates (#1061)", () => {
+    const values = draftItemToFormValues(makeDraft(), undefined, new Date(2026, 8, 15));
+    expect(values.purchase_date).toBe("2026-09-15");
+  });
+
+  test("defaults purchase_date to today when no scan date is given", () => {
+    const values = draftItemToFormValues(makeDraft());
+    expect(values.purchase_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
 });
