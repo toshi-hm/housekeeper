@@ -1,3 +1,4 @@
+import { toLocalDateKey } from "@/lib/dateUtils";
 import type { ItemFormValues } from "@/types/item";
 
 /** `receipt-scan` Edge Function が1商品行について返す抽出結果。 */
@@ -72,10 +73,16 @@ export const isReceiptDraftValid = (draft: ReceiptDraftItem): boolean =>
  *
  * `storeName` はレシート全体で1つ（品目ごとではない、#859）のレビュー画面
  * ヘッダー欄の値。トリムして空になる場合は未入力として `null` を渡す。
+ *
+ * `purchase_date` はレビュー画面に入力欄が無いため、既定でスキャン実行日
+ * （`scanDate`、省略時は現在日時）を設定する。未設定のままだと購入履歴CSV・
+ * 月別支出集計・予算超過アラートのいずれからもこのアイテムが漏れてしまうため
+ * （#1061）。
  */
 export const draftItemToFormValues = (
   draft: ReceiptDraftItem,
   storeName?: string | null,
+  scanDate: Date = new Date(),
 ): ItemFormValues => {
   const trimmedStoreName = storeName?.trim();
   return {
@@ -87,7 +94,7 @@ export const draftItemToFormValues = (
     content_amount: 1,
     content_unit: "個",
     opened_remaining: null,
-    purchase_date: undefined,
+    purchase_date: toLocalDateKey(scanDate),
     expiry_date: draft.expiryDate ?? undefined,
     expiry_type: null,
     notes: undefined,
