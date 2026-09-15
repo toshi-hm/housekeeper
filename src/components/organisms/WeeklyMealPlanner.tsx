@@ -8,6 +8,7 @@ import { MealSlot } from "@/components/molecules/MealSlot";
 import type { MealSlotAssignmentValues } from "@/components/molecules/MealSlotRecipePicker";
 import { LOTS_KEY } from "@/hooks/useItemLots";
 import { useItems } from "@/hooks/useItems";
+import { useCategories } from "@/hooks/useMasterData";
 import {
   shortageToShoppingItemInput,
   useExecuteMealPlan,
@@ -19,7 +20,7 @@ import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
 import { toLocalDateKey } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
-import { getExpiryStatus } from "@/types/item";
+import { dropExpiryForDailyGoods, getExpiryStatus } from "@/types/item";
 import { buildWeekRange, type MealPlanWithRecipe } from "@/types/mealPlan";
 import {
   checkRecipeStock,
@@ -46,12 +47,21 @@ export const WeeklyMealPlanner = () => {
   const range = buildWeekRange();
   const today = toLocalDateKey(new Date());
 
-  const { data: items = [] } = useItems();
+  const { data: rawItems = [] } = useItems();
+  const { data: categories = [] } = useCategories();
   const { data: recipes = [] } = useRecipes();
   const { slots, isLoading, error } = useMealPlans(range);
   const upsertMealPlan = useUpsertMealPlan();
   const executeMealPlan = useExecuteMealPlan();
   const upsertShoppingItem = useUpsertShoppingItem();
+
+  // カテゴリを食料品→日用品に切り替えた既存アイテムは expiry_date が DB に
+  // 残ったままになるため、他画面（ダッシュボード・買い物中モード等）と同じく
+  // dropExpiryForDailyGoods で「期限なし」に揃えてから使う。これをせずに raw な
+  // items を使うと、日用品が「期限間近の食材」としてレコメンドに混入し、
+  // 外部レシピ提案APIにまで商品名が送られてしまう（#1073）。
+  const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
+  const items = dropExpiryForDailyGoods(rawItems, categoryById);
 
   const itemsById = Object.fromEntries(items.map((item) => [item.id, item]));
 
