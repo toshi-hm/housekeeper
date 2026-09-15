@@ -1,3 +1,4 @@
+import { type NotificationPreferenceRow, planTestChannels } from "./channelPlan.ts";
 import { summarizeResults } from "./result.ts";
 
 const corsHeaders = {
@@ -70,13 +71,20 @@ export const handler = async (req: Request): Promise<Response> => {
     });
   }
 
-  const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
-  const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
-  const vapidSubject = Deno.env.get("VAPID_SUBJECT");
-  if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
-    console.error("VAPID secrets not configured");
-    return new Response(JSON.stringify({ error: "Push notifications are not configured" }), {
-      status: 500,
+  // #1063: which channel(s) to test depends on the user's own preferences —
+  // previously this endpoint only ever attempted push, so a user who only
+  // enabled email notifications had no way to verify their settings worked.
+  const { data: prefsRow } = await supabase
+    .from("notification_preferences")
+    .select("push_enabled, email_enabled, email_address")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const prefs = prefsRow as NotificationPreferenceRow | null;
+  const plan = planTestChannels(prefs);
+
+  if (!plan.sendPush && !plan.sendEmail) {
+    return new Response(JSON.stringify({ error: "No notification channel enabled" }), {
+      status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -89,71 +97,128 @@ export const handler = async (req: Request): Promise<Response> => {
   const language = isSupportedLanguage(userSettings?.language) ? userSettings.language : "ja";
   const { title: testNotificationTitle, body: testNotificationBody } = NOTIFICATION_TEXT[language];
 
-  const { data: subs, error: subsError } = await supabase
-    .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth")
-    .eq("user_id", user.id);
+  let pushSummary: { sent: number; failed: number } | null = null;
+  let pushError: string | null = null;
 
-  if (subsError) {
-    return new Response(JSON.stringify({ error: subsError.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (plan.sendPush) {
+    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+    const vapidSubject = Deno.env.get("VAPID_SUBJECT");
 
-  const subscriptions = (subs ?? []) as PushSubscriptionRow[];
-  if (subscriptions.length === 0) {
-    return new Response(JSON.stringify({ error: "No push subscription found" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+    if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
+      console.error("VAPID secrets not configured");
+      pushError = "Push notifications are not configured";
+    } else {
+      const { data: subs, error: subsError } = await supabase
+        .from("push_subscriptions")
+        .select("id, endpoint, p256dh, auth")
+        .eq("user_id", user.id);
 
-  // #834: lazy dynamic import — this package (via http_ece) reads
-  // process.env.ECE_KEYLOG at module top level, which would require
-  // --allow-env just to import this module in tests (e.g. preflight/auth
-  // tests that never reach this line). A static top-level import would fail
-  // in real CI too, since `deno test` there runs without --allow-env.
-  const { default: webpush } = await import("npm:web-push@3");
-  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+      if (subsError) {
+        pushError = subsError.message;
+      } else {
+        const subscriptions = (subs ?? []) as PushSubscriptionRow[];
+        if (subscriptions.length === 0) {
+          pushError = "No push subscription found";
+        } else {
+          // #834: lazy dynamic import — this package (via http_ece) reads
+          // process.env.ECE_KEYLOG at module top level, which would require
+          // --allow-env just to import this module in tests (e.g.
+          // preflight/auth tests that never reach this line). A static
+          // top-level import would fail in real CI too, since `deno test`
+          // there runs without --allow-env.
+          const { default: webpush } = await import("npm:web-push@3");
+          webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
-  const results = await Promise.allSettled(
-    subscriptions.map(async (sub) => {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          // #671: テスト通知は通知設定画面から送るものなので、タップ後もその画面に
-          // 戻すのが自然（対象アイテムは無いため sw.ts の既定値 "/" ではなく明示する）。
-          JSON.stringify({
-            title: testNotificationTitle,
-            body: testNotificationBody,
-            data: { url: "/settings" },
-          }),
-        );
-      } catch (err: unknown) {
-        const status = (err as { statusCode?: number }).statusCode;
-        if (status === 410 || status === 404) {
-          // Subscription expired — remove it, same as send-expiry-notifications.
-          await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+          const results = await Promise.allSettled(
+            subscriptions.map(async (sub) => {
+              try {
+                await webpush.sendNotification(
+                  { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                  // #671: テスト通知は通知設定画面から送るものなので、タップ後も
+                  // その画面に戻すのが自然（対象アイテムは無いため sw.ts の
+                  // 既定値 "/" ではなく明示する）。
+                  JSON.stringify({
+                    title: testNotificationTitle,
+                    body: testNotificationBody,
+                    data: { url: "/settings" },
+                  }),
+                );
+              } catch (err: unknown) {
+                const status = (err as { statusCode?: number }).statusCode;
+                if (status === 410 || status === 404) {
+                  // Subscription expired — remove it, same as send-expiry-notifications.
+                  await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+                }
+                throw err;
+              }
+            }),
+          );
+
+          const summary = summarizeResults(results);
+          pushSummary = { sent: summary.sent, failed: summary.failed };
+          if (summary.allFailed) {
+            console.error("Test push notification failed for all subscriptions:", results);
+            pushError = "Failed to send test push notification";
+          }
         }
-        throw err;
       }
-    }),
-  );
-
-  const summary = summarizeResults(results);
-
-  if (summary.allFailed) {
-    console.error("Test notification failed for all subscriptions:", results);
-    return new Response(JSON.stringify({ error: "Failed to send test notification" }), {
-      status: 502,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }
   }
 
-  return new Response(JSON.stringify({ ok: true, sent: summary.sent, failed: summary.failed }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  let emailSent = false;
+  let emailError: string | null = null;
+
+  if (plan.sendEmail) {
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const resendFrom = Deno.env.get("RESEND_FROM_ADDRESS") ?? "housekeeper <noreply@example.com>";
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY not configured");
+      emailError = "Email notifications are not configured";
+    } else {
+      // prefs.email_address is non-null here — planTestChannels only sets
+      // sendEmail when it is.
+      const emailAddress = prefs?.email_address as string;
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: resendFrom,
+          to: emailAddress,
+          subject: testNotificationTitle,
+          text: testNotificationBody,
+        }),
+      });
+      if (res.ok) {
+        emailSent = true;
+      } else {
+        const responseText = await res.text();
+        console.error("Test email send failed:", responseText);
+        emailError = "Failed to send test email";
+      }
+    }
+  }
+
+  const pushSucceeded = !!pushSummary && pushSummary.sent > 0;
+  if (!pushSucceeded && !emailSent) {
+    const errors = [pushError, emailError].filter((message): message is string => !!message);
+    return new Response(
+      JSON.stringify({ error: errors.join(" / ") || "Failed to send test notification" }),
+      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      push: pushSummary ? { sent: pushSummary.sent, failed: pushSummary.failed } : undefined,
+      email: plan.sendEmail ? { sent: emailSent } : undefined,
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 };
 
 if (import.meta.main) Deno.serve(handler);

@@ -82,14 +82,22 @@ describe("NotificationSettings", () => {
     testNotificationSpy.mockRestore();
   });
 
-  it("プッシュ通知が無効な場合はテスト送信ボタンが表示されない", () => {
-    setPrefs({ push_enabled: false });
+  it("プッシュ・メールともに無効な場合はテスト送信ボタンが表示されない", () => {
+    setPrefs({ push_enabled: false, email_enabled: false });
     const { queryByText } = render(<NotificationSettings />, { wrapper });
     expect(queryByText(/テスト通知を送信|Send test notification/i)).toBeNull();
   });
 
   it("プッシュ通知が有効な場合はテスト送信ボタンが表示され、押下すると送信される", () => {
     setPrefs({ push_enabled: true });
+    const { getByText } = render(<NotificationSettings />, { wrapper });
+    const testButton = getByText(/テスト通知を送信|Send test notification/i);
+    fireEvent.click(testButton);
+    expect(testNotificationMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it("メール通知のみ有効な場合もテスト送信ボタンが表示され、押下すると送信される (#1063)", () => {
+    setPrefs({ push_enabled: false, email_enabled: true, email_address: "user@example.com" });
     const { getByText } = render(<NotificationSettings />, { wrapper });
     const testButton = getByText(/テスト通知を送信|Send test notification/i);
     fireEvent.click(testButton);

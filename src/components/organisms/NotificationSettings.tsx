@@ -203,22 +203,6 @@ export const NotificationSettings = () => {
         {!isPushSupported && (
           <p className="text-xs text-muted-foreground">{t("pushNotSupported")}</p>
         )}
-        {prefs?.push_enabled && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => testNotification.mutate()}
-            disabled={testNotification.isPending}
-          >
-            {testNotification.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            {t("sendTestNotification")}
-          </Button>
-        )}
       </div>
 
       {/* Email */}
@@ -260,6 +244,25 @@ export const NotificationSettings = () => {
           </div>
         )}
       </div>
+
+      {/* Test send — shown once at least one channel is enabled, so an
+          email-only user (no push subscription) can also verify delivery (#1063) */}
+      {(prefs?.push_enabled || prefs?.email_enabled) && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => testNotification.mutate()}
+          disabled={testNotification.isPending}
+        >
+          {testNotification.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+          {t("sendTestNotification")}
+        </Button>
+      )}
 
       {/* Threshold & time */}
       <div className="grid grid-cols-2 gap-3">
