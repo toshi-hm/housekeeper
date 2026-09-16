@@ -1,5 +1,5 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
-import { jstTodayString } from "./date.ts";
+import { zonedTodayString } from "./date.ts";
 import { buildWidgetSummary, type WidgetItemInput } from "./summary.ts";
 
 /**
@@ -69,6 +69,16 @@ export const handler = async (req: Request): Promise<Response> => {
   const warningDays =
     (settings as { expiry_warning_days: number } | null)?.expiry_warning_days ?? 3;
 
+  // #1072: 「今日」の計算はユーザーのタイムゾーン（notification_preferences.timezone、
+  // 未設定時は Asia/Tokyo）基準にする。send-expiry-notifications/send-waste-digest と
+  // 同じ方針で、JST固定だと日本時間以外のユーザーでウィジェットの集計が他画面とずれる。
+  const { data: notificationPrefs } = await supabase
+    .from("notification_preferences")
+    .select("timezone")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const timezone = (notificationPrefs as { timezone: string | null } | null)?.timezone;
+
   let items: WidgetItemInput[];
   try {
     // #695: mirrors the #669 fix — a single unbounded select silently
@@ -97,7 +107,7 @@ export const handler = async (req: Request): Promise<Response> => {
 
   const summary = buildWidgetSummary(
     items,
-    jstTodayString(),
+    zonedTodayString(timezone),
     warningDays,
     new Date().toISOString(),
   );
