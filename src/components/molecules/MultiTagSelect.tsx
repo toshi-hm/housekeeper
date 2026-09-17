@@ -47,6 +47,9 @@ export const MultiTagSelect = ({
       const tag = await onCreate(name);
       onChange([...selected, tag.id]);
       setNewName("");
+    } catch {
+      // onCreate側（useCreateTagのonError）でトースト表示済み。ここでは
+      // unhandled rejectionにしないためだけに握りつぶす。
     } finally {
       setIsCreating(false);
     }
