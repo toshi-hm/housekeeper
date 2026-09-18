@@ -62,7 +62,6 @@ import {
   itemTypeTabPanelId,
   parseItemTypeTab,
 } from "@/lib/itemType";
-import { updateAppBadge } from "@/lib/pwa";
 import { OfflineError } from "@/lib/requireOnline";
 import { toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
@@ -432,10 +431,6 @@ export const DashboardPage = () => {
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   );
   const urgentCount = urgentItems.length;
-
-  useEffect(() => {
-    void updateAppBadge(urgentCount);
-  }, [urgentCount]);
 
   // 期限切れ/期限間近アイテムを使い切れる外部レシピの提案 (#461)。
   // sanitizeItemNames (Edge Function側) と合わせて先頭5件までに絞る。
