@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
@@ -297,5 +297,126 @@ describe("NotificationSettings", () => {
       ?.parentElement?.querySelector("button") as HTMLButtonElement;
     fireEvent.click(toggle);
     expect(mutateAsync).toHaveBeenCalledWith({ waste_digest_enabled: false });
+  });
+
+  // --- Push購読とpush_enabledの不整合ロールバック (#1081) ---
+  describe("プッシュ通知トグルの2段階更新", () => {
+    const originalNotification = (window as unknown as { Notification?: unknown }).Notification;
+    const originalServiceWorker = navigator.serviceWorker;
+    const originalPushManager = (window as unknown as { PushManager?: unknown }).PushManager;
+    const requestPermission = mock(() => Promise.resolve("granted"));
+
+    const findPushToggle = (container: HTMLElement): HTMLButtonElement => {
+      const label = Array.from(container.querySelectorAll("span")).find((el) =>
+        /プッシュ通知|Push Notifications/i.test(el.textContent ?? ""),
+      );
+      const button = label?.closest("div")?.parentElement?.querySelector("button");
+      if (!button) throw new Error("push toggle button not found");
+      return button as HTMLButtonElement;
+    };
+
+    const enablePushSupport = () => {
+      Object.defineProperty(window, "Notification", {
+        configurable: true,
+        value: { requestPermission },
+      });
+      Object.defineProperty(navigator, "serviceWorker", {
+        configurable: true,
+        value: { ready: Promise.resolve({}) },
+      });
+      Object.defineProperty(window, "PushManager", { configurable: true, value: class {} });
+    };
+
+    beforeEach(() => {
+      requestPermission.mockClear();
+      enablePushSupport();
+    });
+
+    afterEach(() => {
+      Object.defineProperty(window, "Notification", {
+        configurable: true,
+        value: originalNotification,
+      });
+      Object.defineProperty(navigator, "serviceWorker", {
+        configurable: true,
+        value: originalServiceWorker,
+      });
+      Object.defineProperty(window, "PushManager", {
+        configurable: true,
+        value: originalPushManager,
+      });
+    });
+
+    it("有効化時に購読は成功しDB更新が失敗した場合、購読をロールバック（解除）する", async () => {
+      setPrefs({ push_enabled: false });
+      const subscribeSpy = spyOn(
+        useNotificationPreferencesModule,
+        "subscribePush",
+      ).mockResolvedValue(undefined);
+      const unsubscribeSpy = spyOn(
+        useNotificationPreferencesModule,
+        "unsubscribePush",
+      ).mockResolvedValue(undefined);
+      mutateAsync.mockImplementationOnce(() => Promise.reject(new Error("network error")));
+
+      const { container } = render(<NotificationSettings />, { wrapper });
+      fireEvent.click(findPushToggle(container));
+
+      await waitFor(() => expect(unsubscribeSpy).toHaveBeenCalledTimes(1));
+      expect(subscribeSpy).toHaveBeenCalledTimes(1);
+      expect(toastMock).toHaveBeenCalledWith(expect.any(String), "error");
+      expect(toastMock).not.toHaveBeenCalledWith(
+        expect.stringMatching(/プッシュ通知|Push/i),
+        "success",
+      );
+
+      subscribeSpy.mockRestore();
+      unsubscribeSpy.mockRestore();
+    });
+
+    it("無効化時に購読解除は成功しDB更新が失敗した場合、購読をロールバック（再購読）する", async () => {
+      setPrefs({ push_enabled: true });
+      const subscribeSpy = spyOn(
+        useNotificationPreferencesModule,
+        "subscribePush",
+      ).mockResolvedValue(undefined);
+      const unsubscribeSpy = spyOn(
+        useNotificationPreferencesModule,
+        "unsubscribePush",
+      ).mockResolvedValue(undefined);
+      mutateAsync.mockImplementationOnce(() => Promise.reject(new Error("network error")));
+
+      const { container } = render(<NotificationSettings />, { wrapper });
+      fireEvent.click(findPushToggle(container));
+
+      await waitFor(() => expect(subscribeSpy).toHaveBeenCalledTimes(1));
+      expect(unsubscribeSpy).toHaveBeenCalledTimes(1);
+      expect(toastMock).toHaveBeenCalledWith(expect.any(String), "error");
+
+      subscribeSpy.mockRestore();
+      unsubscribeSpy.mockRestore();
+    });
+
+    it("有効化に成功した場合はロールバックが起きず成功トーストのみ表示される", async () => {
+      setPrefs({ push_enabled: false });
+      const subscribeSpy = spyOn(
+        useNotificationPreferencesModule,
+        "subscribePush",
+      ).mockResolvedValue(undefined);
+      const unsubscribeSpy = spyOn(
+        useNotificationPreferencesModule,
+        "unsubscribePush",
+      ).mockResolvedValue(undefined);
+      mutateAsync.mockImplementationOnce(() => Promise.resolve());
+
+      const { container } = render(<NotificationSettings />, { wrapper });
+      fireEvent.click(findPushToggle(container));
+
+      await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ push_enabled: true }));
+      expect(unsubscribeSpy).not.toHaveBeenCalled();
+
+      subscribeSpy.mockRestore();
+      unsubscribeSpy.mockRestore();
+    });
   });
 });
