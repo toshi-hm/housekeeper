@@ -54,6 +54,7 @@ describe("BudgetBanner (container, #991)", () => {
       status: null,
       isLoading: true,
       isError: false,
+      refetch: () => {},
     });
 
     const { queryByRole } = render(<BudgetBanner />, { wrapper });
@@ -67,6 +68,7 @@ describe("BudgetBanner (container, #991)", () => {
       status: null,
       isLoading: false,
       isError: false,
+      refetch: () => {},
     });
 
     const { queryByRole } = render(<BudgetBanner />, { wrapper });
@@ -80,10 +82,44 @@ describe("BudgetBanner (container, #991)", () => {
       status: { monthlyBudget: 30000, currentSpend: 27000, percentUsed: 90, tier: "caution" },
       isLoading: false,
       isError: false,
+      refetch: () => {},
     });
 
     const { getByRole } = render(<BudgetBanner />, { wrapper });
     expect(getByRole("status")).not.toBeNull();
+
+    spy.mockRestore();
+  });
+
+  it("renders an inline error with a retry action instead of hiding silently (#1077)", () => {
+    const refetch = () => {};
+    const spy = spyOn(useStatsModule, "useBudgetStatus").mockReturnValue({
+      status: null,
+      isLoading: false,
+      isError: true,
+      refetch,
+    });
+
+    const { getByRole, queryByText } = render(<BudgetBanner />, { wrapper });
+    expect(getByRole("alert")).not.toBeNull();
+    expect(getByRole("button", { name: /再試行|Retry/i })).not.toBeNull();
+    // Distinct from the "budget not set" silent-hide path: no status text is rendered.
+    expect(queryByText(/予算未設定|budget/i)).toBeNull();
+
+    spy.mockRestore();
+  });
+
+  it("does not render the normal status banner while an error is present", () => {
+    const spy = spyOn(useStatsModule, "useBudgetStatus").mockReturnValue({
+      status: null,
+      isLoading: false,
+      isError: true,
+      refetch: () => {},
+    });
+
+    const { queryByRole } = render(<BudgetBanner />, { wrapper });
+    expect(queryByRole("alert")).not.toBeNull();
+    expect(queryByRole("status")).toBeNull();
 
     spy.mockRestore();
   });

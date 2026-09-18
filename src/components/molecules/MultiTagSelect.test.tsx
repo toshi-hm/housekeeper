@@ -1,4 +1,5 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, mock } from "bun:test";
 
 import type { Tag } from "@/types/item";
@@ -39,5 +40,33 @@ describe("MultiTagSelect — 未選択タグのトグルボタンのaria属性 (
 
     expect(queryByRole("button", { name: "追加: オーガニック" })).toBeNull();
     expect(queryByRole("button", { name: "追加: 冷凍可" })).not.toBeNull();
+  });
+});
+
+describe("MultiTagSelect — 新規タグ作成失敗時のunhandled rejection防止 (#1080)", () => {
+  it("onCreateがrejectしてもunhandled rejectionにならず、isCreatingが解除される", async () => {
+    const user = userEvent.setup();
+    const onChange = mock(() => {});
+    const onCreate = mock(async (): Promise<Tag> => {
+      throw new Error("duplicate");
+    });
+    const { getByPlaceholderText, getByRole } = render(
+      <MultiTagSelect
+        tags={tags}
+        selectedIds={[]}
+        onChange={onChange}
+        onCreate={onCreate}
+        labels={labels}
+      />,
+    );
+
+    await user.type(getByPlaceholderText("新しいタグ"), "新しい名前");
+    await user.click(getByRole("button", { name: "追加" }));
+
+    await waitFor(() =>
+      expect((getByRole("button", { name: "追加" }) as HTMLButtonElement).disabled).toBe(false),
+    );
+    expect(onCreate).toHaveBeenCalledWith("新しい名前");
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

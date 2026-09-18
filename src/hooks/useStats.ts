@@ -100,25 +100,33 @@ export const useMonthlySpending = (months = 6) => {
     data: lots = [],
     isLoading,
     isError,
+    refetch,
   } = useQuery<SpendingLotRow[]>({
     queryKey: [...LOTS_KEY, "spending-all"],
     queryFn: fetchAllLotsForSpending,
     staleTime: 30_000,
   });
-  return { data: computeMonthlySpending(lots, months), isLoading, isError };
+  return { data: computeMonthlySpending(lots, months), isLoading, isError, refetch };
 };
 
 /**
  * 月次予算超過アラート（#991）。当月分の支出のみ（`useMonthlySpending(1)`）を
  * `user_settings.monthly_budget` と比較する。予算未設定の場合は `status: null` を返し、
- * `BudgetBanner` はこれを非表示の合図として使う。
+ * `BudgetBanner` はこれを非表示の合図として使う。取得エラー時（`isError`）は
+ * 予算未設定と区別できるよう `status: null` とは別に扱うこと（#1077）。
  */
 export const useBudgetStatus = () => {
-  const { data: settings, isLoading: settingsLoading, isError: settingsError } = useUserSettings();
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    isError: settingsError,
+    refetch: refetchSettings,
+  } = useUserSettings();
   const {
     data: monthlySpending,
     isLoading: spendingLoading,
     isError: spendingError,
+    refetch: refetchSpending,
   } = useMonthlySpending(1);
   const currentSpend = monthlySpending[0]?.total ?? 0;
   const status: BudgetStatus | null = computeBudgetStatus(currentSpend, settings?.monthly_budget);
@@ -126,6 +134,10 @@ export const useBudgetStatus = () => {
     status,
     isLoading: settingsLoading || spendingLoading,
     isError: settingsError || spendingError,
+    refetch: () => {
+      void refetchSettings();
+      void refetchSpending();
+    },
   };
 };
 
