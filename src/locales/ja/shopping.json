@@ -59,7 +59,7 @@
   "shoppingModeAddToList": "リストに追加",
   "shoppingModeAllClear": "買い物中に確認することはありません",
   "shoppingModeEstimatedTotalLabel": "見込み合計金額",
-  "shoppingModeEstimatedTotalPartialNote": "一部のアイテムは概算に含まれていません",
+  "shoppingModeEstimatedTotalPartialNote_other": "{{count}}件のアイテム（{{names}}）は価格データがないため見込み合計に含まれていません",
   "shoppingModeEstimatedTotalValue": "¥{{price}}",
   "shoppingModeExpiringTitle": "期限が近いもの",
   "shoppingModeListTitle": "買い物リスト",

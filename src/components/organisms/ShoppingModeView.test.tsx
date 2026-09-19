@@ -294,7 +294,12 @@ describe("ShoppingModeView", () => {
     expect(
       getByText(i18n.t("shopping:shoppingModeEstimatedTotalValue", { price: "128" })),
     ).toBeTruthy();
-    expect(getByText(i18n.t("shopping:shoppingModeEstimatedTotalPartialNote"))).toBeTruthy();
+    const names = new Intl.ListFormat(i18n.language, { style: "long", type: "conjunction" }).format(
+      ["卵"],
+    );
+    expect(
+      getByText(i18n.t("shopping:shoppingModeEstimatedTotalPartialNote", { count: 1, names })),
+    ).toBeTruthy();
   });
 
   it("does not show the estimated total when no planned item has comparison data", () => {
