@@ -9,12 +9,16 @@ export interface ShoppingModeEstimatedTotalResult {
   matchedCount: number;
   /** 比較データが無く合計から除外したアイテムが1件でもあるか。 */
   hasExcludedItems: boolean;
+  /** 比較データが無く合計から除外したアイテムの件数（#1078）。 */
+  excludedCount: number;
+  /** 比較データが無く合計から除外したアイテムの名前一覧（#1078）。 */
+  excludedItemNames: string[];
 }
 
 /**
  * 買い物リストの未購入アイテム（`plannedItems`）のうち、`resolveCheapestStore` が
  * 値を返すもの（＝店舗価格比較データがあるもの）だけを最安値ベースで合算する（#982）。
- * 比較データが無いアイテムは合計に含めず、`hasExcludedItems` で呼び出し側に知らせる。
+ * 比較データが無いアイテムは合計に含めず、件数・名前一覧を呼び出し側に返す（#1078）。
  */
 export const calculateShoppingModeEstimatedTotal = (
   items: readonly ShoppingItem[],
@@ -22,17 +26,23 @@ export const calculateShoppingModeEstimatedTotal = (
 ): ShoppingModeEstimatedTotalResult => {
   let total = 0;
   let matchedCount = 0;
-  let hasExcludedItems = false;
+  const excludedItemNames: string[] = [];
 
   for (const item of items) {
     const hint = resolveCheapestStore(item);
     if (!hint) {
-      hasExcludedItems = true;
+      excludedItemNames.push(item.name);
       continue;
     }
     total += hint.unitPrice * item.desired_units;
     matchedCount += 1;
   }
 
-  return { total, matchedCount, hasExcludedItems };
+  return {
+    total,
+    matchedCount,
+    hasExcludedItems: excludedItemNames.length > 0,
+    excludedCount: excludedItemNames.length,
+    excludedItemNames,
+  };
 };

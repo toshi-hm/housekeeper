@@ -106,7 +106,7 @@ export const ShoppingModeView = ({
           {estimatedTotal && estimatedTotal.matchedCount > 0 && (
             <ShoppingModeEstimatedTotal
               total={estimatedTotal.total}
-              hasExcludedItems={estimatedTotal.hasExcludedItems}
+              excludedItemNames={estimatedTotal.excludedItemNames}
             />
           )}
           {onToggleCartCheck && (

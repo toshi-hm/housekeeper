@@ -24,7 +24,13 @@ const makeItem = (overrides: Partial<ShoppingItem> & Pick<ShoppingItem, "id">): 
 describe("calculateShoppingModeEstimatedTotal", () => {
   it("returns a zero total with no excluded items for an empty list", () => {
     const result = calculateShoppingModeEstimatedTotal([], () => null);
-    expect(result).toEqual({ total: 0, matchedCount: 0, hasExcludedItems: false });
+    expect(result).toEqual({
+      total: 0,
+      matchedCount: 0,
+      hasExcludedItems: false,
+      excludedCount: 0,
+      excludedItemNames: [],
+    });
   });
 
   it("sums unit price × desired units for items with comparison data", () => {
@@ -37,23 +43,41 @@ describe("calculateShoppingModeEstimatedTotal", () => {
       s2: { storeName: "△△マート", unitPrice: 50 },
     };
     const result = calculateShoppingModeEstimatedTotal(items, (item) => hints[item.id] ?? null);
-    expect(result).toEqual({ total: 250, matchedCount: 2, hasExcludedItems: false });
+    expect(result).toEqual({
+      total: 250,
+      matchedCount: 2,
+      hasExcludedItems: false,
+      excludedCount: 0,
+      excludedItemNames: [],
+    });
   });
 
-  it("excludes items without comparison data from the total and flags them", () => {
+  it("excludes items without comparison data from the total and reports their names", () => {
     const items = [
-      makeItem({ id: "s1", desired_units: 2 }),
-      makeItem({ id: "s2", desired_units: 3 }),
+      makeItem({ id: "s1", name: "牛乳", desired_units: 2 }),
+      makeItem({ id: "s2", name: "卵", desired_units: 3 }),
     ];
     const result = calculateShoppingModeEstimatedTotal(items, (item) =>
       item.id === "s1" ? { storeName: "〇〇スーパー", unitPrice: 100 } : null,
     );
-    expect(result).toEqual({ total: 200, matchedCount: 1, hasExcludedItems: true });
+    expect(result).toEqual({
+      total: 200,
+      matchedCount: 1,
+      hasExcludedItems: true,
+      excludedCount: 1,
+      excludedItemNames: ["卵"],
+    });
   });
 
   it("reports every item excluded when resolveCheapestStore never matches", () => {
-    const items = [makeItem({ id: "s1" }), makeItem({ id: "s2" })];
+    const items = [makeItem({ id: "s1", name: "牛乳" }), makeItem({ id: "s2", name: "卵" })];
     const result = calculateShoppingModeEstimatedTotal(items, () => null);
-    expect(result).toEqual({ total: 0, matchedCount: 0, hasExcludedItems: true });
+    expect(result).toEqual({
+      total: 0,
+      matchedCount: 0,
+      hasExcludedItems: true,
+      excludedCount: 2,
+      excludedItemNames: ["牛乳", "卵"],
+    });
   });
 });

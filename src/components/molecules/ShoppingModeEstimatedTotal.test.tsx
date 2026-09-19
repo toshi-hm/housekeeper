@@ -13,24 +13,37 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe("ShoppingModeEstimatedTotal", () => {
   it("renders the formatted total amount", () => {
     const { container } = render(
-      <ShoppingModeEstimatedTotal total={1234} hasExcludedItems={false} />,
+      <ShoppingModeEstimatedTotal total={1234} excludedItemNames={[]} />,
       { wrapper },
     );
     expect(container.textContent).toContain("1,234");
   });
 
   it("does not show the partial note when every item is included", () => {
-    const { queryByText } = render(
-      <ShoppingModeEstimatedTotal total={100} hasExcludedItems={false} />,
+    const { container } = render(
+      <ShoppingModeEstimatedTotal total={100} excludedItemNames={[]} />,
       { wrapper },
     );
-    expect(queryByText(i18n.t("shopping:shoppingModeEstimatedTotalPartialNote"))).toBeNull();
+    expect(container.querySelectorAll("p")).toHaveLength(2);
   });
 
-  it("shows the partial note when some items are excluded", () => {
-    const { getByText } = render(<ShoppingModeEstimatedTotal total={100} hasExcludedItems />, {
-      wrapper,
-    });
-    expect(getByText(i18n.t("shopping:shoppingModeEstimatedTotalPartialNote"))).toBeTruthy();
+  it("shows the excluded item count and names when some items are excluded", () => {
+    const excludedItemNames = ["牛乳", "卵"];
+    const { getByText } = render(
+      <ShoppingModeEstimatedTotal total={100} excludedItemNames={excludedItemNames} />,
+      { wrapper },
+    );
+    const names = new Intl.ListFormat(i18n.language, {
+      style: "long",
+      type: "conjunction",
+    }).format(excludedItemNames);
+    expect(
+      getByText(
+        i18n.t("shopping:shoppingModeEstimatedTotalPartialNote", {
+          count: excludedItemNames.length,
+          names,
+        }),
+      ),
+    ).toBeTruthy();
   });
 });
