@@ -2,9 +2,11 @@ import { useRouter } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { clearCartCheckOffStorage } from "@/hooks/useCartCheckOff";
+import { unsubscribePushOnSignOut } from "@/hooks/useNotificationPreferences";
 import { AuthContext, type AuthContextValue } from "@/lib/auth-context";
 import { clearAllItemFormDrafts } from "@/lib/itemFormDraft";
 import { clearOfflineActionQueue } from "@/lib/offlineActionQueue";
+import { clearAllPendingPurchaseImages } from "@/lib/offlinePendingPurchaseImage";
 import { persister, queryClient } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { SUPABASE_REST_CACHE_NAME } from "@/lib/swCacheNames";
@@ -55,6 +57,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         clearOfflineActionQueue();
         clearCartCheckOffStorage();
         clearAllItemFormDrafts();
+        // #1085: 買い物中モードのオフライン購入キューに添付された画像は、上記の
+        // clearOfflineActionQueue() が消すlocalStorage側のキューとは別に、IndexedDB
+        // （src/lib/offlinePendingPurchaseImage.ts）へactionId単位で保存されている。
+        // キュー自体が失われるとこのactionIdを二度と参照できず孤立するため、ここで
+        // まとめて消す。
+        void clearAllPendingPurchaseImages();
+        // #1086: 通知ONのままサインアウトすると、前ユーザーのPush購読
+        // （push_subscriptionsテーブル）が残り、ログアウト後もこの端末へ期限アラート等
+        // の個人情報を含む通知が届き続けてしまう。設定画面での明示的なOFF
+        // （NotificationSettings.tsx）と同じ解除処理を、失敗してもログアウト自体は
+        // ブロックしないベストエフォートで呼ぶ。
+        void unsubscribePushOnSignOut();
         // #1057: Service Worker（src/sw.ts）のNetworkFirstキャッシュはURLのみを
         // キーにしており、ユーザーごとに分離されていない。共有端末で別アカウントへ
         // ログインし直した直後にオフライン/タイムアウトが起きると、前ユーザーの
