@@ -1,4 +1,4 @@
-import { createStore, del, get, set } from "idb-keyval";
+import { clear, createStore, del, get, set } from "idb-keyval";
 
 interface StoredPendingImage {
   name: string;
@@ -47,6 +47,23 @@ export const takePendingPurchaseImage = async (actionId: string): Promise<File |
 export const discardPendingPurchaseImage = async (actionId: string): Promise<void> => {
   try {
     await del(actionId, pendingImageStore);
+  } catch {
+    // 非致命
+  }
+};
+
+/**
+ * #1085: `offlineActionQueue.ts` の `clearOfflineActionQueue()`（ログアウト時に
+ * localStorage側のキューを丸ごと消す）と対になる、このストア側の全件クリア。
+ * キューが残ったままログアウトすると、その中の `purchase` アクションが参照していた
+ * `actionId` ごと失われるため、`actionId` 単位の `discardPendingPurchaseImage` では
+ * 後から個別に辿れず孤立してしまう。ストア自体を丸ごと消してよい（次のユーザー分を
+ * 含め、このストアに現在ログイン中のユーザーが取り出しを待っている画像は無い前提 —
+ * 呼び出しは `AuthProvider.tsx` の `SIGNED_OUT` ハンドラのみ）。
+ */
+export const clearAllPendingPurchaseImages = async (): Promise<void> => {
+  try {
+    await clear(pendingImageStore);
   } catch {
     // 非致命
   }

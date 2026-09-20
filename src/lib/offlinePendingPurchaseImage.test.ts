@@ -3,6 +3,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, test } from "bun:test";
 
 import {
+  clearAllPendingPurchaseImages,
   discardPendingPurchaseImage,
   storePendingPurchaseImage,
   takePendingPurchaseImage,
@@ -58,5 +59,24 @@ describe("offlinePendingPurchaseImage", () => {
     // idA はまだ取り出していないので残っている
     const restoredA = await takePendingPurchaseImage(idA);
     expect(restoredA?.name).toBe("a.png");
+  });
+
+  // #1085: ログアウト時にオフラインキュー（localStorage側）が丸ごと消えると、
+  // 個々のactionIdはもう参照できず、discardPendingPurchaseImage等では辿れず孤立する。
+  // ストア自体を丸ごと消す全件クリアの回帰テスト。
+  test("clearAllPendingPurchaseImagesで保存済みの全件が削除される", async () => {
+    const idA = crypto.randomUUID();
+    const idB = crypto.randomUUID();
+    await storePendingPurchaseImage(idA, new File(["a"], "a.png", { type: "image/png" }));
+    await storePendingPurchaseImage(idB, new File(["b"], "b.png", { type: "image/png" }));
+
+    await clearAllPendingPurchaseImages();
+
+    expect(await takePendingPurchaseImage(idA)).toBeNull();
+    expect(await takePendingPurchaseImage(idB)).toBeNull();
+  });
+
+  test("何も保存されていない状態でclearAllPendingPurchaseImagesを呼んでもエラーにならない", async () => {
+    await expect(clearAllPendingPurchaseImages()).resolves.toBeUndefined();
   });
 });

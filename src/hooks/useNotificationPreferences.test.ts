@@ -12,7 +12,8 @@ mock.module("@/lib/supabase", () => ({
   supabase: { functions: { invoke: invokeMock } },
 }));
 
-const { subscribePush, unsubscribePush } = await import("@/hooks/useNotificationPreferences");
+const { subscribePush, unsubscribePush, unsubscribePushOnSignOut } =
+  await import("@/hooks/useNotificationPreferences");
 
 const originalServiceWorker = navigator.serviceWorker;
 
@@ -113,5 +114,41 @@ describe("unsubscribePush", () => {
       body: { action: "unsubscribe", endpoint: "https://push.example/abc" },
     });
     expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+});
+
+// #1086: サインアウト処理（AuthProvider.tsx）からベストエフォートで呼ばれる想定の
+// ラッパー。unsubscribePush() 自体が失敗しても、ログアウト処理を止めないために
+// 例外を外へ伝播させないことを確認する。
+describe("unsubscribePushOnSignOut", () => {
+  test("does not throw when the Edge Function call returns an error", async () => {
+    invokeResponse = { data: null, error: { message: "network error" } };
+    setServiceWorker({
+      ready: Promise.resolve({
+        pushManager: {
+          getSubscription: () =>
+            Promise.resolve({
+              endpoint: "https://push.example/abc",
+              unsubscribe: mock(() => Promise.resolve(true)),
+            }),
+        },
+      }),
+    });
+
+    await expect(unsubscribePushOnSignOut()).resolves.toBeUndefined();
+  });
+
+  test("does not throw when there is no Service Worker registration (e.g. requireOnline/ready rejects)", async () => {
+    setServiceWorker({ ready: Promise.reject(new Error("no service worker")) });
+
+    await expect(unsubscribePushOnSignOut()).resolves.toBeUndefined();
+  });
+
+  test("resolves without invoking the Edge Function when there is no active subscription", async () => {
+    setServiceWorker({ ready: Promise.resolve({ pushManager: { getSubscription: () => null } }) });
+
+    await unsubscribePushOnSignOut();
+
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 });
