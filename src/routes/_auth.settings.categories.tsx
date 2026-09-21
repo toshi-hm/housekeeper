@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ColorDot } from "@/components/atoms/ColorDot";
@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  checkCategoryTypeImpact,
   checkCategoryUsage,
   useCategories,
   useCategoryUsageCounts,
@@ -56,8 +57,45 @@ export const CategoriesPage = () => {
   const [editDaysUseAfterOpening, setEditDaysUseAfterOpening] = useState<number | null>(null);
   const [editDaysError, setEditDaysError] = useState("");
   const [editKind, setEditKind] = useState<ItemType>(DEFAULT_ITEM_TYPE);
+  const [editOriginalKind, setEditOriginalKind] = useState<ItemType>(DEFAULT_ITEM_TYPE);
+  const [editKindImpactCount, setEditKindImpactCount] = useState<number | null>(null);
+  const [editKindImpactLoading, setEditKindImpactLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
+  /** 影響件数プレビューの直近リクエストを識別する連番。編集対象や選択値が
+   *  素早く切り替わったときに、後発のクリックより先に古いリクエストの結果が
+   *  返ってきても上書きしないためのガード（#1036）。 */
+  const editKindImpactRequestRef = useRef(0);
+
+  const resetEditKindImpact = () => {
+    editKindImpactRequestRef.current += 1;
+    setEditKindImpactCount(null);
+    setEditKindImpactLoading(false);
+  };
+
+  /** #1036: 編集中カテゴリの種別を切り替えたとき、カテゴリ既定に追従している
+   *  （item_type が未設定の）在庫が何件影響を受けるかをプレビュー表示する。
+   *  種別を元に戻した場合はプレビューを消す。 */
+  const handleEditKindChange = (id: string, originalKind: ItemType, newKind: ItemType) => {
+    setEditKind(newKind);
+    if (newKind === originalKind) {
+      resetEditKindImpact();
+      return;
+    }
+    editKindImpactRequestRef.current += 1;
+    const requestId = editKindImpactRequestRef.current;
+    setEditKindImpactLoading(true);
+    checkCategoryTypeImpact(id)
+      .then((count) => {
+        if (editKindImpactRequestRef.current === requestId) setEditKindImpactCount(count);
+      })
+      .catch(() => {
+        if (editKindImpactRequestRef.current === requestId) setEditKindImpactCount(null);
+      })
+      .finally(() => {
+        if (editKindImpactRequestRef.current === requestId) setEditKindImpactLoading(false);
+      });
+  };
 
   /** 空文字は「未設定」として許容し null を返す。それ以外で 1 以上の整数
    *  でなければ null を返しつつ、呼び出し元にエラー表示させるため isValid: false
@@ -105,6 +143,7 @@ export const CategoriesPage = () => {
         kind: editKind,
       });
       setEditId(null);
+      resetEditKindImpact();
       toast(t("common:saveSuccess"), "success");
     } catch {
       // error is handled by the mutation's onError
@@ -265,7 +304,14 @@ export const CategoriesPage = () => {
                     >
                       {tc("save")}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditId(null);
+                        resetEditKindImpact();
+                      }}
+                    >
                       {tc("cancel")}
                     </Button>
                   </div>
@@ -273,7 +319,39 @@ export const CategoriesPage = () => {
                   <IconPicker value={editIcon} onChange={setEditIcon} />
                   <div className="space-y-1">
                     <span className="text-xs text-muted-foreground">{t("categoryKind")}</span>
-                    <ItemTypeSelect value={editKind} onChange={setEditKind} />
+                    <ItemTypeSelect
+                      value={editKind}
+                      onChange={(newKind) => handleEditKindChange(c.id, editOriginalKind, newKind)}
+                      aria-describedby={
+                        editKind !== editOriginalKind
+                          ? `edit-category-kind-impact-${c.id}`
+                          : undefined
+                      }
+                    />
+                    {editKind !== editOriginalKind &&
+                      (editKindImpactLoading ? (
+                        <p
+                          id={`edit-category-kind-impact-${c.id}`}
+                          className="text-xs text-muted-foreground"
+                        >
+                          {tc("loading")}
+                        </p>
+                      ) : (
+                        editKindImpactCount !== null && (
+                          <p
+                            id={`edit-category-kind-impact-${c.id}`}
+                            role="status"
+                            className="text-xs text-amber-600 dark:text-amber-500"
+                          >
+                            {t(
+                              editKind === "daily_goods"
+                                ? "categoryKindImpactToDailyGoods"
+                                : "categoryKindImpactToFood",
+                              { count: editKindImpactCount },
+                            )}
+                          </p>
+                        )
+                      ))}
                   </div>
                   <div className="space-y-1">
                     <label
@@ -333,6 +411,8 @@ export const CategoriesPage = () => {
                       setEditDaysUseAfterOpening(c.days_use_after_opening ?? null);
                       setEditDaysError("");
                       setEditKind(c.kind ?? DEFAULT_ITEM_TYPE);
+                      setEditOriginalKind(c.kind ?? DEFAULT_ITEM_TYPE);
+                      resetEditKindImpact();
                     }}
                   >
                     <Pencil className="h-4 w-4" />
