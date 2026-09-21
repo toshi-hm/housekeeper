@@ -122,7 +122,9 @@ export const itemFormShapeSchema = z.object({
   /** アイテム種別の個別上書き。未選択 = null（カテゴリ既定に追従）。 */
   item_type: z.enum(ITEM_TYPES).nullable().optional(),
   storage_location_id: z.string().uuid().nullable().optional(),
-  units: z.coerce.number().int().min(1).default(1),
+  /** 0 = 消費し切って在庫が無い状態（削除はせず履歴のため残す、#1093）。
+   *  新規登録フォームは既定値1のまま変わらない。 */
+  units: z.coerce.number().int().min(0).default(1),
   content_amount: z.coerce.number().positive().default(1),
   content_unit: z.string().default("個"),
   opened_remaining: z.coerce.number().min(0).nullable().optional(),
