@@ -385,7 +385,7 @@ export const ItemForm = ({
     if (unitsRaw.trim() === "" || isNaN(parsedUnits)) {
       setUnitsError(t("unitsRequired"));
       hasError = true;
-    } else if (parsedUnits <= 0) {
+    } else if (parsedUnits < 0) {
       setUnitsError(t("unitsPositive"));
       hasError = true;
     }
@@ -718,7 +718,7 @@ export const ItemForm = ({
                 if (!/^\d*$/.test(raw)) return;
                 setUnitsRaw(raw);
                 const parsed = parseInt(raw, 10);
-                if (raw !== "" && !isNaN(parsed) && parsed <= 0) {
+                if (raw !== "" && !isNaN(parsed) && parsed < 0) {
                   setUnitsError(t("unitsPositive"));
                 } else {
                   setUnitsError("");

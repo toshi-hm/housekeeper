@@ -46,9 +46,9 @@ describe("itemFormSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  test("units=0 fails", () => {
+  test("units=0 is allowed (fully consumed but not deleted, #1093)", () => {
     const result = itemFormSchema.safeParse({ ...validForm, units: 0 });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   test("units=-1 fails", () => {

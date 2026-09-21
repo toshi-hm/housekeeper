@@ -286,7 +286,7 @@
   "units": "Units",
   "unitsDisplay": "{{units}} units",
   "unitsLabel": "items",
-  "unitsPositive": "Enter 1 or more",
+  "unitsPositive": "Enter 0 or more",
   "unitsRequired": "Enter a quantity",
   "updateSuccess": "Item updated",
   "urgentBanner_one": "1 item is expired or expiring soon",

@@ -11,6 +11,8 @@
   "categoryInUse": "このカテゴリは使用中のため削除できません",
   "categoryKind": "このカテゴリの既定の種別",
   "categoryKindHelp": "このカテゴリのアイテムを、既定で食料品／日用品のどちらとして扱うか。アイテムごとに個別に上書きもできます。",
+  "categoryKindImpactToDailyGoods_other": "このカテゴリに属する在庫{{count}}件が日用品扱いになります（期限バッジ・期限フィルタ・期限カレンダー・通知の対象から外れます）",
+  "categoryKindImpactToFood_other": "このカテゴリに属する在庫{{count}}件が食料品扱いになります（期限バッジ・期限フィルタ・期限カレンダー・通知の対象になります）",
   "categoryName": "カテゴリ名",
   "customUnitName": "単位名",
   "customUnits": "カスタム単位",

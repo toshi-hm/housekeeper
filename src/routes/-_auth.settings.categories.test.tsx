@@ -257,3 +257,87 @@ describe("CategoriesPage — カテゴリの既定の種別（食料品 / 日用
     );
   });
 });
+
+describe("CategoriesPage — 種別切り替え時の影響件数プレビュー (#1036)", () => {
+  let categoriesSpy: ReturnType<typeof spyOn>;
+  let usageCountsSpy: ReturnType<typeof spyOn>;
+  let createSpy: ReturnType<typeof spyOn>;
+  let updateSpy: ReturnType<typeof spyOn>;
+  let deleteSpy: ReturnType<typeof spyOn>;
+  let impactSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    categoriesSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [{ id: "cat-1", name: "野菜", color: null, icon: null, kind: "food" }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    usageCountsSpy = spyOn(useMasterDataModule, "useCategoryUsageCounts").mockReturnValue({
+      data: {},
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategoryUsageCounts>);
+    createSpy = spyOn(useMasterDataModule, "useCreateCategory").mockReturnValue({
+      mutateAsync: mock(async () => ({ id: "cat-1", name: "野菜" })),
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCreateCategory>);
+    updateSpy = spyOn(useMasterDataModule, "useUpdateCategory").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useUpdateCategory>);
+    deleteSpy = spyOn(useMasterDataModule, "useDeleteCategory").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useMasterDataModule.useDeleteCategory>);
+  });
+
+  afterEach(() => {
+    categoriesSpy.mockRestore();
+    usageCountsSpy.mockRestore();
+    createSpy.mockRestore();
+    updateSpy.mockRestore();
+    deleteSpy.mockRestore();
+    impactSpy?.mockRestore();
+    cleanup();
+  });
+
+  const FOOD_LABEL = /^itemTypeFood$|^食料品$|^Food$/i;
+
+  it("種別を切り替えると影響件数プレビューが表示される", async () => {
+    impactSpy = spyOn(useMasterDataModule, "checkCategoryTypeImpact").mockImplementation(
+      async () => 4,
+    );
+    const user = userEvent.setup();
+    const { getByRole, getAllByRole, findByText } = renderPage();
+
+    fireEvent.click(getByRole("button", { name: /^edit$|編集|^Edit$/i }));
+    await user.click(getAllByRole("button", { name: DAILY_GOODS_LABEL })[1]!);
+
+    expect(impactSpy).toHaveBeenCalledWith("cat-1");
+    await findByText(/categoryKindImpactToDailyGoods|4件|4 items?/i);
+  });
+
+  it("元の種別に戻すとプレビューは消え、影響件数の問い合わせは行われない", async () => {
+    impactSpy = spyOn(useMasterDataModule, "checkCategoryTypeImpact").mockImplementation(
+      async () => 4,
+    );
+    const user = userEvent.setup();
+    const { getByRole, getAllByRole, findByText, queryByText } = renderPage();
+
+    fireEvent.click(getByRole("button", { name: /^edit$|編集|^Edit$/i }));
+    await user.click(getAllByRole("button", { name: DAILY_GOODS_LABEL })[1]!);
+    await findByText(/categoryKindImpactToDailyGoods|4件|4 items?/i);
+
+    await user.click(getAllByRole("button", { name: FOOD_LABEL })[1]!);
+    expect(queryByText(/categoryKindImpactToDailyGoods|4件|4 items?/i)).toBeNull();
+  });
+
+  it("種別を変更しない限り影響件数の問い合わせは行われない", () => {
+    impactSpy = spyOn(useMasterDataModule, "checkCategoryTypeImpact").mockImplementation(
+      async () => 0,
+    );
+    const { getByRole } = renderPage();
+
+    fireEvent.click(getByRole("button", { name: /^edit$|編集|^Edit$/i }));
+
+    expect(impactSpy).not.toHaveBeenCalled();
+  });
+});

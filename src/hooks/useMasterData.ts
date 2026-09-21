@@ -158,6 +158,21 @@ export const checkCategoryUsage = async (id: string): Promise<number> => {
   return count ?? 0;
 };
 
+/** カテゴリの種別（kind）を切り替えたときに、実効種別（`resolveItemType`）が
+ *  変わる可能性のある在庫件数を数える（#1036）。`items.item_type` に個別の
+ *  上書きが入っているアイテムはカテゴリの kind を変えても解決結果が変わらない
+ *  ため対象外とし、`item_type is null`（カテゴリ既定に追従中）のものだけを数える。 */
+export const checkCategoryTypeImpact = async (categoryId: string): Promise<number> => {
+  const { count, error } = await supabase
+    .from("items")
+    .select("id", { count: "exact", head: true })
+    .eq("category_id", categoryId)
+    .is("item_type", null)
+    .is("deleted_at", null);
+  if (error) throw error;
+  return count ?? 0;
+};
+
 /** カテゴリごとの使用中アイテム数を一括取得する（#863）。一覧表示時に削除可否の
  *  目安をバッジ表示するための事前チェックで、N+1を避けるため単一クエリで
  *  取得したアイテムの `category_id` をクライアント側で集計する。あくまで

@@ -10,6 +10,7 @@ import * as useMealPlansModule from "@/hooks/useMealPlans";
 import * as useRecipesModule from "@/hooks/useRecipes";
 import * as useRecipeSuggestionsModule from "@/hooks/useRecipeSuggestions";
 import * as useShoppingListModule from "@/hooks/useShoppingList";
+import * as useUserSettingsModule from "@/hooks/useUserSettings";
 import { toLocalDateKey } from "@/lib/dateUtils";
 import i18n from "@/lib/i18n";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
@@ -18,6 +19,8 @@ import type { Category, Item } from "@/types/item";
 import { WeeklyMealPlanner } from "./WeeklyMealPlanner";
 
 const yesterday = toLocalDateKey(new Date(Date.now() - 24 * 60 * 60 * 1000));
+const daysFromNow = (days: number) =>
+  toLocalDateKey(new Date(Date.now() + days * 24 * 60 * 60 * 1000));
 
 const makeItem = (overrides: Partial<Item> = {}): Item => ({
   id: "item-1",
@@ -121,5 +124,65 @@ describe("WeeklyMealPlanner", () => {
     const lastCallArgs = suggestionsSpy.mock.calls.at(-1);
     expect(lastCallArgs?.[0]).toEqual(["豆腐"]);
     expect(lastCallArgs?.[0]).not.toContain("トイレットペーパー");
+  });
+
+  it("ユーザー設定の期限警告日数（expiry_warning_days）を空き枠レコメンドの期限判定に反映する (#1091)", () => {
+    // 既定値（3日）では「期限間近」に入らないが、ユーザー設定の7日なら入る期限日。
+    const almostExpiringItem = makeItem({
+      id: "item-food",
+      name: "豆腐",
+      expiry_date: daysFromNow(5),
+    });
+
+    spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: [almostExpiringItem],
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+
+    spyOn(useRecipesModule, "useRecipes").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useRecipesModule.useRecipes>);
+
+    spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: { expiry_warning_days: 7 },
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    spyOn(useMealPlansModule, "useMealPlans").mockReturnValue({
+      slots: [],
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useMealPlansModule.useMealPlans>);
+
+    spyOn(useMealPlansModule, "useUpsertMealPlan").mockReturnValue({
+      mutate: mock(() => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useMealPlansModule.useUpsertMealPlan>);
+
+    spyOn(useMealPlansModule, "useExecuteMealPlan").mockReturnValue({
+      mutateAsync: mock(() => Promise.resolve()),
+    } as unknown as ReturnType<typeof useMealPlansModule.useExecuteMealPlan>);
+
+    spyOn(useShoppingListModule, "useUpsertShoppingItem").mockReturnValue({
+      mutateAsync: mock(() => Promise.resolve()),
+    } as unknown as ReturnType<typeof useShoppingListModule.useUpsertShoppingItem>);
+
+    const suggestionsSpy = spyOn(
+      useRecipeSuggestionsModule,
+      "useRecipeSuggestions",
+    ).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useRecipeSuggestionsModule.useRecipeSuggestions>);
+
+    render(<WeeklyMealPlanner />, { wrapper });
+
+    // internalCandidates は空（recipes=[]）なので、externalSuggestItemNames は
+    // urgentItems から作られる。ユーザー設定の7日閾値が使われていれば、5日後に
+    // 期限が来るアイテムも「期限間近」として渡される。
+    const lastCallArgs = suggestionsSpy.mock.calls.at(-1);
+    expect(lastCallArgs?.[0]).toEqual(["豆腐"]);
   });
 });

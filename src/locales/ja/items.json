@@ -268,7 +268,7 @@
   "units": "点数",
   "unitsDisplay": "{{units}}点",
   "unitsLabel": "点",
-  "unitsPositive": "1以上の数を入力してください",
+  "unitsPositive": "0以上の数を入力してください",
   "unitsRequired": "個数を入力してください",
   "updateSuccess": "在庫を更新しました",
   "urgentBanner_other": "{{count}}件の在庫が期限切れまたは期限間近です",
