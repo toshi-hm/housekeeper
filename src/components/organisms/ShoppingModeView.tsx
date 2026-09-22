@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/atoms/Skeleton";
 import { ShoppingModeAlertRow } from "@/components/molecules/ShoppingModeAlertRow";
 import { ShoppingModeEstimatedTotal } from "@/components/molecules/ShoppingModeEstimatedTotal";
 import { type CheapestStoreHint, ShoppingRow } from "@/components/molecules/ShoppingRow";
+import { Button } from "@/components/ui/button";
 import { calculateShoppingModeEstimatedTotal } from "@/lib/shoppingModeTotal";
 import type { ShoppingItem } from "@/types/shopping";
 
@@ -31,6 +32,11 @@ interface ShoppingModeViewProps {
   /** 元データ（買い物リスト・在庫・カテゴリ）の取得中かどうか。true の間は「確認事項なし」
    *  の空表示を出さずスケルトンを表示する（#977: 未取得を誤って0件と表示しない）。 */
   isLoading?: boolean;
+  /** 元データの取得に失敗したかどうか（#1094）。true の間はエラーカード + 再試行導線を
+   *  表示し、空表示（isAllClear）と誤認させない。`isLoading` より優先して判定する。 */
+  isError?: boolean;
+  /** `isError` 時の再試行ボタン押下ハンドラ。 */
+  onRetry?: () => void;
   /** 買い物リストの行ごとの最安店舗ヒント（#697の集計を再利用、#854、#979）。
    *  比較対象データが無いアイテムは null を返す。未指定ならヒントを表示しない。 */
   resolveCheapestStore?: (item: ShoppingItem) => CheapestStoreHint | null;
@@ -57,11 +63,25 @@ export const ShoppingModeView = ({
   onAddAlert,
   addingItemId,
   isLoading,
+  isError,
+  onRetry,
   resolveCheapestStore,
   checkedCartItemIds,
   onToggleCartCheck,
 }: ShoppingModeViewProps) => {
   const { t } = useTranslation("shopping");
+  const { t: tc } = useTranslation("common");
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-lg border border-destructive p-6 text-center text-destructive">
+        <p className="text-sm">{tc("unknownError")}</p>
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          {tc("retry")}
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

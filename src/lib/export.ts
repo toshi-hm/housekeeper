@@ -232,17 +232,47 @@ const importItemBaseSchema = z.object({
 });
 
 /** v1: ロットの区別がなく、アイテム行自体が単一ロット相当の集約値を持つ旧形式。 */
-const importItemV1Schema = importItemBaseSchema.extend({
-  units: z.number().int().min(0),
-  opened_remaining: z.number().min(0).nullable().optional(),
-  purchase_date: z.string().nullable().optional(),
-  expiry_date: z.string().nullable().optional(),
-});
+const importItemV1Schema = importItemBaseSchema
+  .extend({
+    units: z.number().int().min(0),
+    opened_remaining: z.number().min(0).nullable().optional(),
+    purchase_date: z.string().nullable().optional(),
+    expiry_date: z.string().nullable().optional(),
+  })
+  // #1092: opened_remaining は content_amount を超えられない（docs/specs/features/inventory.md「バリデーション」）。
+  // 手動編集されたバックアップの再インポート等で不整合値が混入するのを防ぐ。
+  .refine(
+    (item) =>
+      item.opened_remaining === null ||
+      item.opened_remaining === undefined ||
+      item.opened_remaining <= item.content_amount,
+    {
+      message: "opened_remaining must not exceed content_amount",
+      path: ["opened_remaining"],
+    },
+  );
 
 /** v2: ロット配列を明示的に持つ形式（#693）。 */
-const importItemV2Schema = importItemBaseSchema.extend({
-  lots: z.array(importLotSchema).min(1),
-});
+const importItemV2Schema = importItemBaseSchema
+  .extend({
+    lots: z.array(importLotSchema).min(1),
+  })
+  // #1092: 各ロットの opened_remaining は同一アイテムの content_amount を超えられない。
+  .superRefine((item, ctx) => {
+    item.lots.forEach((lot, index) => {
+      if (
+        lot.opened_remaining !== null &&
+        lot.opened_remaining !== undefined &&
+        lot.opened_remaining > item.content_amount
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "opened_remaining must not exceed content_amount",
+          path: ["lots", index, "opened_remaining"],
+        });
+      }
+    });
+  });
 
 /** パース後、呼び出し側（`useImportItems`）が扱う正規化済みの形。v1/v2どちらの
  *  ソースから読み込んでも、常に `lots` 配列を持つ。 */
