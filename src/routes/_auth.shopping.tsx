@@ -146,11 +146,46 @@ export const ShoppingPage = () => {
   const [isLooking, setIsLooking] = useState(false);
   const speechInput = useSpeechInput((transcript) => setAddName(transcript));
 
-  const { data: items = [], isLoading } = useShoppingList(tab);
-  const { data: plannedItems = [], isLoading: plannedItemsLoading } = useShoppingList("planned");
+  const {
+    data: items = [],
+    isLoading,
+    isError: itemsListIsError,
+    refetch: refetchShoppingList,
+  } = useShoppingList(tab);
+  const {
+    data: plannedItems = [],
+    isLoading: plannedItemsLoading,
+    isError: plannedItemsIsError,
+    refetch: refetchPlannedItems,
+  } = useShoppingList("planned");
   const { data: templates = [] } = useShoppingTemplates();
-  const { data: inventoryItems = [], isLoading: inventoryItemsLoading } = useItems();
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  const {
+    data: inventoryItems = [],
+    isLoading: inventoryItemsLoading,
+    isError: inventoryItemsIsError,
+    refetch: refetchInventoryItems,
+  } = useItems();
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    isError: categoriesIsError,
+    refetch: refetchCategories,
+  } = useCategories();
+  // #1094: 買い物リスト画面はLoading/Empty/Content止まりで、フェッチ失敗（isError）を
+  // どこにも反映していなかった。取得元別に検知し、タブ表示・買い物中モードそれぞれで
+  // エラーカード + 再試行導線を出す（_auth.stats.tsx と同じパターン）。
+  const shoppingTabIsError = itemsListIsError || inventoryItemsIsError || categoriesIsError;
+  const shoppingModeIsError = plannedItemsIsError || inventoryItemsIsError || categoriesIsError;
+  const retryShoppingTab = () => {
+    void refetchShoppingList();
+    void refetchInventoryItems();
+    void refetchCategories();
+  };
+  const retryShoppingMode = () => {
+    void refetchPlannedItems();
+    void refetchInventoryItems();
+    void refetchCategories();
+  };
   const { data: userSettings } = useUserSettings();
   const upsert = useUpsertShoppingItem();
   const deleteItem = useDeleteShoppingItem();
@@ -854,6 +889,8 @@ export const ShoppingPage = () => {
             }}
             addingItemId={addingAlertId}
             isLoading={shoppingModeLoading}
+            isError={shoppingModeIsError}
+            onRetry={retryShoppingMode}
             resolveCheapestStore={resolveCheapestStore}
             checkedCartItemIds={cartCheckOff.checkedIds}
             onToggleCartCheck={cartCheckOff.toggle}
@@ -941,6 +978,13 @@ export const ShoppingPage = () => {
                     <Skeleton className="h-8 w-16 rounded-md" />
                   </div>
                 ))}
+              </div>
+            ) : shoppingTabIsError ? (
+              <div className="flex flex-col items-center gap-4 rounded-lg border border-destructive p-6 text-center text-destructive">
+                <p className="text-sm">{tc("unknownError")}</p>
+                <Button variant="outline" size="sm" onClick={retryShoppingTab}>
+                  {tc("retry")}
+                </Button>
               </div>
             ) : items.length === 0 ? (
               <p className="py-8 text-center text-muted-foreground">

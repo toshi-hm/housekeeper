@@ -136,6 +136,22 @@ export const Loading: Story = {
   },
 };
 
+/** #1094: 元データ（買い物リスト・在庫・カテゴリ）の取得に失敗した場合、
+ *  「確認事項なし」の空表示ではなくエラーカード + 再試行ボタンを表示する。 */
+export const ErrorState: Story = {
+  args: {
+    plannedItems: [],
+    onPurchase: () => {},
+    onDelete: () => {},
+    lowStockItems: [],
+    expiringItems: [],
+    addedItemIds: new Set(),
+    onAddAlert: () => {},
+    isError: true,
+    onRetry: () => {},
+  },
+};
+
 /** #979: 買い物リストの行にも通常表示と同じ最安店舗ヒントを表示できる。 */
 export const WithCheapestStoreHint: Story = {
   args: {
