@@ -183,6 +183,119 @@ describe("ShoppingPage - 買い物中モードのローディング判定 (#986)
   });
 });
 
+describe("ShoppingPage - クエリのエラー状態表示 (#1094)", () => {
+  let shoppingListSpy: ReturnType<typeof spyOn>;
+  let itemsSpy: ReturnType<typeof spyOn>;
+  let categoriesSpy: ReturnType<typeof spyOn>;
+  let userSettingsSpy: ReturnType<typeof spyOn>;
+  let templatesSpy: ReturnType<typeof spyOn>;
+  let forecastAlertsSpy: ReturnType<typeof spyOn>;
+  let storePriceComparisonsSpy: ReturnType<typeof spyOn>;
+
+  const refetchShoppingList = mock(async () => ({}) as never);
+  const refetchItems = mock(async () => ({}) as never);
+  const refetchCategories = mock(async () => ({}) as never);
+
+  beforeEach(() => {
+    refetchShoppingList.mockClear();
+    refetchItems.mockClear();
+    refetchCategories.mockClear();
+
+    shoppingListSpy = spyOn(useShoppingListModule, "useShoppingList").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: refetchShoppingList,
+    } as unknown as ReturnType<typeof useShoppingListModule.useShoppingList>);
+
+    itemsSpy = spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: refetchItems,
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+
+    categoriesSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: refetchCategories,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+
+    userSettingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    templatesSpy = spyOn(useShoppingTemplatesModule, "useShoppingTemplates").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useShoppingTemplatesModule.useShoppingTemplates>);
+
+    forecastAlertsSpy = spyOn(useStatsModule, "useForecastAlerts").mockReturnValue({
+      alerts: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useForecastAlerts>);
+
+    storePriceComparisonsSpy = spyOn(useStatsModule, "useStorePriceComparisons").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useStorePriceComparisons>);
+  });
+
+  afterEach(() => {
+    shoppingListSpy.mockRestore();
+    itemsSpy.mockRestore();
+    categoriesSpy.mockRestore();
+    userSettingsSpy.mockRestore();
+    templatesSpy.mockRestore();
+    forecastAlertsSpy.mockRestore();
+    storePriceComparisonsSpy.mockRestore();
+    localStorage.removeItem("shopping.mode");
+    cleanup();
+  });
+
+  it("通常モードで買い物リストの取得に失敗した場合、空リストではなくエラーカードを表示する", () => {
+    localStorage.removeItem("shopping.mode");
+    shoppingListSpy.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchShoppingList,
+    } as unknown as ReturnType<typeof useShoppingListModule.useShoppingList>);
+
+    const { getByText, queryByText } = renderPage();
+
+    expect(queryByText(i18n.t("shopping:noItems"))).toBeNull();
+    expect(getByText(i18n.t("common:unknownError"))).toBeDefined();
+
+    fireEvent.click(getByText(i18n.t("common:retry")));
+    expect(refetchShoppingList).toHaveBeenCalled();
+  });
+
+  it("買い物中モードで在庫アイテムの取得に失敗した場合、「確認することはありません」ではなくエラーカードを表示する", () => {
+    localStorage.setItem("shopping.mode", "1");
+    itemsSpy.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchItems,
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getByText, queryByText } = renderPage();
+
+    expect(
+      queryByText(/shoppingModeAllClear|買い物中に確認することはありません|Nothing to check/),
+    ).toBeNull();
+    expect(getByText(i18n.t("common:unknownError"))).toBeDefined();
+
+    fireEvent.click(getByText(i18n.t("common:retry")));
+    expect(refetchItems).toHaveBeenCalled();
+  });
+});
+
 describe("ShoppingPage - 「カートに入れた」チェック状態のクリア (#983)", () => {
   const plannedItem = {
     id: "s1",

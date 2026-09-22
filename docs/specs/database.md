@@ -115,7 +115,8 @@ create table item_lots (
   expiry_date date,
   store_name text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint item_lots_opened_requires_unit check (opened_remaining is null or units >= 1)
 );
 
 create index item_lots_item_idx on item_lots(item_id, created_at asc);
@@ -123,6 +124,9 @@ create index item_lots_user_idx on item_lots(user_id);
 create index item_lots_expiry_idx on item_lots(expiry_date);
 ```
 
+- `item_lots_opened_requires_unit`: `opened_remaining` に非 `NULL` 値を持てるのは `units >= 1` の場合のみ
+  （開封中のロットは在庫としてまだ1点残っている必要がある）。アプリの検証（`0 <= opened_remaining <= content_amount`、
+  `docs/specs/features/inventory.md`）と併せて、DB 側の最終防衛線として機能する。
 - `unit_price`（円単位の整数）: 1 点あたりの購入単価。**任意入力**、`NULL` = 未設定（#342）。
   - 既存ロットは全て `NULL`（後方互換）。集計時は `unit_price IS NULL` のロットを除外する。
   - 購入時（ロット追加フォーム / `PurchaseDialog`）に入力できる。編集はロット単位（`useUpdateLot`）。

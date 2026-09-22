@@ -440,6 +440,97 @@ describe("jsonToItems", () => {
     const payload = { exported_at: "2026-07-19T00:00:00Z", version: 1, items: [{ name: "" }] };
     expect(() => jsonToItems(JSON.stringify(payload))).toThrow(ImportParseError);
   });
+
+  // #1092: opened_remaining must not exceed content_amount
+  // (docs/specs/features/inventory.md "バリデーション"). A hand-edited or
+  // corrupted backup file must not be able to smuggle in an inconsistent lot.
+  test("rejects a v2 lot whose opened_remaining exceeds the item's content_amount", () => {
+    const payload = {
+      exported_at: "2026-07-19T00:00:00Z",
+      version: 2,
+      items: [
+        {
+          name: "牛乳",
+          barcode: null,
+          content_amount: 1000,
+          content_unit: "mL",
+          expiry_type: null,
+          item_type: null,
+          notes: null,
+          minimum_stock: null,
+          auto_reorder: false,
+          reorder_threshold: null,
+          days_use_after_opening: null,
+          reorder_lead_days: null,
+          pin_x: null,
+          pin_y: null,
+          lots: [
+            {
+              units: 1,
+              opened_remaining: 1500,
+              unit_price: null,
+              purchase_date: null,
+              expiry_date: null,
+              store_name: null,
+              opened_at: null,
+            },
+          ],
+        },
+      ],
+    };
+    expect(() => jsonToItems(JSON.stringify(payload))).toThrow(ImportParseError);
+    try {
+      jsonToItems(JSON.stringify(payload));
+    } catch (err) {
+      expect(err).toBeInstanceOf(ImportParseError);
+      expect((err as ImportParseError).reason).toBe("invalid_format");
+    }
+  });
+
+  test("rejects a v1 item whose opened_remaining exceeds content_amount", () => {
+    const payload = {
+      exported_at: "2026-07-19T00:00:00Z",
+      version: 1,
+      items: [
+        {
+          name: "牛乳",
+          barcode: null,
+          units: 1,
+          content_amount: 1000,
+          content_unit: "mL",
+          opened_remaining: 1500,
+          purchase_date: null,
+          expiry_date: null,
+          notes: null,
+          minimum_stock: null,
+        },
+      ],
+    };
+    expect(() => jsonToItems(JSON.stringify(payload))).toThrow(ImportParseError);
+  });
+
+  test("accepts opened_remaining exactly equal to content_amount (boundary)", () => {
+    const payload = {
+      exported_at: "2026-07-19T00:00:00Z",
+      version: 1,
+      items: [
+        {
+          name: "牛乳",
+          barcode: null,
+          units: 1,
+          content_amount: 1000,
+          content_unit: "mL",
+          opened_remaining: 1000,
+          purchase_date: null,
+          expiry_date: null,
+          notes: null,
+          minimum_stock: null,
+        },
+      ],
+    };
+    const result = jsonToItems(JSON.stringify(payload));
+    expect(result[0]?.lots[0]?.opened_remaining).toBe(1000);
+  });
 });
 
 describe("buildConsumptionHistoryRows", () => {

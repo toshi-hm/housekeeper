@@ -174,6 +174,47 @@ describe("ShoppingModeView", () => {
     expect(getByText(i18n.t("shopping:shoppingModeAllClear"))).toBeTruthy();
   });
 
+  // #1094: a fetch failure must be distinguishable from "nothing to check" —
+  // isError takes priority over the all-clear message even with empty sections.
+  it("shows an error card instead of the all-clear message when isError is true", () => {
+    const { getByText, queryByText } = render(
+      <ShoppingModeView
+        plannedItems={[]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        isError
+        onRetry={() => {}}
+      />,
+      { wrapper },
+    );
+    expect(queryByText(i18n.t("shopping:shoppingModeAllClear"))).toBeNull();
+    expect(getByText(i18n.t("common:unknownError"))).toBeTruthy();
+  });
+
+  it("calls onRetry when the retry button is clicked in the error state", () => {
+    const onRetry = mock(() => {});
+    const { getByText } = render(
+      <ShoppingModeView
+        plannedItems={[]}
+        onPurchase={() => {}}
+        onDelete={() => {}}
+        lowStockItems={[]}
+        expiringItems={[]}
+        addedItemIds={new Set()}
+        onAddAlert={() => {}}
+        isError
+        onRetry={onRetry}
+      />,
+      { wrapper },
+    );
+    fireEvent.click(getByText(i18n.t("common:retry")));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
   // #983: the lightweight "added to cart" check-off checkbox only appears when
   // onToggleCartCheck is provided (device-local, shopping-mode-only feature).
   it("does not show a cart-check checkbox or hint when onToggleCartCheck is not provided", () => {
