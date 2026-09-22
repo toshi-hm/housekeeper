@@ -652,32 +652,29 @@ export const FloorPlanEditor = ({
               </g>
             );
           })}
-          {!start &&
-            currentPoint &&
-            tool !== "select" &&
-            !isMarkerMode && (
-              // Keyboard-only cursor: shown while a drawing tool is active but
-              // no start point has been placed yet (arrow keys move it, Enter
-              // /Space places the start point — see handleKeyDown).
-              <g data-testid="floor-plan-keyboard-cursor" pointerEvents="none">
-                <line
-                  x1={currentPoint.x - 10}
-                  y1={currentPoint.y}
-                  x2={currentPoint.x + 10}
-                  y2={currentPoint.y}
-                  stroke="hsl(var(--accent))"
-                  strokeWidth="2"
-                />
-                <line
-                  x1={currentPoint.x}
-                  y1={currentPoint.y - 10}
-                  x2={currentPoint.x}
-                  y2={currentPoint.y + 10}
-                  stroke="hsl(var(--accent))"
-                  strokeWidth="2"
-                />
-              </g>
-            )}
+          {!start && currentPoint && tool !== "select" && !isMarkerMode && (
+            // Keyboard-only cursor: shown while a drawing tool is active but
+            // no start point has been placed yet (arrow keys move it, Enter
+            // /Space places the start point — see handleKeyDown).
+            <g data-testid="floor-plan-keyboard-cursor" pointerEvents="none">
+              <line
+                x1={currentPoint.x - 10}
+                y1={currentPoint.y}
+                x2={currentPoint.x + 10}
+                y2={currentPoint.y}
+                stroke="hsl(var(--accent))"
+                strokeWidth="2"
+              />
+              <line
+                x1={currentPoint.x}
+                y1={currentPoint.y - 10}
+                x2={currentPoint.x}
+                y2={currentPoint.y + 10}
+                stroke="hsl(var(--accent))"
+                strokeWidth="2"
+              />
+            </g>
+          )}
           {start && currentPoint && tool !== "select" && (
             <g data-testid="floor-plan-drawing-preview" pointerEvents="none">
               {tool === "wall" ? (
