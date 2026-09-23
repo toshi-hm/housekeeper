@@ -5,7 +5,7 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
 import type { ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
@@ -72,7 +72,7 @@ describe("ShelfScanReviewPanel", () => {
     expect(bulkButton.disabled).toBe(true);
   });
 
-  test("チェックして一括ボタンを押すと、選択したIDでuseBulkItemActionのconsumeが呼ばれ、一覧から消える", async () => {
+  test("チェックして一括ボタンを押すと確認ダイアログが表示され、確認するとuseBulkItemActionのconsumeが呼ばれ一覧から消える（#1096）", async () => {
     const mutateAsyncMock = mock(() => Promise.resolve({ action: "consume", count: 1 }));
     spyOn(useItemsModule, "useBulkItemAction").mockReturnValue({
       mutateAsync: mutateAsyncMock,
@@ -94,8 +94,17 @@ describe("ShelfScanReviewPanel", () => {
     const bulkButton = getByRole("button", {
       name: i18n.t("markConsumed", { ns: "shelfScan", count: 1 }),
     });
+    fireEvent.click(bulkButton);
+
+    // 確認ダイアログが開き、ここではまだconsumeは呼ばれていない。
+    const dialog = getByRole("alertdialog");
+    expect(mutateAsyncMock).not.toHaveBeenCalled();
+
+    const confirmButton = within(dialog).getByRole("button", {
+      name: i18n.t("markConsumed", { ns: "shelfScan", count: 1 }),
+    });
     await act(async () => {
-      fireEvent.click(bulkButton);
+      fireEvent.click(confirmButton);
       await Promise.resolve();
     });
 
@@ -103,6 +112,34 @@ describe("ShelfScanReviewPanel", () => {
     await waitFor(() => expect(queryByText("牛乳")).toBeNull());
     // 未選択だった「卵」は一覧に残ったまま。
     expect(getByText("卵")).toBeDefined();
+  });
+
+  test("確認ダイアログをキャンセルするとconsumeは呼ばれず、選択状態が維持される（#1096）", async () => {
+    const mutateAsyncMock = mock(() => Promise.resolve({ action: "consume", count: 1 }));
+    spyOn(useItemsModule, "useBulkItemAction").mockReturnValue({
+      mutateAsync: mutateAsyncMock,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useBulkItemAction>);
+
+    const { getByText, getByRole, queryByRole } = await renderPanel({
+      possiblyConsumed: [{ id: "1", name: "牛乳" }],
+      possiblyUnregistered: [],
+    });
+
+    const milkCheckbox = getByText("牛乳").closest("label")?.querySelector("input");
+    if (!milkCheckbox) throw new Error("checkbox not found");
+    fireEvent.click(milkCheckbox);
+
+    fireEvent.click(
+      getByRole("button", { name: i18n.t("markConsumed", { ns: "shelfScan", count: 1 }) }),
+    );
+    const dialog = getByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: i18n.t("cancel") }));
+
+    expect(queryByRole("alertdialog")).toBeNull();
+    expect(mutateAsyncMock).not.toHaveBeenCalled();
+    // 「牛乳」は一覧に残ったまま。
+    expect(getByText("牛乳")).toBeDefined();
   });
 
   test("すべて選択を押すと表示中の食べきった？候補が全選択される", async () => {

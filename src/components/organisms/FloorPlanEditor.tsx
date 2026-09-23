@@ -408,6 +408,7 @@ export const FloorPlanEditor = ({
             type="button"
             variant={tool === value ? "default" : "outline"}
             size="sm"
+            className="h-11"
             onClick={() => setTool(value)}
           >
             {toolLabel[value]}
@@ -417,6 +418,7 @@ export const FloorPlanEditor = ({
           type="button"
           variant="outline"
           size="sm"
+          className="h-11"
           disabled={state.undoStack.length === 0}
           onClick={() => dispatch({ type: "undo" })}
         >
@@ -426,12 +428,19 @@ export const FloorPlanEditor = ({
           type="button"
           variant="outline"
           size="sm"
+          className="h-11"
           disabled={state.redoStack.length === 0}
           onClick={() => dispatch({ type: "redo" })}
         >
           {t("mapRedo")}
         </Button>
-        <Button type="button" size="sm" disabled={isSaving} onClick={() => onSave(state.document)}>
+        <Button
+          type="button"
+          size="sm"
+          className="h-11"
+          disabled={isSaving}
+          onClick={() => onSave(state.document)}
+        >
           {isSaving ? t("mapSaving") : t("save")}
         </Button>
       </div>
