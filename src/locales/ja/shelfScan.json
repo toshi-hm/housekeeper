@@ -8,6 +8,8 @@
   "cameraUnsupported": "この環境ではカメラを利用できません。ライブラリから選択してください",
   "imageTooLarge": "画像サイズが大きすぎます。別の写真でお試しください",
   "markConsumed_other": "選択した{{count}}件を食べきった扱いにする",
+  "markConsumedConfirmMessage_other": "選択した{{count}}件を食べきった扱いにします。この操作は元に戻せません。",
+  "markConsumedConfirmTitle": "食べきった扱いにする",
   "markConsumedPending": "処理中…",
   "noCandidatesFound": "写真から商品を認識できませんでした。角度や明るさを変えて再度お試しください",
   "offlineError": "オフラインのため実行できません",
