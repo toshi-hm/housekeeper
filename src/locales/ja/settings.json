@@ -95,7 +95,7 @@
   "purchaseHistory": "購入履歴",
   "purchaseHistoryEmpty": "購入履歴はまだありません",
   "purgeItem": "完全に削除",
-  "purgeItemConfirmMessage": "「{{name}}」を完全に削除します。この操作は元に戻せません。関連する購入ロット・消費履歴・画像もすべて削除され、復元できなくなります。",
+  "purgeItemConfirmMessage": "「{{name}}」を完全に削除します。この操作は元に戻せません。関連する購入ロット・消費履歴・画像に加え、レシピの材料登録や間取りマップのピンもすべて削除され、復元できなくなります。",
   "purgeItemConfirmTitle": "完全に削除しますか？",
   "purgeItemSuccess": "アイテムを完全に削除しました",
   "restore": "復元",

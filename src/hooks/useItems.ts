@@ -788,8 +788,10 @@ interface DeleteItemPermanentlyInput {
  * 単一ユーザー・自己ホスト型のこのアプリではソフトデリートのみだと `items` / `item_lots` /
  * `consumption_logs` の行と Storage の画像が無期限に蓄積し続けるため、パージ手段を提供する。
  *
- * - `item_lots` / `consumption_logs` は `items` への FK が `on delete cascade`（docs/specs/database.md）
- *   のため、`items` 行の削除だけで自動的に削除される。個別の削除呼び出しは不要。
+ * - `item_lots` / `consumption_logs` に加え、`recipe_items`（レシピの材料登録）・
+ *   `floor_plan_item_placements`（間取りマップのピン）も `items` への FK が `on delete cascade`
+ *   （docs/specs/database.md）のため、`items` 行の削除だけで自動的に削除される。個別の削除呼び出しは不要。
+ *   （`shopping_list_items.linked_item_id` / `created_item_id` は `on delete set null` のため対象外）
  * - Storage の画像削除はDB行の削除が成功した後に行うベストエフォート処理。`removeItemImageFile`
  *   自体がエラーを握りつぶす設計（#564〜: 既存の差し替えフローと同じ方針）のため、ここでも
  *   画像削除の失敗でパージ全体を失敗扱いにはしない（孤立オブジェクトが残る可能性はあるが、

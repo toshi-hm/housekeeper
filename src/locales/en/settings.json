@@ -100,7 +100,7 @@
   "purchaseHistory": "Purchase History",
   "purchaseHistoryEmpty": "No purchase history yet",
   "purgeItem": "Delete permanently",
-  "purgeItemConfirmMessage": "This will permanently delete \"{{name}}\". This action cannot be undone — its purchase lots, consumption history, and image will all be deleted and it can no longer be restored.",
+  "purgeItemConfirmMessage": "This will permanently delete \"{{name}}\". This action cannot be undone — its purchase lots, consumption history, and image, as well as any recipe ingredient links and floor-plan map pins, will all be deleted and it can no longer be restored.",
   "purgeItemConfirmTitle": "Delete permanently?",
   "purgeItemSuccess": "Item permanently deleted",
   "restore": "Restore",
