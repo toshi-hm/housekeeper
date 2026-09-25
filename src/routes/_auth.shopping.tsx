@@ -540,11 +540,20 @@ export const ShoppingPage = () => {
     if (!categoryId) return null;
     const category = categoryMap.get(categoryId);
     if (!category) return null;
-    return { id: category.id, name: category.name, color: category.color ?? null };
+    return {
+      id: category.id,
+      name: category.name,
+      color: category.color ?? null,
+      sortOrder: category.sort_order ?? 0,
+    };
   };
 
   const sortedItems = sortShoppingItems(items, sort, resolveCategory);
   const groups = sort === "category" ? groupShoppingItemsByCategory(items, resolveCategory) : null;
+  // 買い物中モード（#1008）: 店内で行ったり来たりしないよう、カテゴリの表示順
+  // （お店の売り場順）でリストを並べる。通常タブのソート設定（sort state）とは
+  // 独立して、常にカテゴリ順を使う（この画面は編集操作を持たずソートUIも無い）。
+  const shoppingModePlannedItems = sortShoppingItems(plannedItems, "category", resolveCategory);
 
   // 買い物中モード（#926）: ダッシュボード（`_auth.index.tsx`）と同じ算出ロジックを
   // 再利用する。minimum_stock ベースのアラートは既に取得済みの inventoryItems から
@@ -875,7 +884,7 @@ export const ShoppingPage = () => {
             onRequestDiscard={(action) => setDiscardQueueAction(action)}
           />
           <ShoppingModeView
-            plannedItems={plannedItems}
+            plannedItems={shoppingModePlannedItems}
             onPurchase={(id) => {
               clearPendingPurchaseImage();
               setPendingPurchaseId(id);

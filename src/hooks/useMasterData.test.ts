@@ -28,6 +28,8 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
       callLog.push({ table, method: "single", args: [] });
       return Promise.resolve(response);
     },
+    then: (resolve: (v: SupabaseResponse) => void, reject?: (e: unknown) => void) =>
+      Promise.resolve(response).then(resolve, reject),
   });
   return builder;
 };
@@ -66,6 +68,7 @@ const {
   updateStorageLocation,
   deleteCategory,
   deleteStorageLocation,
+  reorderCategories,
   DuplicateNameError,
   InvalidNameLengthError,
   CategoryInUseError,
@@ -172,6 +175,32 @@ describe("deleteCategory (#491)", () => {
       { data: null, error: { code: "23503", message: "fk violation" } },
     ];
     await expect(deleteCategory("cat-1")).rejects.toMatchObject({ code: "23503" });
+  });
+});
+
+describe("reorderCategories (#1008)", () => {
+  test("渡した順序どおりに0始まりの連番でsort_orderを更新する", async () => {
+    await reorderCategories(["cat-3", "cat-1", "cat-2"]);
+
+    const updateCalls = callLog.filter((c) => c.table === "categories" && c.method === "update");
+    expect(updateCalls.map((c) => (c.args[0] as { sort_order: number }).sort_order)).toEqual([
+      0, 1, 2,
+    ]);
+
+    const eqIdCalls = callLog.filter(
+      (c) => c.table === "categories" && c.method === "eq" && c.args[0] === "id",
+    );
+    expect(eqIdCalls.map((c) => c.args[1])).toEqual(["cat-3", "cat-1", "cat-2"]);
+  });
+
+  test("いずれかの更新がエラーを返した場合はthrowする", async () => {
+    responseQueues.categories = [
+      { data: null, error: null },
+      { data: null, error: { message: "boom" } },
+    ];
+    await expect(reorderCategories(["cat-1", "cat-2"])).rejects.toMatchObject({
+      message: "boom",
+    });
   });
 });
 

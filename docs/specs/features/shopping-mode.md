@@ -68,6 +68,16 @@
 
 M
 
+### 追補（#1008）: カテゴリの表示順（お店の売り場順）
+
+`ShoppingModeView` の `plannedItems` は、`_auth.shopping.tsx` 側で
+`sortShoppingItems(plannedItems, "category", resolveCategory)`（`src/lib/shoppingView.ts`）
+によりカテゴリの `categories.sort_order`（`docs/specs/features/master-data.md`）順に
+並べ替えてから渡す。これにより、通常の買い物リストタブのソート設定（`sort` state）とは
+独立して、買い物中モードは常に「お店の売り場順」でアイテムが並ぶ。カテゴリ見出し
+（グルーピング表示）は追加せず、既存の flat な縦スクロール構成のまま順序だけを変える
+（片手操作・大きめタップ領域という既存方針を維持するため）。
+
 ### 追補（#1021 / #1022）: オフライン判定の穴とキュー詰まりの修正
 
 実装後に見つかった2つの不具合を修正した:
