@@ -60,6 +60,7 @@ export interface Database {
           id: string;
           kind: string;
           name: string;
+          sort_order: number;
           updated_at: string;
           user_id: string;
         };
@@ -71,6 +72,7 @@ export interface Database {
           id?: string;
           kind?: string;
           name: string;
+          sort_order?: number;
           updated_at?: string;
           user_id: string;
         };
@@ -82,6 +84,7 @@ export interface Database {
           id?: string;
           kind?: string;
           name?: string;
+          sort_order?: number;
           updated_at?: string;
           user_id?: string;
         };

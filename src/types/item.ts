@@ -22,6 +22,9 @@ export interface Category {
   /** 開封後使用推奨日数の既定値。items.days_use_after_opening が未設定の
    *  アイテムはこの値にフォールバックする（#752）。 */
   days_use_after_opening?: number | null;
+  /** 表示順（お店の売り場順）。小さいほど先に表示する。既存カテゴリは
+   *  全て 0 のままで、その場合は名前順にフォールバックする（#1008）。 */
+  sort_order?: number;
   created_at: string;
   updated_at: string;
 }

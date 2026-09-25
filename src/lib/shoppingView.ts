@@ -14,6 +14,9 @@ export interface ResolvedCategory {
   id: string;
   name: string;
   color: string | null;
+  /** 表示順（お店の売り場順）。未設定（=0のまま並べ替え未使用）のカテゴリは
+   *  互いに同値になり、その場合は名前順にフォールバックする（#1008）。 */
+  sortOrder: number;
 }
 
 /** 買い物アイテム（`linked_item_id` 経由）からカテゴリを解決する。未分類は null。 */
@@ -40,12 +43,16 @@ export const sortShoppingItems = (
       break;
     case "category":
       sorted.sort((a, b) => {
-        const ca = resolveCategory(a)?.name ?? null;
-        const cb = resolveCategory(b)?.name ?? null;
-        if (ca === cb) return collator.compare(a.name, b.name);
+        const ca = resolveCategory(a);
+        const cb = resolveCategory(b);
+        if (ca === null && cb === null) return collator.compare(a.name, b.name);
         if (ca === null) return 1; // 未分類は末尾
         if (cb === null) return -1;
-        return collator.compare(ca, cb);
+        return (
+          ca.sortOrder - cb.sortOrder ||
+          collator.compare(ca.name, cb.name) ||
+          collator.compare(a.name, b.name)
+        );
       });
       break;
     case "added":
@@ -59,6 +66,8 @@ export interface ShoppingGroup {
   categoryId: string | null;
   categoryName: string | null;
   color: string | null;
+  /** 未分類グループは null（常に末尾へ並べる） */
+  sortOrder: number | null;
   items: ShoppingItem[];
 }
 
@@ -66,7 +75,8 @@ const OTHER_KEY = "__other__";
 
 /**
  * 買い物アイテムをカテゴリ別にグループ化する。
- * グループはカテゴリ名昇順、未分類（その他）は末尾。各グループ内は名前順。
+ * グループはカテゴリの表示順（sort_order）昇順、同値はカテゴリ名昇順、
+ * 未分類（その他）は末尾。各グループ内は名前順（#1008）。
  */
 export const groupShoppingItemsByCategory = (
   items: ShoppingItem[],
@@ -82,6 +92,7 @@ export const groupShoppingItemsByCategory = (
         categoryId: cat?.id ?? null,
         categoryName: cat?.name ?? null,
         color: cat?.color ?? null,
+        sortOrder: cat?.sortOrder ?? null,
         items: [],
       };
       groups.set(key, group);
@@ -94,10 +105,12 @@ export const groupShoppingItemsByCategory = (
   }
 
   return [...groups.values()].sort((a, b) => {
-    if (a.categoryName === b.categoryName) return 0;
-    if (a.categoryName === null) return 1;
-    if (b.categoryName === null) return -1;
-    return collator.compare(a.categoryName, b.categoryName);
+    if (a.sortOrder === null && b.sortOrder === null) return 0;
+    if (a.sortOrder === null) return 1; // 未分類は末尾
+    if (b.sortOrder === null) return -1;
+    return (
+      a.sortOrder - b.sortOrder || collator.compare(a.categoryName ?? "", b.categoryName ?? "")
+    );
   });
 };
 

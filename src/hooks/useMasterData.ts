@@ -69,6 +69,7 @@ const fetchCategories = async (): Promise<Category[]> => {
     .from("categories")
     .select("*")
     .eq("user_id", userData.user.id)
+    .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   if (error) throw error;
   return (data ?? []) as Category[];
@@ -229,7 +230,10 @@ export const useCreateCategory = () => {
       qc.setQueryData<Category[]>(CATEGORIES_KEY, (old) => {
         if (!old) return [category];
         if (old.some((c) => c.id === category.id)) return old;
-        return [...old, category].sort((a, b) => a.name.localeCompare(b.name));
+        // fetchCategories と同じ並び順（sort_order 昇順 → name 昇順）を保つ
+        return [...old, category].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name),
+        );
       });
     },
     onError: (error) => {
@@ -291,6 +295,67 @@ export const useDeleteCategory = () => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
       else if (error instanceof CategoryInUseError) toast(t("settings:categoryInUse"), "error");
       else toast(t("unknownError"), "error");
+    },
+  });
+};
+
+/**
+ * カテゴリの表示順を一括更新する（#1008）。`orderedIds` の並び順どおりに
+ * `sort_order` を 0 始まりの連番で振り直す。1回のユーザー操作（1つ上/下へ移動）
+ * につき全件を書き直す単純な実装だが、カテゴリ件数はユーザーごとに高々
+ * 数十件程度（マスタデータ）であり、単一ユーザー利用（`user_id` scoped RLS）
+ * のため他クライアントとの競合も想定しない。
+ */
+export const reorderCategories = async (orderedIds: string[]): Promise<void> => {
+  requireOnline();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error("Not authenticated");
+  const userId = userData.user.id;
+
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase
+        .from("categories")
+        .update({ sort_order: index, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("user_id", userId),
+    ),
+  );
+  for (const { error } of results) {
+    if (error) throw error;
+  }
+};
+
+export const useReorderCategories = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation("common");
+  return useMutation({
+    mutationFn: reorderCategories,
+    onMutate: async (orderedIds: string[]) => {
+      await qc.cancelQueries({ queryKey: CATEGORIES_KEY });
+      const previous = qc.getQueryData<Category[]>(CATEGORIES_KEY);
+      qc.setQueryData<Category[]>(CATEGORIES_KEY, (old) => {
+        if (!old) return old;
+        const byId = new Map(old.map((c) => [c.id, c]));
+        const reordered = orderedIds.flatMap((id, index) => {
+          const category = byId.get(id);
+          return category ? [{ ...category, sort_order: index }] : [];
+        });
+        // orderedIds に含まれない行があれば末尾に元の順序で残す（防御的）
+        const reorderedIds = new Set(orderedIds);
+        const rest = old.filter((c) => !reorderedIds.has(c.id));
+        return [...reordered, ...rest];
+      });
+      return { previous };
+    },
+    onError: (error, _orderedIds, context) => {
+      if (context?.previous) qc.setQueryData(CATEGORIES_KEY, context.previous);
+      if (error instanceof OfflineError) toast(t("offlineError"), "error");
+      else toast(t("unknownError"), "error");
+    },
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: CATEGORIES_KEY });
     },
   });
 };

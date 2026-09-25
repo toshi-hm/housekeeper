@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -20,6 +20,7 @@ import {
   useCategoryUsageCounts,
   useCreateCategory,
   useDeleteCategory,
+  useReorderCategories,
   useUpdateCategory,
 } from "@/hooks/useMasterData";
 import { itemTypeLabelKey } from "@/lib/itemType";
@@ -42,6 +43,7 @@ export const CategoriesPage = () => {
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
+  const reorderCategories = useReorderCategories();
   const { toast } = useToast();
 
   const [newName, setNewName] = useState("");
@@ -177,6 +179,17 @@ export const CategoriesPage = () => {
     }
   };
 
+  /** カテゴリを一覧内の隣（上/下）と入れ替え、`sort_order` を振り直す（#1008）。 */
+  const handleMove = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= categories.length) return;
+    const reordered = [...categories];
+    const [moved] = reordered.splice(index, 1);
+    if (!moved) return;
+    reordered.splice(targetIndex, 0, moved);
+    reorderCategories.mutate(reordered.map((c) => c.id));
+  };
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <ConfirmDialog
@@ -278,7 +291,7 @@ export const CategoriesPage = () => {
         <p className="py-8 text-center text-muted-foreground">{t("noCategories")}</p>
       ) : (
         <ul className="divide-y rounded-lg border">
-          {categories.map((c) => (
+          {categories.map((c, index) => (
             <li key={c.id} className="space-y-2 p-3">
               {editId === c.id ? (
                 <>
@@ -399,6 +412,28 @@ export const CategoriesPage = () => {
                     </span>
                   )}
                   <UsageCountBadge count={usageCounts[c.id] ?? 0} />
+                  <div className="flex flex-col">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-5 w-6"
+                      aria-label={tc("moveUp")}
+                      disabled={index === 0 || reorderCategories.isPending}
+                      onClick={() => handleMove(index, -1)}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-5 w-6"
+                      aria-label={tc("moveDown")}
+                      disabled={index === categories.length - 1 || reorderCategories.isPending}
+                      onClick={() => handleMove(index, 1)}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <Button
                     size="icon"
                     variant="ghost"
