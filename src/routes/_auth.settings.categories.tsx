@@ -412,11 +412,11 @@ export const CategoriesPage = () => {
                     </span>
                   )}
                   <UsageCountBadge count={usageCounts[c.id] ?? 0} />
-                  <div className="flex flex-col">
+                  <div className="flex flex-col gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-5 w-6"
+                      className="h-10 w-10"
                       aria-label={tc("moveUp")}
                       disabled={index === 0 || reorderCategories.isPending}
                       onClick={() => handleMove(index, -1)}
@@ -426,7 +426,7 @@ export const CategoriesPage = () => {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-5 w-6"
+                      className="h-10 w-10"
                       aria-label={tc("moveDown")}
                       disabled={index === categories.length - 1 || reorderCategories.isPending}
                       onClick={() => handleMove(index, 1)}
