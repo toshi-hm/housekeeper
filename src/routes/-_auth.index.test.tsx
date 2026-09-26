@@ -14,6 +14,8 @@ import { I18nextProvider } from "react-i18next";
 import * as useConsumeItemModule from "@/hooks/useConsumeItem";
 import * as useItemsModule from "@/hooks/useItems";
 import * as useMasterDataModule from "@/hooks/useMasterData";
+import * as useMealPlansModule from "@/hooks/useMealPlans";
+import * as useShoppingListModule from "@/hooks/useShoppingList";
 import * as useStatsModule from "@/hooks/useStats";
 import * as useUserSettingsModule from "@/hooks/useUserSettings";
 import i18n from "@/lib/i18n";
@@ -81,6 +83,9 @@ describe("DashboardPage", () => {
   let settingsspy: ReturnType<typeof spyOn>;
   let consumespy: ReturnType<typeof spyOn>;
   let forecastspy: ReturnType<typeof spyOn>;
+  let mealPlansSpy: ReturnType<typeof spyOn>;
+  let executeMealPlanSpy: ReturnType<typeof spyOn>;
+  let upsertShoppingItemSpy: ReturnType<typeof spyOn>;
 
   beforeEach(() => {
     itemsspy = spyOn(useItemsModule, "useItems").mockReturnValue({
@@ -114,6 +119,24 @@ describe("DashboardPage", () => {
       isLoading: false,
       isError: false,
     });
+
+    // #1035: ダッシュボードに追加した TodayMealPlanCard が呼ぶhook群。この
+    // テストスイートは献立機能自体を検証しないため、常時ローディング状態
+    // （Skeletonのみ描画）に固定し、実Supabase呼び出しや追加の非同期状態
+    // 更新でデバウンス/フォーカス系のタイミングアサーションに影響しないようにする。
+    mealPlansSpy = spyOn(useMealPlansModule, "useMealPlans").mockReturnValue({
+      slots: [],
+      isLoading: true,
+      error: null,
+    } as unknown as ReturnType<typeof useMealPlansModule.useMealPlans>);
+
+    executeMealPlanSpy = spyOn(useMealPlansModule, "useExecuteMealPlan").mockReturnValue({
+      mutateAsync: async () => {},
+    } as unknown as ReturnType<typeof useMealPlansModule.useExecuteMealPlan>);
+
+    upsertShoppingItemSpy = spyOn(useShoppingListModule, "useUpsertShoppingItem").mockReturnValue({
+      mutateAsync: async () => {},
+    } as unknown as ReturnType<typeof useShoppingListModule.useUpsertShoppingItem>);
   });
 
   afterEach(() => {
@@ -123,6 +146,9 @@ describe("DashboardPage", () => {
     settingsspy.mockRestore();
     consumespy.mockRestore();
     forecastspy.mockRestore();
+    mealPlansSpy.mockRestore();
+    executeMealPlanSpy.mockRestore();
+    upsertShoppingItemSpy.mockRestore();
     cleanup();
   });
 
@@ -297,10 +323,16 @@ describe("DashboardPage", () => {
     expect(lastCallRightAfterTyping?.search).not.toBe("milk");
 
     // デバウンス完了後、URLに反映されuseItemsが新しいsearchで呼ばれる
+    // #1035: ダッシュボードに追加した TodayMealPlanCard も同じ `useItems` mock を
+    // 引数無しで呼ぶため、`.at(-1)` では取れない（呼び出し順序次第でこちらが最後に
+    // なる）。目的のsearchを持つ呼び出しを`findLast`で探す（同ファイル内の他の
+    // テストと同じ方式）。
     await waitFor(
       () => {
-        const lastCall = itemsspy.mock.calls.at(-1)?.[0] as { search?: string } | undefined;
-        expect(lastCall?.search).toBe("milk");
+        const filteredCall = itemsspy.mock.calls.findLast(
+          ([filters]) => (filters as { search?: string } | undefined)?.search === "milk",
+        );
+        expect(filteredCall).toBeDefined();
       },
       { timeout: 2000 },
     );
@@ -386,10 +418,14 @@ describe("DashboardPage", () => {
     await user.type(searchInput, "milk");
 
     // デバウンス確定 → URL更新 → 再レンダリング後もフォーカスが保持されている
+    // #1035: TodayMealPlanCard の引数無し `useItems()` 呼び出しと混在するため、
+    // `.at(-1)` ではなく目的のsearchを持つ呼び出しを`findLast`で探す。
     await waitFor(
       () => {
-        const lastCall = itemsspy.mock.calls.at(-1)?.[0] as { search?: string } | undefined;
-        expect(lastCall?.search).toBe("milk");
+        const filteredCall = itemsspy.mock.calls.findLast(
+          ([filters]) => (filters as { search?: string } | undefined)?.search === "milk",
+        );
+        expect(filteredCall).toBeDefined();
       },
       { timeout: 2000 },
     );
