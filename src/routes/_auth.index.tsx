@@ -34,6 +34,7 @@ import {
   DashboardNotificationCenter,
   type NotificationChip,
 } from "@/components/organisms/DashboardNotificationCenter";
+import { TodayMealPlanCard } from "@/components/organisms/TodayMealPlanCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -623,6 +624,11 @@ export const DashboardPage = () => {
           </Button>
         </div>
       )}
+
+      {/* #1035: 通知センターとは別に、開いた瞬間に「今日は何を作るか」「在庫は
+          足りているか」がわかるよう常時表示する（折りたたみ式の通知センターの
+          中に置くと、クリックしないと見えず毎日の主要動線として機能しないため）。 */}
+      <TodayMealPlanCard />
 
       <DashboardNotificationCenter chips={visibleNotificationChips}>
         {/* 月次予算超過アラート（#991）。予算未設定なら何も表示しない。 */}

@@ -66,19 +66,35 @@ list・期限アラート）を統合する。
 ボタンを追加する。フッターの 5 メニュー構成（Home / Shopping / Add / Stats / Calendar）は
 変更しない（`/recipes` も同様にフッター外の導線のみ）。
 
+### ダッシュボード「今日の献立」カード（#1035）
+
+`/meal-plan` は独立ルートのため、毎日の実行操作（在庫消費・不足分の買い物リスト追加）の
+たびに移動する必要があった。ダッシュボード（`_auth.index.tsx`）に `TodayMealPlanCard`
+organism を常時表示し、当日分の枠だけを `useMealPlans([today])` で取得して「実行」
+「不足分を買い物リストへ」をその場で行えるようにする。折りたたみ式の
+`DashboardNotificationCenter`（アラート summary bar）の外、ヘッダー直下に置き、開いた
+瞬間に見える場所に配置する（アラート扱いではなく、`/meal-plan` の毎日の主要動線をダッシュ
+ボードへ持ち込む位置づけのため）。
+
+新しい消費・在庫確認ロジックは書かず、`WeeklyMealPlanner` と同じ `useMealPlans` /
+`useExecuteMealPlan` / `checkRecipeStock` / `shortageToShoppingItemInput` /
+`MealPlanStockWarning` をそのまま 1 日分に絞って再利用する。レシピの割当編集
+（`MealSlotRecipePicker`）は持たず、割当変更は `/meal-plan` に委ねる。
+
 ### Atomic Design 分類（`docs/specs/architecture.md` 準拠）
 
 | コンポーネント                 | 層       | 役割                                                                                                        |
 | ------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------- |
 | `WeeklyMealPlanner`            | organism | 7 日分の `MealSlot` を並べる。データ取得・hook 呼び出し・在庫確認・buy/execute のオーケストレーションを持つ |
+| `TodayMealPlanCard`            | organism | ダッシュボード常時表示用。当日 1 枠分に絞って `WeeklyMealPlanner` と同じロジックを再利用する（#1035）       |
 | `MealSlot`                     | molecule | 1 日分の枠。日付表示・割当レシピ or メモの表示・空き枠時のレコメンド表示・アクションボタン群を組む          |
 | `MealSlotRecipePicker`         | molecule | 既存 `recipes` から 1 件選ぶ Select + 自由記述メモの切替 UI（`RecipeForm` のアイテム選択 UI を踏襲）        |
 | `MealPlanStockWarning`         | molecule | 不足食材一覧 + 「買い物リストに追加」ボタン（`_auth.recipes.tsx` の在庫不足表示を踏襲・再利用）             |
 | `MealPlanExpiryRecommendation` | molecule | 空き枠向けレコメンド（内部レシピ候補 + 外部レシピ候補の 2 段、後述）                                        |
 
-`WeeklyMealPlanner` 以外は atoms（`Badge`, `Button` 等既存）を組み合わせるのみで、
-Supabase 呼び出しは行わない（`architecture.md` の「organisms 以上でのみ hooks や Supabase
-呼び出しを許可する」規約に従う）。
+`WeeklyMealPlanner` / `TodayMealPlanCard` 以外は atoms（`Badge`, `Button` 等既存）を
+組み合わせるのみで、Supabase 呼び出しは行わない（`architecture.md` の「organisms 以上
+でのみ hooks や Supabase 呼び出しを許可する」規約に従う）。
 
 ## データ
 

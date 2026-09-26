@@ -26,5 +26,8 @@
   "stockShortageTitle": "在庫が不足しています",
   "subtitle": "在庫を優先して、今週何を作るか計画する",
   "title": "週間献立プランナー",
+  "todayCardEmpty": "タップして今日の献立を計画する",
+  "todayCardTitle": "今日の献立",
+  "todayCardViewWeek": "週間プランを見る",
   "unassign": "割り当て解除"
 }
