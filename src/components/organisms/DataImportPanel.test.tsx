@@ -33,9 +33,17 @@ const makeFile = (content: string, name = "backup.json"): File =>
   new File([content], name, { type: "application/json" });
 
 describe("DataImportPanel", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     toastMock.mockClear();
     mutateMock.mockClear();
+    // #1114: this file's assertions hardcode the English strings (no ja
+    // alternative), so they depend on `i18n.language` being "en" at render
+    // time. `i18n` is a shared singleton across the whole test run, and
+    // other files (e.g. src/routes/-_auth.settings.test.tsx) temporarily
+    // switch it to "ja" mid-test — under CI's test scheduling that leaked
+    // into this file's initial render. Force it back explicitly instead of
+    // relying on ambient state left by whichever file last touched it.
+    await i18n.changeLanguage("en");
 
     spyOn(useImportItemsModule, "useImportItems").mockReturnValue({
       mutate: mutateMock,

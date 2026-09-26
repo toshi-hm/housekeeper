@@ -27,9 +27,19 @@ describe("SecurityQuestionSettings (#850)", () => {
 
   const upsertMutateAsync = mock(() => Promise.resolve());
 
-  beforeEach(() => {
+  beforeEach(async () => {
     toastMock.mockClear();
     upsertMutateAsync.mockClear();
+    // #1114: in Japanese, "秘密の質問" (securityQuestion) is a substring of
+    // "秘密の質問の答え" (securityQuestionAnswer), so
+    // `getByLabelText(/秘密の質問|Security Question/i)` matches both labels
+    // at once when `i18n.language` is "ja" — the English strings don't
+    // overlap this way. `i18n` is a shared singleton across the whole test
+    // run, and other files (e.g. src/routes/-_auth.settings.test.tsx)
+    // temporarily switch it to "ja" mid-test; under CI's test scheduling
+    // that leaked into this file. Force it back explicitly instead of
+    // relying on ambient state left by whichever file last touched it.
+    await i18n.changeLanguage("en");
 
     statusSpy = spyOn(useSecurityQuestionModule, "useSecurityQuestionStatus").mockReturnValue({
       data: { hasSecurityQuestion: false, question: null },
