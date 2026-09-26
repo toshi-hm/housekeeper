@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
+import { withRouter } from "../../../.storybook/routerDecorator";
 import { TodayMealPlanCard } from "./TodayMealPlanCard";
 
 const meta = {
   component: TodayMealPlanCard,
   tags: ["autodocs"],
+  decorators: [withRouter],
   parameters: { layout: "padded" },
 } satisfies Meta<typeof TodayMealPlanCard>;
 
