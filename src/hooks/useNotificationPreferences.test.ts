@@ -1,9 +1,9 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type {
-  subscribePush as SubscribePushFn,
-  unsubscribePush as UnsubscribePushFn,
-  unsubscribePushOnSignOut as UnsubscribePushOnSignOutFn,
+import {
+  subscribePush,
+  unsubscribePush,
+  unsubscribePushOnSignOut,
 } from "@/hooks/useNotificationPreferences";
 
 interface InvokeResponse {
@@ -14,31 +14,33 @@ interface InvokeResponse {
 let invokeResponse: InvokeResponse = { data: {}, error: null };
 const invokeMock = mock(() => Promise.resolve(invokeResponse));
 
-// #1113: `mock.module` only takes effect for imports resolved *after* it
-// runs, so intercepting `@/lib/supabase` requires deferring the import of
-// the module under test (a bare top-level `await import()`, evaluated as
-// soon as this file is parsed) until after this call. Doing that at the very
-// top of the file — racing dozens of other test files' own top-level dynamic
-// imports during Bun's initial file-load phase — is what triggered a Bun
-// ESM-linker race under CI specifically (non-reproducible locally even with
-// a matching Bun version): "Export named 'subscribePush' not found" even
-// though the export is statically present
-// (https://github.com/AsafMah/dafman/issues/259 documents the same class of
-// flake). Moving the mock + dynamic import into `beforeAll` defers it to
-// this file's own dedicated test-execution phase instead, after the
-// concurrent file-loading phase has settled.
-let subscribePush: SubscribePushFn;
-let unsubscribePush: UnsubscribePushFn;
-let unsubscribePushOnSignOut: UnsubscribePushOnSignOutFn;
-
-beforeAll(async () => {
-  mock.module("@/lib/supabase", () => ({
-    supabase: { functions: { invoke: invokeMock } },
-  }));
-  ({ subscribePush, unsubscribePush, unsubscribePushOnSignOut } =
-    await import("@/hooks/useNotificationPreferences"));
-});
-
+// #1113/#1114: `import { supabase } from "@/lib/supabase"` is a *live*
+// ES-module binding — every hook test file in this repo, including this one,
+// re-establishes its own `mock.module("@/lib/supabase", ...)` shape in
+// `beforeEach`, immediately before exercising the code under test, because
+// whatever shape another file's own `mock.module` call last left in place
+// otherwise carries over (`mock.restore()` only undoes `spyOn`, never
+// `mock.module`). Skipping that re-assertion here (an earlier version of
+// this fix tried spying on the real `FunctionsClient.prototype.invoke`
+// instead) intermittently left `supabase.functions` as whatever shape a
+// *different* hook's test file had mocked, which doesn't define `.functions`
+// at all.
+//
+// This file used to import the hook with a top-level
+// `mock.module(...)` + dynamic `await import()` pair (required, since a
+// static import is hoisted and would resolve before the mock.module call).
+// That combination hit a Bun ESM-linker race under CI specifically (never
+// reproduced locally, even with a matching Bun version and repeated
+// full-suite runs): "Export named 'subscribePush' not found" even though the
+// export is statically present. The actual trigger was
+// src/routes/-_auth.settings.test.tsx, which statically imports this same
+// hook module for its own `spyOn` — two different import paths (this file's
+// dynamic mock-gated one vs. that file's static one) racing to link the
+// *same* source module for the first time, matching
+// https://github.com/AsafMah/dafman/issues/259. A preload-time warm-up
+// import of this module in src/test/setup.ts (the same fix that repo
+// landed on) makes every later import — this file's now-static one included
+// — a cache hit instead, so the mock can be applied per-test as usual.
 const originalServiceWorker = navigator.serviceWorker;
 
 const setServiceWorker = (value: unknown) => {
@@ -48,6 +50,9 @@ const setServiceWorker = (value: unknown) => {
 beforeEach(() => {
   invokeResponse = { data: {}, error: null };
   invokeMock.mockClear();
+  mock.module("@/lib/supabase", () => ({
+    supabase: { functions: { invoke: invokeMock } },
+  }));
 });
 
 afterEach(() => {
