@@ -167,7 +167,14 @@ describe("unsubscribePushOnSignOut", () => {
   });
 
   test("does not throw when there is no Service Worker registration (e.g. requireOnline/ready rejects)", async () => {
-    setServiceWorker({ ready: Promise.reject(new Error("no service worker")) });
+    const readyRejection = Promise.reject(new Error("no service worker"));
+    // Attach a no-op handler synchronously so the runtime never sees this as
+    // an unhandled rejection in the gap before unsubscribePushOnSignOut's own
+    // `await ... .ready` attaches its handler — under CI's timing this gap
+    // was wide enough to flag it and fail the test even though the code
+    // under test does correctly await and swallow the rejection below.
+    readyRejection.catch(() => {});
+    setServiceWorker({ ready: readyRejection });
 
     await expect(unsubscribePushOnSignOut()).resolves.toBeUndefined();
   });
