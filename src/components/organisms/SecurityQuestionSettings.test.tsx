@@ -8,7 +8,7 @@ import * as useSecurityQuestionModule from "@/hooks/useSecurityQuestion";
 import i18n from "@/lib/i18n";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
 
-const { SecurityQuestionSettings } = await import("./SecurityQuestionSettings");
+import { SecurityQuestionSettings } from "./SecurityQuestionSettings";
 
 const toastMock = mock<(message: string, variant?: "success" | "error") => void>(() => {});
 

@@ -1,4 +1,10 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+
+import type {
+  subscribePush as SubscribePushFn,
+  unsubscribePush as UnsubscribePushFn,
+  unsubscribePushOnSignOut as UnsubscribePushOnSignOutFn,
+} from "@/hooks/useNotificationPreferences";
 
 interface InvokeResponse {
   data: unknown;
@@ -8,12 +14,30 @@ interface InvokeResponse {
 let invokeResponse: InvokeResponse = { data: {}, error: null };
 const invokeMock = mock(() => Promise.resolve(invokeResponse));
 
-mock.module("@/lib/supabase", () => ({
-  supabase: { functions: { invoke: invokeMock } },
-}));
+// #1113: `mock.module` only takes effect for imports resolved *after* it
+// runs, so intercepting `@/lib/supabase` requires deferring the import of
+// the module under test (a bare top-level `await import()`, evaluated as
+// soon as this file is parsed) until after this call. Doing that at the very
+// top of the file — racing dozens of other test files' own top-level dynamic
+// imports during Bun's initial file-load phase — is what triggered a Bun
+// ESM-linker race under CI specifically (non-reproducible locally even with
+// a matching Bun version): "Export named 'subscribePush' not found" even
+// though the export is statically present
+// (https://github.com/AsafMah/dafman/issues/259 documents the same class of
+// flake). Moving the mock + dynamic import into `beforeAll` defers it to
+// this file's own dedicated test-execution phase instead, after the
+// concurrent file-loading phase has settled.
+let subscribePush: SubscribePushFn;
+let unsubscribePush: UnsubscribePushFn;
+let unsubscribePushOnSignOut: UnsubscribePushOnSignOutFn;
 
-const { subscribePush, unsubscribePush, unsubscribePushOnSignOut } =
-  await import("@/hooks/useNotificationPreferences");
+beforeAll(async () => {
+  mock.module("@/lib/supabase", () => ({
+    supabase: { functions: { invoke: invokeMock } },
+  }));
+  ({ subscribePush, unsubscribePush, unsubscribePushOnSignOut } =
+    await import("@/hooks/useNotificationPreferences"));
+});
 
 const originalServiceWorker = navigator.serviceWorker;
 
@@ -27,7 +51,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  mock.restore();
   setServiceWorker(originalServiceWorker);
 });
 
