@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
 import i18n from "../../lib/i18n";
+import { expectNoA11yViolations } from "../../test/a11y";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -166,6 +167,21 @@ describe("ConfirmDialog", () => {
     );
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  // #1088: bun test単体からaxe-coreを実行する段階導入の最初のサンプル。
+  it("開いた状態でaxe-coreのアクセシビリティ違反が無い", async () => {
+    const { container } = render(
+      <ConfirmDialog
+        open={true}
+        title="削除の確認"
+        message="削除しますか？"
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+      { wrapper },
+    );
+    await expectNoA11yViolations(container);
   });
 
   it("開いたときにダイアログコンテナ内へ初期フォーカスが当たる", () => {

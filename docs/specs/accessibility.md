@@ -206,10 +206,14 @@ issues:
   with a relaxed rule set, so any violation on those specific stories
   (beyond the one that got them baselined) won't be caught either, until
   the entry is fixed and removed.
-- **No `vitest-axe`/`@axe-core/react` in the unit test suite.** Accessibility
-  regressions on custom components (icon-button labels, dialog semantics,
-  etc.) are only caught by manual review or Storybook's addon, not by
-  `bun test`.
+- **`bun test`'s axe-core coverage is opt-in per test, not exhaustive
+  (#1088).** `src/test/a11y.ts`'s `expectNoA11yViolations()` runs axe-core
+  directly against `@testing-library/react`-rendered DOM (happy-dom) and is
+  wired into a handful of components so far (`ConfirmDialog`, `QRCodeDialog`);
+  most `src/components/**/*.test.tsx` files still have no accessibility
+  assertion at all. Add it to a component's test file when creating or
+  meaningfully changing that component, per the `unit-test` skill — it isn't
+  auto-applied.
 - **This PR's icon-button sweep was not exhaustive.** It covered
   `src/components/` and fixed the icon-only buttons found missing an
   accessible name at the time of writing. `src/routes/` was not swept, and
@@ -235,6 +239,9 @@ issues:
   [#754](https://github.com/toshi-hm/housekeeper/issues/754), implemented in
   `e2e/fixtures/a11y.ts` and used from `e2e/main-flow.spec.ts` /
   `e2e/bulk-actions.spec.ts`
+- Unit-test axe-core checks (`bun test`, opt-in per component):
+  [#1088](https://github.com/toshi-hm/housekeeper/issues/1088), implemented in
+  `src/test/a11y.ts`
 - Inventory chat panel a11y requirements: `docs/specs/features/inventory-chat.md`
 - UI/UX review checklist (includes a11y-adjacent usage-context notes):
   `.claude/skills/dev/uiux-review/PROJECT.md`
