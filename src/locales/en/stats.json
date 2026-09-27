@@ -14,6 +14,7 @@
   "consumptionSpeedRankingSubtitle": "By daily consumption rate over the last 30 days",
   "consumptionTrend": "Monthly Consumption",
   "dailyRateLabel": "Per day",
+  "estimatedWasteValue": "Estimated waste value",
   "expiryBreakdown": "Expiry Status",
   "historyHint": "Stats will appear as you track items",
   "itemCount": "items",
