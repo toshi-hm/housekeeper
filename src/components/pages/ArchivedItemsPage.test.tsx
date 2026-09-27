@@ -126,4 +126,49 @@ describe("ArchivedItemsPage — 完全削除（パージ）(#1099)", () => {
     expect(restoreMutate).toHaveBeenCalledWith("item-1");
     expect(purgeMutate).not.toHaveBeenCalled();
   });
+
+  it("復元中は対象アイテムの行だけが無効化され、他の行は操作可能（#1116）", () => {
+    spyOn(useItemsModule, "useDeletedItems").mockReturnValue({
+      data: [makeItem({ id: "item-1", name: "牛乳" }), makeItem({ id: "item-2", name: "卵" })],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemsModule.useDeletedItems>);
+    spyOn(useItemsModule, "useRestoreItem").mockReturnValue({
+      mutate: restoreMutate,
+      isPending: true,
+      variables: "item-1",
+    } as unknown as ReturnType<typeof useItemsModule.useRestoreItem>);
+
+    const { getAllByRole } = render(<ArchivedItemsPage />, { wrapper: Wrapper });
+    const rows = getAllByRole("listitem");
+    // 対象行はSpinnerが挿入されaria-labelが名前に混ざるため、正規表現の部分一致で拾う。
+    const restoreNamePattern = new RegExp(String(i18n.t("settings:restore")));
+
+    expect(
+      within(rows[0]!).getByRole("button", { name: restoreNamePattern }).hasAttribute("disabled"),
+    ).toBe(true);
+    expect(
+      within(rows[1]!).getByRole("button", { name: restoreNamePattern }).hasAttribute("disabled"),
+    ).toBe(false);
+  });
+
+  it("完全削除中は確認対象の行だけが無効化され、他の行は操作可能（#1116）", () => {
+    const item1 = makeItem({ id: "item-1", name: "牛乳" });
+    spyOn(useItemsModule, "useDeletedItems").mockReturnValue({
+      data: [item1, makeItem({ id: "item-2", name: "卵" })],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemsModule.useDeletedItems>);
+    spyOn(useItemsModule, "useDeleteItemPermanently").mockReturnValue({
+      mutate: purgeMutate,
+      isPending: true,
+      variables: { id: "item-1", imagePath: item1.image_path },
+    } as unknown as ReturnType<typeof useItemsModule.useDeleteItemPermanently>);
+
+    const { getAllByRole } = render(<ArchivedItemsPage />, { wrapper: Wrapper });
+    const purgeButtons = getAllByRole("button", { name: i18n.t("settings:purgeItem") });
+
+    // #1116: 確認ダイアログを開いていない行（purgeTargetが未設定）は、他の行が
+    // 削除中でも無効化されない。
+    expect(purgeButtons[0]?.hasAttribute("disabled")).toBe(false);
+    expect(purgeButtons[1]?.hasAttribute("disabled")).toBe(false);
+  });
 });
