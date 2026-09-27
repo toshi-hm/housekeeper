@@ -75,17 +75,21 @@ export const ArchivedItemsPage = () => {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={restoreItem.isPending}
+                disabled={restoreItem.isPending && restoreItem.variables === item.id}
                 onClick={() => restoreItem.mutate(item.id)}
               >
-                <RotateCcw className="mr-1.5 h-4 w-4" />
+                {restoreItem.isPending && restoreItem.variables === item.id ? (
+                  <Spinner className="mr-1.5 h-4 w-4" />
+                ) : (
+                  <RotateCcw className="mr-1.5 h-4 w-4" />
+                )}
                 {t("restore")}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 className="text-destructive hover:text-destructive"
-                disabled={deleteItemPermanently.isPending}
+                disabled={deleteItemPermanently.isPending && purgeTarget?.id === item.id}
                 onClick={() => setPurgeTarget(item)}
               >
                 <Trash2 className="mr-1.5 h-4 w-4" />
