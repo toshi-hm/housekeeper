@@ -132,4 +132,21 @@ describe("BarcodeScanner", () => {
 
     videoInputDevices = [];
   });
+
+  test("ダイアログとしてのrole/aria属性がuseDialogA11y経由で設定される（#1115）", async () => {
+    const onScan = mock(() => undefined);
+    const onClose = mock(() => undefined);
+
+    const { getByRole } = await act(async () => {
+      return render(
+        <I18nextProvider i18n={i18n}>
+          <BarcodeScanner onScan={onScan} onClose={onClose} />
+        </I18nextProvider>,
+      );
+    });
+
+    const dialog = getByRole("dialog");
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(dialog.getAttribute("aria-labelledby")).toBeTruthy();
+  });
 });
