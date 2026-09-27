@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
 import i18n from "../../lib/i18n";
+import { expectNoA11yViolations } from "../../test/a11y";
 
 mock.module("qrcode", () => ({
   default: { toCanvas: mock(() => Promise.resolve()) },
@@ -51,5 +52,14 @@ describe("QRCodeDialog", () => {
       window.open = originalOpen;
       HTMLCanvasElement.prototype.toDataURL = originalToDataURL;
     }
+  });
+
+  // #1088: bun test単体からaxe-coreを実行する段階導入のサンプル。
+  it("axe-coreのアクセシビリティ違反が無い", async () => {
+    const { container } = render(
+      <QRCodeDialog value="4901234567894" title="バーコードQR" onClose={() => {}} />,
+      { wrapper },
+    );
+    await expectNoA11yViolations(container);
   });
 });

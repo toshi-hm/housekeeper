@@ -86,6 +86,26 @@ mock.module("@/lib/supabase", () => ({
 
 既存例: `src/types/item.test.ts`（Zod スキーマ・日付計算の境界値テスト）
 
+### アクセシビリティ（axe-core、段階導入 #1088）
+
+新規に作った、または大きく変更した molecules/organisms（特にダイアログ系）
+には `src/test/a11y.ts` の `expectNoA11yViolations(container)` を追加する。
+全コンポーネントへの一括適用は不要（既存の全テストファイルへ後追いで
+機械的に足さない）。
+
+```tsx
+import { expectNoA11yViolations } from "../../test/a11y";
+
+it("axe-coreのアクセシビリティ違反が無い", async () => {
+  const { container } = render(<MyDialog open onClose={() => {}} />, { wrapper });
+  await expectNoA11yViolations(container);
+});
+```
+
+既存例: `src/components/molecules/ConfirmDialog.test.tsx`,
+`src/components/molecules/QRCodeDialog.test.tsx`。E2Eの
+`e2e/fixtures/a11y.ts`（実ルーティング・実ブラウザ）とは別物で、置き換えではなく補完。
+
 ## 対象外
 
 templates / pages / `src/components/ui/`（shadcn 生成物）はテスト対象外。
