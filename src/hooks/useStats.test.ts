@@ -688,75 +688,131 @@ describe("computeItemConsumptionPace", () => {
 describe("computeMonthlyWasteStats", () => {
   const fixedNow = new Date(2026, 3, 30); // April 2026
 
-  test("returns 6 entries by default, each starting at total 0", () => {
-    const result = computeMonthlyWasteStats([], {}, 6, fixedNow);
+  const makeWasteItem = (overrides: Partial<RawWasteItem> = {}): RawWasteItem => ({
+    id: "item-1",
+    category_id: null,
+    content_amount: 1,
+    deleted_at: "2026-04-01T00:00:00Z",
+    ...overrides,
+  });
+
+  test("returns 6 entries by default, each starting at total 0 and estimatedValue 0", () => {
+    const result = computeMonthlyWasteStats([], [], {}, 6, fixedNow);
     expect(result).toHaveLength(6);
-    expect(result.every((r) => r.total === 0 && r.byCategory.length === 0)).toBe(true);
+    expect(
+      result.every((r) => r.total === 0 && r.estimatedValue === 0 && r.byCategory.length === 0),
+    ).toBe(true);
   });
 
   test("returns correct month labels in order", () => {
-    const result = computeMonthlyWasteStats([], {}, 3, fixedNow);
+    const result = computeMonthlyWasteStats([], [], {}, 3, fixedNow);
     expect(result.map((r) => r.month)).toEqual(["2026/02", "2026/03", "2026/04"]);
   });
 
   test("counts items in the correct month and ignores other months", () => {
     const items: RawWasteItem[] = [
-      { category_id: "cat-1", deleted_at: "2026-04-05T10:00:00Z" },
-      { category_id: "cat-1", deleted_at: "2026-04-20T10:00:00Z" },
-      { category_id: "cat-1", deleted_at: "2025-12-01T10:00:00Z" },
+      makeWasteItem({ id: "i1", category_id: "cat-1", deleted_at: "2026-04-05T10:00:00Z" }),
+      makeWasteItem({ id: "i2", category_id: "cat-1", deleted_at: "2026-04-20T10:00:00Z" }),
+      makeWasteItem({ id: "i3", category_id: "cat-1", deleted_at: "2025-12-01T10:00:00Z" }),
     ];
-    const result = computeMonthlyWasteStats(items, { "cat-1": "Food" }, 1, fixedNow);
+    const result = computeMonthlyWasteStats(items, [], { "cat-1": "Food" }, 1, fixedNow);
     expect(result[0]?.total).toBe(2);
   });
 
   test("groups by category_id and resolves names via categoryMap", () => {
     const items: RawWasteItem[] = [
-      { category_id: "cat-1", deleted_at: "2026-04-01T00:00:00Z" },
-      { category_id: "cat-1", deleted_at: "2026-04-02T00:00:00Z" },
-      { category_id: "cat-2", deleted_at: "2026-04-03T00:00:00Z" },
+      makeWasteItem({ id: "i1", category_id: "cat-1", deleted_at: "2026-04-01T00:00:00Z" }),
+      makeWasteItem({ id: "i2", category_id: "cat-1", deleted_at: "2026-04-02T00:00:00Z" }),
+      makeWasteItem({ id: "i3", category_id: "cat-2", deleted_at: "2026-04-03T00:00:00Z" }),
     ];
     const result = computeMonthlyWasteStats(
       items,
+      [],
       { "cat-1": "Food", "cat-2": "Drink" },
       1,
       fixedNow,
     );
     expect(result[0]?.total).toBe(3);
     expect(result[0]?.byCategory).toEqual([
-      { categoryId: "cat-1", name: "Food", count: 2 },
-      { categoryId: "cat-2", name: "Drink", count: 1 },
+      { categoryId: "cat-1", name: "Food", count: 2, value: 0 },
+      { categoryId: "cat-2", name: "Drink", count: 1, value: 0 },
     ]);
   });
 
   test("null category_id groups under __uncategorized__", () => {
     const items: RawWasteItem[] = [
-      { category_id: null, deleted_at: "2026-04-01T00:00:00Z" },
-      { category_id: null, deleted_at: "2026-04-02T00:00:00Z" },
+      makeWasteItem({ id: "i1", category_id: null, deleted_at: "2026-04-01T00:00:00Z" }),
+      makeWasteItem({ id: "i2", category_id: null, deleted_at: "2026-04-02T00:00:00Z" }),
     ];
-    const result = computeMonthlyWasteStats(items, {}, 1, fixedNow);
+    const result = computeMonthlyWasteStats(items, [], {}, 1, fixedNow);
     expect(result[0]?.byCategory).toEqual([
-      { categoryId: null, name: "__uncategorized__", count: 2 },
+      { categoryId: null, name: "__uncategorized__", count: 2, value: 0 },
     ]);
   });
 
   test("unknown category_id resolves to '?'", () => {
     const items: RawWasteItem[] = [
-      { category_id: "missing-id", deleted_at: "2026-04-01T00:00:00Z" },
+      makeWasteItem({ id: "i1", category_id: "missing-id", deleted_at: "2026-04-01T00:00:00Z" }),
     ];
-    const result = computeMonthlyWasteStats(items, {}, 1, fixedNow);
+    const result = computeMonthlyWasteStats(items, [], {}, 1, fixedNow);
     expect(result[0]?.byCategory[0]?.name).toBe("?");
   });
 
   test("byCategory is sorted descending by count", () => {
     const items: RawWasteItem[] = [
-      { category_id: "a", deleted_at: "2026-04-01T00:00:00Z" },
-      { category_id: "b", deleted_at: "2026-04-02T00:00:00Z" },
-      { category_id: "b", deleted_at: "2026-04-03T00:00:00Z" },
-      { category_id: "b", deleted_at: "2026-04-04T00:00:00Z" },
+      makeWasteItem({ id: "i1", category_id: "a", deleted_at: "2026-04-01T00:00:00Z" }),
+      makeWasteItem({ id: "i2", category_id: "b", deleted_at: "2026-04-02T00:00:00Z" }),
+      makeWasteItem({ id: "i3", category_id: "b", deleted_at: "2026-04-03T00:00:00Z" }),
+      makeWasteItem({ id: "i4", category_id: "b", deleted_at: "2026-04-04T00:00:00Z" }),
     ];
-    const result = computeMonthlyWasteStats(items, { a: "A", b: "B" }, 1, fixedNow);
+    const result = computeMonthlyWasteStats(items, [], { a: "A", b: "B" }, 1, fixedNow);
     expect(result[0]?.byCategory[0]?.categoryId).toBe("b");
     expect(result[0]?.byCategory[1]?.categoryId).toBe("a");
+  });
+
+  // --- #1100: 推定廃棄金額 ---
+
+  test("廃棄時点でアイテムに残っていたロットのunit_priceから推定金額を算出する", () => {
+    const items: RawWasteItem[] = [
+      makeWasteItem({
+        id: "i1",
+        category_id: "cat-1",
+        content_amount: 500,
+        deleted_at: "2026-04-01T00:00:00Z",
+      }),
+    ];
+    const lots: LotValueRow[] = [
+      { item_id: "i1", units: 1, opened_remaining: 250, unit_price: 200 },
+    ];
+    const result = computeMonthlyWasteStats(items, lots, { "cat-1": "Food" }, 1, fixedNow);
+    // getPricedEquivalentUnits: units=1, opened_remaining=250, content_amount=500
+    // => max(0, 1 - 1 + 250/500) = 0.5 → 0.5 * 200 = 100
+    expect(result[0]?.estimatedValue).toBe(100);
+    expect(result[0]?.byCategory).toEqual([
+      { categoryId: "cat-1", name: "Food", count: 1, value: 100 },
+    ]);
+  });
+
+  test("単価未設定のロットは金額に含めない", () => {
+    const items: RawWasteItem[] = [
+      makeWasteItem({ id: "i1", content_amount: 1, deleted_at: "2026-04-01T00:00:00Z" }),
+    ];
+    const lots: LotValueRow[] = [
+      { item_id: "i1", units: 1, opened_remaining: null, unit_price: null },
+    ];
+    const result = computeMonthlyWasteStats(items, lots, {}, 1, fixedNow);
+    expect(result[0]?.estimatedValue).toBe(0);
+  });
+
+  test("廃棄アイテムに属さないロットは無視する", () => {
+    const items: RawWasteItem[] = [
+      makeWasteItem({ id: "i1", content_amount: 1, deleted_at: "2026-04-01T00:00:00Z" }),
+    ];
+    const lots: LotValueRow[] = [
+      { item_id: "other-item", units: 1, opened_remaining: null, unit_price: 999 },
+    ];
+    const result = computeMonthlyWasteStats(items, lots, {}, 1, fixedNow);
+    expect(result[0]?.estimatedValue).toBe(0);
   });
 });
 

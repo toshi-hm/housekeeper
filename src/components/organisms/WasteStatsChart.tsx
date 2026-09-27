@@ -20,11 +20,14 @@ interface WasteStatsChartProps {
 
 /** 月次の廃棄件数（カテゴリ別）を積み上げ棒グラフで表示する（#494 フードロスダッシュボード）。
  *  対象は `deletion_reason = 'expired_waste'` でソフトデリートされたアイテムのみ。
- *  unit_price（#342）が未マージのため、金額換算は行わず件数のみを表示する。 */
+ *  棒グラフ自体は件数のまま（金額と件数は単位が異なり同じ軸に混在させると誤読を招く
+ *  ため）だが、単価が設定されたロットがある場合は表示期間合計の推定廃棄金額（#1100）
+ *  をチャート下部と読み上げ用テーブルに追加で表示する。 */
 export const WasteStatsChart = ({ data }: WasteStatsChartProps) => {
   const { t } = useTranslation("stats");
 
   const hasData = data.some((d) => d.total > 0);
+  const totalEstimatedValue = data.reduce((sum, d) => sum + d.estimatedValue, 0);
 
   if (!hasData) {
     return (
@@ -49,7 +52,11 @@ export const WasteStatsChart = ({ data }: WasteStatsChartProps) => {
   });
 
   const summary = `${t("wasteBreakdown")}: ${data
-    .map((d) => `${d.month} ${t("itemCount")} ${d.total}`)
+    .map(
+      (d) =>
+        `${d.month} ${t("itemCount")} ${d.total}` +
+        (d.estimatedValue > 0 ? ` ¥${d.estimatedValue.toLocaleString()}` : ""),
+    )
     .join("、")}`;
 
   return (
@@ -94,6 +101,11 @@ export const WasteStatsChart = ({ data }: WasteStatsChartProps) => {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      {totalEstimatedValue > 0 && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("estimatedWasteValue")}: ¥{totalEstimatedValue.toLocaleString()}
+        </p>
+      )}
       <table className="sr-only">
         <caption>{t("wasteBreakdown")}</caption>
         <thead>
@@ -104,6 +116,7 @@ export const WasteStatsChart = ({ data }: WasteStatsChartProps) => {
                 {displayName(name)}
               </th>
             ))}
+            {totalEstimatedValue > 0 && <th scope="col">{t("estimatedWasteValue")}</th>}
           </tr>
         </thead>
         <tbody>
@@ -115,6 +128,7 @@ export const WasteStatsChart = ({ data }: WasteStatsChartProps) => {
                 {categoryNames.map((name) => (
                   <td key={name}>{countsByCategory[name] ?? 0}</td>
                 ))}
+                {totalEstimatedValue > 0 && <td>¥{d.estimatedValue.toLocaleString()}</td>}
               </tr>
             );
           })}

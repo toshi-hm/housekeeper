@@ -229,7 +229,7 @@ const fetchAllWasteItems = async (): Promise<RawWasteItem[]> => {
   return fetchAllPages(async (from, to) => {
     const { data, error } = await supabase
       .from("items")
-      .select("category_id, deleted_at")
+      .select("id, category_id, content_amount, deleted_at")
       .eq("user_id", user.id)
       .eq("deletion_reason", "expired_waste")
       .not("deleted_at", "is", null)
@@ -295,11 +295,15 @@ export const useWasteStats = (months = 6) => {
     isLoading: categoriesLoading,
     isError: categoriesError,
   } = useCategories();
+  // #1100: 廃棄時点でそのアイテムに残っていたロット（unit_price）から推定金額を
+  // 算出する。ソフトデリートはitem_lots行を消さないため、在庫総額計算
+  // （useCategoryValueStats）と同じ全ロット取得を再利用できる。
+  const { data: lots = [], isLoading: lotsLoading, isError: lotsError } = useAllLotsForValue();
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
   return {
-    data: computeMonthlyWasteStats(items, categoryMap, months),
-    isLoading: itemsLoading || categoriesLoading,
-    isError: itemsError || categoriesError,
+    data: computeMonthlyWasteStats(items, lots, categoryMap, months),
+    isLoading: itemsLoading || categoriesLoading || lotsLoading,
+    isError: itemsError || categoriesError || lotsError,
   };
 };
 
