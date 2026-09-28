@@ -27,6 +27,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # main への連続マージ等で複数回分の実行が重なった場合に、デプロイ処理が競合・
+  # 割り込みして中途半端な状態になるのを防ぐ（cancel-in-progressはfalseにし、
+  # 実行中のデプロイを打ち切らずキューイングして順番に完走させる）。
+  group: deploy-edge-functions-main
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Deploy changed Edge Functions
