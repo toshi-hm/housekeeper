@@ -103,6 +103,13 @@ jobs:
             fi
           fi
 
+          # Function削除コミットでは、diffにそのディレクトリ配下のパスが残ったままに
+          # なる。存在しないディレクトリを`supabase functions deploy`しようとすると
+          # 失敗してジョブ全体が赤くなってしまうため、現存するディレクトリのみに絞る。
+          if [ -n "$TARGETS" ]; then
+            TARGETS=$(echo "$TARGETS" | while IFS= read -r fn; do [ -d "$fn" ] && echo "$fn"; done)
+          fi
+
           if [ -z "$TARGETS" ]; then
             echo "No Edge Function changes detected; nothing to deploy."
             echo "targets=" >> "$GITHUB_OUTPUT"
