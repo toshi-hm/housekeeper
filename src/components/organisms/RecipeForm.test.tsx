@@ -92,6 +92,27 @@ describe("RecipeForm", () => {
     });
   });
 
+  it("blocks submission and shows an inline error when a row has no item selected", () => {
+    const onSubmit = mock(() => {});
+    const { getByText, getByLabelText } = render(
+      <RecipeForm
+        availableItems={availableItems}
+        defaultValues={{ name: "朝のコーヒー", items: [{ item_id: "", amount: 1 }] }}
+        onSubmit={onSubmit}
+        onCancel={() => {}}
+      />,
+      { wrapper },
+    );
+
+    expect(getByText(i18n.t("recipes:recipeItemRequiredError"))).toBeTruthy();
+    expect(getByLabelText(i18n.t("recipes:recipeItemSelect")).getAttribute("aria-invalid")).toBe(
+      "true",
+    );
+
+    fireEvent.click(getByText(i18n.t("common:save")));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("shows a hint and disables submission when there are no available items", () => {
     const onSubmit = mock(() => {});
     const { getByText, queryByLabelText } = render(

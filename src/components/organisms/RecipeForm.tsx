@@ -80,7 +80,9 @@ export const RecipeForm = ({
         ) : (
           <>
             {rows.map((row, index) => {
+              const itemInvalid = !row.item_id;
               const amountInvalid = row.amount <= 0;
+              const itemErrorId = `recipe-item-error-${index}`;
               const amountErrorId = `recipe-amount-error-${index}`;
               return (
                 <div key={index} className="space-y-1">
@@ -90,6 +92,8 @@ export const RecipeForm = ({
                       onChange={(e) => updateRow(index, { item_id: e.target.value })}
                       className="flex-1"
                       aria-label={t("recipeItemSelect")}
+                      aria-invalid={itemInvalid}
+                      aria-describedby={itemInvalid ? itemErrorId : undefined}
                     >
                       {availableItems.map((item) => (
                         <option key={item.id} value={item.id}>
@@ -124,6 +128,11 @@ export const RecipeForm = ({
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
+                  {itemInvalid && (
+                    <p id={itemErrorId} className="text-sm text-destructive">
+                      {t("recipeItemRequiredError")}
+                    </p>
+                  )}
                   {amountInvalid && (
                     <p id={amountErrorId} className="text-sm text-destructive">
                       {t("recipeAmountError")}

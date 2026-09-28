@@ -19,6 +19,7 @@
   "recipeAddRow": "アイテムを追加",
   "recipeAmountError": "数量を入力してください（0より大きい値）",
   "recipeItemAmount": "消費量",
+  "recipeItemRequiredError": "アイテムを選択してください",
   "recipeItems": "構成アイテム",
   "recipeItemSelect": "アイテムを選択",
   "recipeName": "レシピ名",

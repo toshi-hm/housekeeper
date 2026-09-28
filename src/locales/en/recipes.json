@@ -22,6 +22,7 @@
   "recipeAddRow": "Add item",
   "recipeAmountError": "Enter an amount greater than 0",
   "recipeItemAmount": "Amount",
+  "recipeItemRequiredError": "Select an item",
   "recipeItems": "Ingredients",
   "recipeItemSelect": "Select item",
   "recipeName": "Recipe name",
