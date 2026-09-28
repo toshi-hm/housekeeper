@@ -271,15 +271,16 @@ export const ShoppingPage = () => {
   };
 
   // #1009: サジェストチップのワンタップ追加。フォームの入力状態は変更せず、
-  // 提示していた行はそのまま消す（同じサジェストへの連続タップを防ぐ）。
+  // 成功時のみ提示していた行を消す（同じサジェストへの連続タップを防ぐ）。
+  // handleAdd と同様、失敗時は状態を変更せずチップを残してリトライできるようにする
+  // （エラートーストは useUpsertShoppingItem.onError が表示する）。
   const handleAddSuggested = async (name: string) => {
     try {
       await upsert.mutateAsync({ name, note: null });
       toast(t("addSuccess"), "success");
+      setCooccurrenceFor(null);
     } catch {
       // Error toast is handled by useUpsertShoppingItem.onError
-    } finally {
-      setCooccurrenceFor(null);
     }
   };
 

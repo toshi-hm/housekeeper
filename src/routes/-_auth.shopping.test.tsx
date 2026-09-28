@@ -884,4 +884,25 @@ describe("ShoppingPage - 一緒に買われることが多いもののサジェ�
 
     expect(upsertMutateAsync).toHaveBeenLastCalledWith({ name: "パン", note: null });
   });
+
+  it("サジェストのチップタップが失敗しても、チップは消えずリトライできる", async () => {
+    const page = renderPage();
+    await addPlannedItemViaForm(page, "牛乳");
+
+    // 直前の「牛乳」追加（フォーム経由）は成功させ、直後のサジェストチップタップ
+    // （2回目の呼び出し）だけ失敗させる。
+    upsertMutateAsync.mockImplementationOnce(async () => {
+      throw new Error("network error");
+    });
+
+    const suggestionChip = await page.findByRole("button", { name: /パン/ });
+    await act(async () => {
+      fireEvent.click(suggestionChip);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // 失敗時はサジェスト行の状態を変更しない（handleAdd と同じ規約）ので、
+    // チップは残ったまま再タップでリトライできる。
+    expect(await page.findByRole("button", { name: /パン/ })).toBeTruthy();
+  });
 });
