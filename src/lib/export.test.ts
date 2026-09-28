@@ -811,7 +811,8 @@ describe("itemsToICS", () => {
     const ics = itemsToICS([], [], fixedNow);
     expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
     expect(ics).toContain("VERSION:2.0");
-    expect(ics.endsWith("END:VCALENDAR")).toBe(true);
+    // RFC5545 3.1: every content line, including the last one, ends in CRLF.
+    expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
   });
 
   test("emits one all-day VEVENT per item with an expiry date", () => {
@@ -855,5 +856,28 @@ describe("itemsToICS", () => {
       () => new Date("2026-07-09T03:04:05.000Z"),
     );
     expect(ics).toContain("DTSTAMP:20260709T030405Z");
+  });
+
+  test("folds long/multibyte SUMMARY lines at 75 octets per RFC5545 3.1", () => {
+    const longName = "きゅうり".repeat(20);
+    const item = makeItem({ name: longName, expiry_date: "2026-07-15" });
+    const ics = itemsToICS([item], [], fixedNow);
+
+    const encoder = new TextEncoder();
+    const physicalLines = ics.split("\r\n");
+    for (const line of physicalLines) {
+      expect(encoder.encode(line).length).toBeLessThanOrEqual(75);
+    }
+
+    const summaryLineIndex = physicalLines.findIndex((line) => line.startsWith("SUMMARY:"));
+    expect(summaryLineIndex).toBeGreaterThanOrEqual(0);
+    // The SUMMARY property must have wrapped onto a folded continuation line
+    // (a single leading space, per RFC5545 3.1).
+    expect(physicalLines[summaryLineIndex + 1]?.startsWith(" ")).toBe(true);
+
+    // Unfolding (removing CRLF immediately followed by a single space) must
+    // reconstruct the original, unescaped-boundary content exactly.
+    const unfolded = ics.replace(/\r\n /g, "");
+    expect(unfolded).toContain(`SUMMARY:${longName}`);
   });
 });
