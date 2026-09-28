@@ -858,6 +858,23 @@ describe("itemsToICS", () => {
     expect(ics).toContain("DTSTAMP:20260709T030405Z");
   });
 
+  test("emits one VEVENT with its own UID per item, skipping items without an expiry date", () => {
+    const items = [
+      makeItem({ id: "item-1", name: "牛乳", expiry_date: "2026-07-15" }),
+      makeItem({ id: "item-2", name: "卵", expiry_date: "2026-07-20" }),
+      makeItem({ id: "item-3", name: "米", expiry_date: null }),
+    ];
+    const ics = itemsToICS(items, [], fixedNow);
+
+    const veventCount = (ics.match(/BEGIN:VEVENT/g) ?? []).length;
+    expect(veventCount).toBe(2);
+    expect(ics).toContain("UID:housekeeper-expiry-item-1@housekeeper");
+    expect(ics).toContain("UID:housekeeper-expiry-item-2@housekeeper");
+    expect(ics).not.toContain("UID:housekeeper-expiry-item-3@housekeeper");
+    expect(ics).toContain("SUMMARY:牛乳");
+    expect(ics).toContain("SUMMARY:卵");
+  });
+
   test("folds long/multibyte SUMMARY lines at 75 octets per RFC5545 3.1", () => {
     const longName = "きゅうり".repeat(20);
     const item = makeItem({ name: longName, expiry_date: "2026-07-15" });
