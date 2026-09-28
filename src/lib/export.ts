@@ -540,6 +540,67 @@ export const historyRowsToCSV = (
   return buildCsv(header, csvRows);
 };
 
+// --- ICS calendar export (#1117) ---
+
+/** RFC5545 TEXT値のエスケープ（バックスラッシュ→カンマ→セミコロン→改行の順で処理する必要がある）。 */
+const escapeIcsText = (value: string): string =>
+  value.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
+
+/** `YYYY-MM-DD` → `YYYYMMDD`（VALUE=DATE 形式）。 */
+const toIcsDate = (isoDate: string): string => isoDate.replace(/-/g, "");
+
+/** `YYYY-MM-DD` の翌日を `YYYYMMDD` で返す（終日イベントの DTEND は排他的終了日、#1117）。 */
+const toIcsDateNextDay = (isoDate: string): string => {
+  const [y, m, d] = isoDate.split("-").map(Number) as [number, number, number];
+  const next = new Date(y, m - 1, d + 1);
+  const pad2local = (n: number) => String(n).padStart(2, "0");
+  return `${next.getFullYear()}${pad2local(next.getMonth() + 1)}${pad2local(next.getDate())}`;
+};
+
+const toIcsTimestamp = (date: Date): string =>
+  `${date.toISOString().replace(/[-:]/g, "").split(".")[0]}Z`;
+
+/**
+ * 期限日を `.ics`（iCalendar）形式でエクスポートする（#1117）。本アプリはバックエンドを
+ * 持たないため（CLAUDE.md）、完全にクライアントサイドの文字列組み立てで実装する。
+ * 日用品（`kind: "daily_goods"`）は期限を持たないため対象外（`dropExpiryForDailyGoods`
+ * で CSV エクスポート等と同じ扱いに揃える）。
+ */
+export const itemsToICS = (
+  items: Item[],
+  categories: Pick<Category, "id" | "kind">[],
+  now: () => Date = () => new Date(),
+): string => {
+  const categoryById: Record<string, Pick<Category, "kind"> | undefined> = Object.fromEntries(
+    categories.map((c) => [c.id, { kind: c.kind }]),
+  );
+  const displayItems = dropExpiryForDailyGoods(items, categoryById);
+  const dtstamp = toIcsTimestamp(now());
+
+  const events = displayItems
+    .filter((item): item is Item & { expiry_date: string } => !!item.expiry_date)
+    .map((item) =>
+      [
+        "BEGIN:VEVENT",
+        `UID:housekeeper-expiry-${item.id}@housekeeper`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART;VALUE=DATE:${toIcsDate(item.expiry_date)}`,
+        `DTEND;VALUE=DATE:${toIcsDateNextDay(item.expiry_date)}`,
+        `SUMMARY:${escapeIcsText(item.name)}`,
+        "END:VEVENT",
+      ].join("\r\n"),
+    );
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//housekeeper//expiry-calendar//JA",
+    "CALSCALE:GREGORIAN",
+    ...events,
+    "END:VCALENDAR",
+  ].join("\r\n");
+};
+
 // --- Download side effect (kept separate from the pure functions above) ---
 
 const pad2 = (n: number) => String(n).padStart(2, "0");

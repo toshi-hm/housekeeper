@@ -14,6 +14,7 @@ import {
   historyRowsToCSV,
   ImportParseError,
   itemsToCSV,
+  itemsToICS,
   itemsToJSON,
   jsonToItems,
 } from "./export";
@@ -800,5 +801,59 @@ describe("buildExportFilename", () => {
   test("formats base-YYYYMMDD.ext", () => {
     const fixedNow = () => new Date(2026, 6, 9); // 2026-07-09 local
     expect(buildExportFilename("items", "csv", fixedNow)).toBe("items-20260709.csv");
+  });
+});
+
+describe("itemsToICS", () => {
+  const fixedNow = () => new Date(2026, 6, 9, 12, 0, 0); // 2026-07-09 12:00 local
+
+  test("wraps events in a VCALENDAR with the RFC5545 required properties", () => {
+    const ics = itemsToICS([], [], fixedNow);
+    expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
+    expect(ics).toContain("VERSION:2.0");
+    expect(ics.endsWith("END:VCALENDAR")).toBe(true);
+  });
+
+  test("emits one all-day VEVENT per item with an expiry date", () => {
+    const item = makeItem({ id: "item-1", name: "牛乳", expiry_date: "2026-07-15" });
+    const ics = itemsToICS([item], [], fixedNow);
+    expect(ics).toContain("BEGIN:VEVENT");
+    expect(ics).toContain("UID:housekeeper-expiry-item-1@housekeeper");
+    expect(ics).toContain("DTSTART;VALUE=DATE:20260715");
+    // DTEND is the exclusive end date for an all-day event (the next day).
+    expect(ics).toContain("DTEND;VALUE=DATE:20260716");
+    expect(ics).toContain("SUMMARY:牛乳");
+    expect(ics).toContain("END:VEVENT");
+  });
+
+  test("skips items without an expiry date", () => {
+    const item = makeItem({ expiry_date: null });
+    const ics = itemsToICS([item], [], fixedNow);
+    expect(ics).not.toContain("BEGIN:VEVENT");
+  });
+
+  test("excludes daily goods even if expiry_date is still set on the row (#953)", () => {
+    const item = makeItem({
+      category_id: "cat-1",
+      item_type: null,
+      expiry_date: "2026-07-15",
+    });
+    const ics = itemsToICS([item], [{ id: "cat-1", kind: "daily_goods" }], fixedNow);
+    expect(ics).not.toContain("BEGIN:VEVENT");
+  });
+
+  test("escapes commas, semicolons, backslashes, and newlines in SUMMARY", () => {
+    const item = makeItem({ name: "牛乳; 1L, 特売\\品\nメモ", expiry_date: "2026-07-15" });
+    const ics = itemsToICS([item], [], fixedNow);
+    expect(ics).toContain("SUMMARY:牛乳\\; 1L\\, 特売\\\\品\\nメモ");
+  });
+
+  test("DTSTAMP reflects the injected now() as a UTC basic-format timestamp", () => {
+    const ics = itemsToICS(
+      [makeItem({ expiry_date: "2026-07-15" })],
+      [],
+      () => new Date("2026-07-09T03:04:05.000Z"),
+    );
+    expect(ics).toContain("DTSTAMP:20260709T030405Z");
   });
 });
