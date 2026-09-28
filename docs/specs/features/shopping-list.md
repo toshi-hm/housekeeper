@@ -113,6 +113,22 @@ shopping 行は `planned` のまま残り同じ購入操作がリトライされ
   「◯◯店が最安（¥X）」を小さく表示する。新規テーブル・Edge Functionは追加せず、既存の集計を
   買い物リスト画面から参照するのみ（#854）
 
+### 「一緒に買われることが多い」レコメンド（#1009）
+
+- アイテムを買い物リストに追加すると、過去に同じ「購入完了」操作でまとめて
+  `shopping_list_archive` へアーカイブされた（＝同じ買い物で一緒に買われた）商品名を
+  頻度順（既定上位2件）でチップ表示し、ワンタップで追加できる
+- 新規テーブル・Edge Functionは追加しない。既に取得済みの `usePurchaseHistory()`
+  （`shopping_list_archive`）をそのまま再利用する
+- 集計ロジック: `buildCooccurrenceSuggestions`（`src/lib/shoppingCooccurrence.ts`）。
+  `archive_purchased_shopping_items()` RPC が同一バッチの全行に同じ `archived_at`
+  （`statement_timestamp()`）を書き込むことを利用し、`archived_at` の一致を「同じ購入」の
+  キーとする。対象アイテムと同じバッチに含まれていた他の商品名の頻度を集計し、既に
+  リストにある商品名と対象アイテム自身は除外する
+- UI: `CooccurrenceSuggestion`（molecule）。表示専用で、チップタップ時は既存の
+  `useUpsertShoppingItem()` をそのまま呼ぶ（重複統合ロジックも共有される）。✕ボタンで
+  手動的に非表示にできる
+
 ## バリデーション
 
 - `name`: 必須、1〜120 文字
@@ -133,6 +149,10 @@ shopping 行は `planned` のまま残り同じ購入操作がリトライされ
 
 - 購入済みクリア時のアーカイブ保存（`shopping_list_archive`）
 - 設定 > 購入履歴ページ（日付別グループ表示、再購入）
+
+## v1.3 範囲
+
+- 「一緒に買われることが多い」レコメンド（#1009）
 
 ## Backlog
 
