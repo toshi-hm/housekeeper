@@ -89,39 +89,23 @@ interface SaveRecipeInput {
   items: RecipeItemInput[];
 }
 
-const saveRecipe = async ({ id, name, items }: SaveRecipeInput): Promise<void> => {
+export const saveRecipe = async ({ id, name, items }: SaveRecipeInput): Promise<void> => {
   requireOnline();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
 
-  const { data: recipe, error } = await supabase
-    .from("recipes")
-    .upsert({ id, user_id: user.id, name }, { onConflict: "id" })
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-
-  // 構成アイテムは入れ替え方式（既存を削除して挿入し直す）でシンプルに同期する
-  // (ShoppingTemplatesPanel の saveTemplate と同じ方針)。
-  const { error: deleteError } = await supabase
-    .from("recipe_items")
-    .delete()
-    .eq("recipe_id", recipe.id);
-  if (deleteError) throw new Error(deleteError.message);
-
-  const rows = items
+  // レシピ本体の更新と構成アイテムの入れ替え（削除→挿入）を1つのDB関数呼び出しに
+  // まとめ、単一トランザクションとして実行する。途中で失敗しても全体がロールバック
+  // され、材料が全損することはない（#1126、useShoppingTemplates の saveTemplate
+  // と同じ方針）。
+  const payloadItems = items
     .filter((item) => item.item_id && item.amount > 0)
-    .map((item) => ({
-      recipe_id: recipe.id as string,
-      item_id: item.item_id,
-      amount: item.amount,
-    }));
-  if (rows.length > 0) {
-    const { error: insertError } = await supabase.from("recipe_items").insert(rows);
-    if (insertError) throw new Error(insertError.message);
-  }
+    .map((item) => ({ item_id: item.item_id, amount: item.amount }));
+
+  const { error } = await supabase.rpc("save_recipe", {
+    p_id: id ?? null,
+    p_name: name,
+    p_items: payloadItems,
+  });
+  if (error) throw new Error(error.message);
 };
 
 export const useSaveRecipe = () => {
