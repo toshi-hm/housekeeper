@@ -4,12 +4,19 @@ name: Deploy Supabase Edge Functions
 # 「コードは main にマージ済みだが Edge Function は本番未デプロイ」というドリフト
 # （#934, #1043 と同種の問題）を構造的に防ぐ。db-types.yml と同じ認証情報ハンドリング
 # （SUPABASE_ACCESS_TOKEN 未設定時はスキップ）を採用する。
+#
+# `push: branches: [main]` ではなく `workflow_run` で CI ワークフロー完了後にのみ発火
+# させている。別ワークフローファイルをまたぐ `needs:` は存在しないため、push トリガー
+# で ci.yml と並走させると「CI（Deno Edge Function Tests 等）が落ちた/終わっていない
+# コミットの Edge Function が本番にデプロイされる」事故を防げない。`branches: [main]`
+# フィルタは CI 側の実行元ブランチに対して掛かるため、CI が main への push で走った
+# 回（PR 上の実行は対象外）にのみ後続する。
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
-    paths:
-      - "supabase/functions/**"
   workflow_dispatch:
     inputs:
       function_name:
@@ -27,11 +34,21 @@ jobs:
     # `secrets` はジョブ/ステップの `if:` から直接参照できないため、db-types.yml と
     # 同様に vars.SUPABASE_PROJECT_ID の有無だけをここでゲートし、
     # SUPABASE_ACCESS_TOKEN の有無は最初のステップで確認する。
-    if: vars.SUPABASE_PROJECT_ID != ''
+    #
+    # 加えて、実際にデプロイして良い状況かどうかもここでゲートする:
+    #   - workflow_run トリガーの場合は、対象の CI 実行が成功(success)していること
+    #   - workflow_dispatch（手動実行）の場合は、main ブランチからの実行であること
+    #     （workflow_dispatch は任意のブランチ/タグを実行元に選べてしまうため、これが
+    #     ないと未レビューのfeatureブランチからでも本番デプロイできてしまう）
+    if: "vars.SUPABASE_PROJECT_ID != '' && ((github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))"
     steps:
       - uses: actions/checkout@v7
         with:
-          # push イベントでの差分検出（github.event.before との比較）に必要。
+          # workflow_run イベントではデフォルトのrefがワークフロー定義ファイル自体の
+          # ブランチになってしまうため、CIが実際に走った対象コミットを明示的にcheckout
+          # する。workflow_dispatchの場合はgithub.sha（実行元ブランチのHEAD）でよい。
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          # 差分検出（対象コミットと親コミットの比較）に必要。
           fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
@@ -54,6 +71,8 @@ jobs:
       - name: Determine target functions
         if: steps.creds.outputs.configured == 'true'
         id: targets
+        env:
+          CURRENT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
           cd supabase/functions
@@ -64,13 +83,11 @@ jobs:
             # 手動実行かつ対象未指定 = 全Function再デプロイ（デプロイ漏れの復旧用）。
             TARGETS=$(find . -maxdepth 1 -mindepth 1 -type d -not -name "_shared" -printf "%f\n" | sort)
           else
-            BEFORE="${{ github.event.before }}"
-            # 初回push等でbeforeが全ゼロSHAになるケース（このリポジトリでは実質発生
-            # しないが、想定外のジョブ失敗を避けるため親コミットにフォールバックする）。
-            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-              BEFORE="${{ github.sha }}~1"
-            fi
-            CHANGED=$(git diff --name-only --relative "$BEFORE" "${{ github.sha }}" -- . || true)
+            # workflow_run イベントには push イベントの `before` に相当する値がないため、
+            # 直前1コミットとの差分を見る（mainはsquash mergeで1マージ=1コミットになる
+            # 運用のため、親コミットとの比較で当該マージの変更点を検出できる）。
+            BEFORE="${CURRENT_SHA}~1"
+            CHANGED=$(git diff --name-only --relative "$BEFORE" "$CURRENT_SHA" -- . || true)
             if echo "$CHANGED" | grep -q '^_shared/'; then
               # 共有コードの変更は影響範囲が読めないため、安全側に全Functionを再デプロイする。
               TARGETS=$(find . -maxdepth 1 -mindepth 1 -type d -not -name "_shared" -printf "%f\n" | sort)
