@@ -48,12 +48,16 @@ export const RecipeForm = ({
     setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
 
-  const validRows = rows.filter((row) => row.item_id && row.amount > 0);
-  const canSubmit = name.trim().length > 0 && validRows.length > 0 && !isSubmitting;
+  // #1127: 数量が0以下の行を無言で保存対象から除外すると、ユーザーが保存後に
+  // なぜ材料が消えたか分からなくなる。無効な行がある間は保存自体をブロックし、
+  // 該当行にエラー表示を出して気づけるようにする。
+  const isRowInvalid = (row: RecipeItemInput) => !row.item_id || row.amount <= 0;
+  const hasInvalidRow = rows.some(isRowInvalid);
+  const canSubmit = name.trim().length > 0 && !hasInvalidRow && !isSubmitting;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSubmit({ name: name.trim(), items: validRows });
+    onSubmit({ name: name.trim(), items: rows });
   };
 
   return (
@@ -75,46 +79,59 @@ export const RecipeForm = ({
           <p className="text-sm text-muted-foreground">{t("noAvailableItems")}</p>
         ) : (
           <>
-            {rows.map((row, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Select
-                  value={row.item_id}
-                  onChange={(e) => updateRow(index, { item_id: e.target.value })}
-                  className="flex-1"
-                  aria-label={t("recipeItemSelect")}
-                >
-                  {availableItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </Select>
-                <Input
-                  type="number"
-                  min={0}
-                  step="any"
-                  value={row.amount}
-                  onChange={(e) =>
-                    updateRow(index, { amount: Math.max(0, Number(e.target.value) || 0) })
-                  }
-                  className="w-20"
-                  aria-label={t("recipeItemAmount")}
-                />
-                <span className="w-10 shrink-0 text-xs text-muted-foreground">
-                  {itemUnit(row.item_id)}
-                </span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="shrink-0"
-                  aria-label={t("recipeRemoveRow")}
-                  onClick={() => setRows((prev) => prev.filter((_, i) => i !== index))}
-                  disabled={rows.length === 1}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+            {rows.map((row, index) => {
+              const amountInvalid = row.amount <= 0;
+              const amountErrorId = `recipe-amount-error-${index}`;
+              return (
+                <div key={index} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={row.item_id}
+                      onChange={(e) => updateRow(index, { item_id: e.target.value })}
+                      className="flex-1"
+                      aria-label={t("recipeItemSelect")}
+                    >
+                      {availableItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={row.amount}
+                      onChange={(e) =>
+                        updateRow(index, { amount: Math.max(0, Number(e.target.value) || 0) })
+                      }
+                      className="w-20"
+                      aria-label={t("recipeItemAmount")}
+                      aria-invalid={amountInvalid}
+                      aria-describedby={amountInvalid ? amountErrorId : undefined}
+                    />
+                    <span className="w-10 shrink-0 text-xs text-muted-foreground">
+                      {itemUnit(row.item_id)}
+                    </span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="shrink-0"
+                      aria-label={t("recipeRemoveRow")}
+                      onClick={() => setRows((prev) => prev.filter((_, i) => i !== index))}
+                      disabled={rows.length === 1}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {amountInvalid && (
+                    <p id={amountErrorId} className="text-sm text-destructive">
+                      {t("recipeAmountError")}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
             <Button
               size="sm"
               variant="ghost"

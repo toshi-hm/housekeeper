@@ -17,6 +17,7 @@
   "loadError": "読み込みに失敗しました",
   "noAvailableItems": "在庫アイテムがまだありません",
   "recipeAddRow": "アイテムを追加",
+  "recipeAmountError": "数量を入力してください（0より大きい値）",
   "recipeItemAmount": "消費量",
   "recipeItems": "構成アイテム",
   "recipeItemSelect": "アイテムを選択",

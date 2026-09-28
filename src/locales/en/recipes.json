@@ -20,6 +20,7 @@
   "loadError": "Failed to load",
   "noAvailableItems": "No inventory items yet",
   "recipeAddRow": "Add item",
+  "recipeAmountError": "Enter an amount greater than 0",
   "recipeItemAmount": "Amount",
   "recipeItems": "Ingredients",
   "recipeItemSelect": "Select item",
