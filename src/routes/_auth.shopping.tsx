@@ -9,6 +9,7 @@ import { ShareButton } from "@/components/atoms/ShareButton";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { CooccurrenceSuggestion } from "@/components/molecules/CooccurrenceSuggestion";
 import { OfflineQueuePanel } from "@/components/molecules/OfflineQueuePanel";
 import { ScanToShoppingDialog } from "@/components/molecules/ScanToShoppingDialog";
 import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
@@ -29,6 +30,7 @@ import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemIma
 import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
 import { useOfflineActionQueue } from "@/hooks/useOfflineActionQueue";
+import { usePurchaseHistory } from "@/hooks/usePurchaseHistory";
 import { useRovingTabs } from "@/hooks/useRovingTabs";
 import {
   QUERY_KEY as SHOPPING_QUERY_KEY,
@@ -53,6 +55,7 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import type { OfflineQueuedAction } from "@/lib/offlineActionQueue";
 import { takePendingPurchaseImage } from "@/lib/offlinePendingPurchaseImage";
 import { OfflineError } from "@/lib/requireOnline";
+import { buildCooccurrenceSuggestions } from "@/lib/shoppingCooccurrence";
 import {
   type CategoryResolver,
   groupShoppingItemsByCategory,
@@ -121,6 +124,9 @@ export const ShoppingPage = () => {
   const [addName, setAddName] = useState("");
   const [addNote, setAddNote] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  // #1009: 直前に追加したアイテム名。「一緒に買われることが多いもの」の
+  // サジェスト表示のトリガーとして使う（null なら非表示）。
+  const [cooccurrenceFor, setCooccurrenceFor] = useState<string | null>(null);
   const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -159,6 +165,8 @@ export const ShoppingPage = () => {
     refetch: refetchPlannedItems,
   } = useShoppingList("planned");
   const { data: templates = [] } = useShoppingTemplates();
+  // #1009: 「一緒に買われることが多いもの」レコメンドの計算元データ。
+  const { data: archivedPurchases = [] } = usePurchaseHistory();
   const {
     data: inventoryItems = [],
     isLoading: inventoryItemsLoading,
@@ -247,15 +255,31 @@ export const ShoppingPage = () => {
   });
 
   const handleAdd = async () => {
-    if (!addName.trim()) return;
+    const name = addName.trim();
+    if (!name) return;
     try {
-      await upsert.mutateAsync({ name: addName.trim(), note: addNote || null });
+      await upsert.mutateAsync({ name, note: addNote || null });
       toast(t("addSuccess"), "success");
       setAddName("");
       setAddNote("");
       setShowAdd(false);
+      // #1009: 追加成功をトリガに「一緒に買われることが多いもの」を提示する。
+      setCooccurrenceFor(name);
     } catch {
       // Error toast is handled by useUpsertShoppingItem.onError
+    }
+  };
+
+  // #1009: サジェストチップのワンタップ追加。フォームの入力状態は変更せず、
+  // 提示していた行はそのまま消す（同じサジェストへの連続タップを防ぐ）。
+  const handleAddSuggested = async (name: string) => {
+    try {
+      await upsert.mutateAsync({ name, note: null });
+      toast(t("addSuccess"), "success");
+    } catch {
+      // Error toast is handled by useUpsertShoppingItem.onError
+    } finally {
+      setCooccurrenceFor(null);
     }
   };
 
@@ -554,6 +578,17 @@ export const ShoppingPage = () => {
   // （お店の売り場順）でリストを並べる。通常タブのソート設定（sort state）とは
   // 独立して、常にカテゴリ順を使う（この画面は編集操作を持たずソートUIも無い）。
   const shoppingModePlannedItems = sortShoppingItems(plannedItems, "category", resolveCategory);
+
+  // #1009: 直前に追加したアイテムと同じ「購入完了」バッチで一緒にアーカイブされてきた
+  // 商品名の頻度を集計する。既にリストにあるものは除外する。件数が少なくコストも低いため
+  // メモ化はしない。
+  const cooccurrenceSuggestions = cooccurrenceFor
+    ? buildCooccurrenceSuggestions(
+        archivedPurchases,
+        cooccurrenceFor,
+        plannedItems.map((item) => item.name),
+      )
+    : [];
 
   // 買い物中モード（#926）: ダッシュボード（`_auth.index.tsx`）と同じ算出ロジックを
   // 再利用する。minimum_stock ベースのアラートは既に取得済みの inventoryItems から
@@ -874,6 +909,15 @@ export const ShoppingPage = () => {
           </div>
         </div>
       )}
+
+      {/* #1009: 直前に追加したアイテムと一緒に買われることが多い商品のサジェスト */}
+      <CooccurrenceSuggestion
+        suggestions={cooccurrenceSuggestions}
+        onAdd={(name) => {
+          void handleAddSuggested(name);
+        }}
+        onDismiss={() => setCooccurrenceFor(null)}
+      />
 
       {shoppingMode ? (
         <>

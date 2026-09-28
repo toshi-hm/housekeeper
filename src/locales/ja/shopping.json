@@ -10,6 +10,7 @@
   "clearPurchasedConfirmLabel": "すべて削除",
   "clearPurchasedSuccess": "購入済みアイテムを削除しました",
   "clearPurchasedTitle": "購入済みアイテムを削除",
+  "cooccurrenceSuggestionLabel": "よく一緒に買われるもの:",
   "createItemFromPurchase": "在庫に追加",
   "deleteConfirm": "このアイテムを買い物リストから削除しますか？",
   "deleteSuccess": "削除しました",
