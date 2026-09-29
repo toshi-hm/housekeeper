@@ -64,6 +64,7 @@ things specs depend on.
 - `pwa-sw-navigation.spec.ts` — real Service Worker navigation fallback for
   offline direct navigation to a non-precached route (#784).
 - `calendar.spec.ts` — expiry calendar check-off + undo (#658).
+- `categories.spec.ts` — category master data CRUD: create → rename → delete blocked while in use → delete, with axe checks (#1041).
 - `recipes.spec.ts` — recipe creation and execution (consumption recording, #658).
 - `bulk-actions.spec.ts` — dashboard multi-select bulk move/consume/delete (#658).
 

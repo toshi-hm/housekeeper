@@ -183,8 +183,9 @@ issues:
   routed-and-interacted checkpoints (`.github/workflows/e2e.yml`, gating
   every PR): `PurchaseDialog` open (`e2e/main-flow.spec.ts`), `BulkMoveDialog`
   open (`e2e/bulk-actions.spec.ts`), and `ConfirmDialog` open
-  (`e2e/bulk-actions.spec.ts`). This is still a small, hand-picked slice (3
-  dialogs across 2 specs), not a sweep of every route/state — most
+  (`e2e/bulk-actions.spec.ts`). #1041 adds the category management page and
+  its delete `alertdialog` (`e2e/categories.spec.ts`). This is still a small,
+  hand-picked slice (4 checkpoints across 3 specs), not a sweep of every route/state — most
   interactive states are still only checked via the Storybook snapshot path
   or not at all. Focus order, keyboard-trap _correctness_ (axe-core can see
   that `role="dialog"`/`aria-modal` are present, not that Tab actually stays

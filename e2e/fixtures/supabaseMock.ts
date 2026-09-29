@@ -270,6 +270,26 @@ export const installSupabaseMock = async (page: Page): Promise<Store> => {
     const url = new URL(request.url());
     const table = url.pathname.replace(/^.*\/rest\/v1\//, "");
 
+    if (table === "rpc/delete_category_if_unused") {
+      // Mirrors the delete_category_if_unused RPC (#1041): refuses (HK001) while a
+      // non-deleted item still references the category, otherwise deletes the row.
+      const body = (request.postDataJSON() as { p_id?: string }) ?? {};
+      const inUse = (store.items ?? []).some(
+        (i) => i.category_id === body.p_id && (i.deleted_at ?? null) === null,
+      );
+      if (inUse) {
+        await route.fulfill({
+          status: 400,
+          contentType: "application/json",
+          body: JSON.stringify({ code: "HK001", message: "category in use", details: null }),
+        });
+        return;
+      }
+      store.categories = (store.categories ?? []).filter((c) => c.id !== body.p_id);
+      await route.fulfill({ status: 204, body: "" });
+      return;
+    }
+
     if (table === "rpc/bulk_consume_items") {
       // Mirrors supabase/migrations/20260805000002_atomic_bulk_consume_items.sql
       // (#743): consumption_logs insert + item_lots delete + items reset, all
