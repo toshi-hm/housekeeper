@@ -929,6 +929,16 @@ export interface Database {
         Args: { p_item_ids: string[] };
         Returns: void;
       };
+      // #1126: atomic recipe upsert + item replacement — see
+      // supabase/migrations/20260928000001_atomic_save_recipe.sql
+      save_recipe: {
+        Args: {
+          p_id: string | null;
+          p_name: string;
+          p_items: { item_id: string; amount: number }[];
+        };
+        Returns: string;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

@@ -290,6 +290,58 @@ export const installSupabaseMock = async (page: Page): Promise<Store> => {
       return;
     }
 
+    if (table === "rpc/save_recipe") {
+      // Mirrors supabase/migrations/20260928000001_atomic_save_recipe.sql
+      // (#1126): recipe upsert + recipe_items replacement, applied to the
+      // in-memory store as if it ran in one transaction.
+      const body =
+        (request.postDataJSON() as {
+          p_id?: string | null;
+          p_name?: string;
+          p_items?: { item_id: string; amount: number }[];
+        }) ?? {};
+      const recipesStore = (store.recipes ??= []);
+      const itemsStore = (store.recipe_items ??= []);
+
+      let recipeId = body.p_id ?? null;
+      if (recipeId) {
+        const existing = recipesStore.find((r) => r.id === recipeId && r.user_id === FAKE_USER_ID);
+        if (!existing) {
+          await route.fulfill({ status: 404, body: "" });
+          return;
+        }
+        existing.name = body.p_name;
+        existing.updated_at = nowIso();
+      } else {
+        recipeId = uuid();
+        recipesStore.push({
+          id: recipeId,
+          user_id: FAKE_USER_ID,
+          name: body.p_name,
+          created_at: nowIso(),
+          updated_at: nowIso(),
+        });
+      }
+
+      store.recipe_items = itemsStore.filter((ri) => ri.recipe_id !== recipeId);
+      for (const item of body.p_items ?? []) {
+        store.recipe_items.push({
+          id: uuid(),
+          recipe_id: recipeId,
+          item_id: item.item_id,
+          amount: item.amount,
+          created_at: nowIso(),
+        });
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(recipeId),
+      });
+      return;
+    }
+
     if (table === "rpc/bulk_consume_items") {
       // Mirrors supabase/migrations/20260805000002_atomic_bulk_consume_items.sql
       // (#743): consumption_logs insert + item_lots delete + items reset, all
