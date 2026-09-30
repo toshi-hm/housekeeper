@@ -20,6 +20,7 @@ import {
   historyRowsToCSV,
   type ItemLotExport,
   itemsToCSV,
+  itemsToICS,
   itemsToJSON,
 } from "@/lib/export";
 import { useToast } from "@/lib/toast-context";
@@ -121,6 +122,16 @@ export const DataExportPanel = () => {
     updateUserSettings.mutate({ last_backup_export_at: new Date().toISOString() });
   };
 
+  const handleExportItemsIcs = () => {
+    if (itemsFailed) {
+      showExportError();
+      return;
+    }
+    const ics = itemsToICS(items, categories);
+    downloadTextFile(ics, buildExportFilename("expiry", "ics"), "text/calendar;charset=utf-8");
+    toast(t("exportSuccess"), "success");
+  };
+
   const handleExportHistoryCsv = () => {
     if (historyFailed) {
       showExportError();
@@ -168,6 +179,16 @@ export const DataExportPanel = () => {
           >
             <Download className="mr-1.5 h-4 w-4" />
             {t("exportDownloadJson")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={itemsPending}
+            onClick={handleExportItemsIcs}
+          >
+            <Download className="mr-1.5 h-4 w-4" />
+            {t("exportDownloadIcs")}
           </Button>
         </div>
       </div>

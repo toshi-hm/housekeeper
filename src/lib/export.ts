@@ -540,6 +540,109 @@ export const historyRowsToCSV = (
   return buildCsv(header, csvRows);
 };
 
+// --- ICS calendar export (#1117) ---
+
+/** RFC5545 TEXT値のエスケープ（バックスラッシュ→カンマ→セミコロン→改行の順で処理する必要がある）。 */
+const escapeIcsText = (value: string): string =>
+  value.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
+
+/** `YYYY-MM-DD` → `YYYYMMDD`（VALUE=DATE 形式）。 */
+const toIcsDate = (isoDate: string): string => isoDate.replace(/-/g, "");
+
+/** `YYYY-MM-DD` の翌日を `YYYYMMDD` で返す（終日イベントの DTEND は排他的終了日、#1117）。 */
+const toIcsDateNextDay = (isoDate: string): string => {
+  const [y, m, d] = isoDate.split("-").map(Number) as [number, number, number];
+  const next = new Date(y, m - 1, d + 1);
+  const pad2local = (n: number) => String(n).padStart(2, "0");
+  return `${next.getFullYear()}${pad2local(next.getMonth() + 1)}${pad2local(next.getDate())}`;
+};
+
+const toIcsTimestamp = (date: Date): string =>
+  `${date.toISOString().replace(/[-:]/g, "").split(".")[0]}Z`;
+
+/** RFC5545 3.1 で規定される content line の折り返し上限（octet 数）。 */
+const ICS_FOLD_LIMIT_OCTETS = 75;
+
+/**
+ * RFC5545 3.1 の line folding。1 content line が {@link ICS_FOLD_LIMIT_OCTETS} octet を
+ * 超える場合、CRLF + 半角スペース1個で継続行に折り返す（継続行はスペース込みで上限に
+ * 収める）。アイテム名は長さ制限がなく日本語（UTF-8で1文字3byte）を含み得るため、
+ * `SUMMARY` 等の値が上限を超えるケースが実際に起こりうる（#1117 レビュー指摘）。
+ * サロゲートペアや結合文字を壊さないよう、UTF-16コードユニットではなくコードポイント
+ * （`for...of`）単位で計測・分割する。
+ */
+const foldIcsLine = (line: string): string => {
+  const byteLength = (s: string) => new TextEncoder().encode(s).length;
+  if (byteLength(line) <= ICS_FOLD_LIMIT_OCTETS) return line;
+
+  const segments: string[] = [];
+  let current = "";
+  let currentBytes = 0;
+  // 最初のセグメントは上限そのまま、2番目以降は継続行の先頭に足すスペース1byte分を
+  // 差し引いた上限にする。
+  let limit = ICS_FOLD_LIMIT_OCTETS;
+
+  for (const ch of line) {
+    const chBytes = byteLength(ch);
+    if (currentBytes + chBytes > limit && current !== "") {
+      segments.push(current);
+      current = "";
+      currentBytes = 0;
+      limit = ICS_FOLD_LIMIT_OCTETS - 1;
+    }
+    current += ch;
+    currentBytes += chBytes;
+  }
+  segments.push(current);
+
+  return segments.map((segment, i) => (i === 0 ? segment : ` ${segment}`)).join("\r\n");
+};
+
+/**
+ * 期限日を `.ics`（iCalendar）形式でエクスポートする（#1117）。本アプリはバックエンドを
+ * 持たないため（CLAUDE.md）、完全にクライアントサイドの文字列組み立てで実装する。
+ * 日用品（`kind: "daily_goods"`）は期限を持たないため対象外（`dropExpiryForDailyGoods`
+ * で CSV エクスポート等と同じ扱いに揃える）。
+ *
+ * RFC5545 準拠のため、各 content line は {@link foldIcsLine} で折り返し、ファイル末尾も
+ * 含め全 content line を CRLF で終端する（レビュー指摘: 末尾 CRLF 欠落・折り返し未実装）。
+ */
+export const itemsToICS = (
+  items: Item[],
+  categories: Pick<Category, "id" | "kind">[],
+  now: () => Date = () => new Date(),
+): string => {
+  const categoryById: Record<string, Pick<Category, "kind"> | undefined> = Object.fromEntries(
+    categories.map((c) => [c.id, { kind: c.kind }]),
+  );
+  const displayItems = dropExpiryForDailyGoods(items, categoryById);
+  const dtstamp = toIcsTimestamp(now());
+
+  const eventLines = displayItems
+    .filter((item): item is Item & { expiry_date: string } => !!item.expiry_date)
+    .flatMap((item) => [
+      "BEGIN:VEVENT",
+      `UID:housekeeper-expiry-${item.id}@housekeeper`,
+      `DTSTAMP:${dtstamp}`,
+      `DTSTART;VALUE=DATE:${toIcsDate(item.expiry_date)}`,
+      `DTEND;VALUE=DATE:${toIcsDateNextDay(item.expiry_date)}`,
+      `SUMMARY:${escapeIcsText(item.name)}`,
+      "END:VEVENT",
+    ]);
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//housekeeper//expiry-calendar//JA",
+    "CALSCALE:GREGORIAN",
+    ...eventLines,
+    "END:VCALENDAR",
+  ];
+
+  // 全 content line を CRLF 終端にする（末尾行も含む、RFC5545 3.1）。
+  return `${lines.map(foldIcsLine).join("\r\n")}\r\n`;
+};
+
 // --- Download side effect (kept separate from the pure functions above) ---
 
 const pad2 = (n: number) => String(n).padStart(2, "0");

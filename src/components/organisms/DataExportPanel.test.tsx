@@ -123,6 +123,33 @@ describe("DataExportPanel", () => {
     expect(toastMock).toHaveBeenCalledWith(expect.any(String), "success");
   });
 
+  it("clicking the items ICS button downloads a calendar file (#1117)", () => {
+    const { getByRole } = render(<DataExportPanel />, { wrapper });
+    fireEvent.click(getByRole("button", { name: /ICS/i }));
+
+    expect(downloadSpy).toHaveBeenCalledTimes(1);
+    const [content, filename, mimeType] = downloadSpy.mock.calls[0] as [string, string, string];
+    expect(content).toContain("BEGIN:VEVENT");
+    expect(content).toContain("SUMMARY:牛乳");
+    expect(filename).toMatch(/^expiry-\d{8}\.ics$/);
+    expect(mimeType).toContain("text/calendar");
+    expect(toastMock).toHaveBeenCalledWith(expect.any(String), "success");
+  });
+
+  it("does not download an ICS file when inventory data failed to load", () => {
+    spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: undefined,
+      isError: true,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getByRole } = render(<DataExportPanel />, { wrapper });
+    fireEvent.click(getByRole("button", { name: /ICS/i }));
+
+    expect(downloadSpy).not.toHaveBeenCalled();
+    expect(toastMock).toHaveBeenCalledWith(expect.any(String), "error");
+  });
+
   it("clicking the items JSON button downloads a JSON backup file", () => {
     const { getByRole } = render(<DataExportPanel />, { wrapper });
     fireEvent.click(getByRole("button", { name: /JSON/i }));
