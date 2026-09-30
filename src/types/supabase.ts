@@ -1319,6 +1319,10 @@ export interface Database {
           household_id: string;
         }[];
       };
+      save_recipe: {
+        Args: { p_id: string; p_items: Json; p_name: string };
+        Returns: string;
+      };
       save_shopping_list_template: {
         Args: { p_id: string; p_items: Json; p_name: string };
         Returns: string;
