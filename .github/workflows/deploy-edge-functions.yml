@@ -80,13 +80,21 @@ jobs:
         id: targets
         env:
           CURRENT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          # 入力値はシェルに直接展開せず環境変数経由で受け取る（スクリプトインジェクション対策）。
+          INPUT_FUNCTION_NAME: ${{ inputs.function_name }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           cd supabase/functions
 
-          if [ -n "${{ inputs.function_name }}" ]; then
-            TARGETS="${{ inputs.function_name }}"
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ -n "$INPUT_FUNCTION_NAME" ]; then
+            # パストラバーサル等を避けるため、Function名として妥当な文字のみ許可する。
+            if ! echo "$INPUT_FUNCTION_NAME" | grep -Eq '^[A-Za-z0-9_-]+$'; then
+              echo "::error::Invalid function_name: $INPUT_FUNCTION_NAME"
+              exit 1
+            fi
+            TARGETS="$INPUT_FUNCTION_NAME"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             # 手動実行かつ対象未指定 = 全Function再デプロイ（デプロイ漏れの復旧用）。
             TARGETS=$(find . -maxdepth 1 -mindepth 1 -type d -not -name "_shared" -printf "%f\n" | sort)
           else
