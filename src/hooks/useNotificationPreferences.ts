@@ -63,7 +63,9 @@ export const subscribePush = async (): Promise<void> => {
   if (error) throw error;
 };
 
-export const unsubscribePush = async (): Promise<void> => {
+export const unsubscribePush = async (
+  options: { tolerateServerError?: boolean } = {},
+): Promise<void> => {
   requireOnline();
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
@@ -72,7 +74,9 @@ export const unsubscribePush = async (): Promise<void> => {
   const { error } = await supabase.functions.invoke("subscribe-push", {
     body: { action: "unsubscribe", endpoint: subscription.endpoint },
   });
-  if (error) throw error;
+  // #1134: サインアウト時はセッション失効でEdge Functionが401になり得る。その場合も
+  // ブラウザ側の購読は必ず解除し、以降の通知がこの端末に届かないようにする。
+  if (error && !options.tolerateServerError) throw error;
   await subscription.unsubscribe();
 };
 
@@ -88,7 +92,7 @@ export const unsubscribePush = async (): Promise<void> => {
  */
 export const unsubscribePushOnSignOut = async (): Promise<void> => {
   try {
-    await unsubscribePush();
+    await unsubscribePush({ tolerateServerError: true });
   } catch {
     // 非致命: 上記の通りログアウト処理は継続させる
   }
