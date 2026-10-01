@@ -6,7 +6,9 @@ import { supabase } from "@/lib/supabase";
  * 破棄済みで subscribe-push が401になるため、Push購読の解除はセッションが有効な
  * signOut() の「前」に行う。
  */
-export const signOutUser = async (): Promise<void> => {
-  await unsubscribePushOnSignOut();
+export const signOutUser = async (
+  unsubscribePush: () => Promise<void> = unsubscribePushOnSignOut,
+): Promise<void> => {
+  await unsubscribePush();
   await supabase.auth.signOut();
 };
