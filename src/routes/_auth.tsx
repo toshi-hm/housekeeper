@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { useAppBadge } from "@/hooks/useAppBadge";
 import { useRealtimeItems } from "@/hooks/useRealtimeItems";
 import { isMfaChallengeRequired } from "@/lib/mfa";
+import { signOutUser } from "@/lib/signOut";
 import { supabase } from "@/lib/supabase";
 
 const NAV_ROUTES = [
@@ -50,7 +51,7 @@ const AuthLayout = () => {
   useAppBadge();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOutUser();
     void router.navigate({ to: "/login" });
   };
 

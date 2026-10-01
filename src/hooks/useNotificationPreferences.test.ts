@@ -166,6 +166,23 @@ describe("unsubscribePushOnSignOut", () => {
     await expect(unsubscribePushOnSignOut()).resolves.toBeUndefined();
   });
 
+  test("still unsubscribes the local subscription when the Edge Function call fails (#1134)", async () => {
+    invokeResponse = { data: null, error: { message: "401" } };
+    const unsubscribe = mock(() => Promise.resolve(true));
+    setServiceWorker({
+      ready: Promise.resolve({
+        pushManager: {
+          getSubscription: () =>
+            Promise.resolve({ endpoint: "https://push.example/abc", unsubscribe }),
+        },
+      }),
+    });
+
+    await unsubscribePushOnSignOut();
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
   test("does not throw when there is no Service Worker registration (e.g. requireOnline/ready rejects)", async () => {
     const readyRejection = Promise.reject(new Error("no service worker"));
     // Attach a no-op handler synchronously so the runtime never sees this as
