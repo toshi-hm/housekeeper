@@ -63,7 +63,9 @@ export const subscribePush = async (): Promise<void> => {
   if (error) throw error;
 };
 
-export const unsubscribePush = async (): Promise<void> => {
+export const unsubscribePush = async (
+  options: { tolerateServerError?: boolean } = {},
+): Promise<void> => {
   requireOnline();
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
@@ -72,7 +74,9 @@ export const unsubscribePush = async (): Promise<void> => {
   const { error } = await supabase.functions.invoke("subscribe-push", {
     body: { action: "unsubscribe", endpoint: subscription.endpoint },
   });
-  if (error) throw error;
+  // #1134: サインアウト時はセッション失効でEdge Functionが401になり得る。その場合も
+  // ブラウザ側の購読は必ず解除し、以降の通知がこの端末に届かないようにする。
+  if (error && !options.tolerateServerError) throw error;
   await subscription.unsubscribe();
 };
 
@@ -87,24 +91,8 @@ export const unsubscribePush = async (): Promise<void> => {
  * 等に改めて試みる他なく、ログアウト自体をブロックすべきではない。
  */
 export const unsubscribePushOnSignOut = async (): Promise<void> => {
-  // #1134: サーバー側の解除（要JWT）が失敗しても、ブラウザ側の購読は必ず解除する。
-  // セッション失効後の SIGNED_OUT 経由ではEdge Functionが401になり得るため、
-  // 最低限ローカル購読を破棄して以降の通知がこの端末に届かないようにする。
   try {
-    requireOnline();
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-    if (!subscription) return;
-
-    try {
-      const { error } = await supabase.functions.invoke("subscribe-push", {
-        body: { action: "unsubscribe", endpoint: subscription.endpoint },
-      });
-      if (error) throw error;
-    } catch {
-      // 非致命: サーバー側の行が残ってもローカル解除は続行する
-    }
-    await subscription.unsubscribe();
+    await unsubscribePush({ tolerateServerError: true });
   } catch {
     // 非致命: 上記の通りログアウト処理は継続させる
   }

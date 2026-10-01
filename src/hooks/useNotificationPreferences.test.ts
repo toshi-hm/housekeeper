@@ -125,6 +125,25 @@ describe("unsubscribePush", () => {
     expect(unsubscribe).not.toHaveBeenCalled();
   });
 
+  // #1134: unsubscribePushOnSignOut は AuthProvider.test.tsx の mock.module で
+  // 差し替わり得るため、サインアウト用の挙動は実体の unsubscribePush で検証する。
+  test("tolerateServerError: サーバーがエラーでもローカル購読は解除する (#1134)", async () => {
+    invokeResponse = { data: null, error: { message: "401" } };
+    const unsubscribe = mock(() => Promise.resolve(true));
+    setServiceWorker({
+      ready: Promise.resolve({
+        pushManager: {
+          getSubscription: () =>
+            Promise.resolve({ endpoint: "https://push.example/abc", unsubscribe }),
+        },
+      }),
+    });
+
+    await unsubscribePush({ tolerateServerError: true });
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
   test("invokes subscribe-push with action=unsubscribe and unsubscribes locally on success", async () => {
     const unsubscribe = mock(() => Promise.resolve(true));
     setServiceWorker({
@@ -164,23 +183,6 @@ describe("unsubscribePushOnSignOut", () => {
     });
 
     await expect(unsubscribePushOnSignOut()).resolves.toBeUndefined();
-  });
-
-  test("still unsubscribes the local subscription when the Edge Function call fails (#1134)", async () => {
-    invokeResponse = { data: null, error: { message: "401" } };
-    const unsubscribe = mock(() => Promise.resolve(true));
-    setServiceWorker({
-      ready: Promise.resolve({
-        pushManager: {
-          getSubscription: () =>
-            Promise.resolve({ endpoint: "https://push.example/abc", unsubscribe }),
-        },
-      }),
-    });
-
-    await unsubscribePushOnSignOut();
-
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
   test("does not throw when there is no Service Worker registration (e.g. requireOnline/ready rejects)", async () => {
