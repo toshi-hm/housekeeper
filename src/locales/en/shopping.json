@@ -10,6 +10,7 @@
   "clearPurchasedConfirmLabel": "Delete all",
   "clearPurchasedSuccess": "Purchased items cleared",
   "clearPurchasedTitle": "Clear purchased items",
+  "cooccurrenceSuggestionLabel": "Often bought together:",
   "createItemFromPurchase": "Add to inventory",
   "deleteConfirm": "Remove this item from the shopping list?",
   "deleteSuccess": "Deleted",
