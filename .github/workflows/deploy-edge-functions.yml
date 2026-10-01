@@ -140,6 +140,6 @@ jobs:
           while IFS= read -r fn; do
             [ -z "$fn" ] && continue
             echo "::group::Deploying $fn"
-            supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_ID"
+            bunx supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_ID"
             echo "::endgroup::"
           done <<< "$TARGETS"
