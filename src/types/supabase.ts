@@ -744,6 +744,32 @@ export interface Database {
         };
         Relationships: [];
       };
+      low_stock_notification_states: {
+        Row: {
+          item_id: string;
+          notified_at: string;
+          user_id: string;
+        };
+        Insert: {
+          item_id: string;
+          notified_at?: string;
+          user_id: string;
+        };
+        Update: {
+          item_id?: string;
+          notified_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "low_stock_notification_states_item_id_fkey";
+            columns: ["item_id"];
+            isOneToOne: false;
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       notification_preferences: {
         Row: {
           email_address: string | null;
@@ -755,6 +781,7 @@ export interface Database {
           updated_at: string;
           user_id: string;
           waste_digest_enabled: boolean;
+          low_stock_enabled: boolean;
         };
         Insert: {
           email_address?: string | null;
@@ -766,6 +793,7 @@ export interface Database {
           updated_at?: string;
           user_id: string;
           waste_digest_enabled?: boolean;
+          low_stock_enabled?: boolean;
         };
         Update: {
           email_address?: string | null;
@@ -777,6 +805,7 @@ export interface Database {
           updated_at?: string;
           user_id?: string;
           waste_digest_enabled?: boolean;
+          low_stock_enabled?: boolean;
         };
         Relationships: [];
       };

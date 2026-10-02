@@ -437,6 +437,7 @@ export interface Database {
           notify_at: string;
           timezone: string;
           waste_digest_enabled: boolean;
+          low_stock_enabled: boolean;
           updated_at: string;
         };
         Insert: {
@@ -448,6 +449,7 @@ export interface Database {
           notify_at?: string;
           timezone?: string;
           waste_digest_enabled?: boolean;
+          low_stock_enabled?: boolean;
           updated_at?: string;
         };
         Update: {
@@ -459,9 +461,24 @@ export interface Database {
           notify_at?: string;
           timezone?: string;
           waste_digest_enabled?: boolean;
+          low_stock_enabled?: boolean;
           updated_at?: string;
         };
         Relationships: [];
+      };
+      low_stock_notification_states: {
+        Row: { user_id: string; item_id: string; notified_at: string };
+        Insert: { user_id: string; item_id: string; notified_at?: string };
+        Update: { user_id?: string; item_id?: string; notified_at?: string };
+        Relationships: [
+          {
+            foreignKeyName: "low_stock_notification_states_item_id_fkey";
+            columns: ["item_id"];
+            isOneToOne: false;
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       push_subscriptions: {
         Row: {

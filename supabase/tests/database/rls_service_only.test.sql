@@ -4,7 +4,7 @@
 -- - notification_logs: RLS has a SELECT-only policy for the owner; writes
 --   are performed exclusively by the send-expiry-notifications Edge
 --   Function using the service_role key (which bypasses RLS entirely).
--- - waste_streaks (#925): same SELECT-only-for-owner shape as
+-- - waste_streaks (#925) and low_stock_notification_states (#1055): same SELECT-only-for-owner shape as
 --   notification_logs; writes are performed exclusively by the
 --   send-waste-digest Edge Function's weekly batch using the service_role
 --   key. Client-side writes must stay blocked to prevent a user from
@@ -17,7 +17,7 @@
 --   concept on this table).
 begin;
 
-select plan(14);
+select plan(19);
 
 insert into auth.users (id, email)
 values
@@ -29,6 +29,12 @@ values ('eeeeeeee-0000-0000-0000-000000000001', '11111111-1111-1111-1111-1111111
 
 insert into waste_streaks (user_id, current_streak_weeks, longest_streak_weeks, last_evaluated_week)
 values ('11111111-1111-1111-1111-111111111111', 2, 5, '2026-08-31');
+
+insert into items (id, user_id, name, units)
+values ('eeeeeeee-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'detergent', 1);
+
+insert into low_stock_notification_states (user_id, item_id)
+values ('11111111-1111-1111-1111-111111111111', 'eeeeeeee-0000-0000-0000-000000000002');
 
 insert into security_reset_attempts (scope, identifier)
 values ('password-reset', 'user-a+rls-service@example.com');
@@ -93,6 +99,30 @@ with del as (
   delete from waste_streaks where user_id = '11111111-1111-1111-1111-111111111111' returning 1
 )
 select is((select count(*)::int from del), 0, 'even the owner cannot DELETE their own waste_streaks row (no DELETE policy)');
+
+-- ===== low_stock_notification_states (#1055) =====
+
+select set_config('request.jwt.claims', json_build_object('sub', '11111111-1111-1111-1111-111111111111', 'role', 'authenticated')::text, true);
+select is((select count(*) from low_stock_notification_states)::int, 1, 'owner can SELECT their own low-stock notification state');
+
+select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-2222-2222-222222222222', 'role', 'authenticated')::text, true);
+select is((select count(*) from low_stock_notification_states)::int, 0, 'other user cannot SELECT a low-stock notification state');
+
+select set_config('request.jwt.claims', json_build_object('sub', '11111111-1111-1111-1111-111111111111', 'role', 'authenticated')::text, true);
+select throws_ok(
+  $$insert into low_stock_notification_states (user_id, item_id) values ('11111111-1111-1111-1111-111111111111', 'eeeeeeee-0000-0000-0000-000000000002')$$,
+  '42501',
+  'new row violates row-level security policy for table "low_stock_notification_states"',
+  'owner cannot INSERT low-stock states directly (service_role only)'
+);
+with upd as (
+  update low_stock_notification_states set notified_at = now() where item_id = 'eeeeeeee-0000-0000-0000-000000000002' returning 1
+)
+select is((select count(*)::int from upd), 0, 'owner cannot UPDATE low-stock notification state');
+with del as (
+  delete from low_stock_notification_states where item_id = 'eeeeeeee-0000-0000-0000-000000000002' returning 1
+)
+select is((select count(*)::int from del), 0, 'owner cannot DELETE low-stock notification state');
 
 -- ===== security_reset_attempts (no policies at all: deny-all for clients) =====
 

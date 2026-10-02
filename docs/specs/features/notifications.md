@@ -29,11 +29,12 @@
 
 ### Edge Functions
 
-| 名前                        | 内容                                                                                                                                                                                                                                                                                | トリガ                                                                                                                        |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `subscribe-push`            | クライアントから受け取った購読を `push_subscriptions` に upsert（VAPID 鍵管理を Function 内に隠す）。`endpoint` は `user_id` との複合ユニークで、同一端末を別ユーザーが共用し同じ `endpoint` で再購読した場合は旧ユーザーの行を service_role 権限で削除してから upsert する（#826） | クライアント                                                                                                                  |
-| `send-expiry-notifications` | 全ユーザーをループし、`notification_preferences` を見て送信                                                                                                                                                                                                                         | `pg_cron` で `notify_at` 付近に発火（`notification_preferences.timezone` で指定されたユーザーごとのタイムゾーンで解釈、#660） |
-| `send-test-notification`    | 呼び出しユーザー自身の `push_subscriptions` にのみテスト通知を即時送信（#388）                                                                                                                                                                                                      | クライアント（設定画面の「テスト通知を送信」ボタン）                                                                          |
+| 名前                           | 内容                                                                                                                                                                                                                                                                                | トリガ                                                                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `subscribe-push`               | クライアントから受け取った購読を `push_subscriptions` に upsert（VAPID 鍵管理を Function 内に隠す）。`endpoint` は `user_id` との複合ユニークで、同一端末を別ユーザーが共用し同じ `endpoint` で再購読した場合は旧ユーザーの行を service_role 権限で削除してから upsert する（#826） | クライアント                                                                                                                  |
+| `send-expiry-notifications`    | 全ユーザーをループし、`notification_preferences` を見て送信                                                                                                                                                                                                                         | `pg_cron` で `notify_at` 付近に発火（`notification_preferences.timezone` で指定されたユーザーごとのタイムゾーンで解釈、#660） |
+| `send-low-stock-notifications` | `low_stock_enabled` が ON のユーザーの日用品を確認し、最低在庫数以下になった新規アイテムをPush/Emailで通知                                                                                                                                                                          | `pg_cron` で毎時発火し、ユーザーごとの `notify_at` と `timezone` に一致した場合                                               |
+| `send-test-notification`       | 呼び出しユーザー自身の `push_subscriptions` にのみテスト通知を即時送信（#388）                                                                                                                                                                                                      | クライアント（設定画面の「テスト通知を送信」ボタン）                                                                          |
 
 ### 環境変数（Edge Function 側）
 
@@ -46,7 +47,7 @@
 
 ### `send-expiry-notifications` の認証
 
-この Function は `pg_cron` からのみ呼ばれることを想定した非対話的エンドポイントであり、エンドユーザーの JWT を持たない。そのため呼び出し元は `X-Cron-Secret` ヘッダーに Edge Function 側の環境変数 `CRON_SECRET` と同じ値を含める必要があり、一致しない場合は 401 を返す。`pg_cron` からのスケジュール発火は `net.http_post` の `headers` 引数で `X-Cron-Secret` を付与する。
+`send-expiry-notifications` と `send-low-stock-notifications` は `pg_cron` からのみ呼ばれることを想定した非対話的エンドポイントであり、エンドユーザーの JWT を持たない。そのため呼び出し元は `X-Cron-Secret` ヘッダーに Edge Function 側の環境変数 `CRON_SECRET` と同じ値を含める必要があり、一致しない場合は 401 を返す。`pg_cron` からのスケジュール発火は Vault の `cron_secret` を `net.http_post` の `headers` 引数に付与する。
 
 ## 配信ロジック
 
@@ -159,5 +160,14 @@ M
 
 ## Backlog
 
-- 通知種別の細分化（期限切れ / 在庫切れ / 補充提案）
+- 通知種別の細分化（在庫切れ / 補充提案）
 - アプリ内通知センター
+
+## 日用品の低在庫通知（#1055）
+
+- 設定画面の `low_stock_enabled` はユーザー単位の opt-in（既存ユーザーは false）。配信チャネルは既存の `push_enabled` / `email_enabled`、通知時刻とタイムゾーンも同じ設定を使う。
+- 対象は実効 `item_type` が `daily_goods` で、`minimum_stock` が設定され、`units <= minimum_stock` のアイテム。判定はダッシュボードの最低在庫アラートと合わせる。最低在庫数は在庫単位（`units`）の値であり、開封中の残量は独立情報として扱う。
+- 配信は期限ダイジェストと別の `send-low-stock-notifications` Edge Function とする。1つの日用品アイテムが最低在庫以下に初めてなったとき通知し、在庫が閾値を上回った実行で状態を解除するため、低在庫状態が続く間は同じアイテムを再通知しない。
+- `low_stock_notification_states(user_id, item_id)` は Edge Function/service_role のみが書き込み、所有者は自分の行のみ SELECT できる。UNIQUE/PRIMARY KEY による claim で重複する cron 実行の通知を抑止する。
+- 毎時の pg_cron が Function を呼び、ユーザーの `notify_at` / `timezone` に一致した実行だけ処理する。Push は失効購読を削除し、Email は `RESEND_API_KEY` 設定時のみ送る。本文は `user_settings.language` の ja/en で作成し、未設定時は ja。
+- 設定/状態は `20261002000001_add_low_stock_notifications.sql` で追加。Function は `CRON_SECRET` による `X-Cron-Secret` 検証を行う。
