@@ -67,6 +67,11 @@ things specs depend on.
 - `categories.spec.ts` — category master data CRUD: create → rename → delete blocked while in use → delete, with axe checks (#1041).
 - `recipes.spec.ts` — recipe creation and execution (consumption recording, #658).
 - `bulk-actions.spec.ts` — dashboard multi-select bulk move/consume/delete (#658).
+- `quick-consume.spec.ts` — barcode lookup for an existing item and quick consumption (#924).
+- `waste-dashboard.spec.ts` — food-waste stats and the zero-waste streak (#925).
+- `budget-banner.spec.ts` — dashboard budget banner against current-month spending (#991).
+- `similar-item-suggestion.spec.ts` — similar-name suggestion and navigation to the match (#990).
+- `meal-plan.spec.ts` — assigning a note to a weekly meal-plan slot (#715).
 - `data-export-import.spec.ts` — JSON backup export and restore round trip (#1065).
 
 ## Projects: `chromium` (desktop) and `mobile-chromium` (#753)
