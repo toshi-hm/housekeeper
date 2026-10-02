@@ -391,8 +391,9 @@ export const NewItemPage = ({ cloneFrom, prefillName }: NewItemPageProps) => {
         onPendingImageUrlChange={(url) => {
           pendingImageUrlRef.current = url;
         }}
-        onBarcodeScanned={(barcode, source) => {
-          void handleBarcodeScanned(barcode, source);
+        prefillFromBarcode
+        onBarcodeScanned={(barcode, source, defaults, tagIds) => {
+          void handleBarcodeScanned(barcode, source, defaults, tagIds);
         }}
         onNameBlur={handleNameBlur}
         submitLabel={existingItem ? t("stackSubmitLabel") : undefined}
