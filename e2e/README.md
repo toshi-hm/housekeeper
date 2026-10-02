@@ -66,6 +66,11 @@ things specs depend on.
 - `calendar.spec.ts` — expiry calendar check-off + undo (#658).
 - `recipes.spec.ts` — recipe creation and execution (consumption recording, #658).
 - `bulk-actions.spec.ts` — dashboard multi-select bulk move/consume/delete (#658).
+- `quick-consume.spec.ts` — barcode lookup for an existing item and quick consumption (#924).
+- `waste-dashboard.spec.ts` — food-waste stats and the zero-waste streak (#925).
+- `budget-banner.spec.ts` — dashboard budget banner against current-month spending (#991).
+- `similar-item-suggestion.spec.ts` — similar-name suggestion and navigation to the match (#990).
+- `meal-plan.spec.ts` — assigning a note to a weekly meal-plan slot (#715).
 
 ## Projects: `chromium` (desktop) and `mobile-chromium` (#753)
 
