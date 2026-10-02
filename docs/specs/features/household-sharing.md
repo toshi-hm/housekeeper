@@ -15,6 +15,14 @@ housekeeper は当初「単一ユーザー・セルフホスト」を前提に�
 > 承認済み（PLANS.md §9 決定ログ参照）。ただし本 spec は設計段階であり、実装は
 > 別途 Issue 化して段階的に進める。
 
+### 段階導入状況
+
+- **基盤** (`20260801020000_create_household_foundation.sql`): 世帯/メンバー/招待テーブル、現在世帯取得、作成/参加RPC、招待試行レート制限を追加済み。
+- **この段階**: `items`, `item_lots`, `categories`, `storage_locations`, `custom_units`, `consumption_logs`, `item_tags`, `items_to_tags` に household_id を追加し、既存行を現在の所有者世帯へ割り当てる。サインアップ時の個人世帯作成と、既存ユーザーが明示確認してから招待先へ移るDB経路を用意する。
+- **未実装の後続段階**: 招待/参加UIと既存データが個人世帯に残ることの確認画面、Storage オブジェクトの世帯パスへの移行と Storage RLS、shopping list と recipes の世帯化。これらが完了するまでは、世帯共有はアプリ上で有効化しない。
+
+この段階の招待RPCは `p_confirm_personal_data_inaccessible` が明示的に `true` の場合だけ既存 membership を切り替える。切り替え前の household とそのデータは削除も移管もしない。アプリUIが未実装のため、このRPCを直接呼ぶユーザー向け操作は提供しない。
+
 ## 2. スコープ判断
 
 ### やること
@@ -88,10 +96,10 @@ create table household_invites (
 
 「世帯で共有すべきデータ」と「個人設定として残すデータ」を分ける。
 
-| 分類                      | テーブル                                                                                                                                                                                                                                                   | 変更                                                                                                                                                    |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 共有（household_id 追加） | `items`, `item_lots`, `categories`, `storage_locations`, `custom_units`, `consumption_logs`, `shopping_list_items`, `shopping_list_archive`, `shopping_list_templates`, `shopping_list_template_items`, `recipes`, `recipe_items`, `tags`, `items_to_tags` | `household_id uuid not null references households(id) on delete cascade` を追加。`user_id` 列自体は「作成者」の記録として残す（監査用途、削除はしない） |
-| 個人のまま（変更なし）    | `user_settings`, `notification_preferences`, `push_subscriptions`, `user_security_questions`, `chat_rate_limits`                                                                                                                                           | 言語/通知/認証はデバイス・個人単位の設定のため household化しない                                                                                        |
+| 分類                      | テーブル                                                                                                                                                                                                                                                                                        | 変更                                                                                                                                                    |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 共有（household_id 追加） | `items`, `item_lots`, `categories`, `storage_locations`, `custom_units`, `consumption_logs`, `shopping_list_items`, `shopping_list_archive`, `shopping_list_templates`, `shopping_list_template_items`, `recipes`, `recipe_items`, `item_tags`（本リポジトリでの `tags` 相当）, `items_to_tags` | `household_id uuid not null references households(id) on delete cascade` を追加。`user_id` 列自体は「作成者」の記録として残す（監査用途、削除はしない） |
+| 個人のまま（変更なし）    | `user_settings`, `notification_preferences`, `push_subscriptions`, `user_security_questions`, `chat_rate_limits`                                                                                                                                                                                | 言語/通知/認証はデバイス・個人単位の設定のため household化しない                                                                                        |
 
 RLS ポリシーは共有テーブル全てで以下の形に統一する（`save_shopping_list_template` 等
 既存の RPC パターンと同様、`private.` schema にヘルパー関数を置く）:
@@ -152,8 +160,8 @@ create policy "Household members can access their household's items"
 4. 移行完了後、共有テーブルの `household_id` 列を `not null` 制約に変更する
    （移行前は一時的に nullable にしておき、バックフィル漏れを検知しやすくする）
 
-新規サインアップ時は、`user_settings` 作成と同じタイミング（DBトリガまたは初回アクセス
-時 upsert、`docs/specs/features/auth.md` 参照）で個人世帯を自動作成する。
+新規サインアップ時は auth.users insert trigger で個人世帯を自動作成する。共有テーブルは
+insert/update trigger で現在世帯を付与し、RLS と参照先チェックで他世帯への行作成を防ぐ。
 
 ## 5. 招待フロー（画面）
 
@@ -164,7 +172,7 @@ create policy "Household members can access their household's items"
 
 - コード入力して他世帯に参加する場合、**自分の個人世帯にあった既存データはどうなるか**の
   UX 決定が必要（例: 「あなたの既存の在庫データは個人世帯に残ります。新しい世帯には
-  引き継がれません」という警告を表示し、参加前に確認させる。データの自動マージは複雑さと
+  引き継がれません」という警告を表示し、参加前に確認させる。参加RPCにも同意パラメーターを要求する。データの自動マージは複雑さと
   誤操作リスクが高いため行わない）。
 
 ## 6. API（hook、実装時の想定）
@@ -185,14 +193,13 @@ RLS だけに委ねて無条件 select にするかは実装時に決定する�
 ## 7. エラー / 競合ケース
 
 - 招待コードが期限切れ/使用済み: 専用のエラーメッセージ（「このコードは無効です」）
-- 既に他の世帯に所属しているユーザーがコードを入力: 「まず現在の世帯を離れてください」で
-  ブロック（1ユーザー1世帯の制約、2.やらないこと参照）
+- 既に世帯に所属しているユーザーがコードを入力: 個人世帯のデータは元の世帯に残り、新しい世帯へは移管されないことを表示し、確認後に参加する。確認前は membership を変更しない。
 - owner が最後の1人の状態で退会しようとした場合: ブロックし、事前に他メンバーへの
   オーナー譲渡または世帯削除を促す（譲渡UIの詳細は実装時に決定）
 - 招待コードの連続誤入力（総当たり対策、#734）: `redeem_household_invite(p_code text)` は
   `returns table (household_id uuid, error_code text)` で、失敗時も例外を投げず
-  `error_code` に `'HK005'`（既に世帯に所属）/ `'HK006'`（無効・期限切れ）/
-  `'HK007'`（試行回数過多）のいずれかを返す。呼び出し内で
+  `error_code` に `'HK006'`（無効・期限切れ）/ `'HK007'`（試行回数過多）/
+  `'HK008'`（個人世帯データを残すことの確認がない）/ `'HK009'`（他メンバーが残る世帯の最後のオーナーは離脱不可）のいずれかを返す。確認後は旧 household の行を変更・削除せず、新しい household_members 行だけを作る。呼び出し内で
   `check_household_invite_rate_limit()`（ユーザー単位、15分窓で5回、超過後は
   指数バックオフでロックアウト）を必ず経由し、コードの正誤に関わらず全呼び出しを
   カウントする。例外を投げる実装だと「同一トランザクション内で後から例外を投げると
