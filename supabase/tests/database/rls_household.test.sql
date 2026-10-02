@@ -17,7 +17,7 @@
 --           already-redeemed invite-code failure paths
 begin;
 
-select plan(28);
+select plan(27);
 
 insert into auth.users (id, email)
 values
@@ -28,22 +28,24 @@ values
 
 set local role authenticated;
 
--- ===== user1: starts with no household =====
+-- ===== user1: receives an individual household automatically =====
 
 select set_config('request.jwt.claims', json_build_object('sub', '11111111-1111-1111-1111-111111111111', 'role', 'authenticated')::text, true);
 
-select is((select count(*) from households)::int, 0, 'user with no household cannot SELECT any household row');
-select is((select count(*) from household_members)::int, 0, 'user with no household cannot SELECT any household_members row');
+select is((select count(*) from households)::int, 1, 'new user receives a personal household');
+select is((select count(*) from household_members)::int, 1, 'new user is automatically added as household owner');
 select is((select count(*) from household_invites)::int, 0, 'user with no household cannot SELECT any household_invites row');
 
 -- ===== create_household =====
 
-select lives_ok(
+select throws_ok(
   $$select public.create_household('Household One')$$,
-  'user1 can create a household when they belong to none yet'
+  'HK005',
+  'user already belongs to a household',
+  'automatic bootstrap prevents creating a second household'
 );
 
-select is((select count(*) from households)::int, 1, 'user1 (owner) can now SELECT their own household');
+select is((select count(*) from households)::int, 1, 'user1 (owner) can SELECT their personal household');
 select is(
   (select role::text from household_members where user_id = '11111111-1111-1111-1111-111111111111'),
   'owner',
@@ -126,18 +128,13 @@ select throws_ok(
 
 select set_config('request.jwt.claims', json_build_object('sub', '44444444-4444-4444-4444-444444444444', 'role', 'authenticated')::text, true);
 
-select is((select count(*) from households)::int, 0, 'a non-member (no household yet) cannot SELECT household1');
-select is((select count(*) from household_invites)::int, 0, 'a non-member (no household yet) cannot SELECT household1''s invites');
-
-select lives_ok(
-  $$select public.create_household('Household Two')$$,
-  'user4 can create their own, separate household'
-);
+select is((select count(*) from households)::int, 1, 'another user sees only their personal household, not household1');
+select is((select count(*) from household_invites)::int, 0, 'a non-member cannot SELECT household1''s invites');
 
 select is(
   (select count(*) from household_members)::int,
   1,
-  'user4 (member of household2) sees only their own household''s membership row, not household1''s'
+  'user4 sees only their personal membership row, not household1''s'
 );
 
 -- A user who already belongs to a household is rejected with a distinct
@@ -148,15 +145,15 @@ select is(
 -- call), so failure paths are asserted via results_eq instead of throws_ok.
 select results_eq(
   $$select household_id, error_code from public.redeem_household_invite('VALIDCODE1')$$,
-  $$select null::uuid, 'HK005'::text$$,
-  'a user who already belongs to a household cannot redeem an invite code'
+  $$select null::uuid, 'HK008'::text$$,
+  'a user must confirm that personal-household data will remain inaccessible before joining'
 );
 
 -- ===== user2: redeems a valid invite into household1 =====
 
 select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-2222-2222-222222222222', 'role', 'authenticated')::text, true);
 
-select is((select count(*) from household_members)::int, 0, 'user2 (no household yet) sees no household_members rows before redeeming');
+select is((select count(*) from household_members)::int, 1, 'user2 sees their personal membership before redeeming');
 
 -- (Checked via ok()/error_code only, not results_eq against households: that
 -- would re-query households under RLS, whose visibility for user2 depends on
@@ -164,8 +161,8 @@ select is((select count(*) from household_members)::int, 0, 'user2 (no household
 -- membership are verified via the household_members/households checks below,
 -- which run as separate statements after this mutation has committed.)
 select ok(
-  (select error_code from public.redeem_household_invite('VALIDCODE1')) is null,
-  'user2 can redeem a valid, unexpired, unused invite code'
+  (select error_code from public.redeem_household_invite('VALIDCODE1', true)) is null,
+  'user2 can explicitly confirm and redeem a valid, unexpired, unused invite code'
 );
 
 select is(
@@ -177,9 +174,9 @@ select is(
 select is((select count(*) from households)::int, 1, 'user2 can now SELECT household1 after joining it');
 
 select results_eq(
-  $$select household_id, error_code from public.redeem_household_invite('EXPIREDCODE1')$$,
-  $$select null::uuid, 'HK005'::text$$,
-  'user2 cannot redeem a second invite code now that they belong to household1'
+  $$select household_id, error_code from public.redeem_household_invite('EXPIREDCODE1', true)$$,
+  $$select null::uuid, 'HK006'::text$$,
+  'user2 cannot redeem an expired code after joining household1'
 );
 
 -- ===== user3: exercises the invalid/expired/already-redeemed paths =====
@@ -187,24 +184,24 @@ select results_eq(
 select set_config('request.jwt.claims', json_build_object('sub', '33333333-3333-3333-3333-333333333333', 'role', 'authenticated')::text, true);
 
 select results_eq(
-  $$select household_id, error_code from public.redeem_household_invite('VALIDCODE1')$$,
+  $$select household_id, error_code from public.redeem_household_invite('VALIDCODE1', true)$$,
   $$select null::uuid, 'HK006'::text$$,
   'a second redemption attempt of an already-redeemed code fails (no double-redeem)'
 );
 
 select results_eq(
-  $$select household_id, error_code from public.redeem_household_invite('EXPIREDCODE1')$$,
+  $$select household_id, error_code from public.redeem_household_invite('EXPIREDCODE1', true)$$,
   $$select null::uuid, 'HK006'::text$$,
   'redeeming an expired invite code fails'
 );
 
 select results_eq(
-  $$select household_id, error_code from public.redeem_household_invite('NONEXISTENT')$$,
+  $$select household_id, error_code from public.redeem_household_invite('NONEXISTENT', true)$$,
   $$select null::uuid, 'HK006'::text$$,
   'redeeming a nonexistent invite code fails'
 );
 
-select is((select count(*) from household_members)::int, 0, 'user3 never joined a household and still sees no household_members rows');
+select is((select count(*) from household_members)::int, 1, 'user3 retains their personal household after failed invite attempts');
 
 -- ===== households.created_by ON DELETE CASCADE (#778) =====
 --
@@ -227,7 +224,7 @@ select lives_ok(
 );
 
 select is(
-  (select count(*) from households where name = 'Household One')::int,
+  (select count(*) from households where created_by = '11111111-1111-1111-1111-111111111111')::int,
   0,
   'household1 itself is cascaded away once its creator (households.created_by) is deleted'
 );
