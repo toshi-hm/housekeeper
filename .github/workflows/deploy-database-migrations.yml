@@ -1,0 +1,131 @@
+name: Deploy Supabase database migrations
+
+# Apply production migrations only after the main-branch CI run succeeds.
+# Failed deployment runs remain visible in Actions and notify configured watchers.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      allow_destructive:
+        description: "Allow known destructive SQL in changed migrations (review the migration before enabling)"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-database-migrations-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Apply pending database migrations
+    runs-on: ubuntu-latest
+    # Repository maintainers can configure required reviewers for this environment
+    # when every production schema change needs human approval.
+    environment: production-migrations
+    if: "vars.SUPABASE_PROJECT_ID != '' && ((github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check Supabase credentials
+        id: creds
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SUPABASE_ACCESS_TOKEN and SUPABASE_DB_PASSWORD secrets are required; database migration deploy was skipped."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Link Supabase project
+        if: steps.creds.outputs.configured == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+        run: bunx supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      # Screen every migration that `db push` would actually apply (not only the
+      # ones touched by the latest commit), so an earlier unscreened or
+      # previously blocked migration cannot ride along with a later safe one.
+      - name: Screen pending migrations for destructive SQL
+        id: migrations
+        if: steps.creds.outputs.configured == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          ALLOW_DESTRUCTIVE: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_destructive || false }}
+        run: |
+          set -euo pipefail
+          dry_run=$(bunx supabase db push --linked --dry-run 2>&1)
+          echo "$dry_run"
+          pending=$(echo "$dry_run" | grep -oE '[0-9]{14}_[A-Za-z0-9_.-]*\.sql' | sort -u || true)
+          if [ -z "$pending" ]; then
+            echo "No pending migrations; skipping database deploy."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          destructive_pattern='(^|[[:space:];(])(DROP[[:space:]]+[A-Z]|TRUNCATE([[:space:]]|;)|DELETE[[:space:]]+FROM|ALTER[[:space:]]+TABLE[^;]*(DROP|RENAME|ALTER[[:space:]]+(COLUMN[[:space:]]+)?[A-Z_"]+[[:space:]]+(SET[[:space:]]+DATA[[:space:]]+)?TYPE))'
+          flagged=""
+          while IFS= read -r name; do
+            file="supabase/migrations/${name}"
+            if [ ! -f "$file" ]; then
+              echo "::error::Pending migration ${name} is not in the checked-out commit; refusing to deploy."
+              exit 1
+            fi
+            if grep -Eiq "$destructive_pattern" "$file"; then
+              flagged="${flagged}${file}"$'\n'
+            fi
+          done <<< "$pending"
+
+          if [ -n "$flagged" ] && [ "$ALLOW_DESTRUCTIVE" != "true" ]; then
+            echo "::error::Potentially destructive SQL detected in pending migrations. Review them, then manually run this workflow from main with allow_destructive=true if deployment is intended."
+            echo "$flagged"
+            exit 1
+          fi
+          if [ -n "$flagged" ]; then
+            echo "Manual dispatch explicitly allowed these potentially destructive migrations:"
+            echo "$flagged"
+          fi
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+
+      - name: Apply pending migrations
+        if: steps.creds.outputs.configured == 'true' && steps.migrations.outputs.deploy == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: bunx supabase db push --linked --yes
+
+      - name: Regenerate database types
+        if: steps.creds.outputs.configured == 'true' && steps.migrations.outputs.deploy == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+        run: bun run gen:types
+
+      - name: Report generated type drift
+        if: steps.creds.outputs.configured == 'true' && steps.migrations.outputs.deploy == 'true'
+        run: |
+          if ! git diff --quiet -- src/types/supabase.ts; then
+            echo "::error::Database types changed after migration deployment. Review the diff below and commit the generated src/types/supabase.ts update."
+            git diff -- src/types/supabase.ts
+            exit 1
+          fi
