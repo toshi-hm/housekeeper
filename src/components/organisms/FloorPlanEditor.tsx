@@ -408,6 +408,7 @@ export const FloorPlanEditor = ({
             type="button"
             variant={tool === value ? "default" : "outline"}
             size="sm"
+            className="h-11"
             onClick={() => setTool(value)}
           >
             {toolLabel[value]}
@@ -417,6 +418,7 @@ export const FloorPlanEditor = ({
           type="button"
           variant="outline"
           size="sm"
+          className="h-11"
           disabled={state.undoStack.length === 0}
           onClick={() => dispatch({ type: "undo" })}
         >
@@ -426,12 +428,19 @@ export const FloorPlanEditor = ({
           type="button"
           variant="outline"
           size="sm"
+          className="h-11"
           disabled={state.redoStack.length === 0}
           onClick={() => dispatch({ type: "redo" })}
         >
           {t("mapRedo")}
         </Button>
-        <Button type="button" size="sm" disabled={isSaving} onClick={() => onSave(state.document)}>
+        <Button
+          type="button"
+          size="sm"
+          className="h-11"
+          disabled={isSaving}
+          onClick={() => onSave(state.document)}
+        >
           {isSaving ? t("mapSaving") : t("save")}
         </Button>
       </div>
@@ -652,32 +661,29 @@ export const FloorPlanEditor = ({
               </g>
             );
           })}
-          {!start &&
-            currentPoint &&
-            tool !== "select" &&
-            !isMarkerMode && (
-              // Keyboard-only cursor: shown while a drawing tool is active but
-              // no start point has been placed yet (arrow keys move it, Enter
-              // /Space places the start point — see handleKeyDown).
-              <g data-testid="floor-plan-keyboard-cursor" pointerEvents="none">
-                <line
-                  x1={currentPoint.x - 10}
-                  y1={currentPoint.y}
-                  x2={currentPoint.x + 10}
-                  y2={currentPoint.y}
-                  stroke="hsl(var(--accent))"
-                  strokeWidth="2"
-                />
-                <line
-                  x1={currentPoint.x}
-                  y1={currentPoint.y - 10}
-                  x2={currentPoint.x}
-                  y2={currentPoint.y + 10}
-                  stroke="hsl(var(--accent))"
-                  strokeWidth="2"
-                />
-              </g>
-            )}
+          {!start && currentPoint && tool !== "select" && !isMarkerMode && (
+            // Keyboard-only cursor: shown while a drawing tool is active but
+            // no start point has been placed yet (arrow keys move it, Enter
+            // /Space places the start point — see handleKeyDown).
+            <g data-testid="floor-plan-keyboard-cursor" pointerEvents="none">
+              <line
+                x1={currentPoint.x - 10}
+                y1={currentPoint.y}
+                x2={currentPoint.x + 10}
+                y2={currentPoint.y}
+                stroke="hsl(var(--accent))"
+                strokeWidth="2"
+              />
+              <line
+                x1={currentPoint.x}
+                y1={currentPoint.y - 10}
+                x2={currentPoint.x}
+                y2={currentPoint.y + 10}
+                stroke="hsl(var(--accent))"
+                strokeWidth="2"
+              />
+            </g>
+          )}
           {start && currentPoint && tool !== "select" && (
             <g data-testid="floor-plan-drawing-preview" pointerEvents="none">
               {tool === "wall" ? (

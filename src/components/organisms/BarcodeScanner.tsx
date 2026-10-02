@@ -1,11 +1,12 @@
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { NotFoundException } from "@zxing/library";
 import { Camera, Keyboard, SwitchCamera, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
@@ -30,6 +31,8 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   const [deviceIndex, setDeviceIndex] = useState(0);
   // 連続読み取り失敗（30秒超）でリトライ/キャンセル導線を表示する（#454）
   const [scanTimedOut, setScanTimedOut] = useState(false);
+  const titleId = useId();
+  const containerRef = useDialogA11y<HTMLDivElement>({ open: true, onClose });
 
   const clearScanTimeout = () => {
     if (scanTimeoutRef.current) {
@@ -166,12 +169,21 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black lg:items-center lg:justify-center lg:bg-black/70">
-      <div className="flex h-full flex-col bg-black lg:h-[580px] lg:w-[480px] lg:overflow-hidden lg:rounded-xl">
+      <div
+        ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="flex h-full flex-col bg-black lg:h-[580px] lg:w-[480px] lg:overflow-hidden lg:rounded-xl"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2 text-white">
             <Camera className="h-5 w-5" />
-            <span className="font-medium">{t("scanBarcode")}</span>
+            <span id={titleId} className="font-medium">
+              {t("scanBarcode")}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             {devices.length > 1 && (

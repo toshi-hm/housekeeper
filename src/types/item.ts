@@ -22,6 +22,9 @@ export interface Category {
   /** 開封後使用推奨日数の既定値。items.days_use_after_opening が未設定の
    *  アイテムはこの値にフォールバックする（#752）。 */
   days_use_after_opening?: number | null;
+  /** 表示順（お店の売り場順）。小さいほど先に表示する。既存カテゴリは
+   *  全て 0 のままで、その場合は名前順にフォールバックする（#1008）。 */
+  sort_order?: number;
   created_at: string;
   updated_at: string;
 }
@@ -122,7 +125,9 @@ export const itemFormShapeSchema = z.object({
   /** アイテム種別の個別上書き。未選択 = null（カテゴリ既定に追従）。 */
   item_type: z.enum(ITEM_TYPES).nullable().optional(),
   storage_location_id: z.string().uuid().nullable().optional(),
-  units: z.coerce.number().int().min(1).default(1),
+  /** 0 = 消費し切って在庫が無い状態（削除はせず履歴のため残す、#1093）。
+   *  新規登録フォームは既定値1のまま変わらない。 */
+  units: z.coerce.number().int().min(0).default(1),
   content_amount: z.coerce.number().positive().default(1),
   content_unit: z.string().default("個"),
   opened_remaining: z.coerce.number().min(0).nullable().optional(),
@@ -459,6 +464,10 @@ export const isBackupExportOverdue = (
   const baseline = settings.last_backup_export_at ?? settings.created_at;
   return (nowMs - new Date(baseline).getTime()) / msPerDay >= reminderDays;
 };
+
+/** ロットが使い切り済み（消費できる残量がない）かどうか。FEFO のロット選定で使う。 */
+export const isLotDepleted = (units: number, openedRemaining: number | null): boolean =>
+  units <= 0 && (openedRemaining ?? 0) <= 0;
 
 /** ロット（またはアイテム）1件の実残量を計算する。opened_remaining がある場合は
  *  開封中の1個を除いた残りの未開封数量にopened_remainingを加算する。 */

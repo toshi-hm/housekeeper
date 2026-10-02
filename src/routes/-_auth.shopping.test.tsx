@@ -6,6 +6,7 @@ import "fake-indexeddb/auto";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { I18nextProvider } from "react-i18next";
 
@@ -13,6 +14,7 @@ import * as ItemFormModule from "@/components/organisms/ItemForm";
 import * as useItemImageModule from "@/hooks/useItemImage";
 import * as useItemsModule from "@/hooks/useItems";
 import * as useMasterDataModule from "@/hooks/useMasterData";
+import * as usePurchaseHistoryModule from "@/hooks/usePurchaseHistory";
 import * as useShoppingListModule from "@/hooks/useShoppingList";
 import * as useShoppingTemplatesModule from "@/hooks/useShoppingTemplates";
 import * as useStatsModule from "@/hooks/useStats";
@@ -180,6 +182,119 @@ describe("ShoppingPage - 買い物中モードのローディング判定 (#986)
     expect(
       queryByText(/shoppingModeAllClear|買い物中に確認することはありません|Nothing to check/),
     ).toBeNull();
+  });
+});
+
+describe("ShoppingPage - クエリのエラー状態表示 (#1094)", () => {
+  let shoppingListSpy: ReturnType<typeof spyOn>;
+  let itemsSpy: ReturnType<typeof spyOn>;
+  let categoriesSpy: ReturnType<typeof spyOn>;
+  let userSettingsSpy: ReturnType<typeof spyOn>;
+  let templatesSpy: ReturnType<typeof spyOn>;
+  let forecastAlertsSpy: ReturnType<typeof spyOn>;
+  let storePriceComparisonsSpy: ReturnType<typeof spyOn>;
+
+  const refetchShoppingList = mock(async () => ({}) as never);
+  const refetchItems = mock(async () => ({}) as never);
+  const refetchCategories = mock(async () => ({}) as never);
+
+  beforeEach(() => {
+    refetchShoppingList.mockClear();
+    refetchItems.mockClear();
+    refetchCategories.mockClear();
+
+    shoppingListSpy = spyOn(useShoppingListModule, "useShoppingList").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: refetchShoppingList,
+    } as unknown as ReturnType<typeof useShoppingListModule.useShoppingList>);
+
+    itemsSpy = spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: refetchItems,
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+
+    categoriesSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: refetchCategories,
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+
+    userSettingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    templatesSpy = spyOn(useShoppingTemplatesModule, "useShoppingTemplates").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useShoppingTemplatesModule.useShoppingTemplates>);
+
+    forecastAlertsSpy = spyOn(useStatsModule, "useForecastAlerts").mockReturnValue({
+      alerts: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useForecastAlerts>);
+
+    storePriceComparisonsSpy = spyOn(useStatsModule, "useStorePriceComparisons").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useStorePriceComparisons>);
+  });
+
+  afterEach(() => {
+    shoppingListSpy.mockRestore();
+    itemsSpy.mockRestore();
+    categoriesSpy.mockRestore();
+    userSettingsSpy.mockRestore();
+    templatesSpy.mockRestore();
+    forecastAlertsSpy.mockRestore();
+    storePriceComparisonsSpy.mockRestore();
+    localStorage.removeItem("shopping.mode");
+    cleanup();
+  });
+
+  it("通常モードで買い物リストの取得に失敗した場合、空リストではなくエラーカードを表示する", () => {
+    localStorage.removeItem("shopping.mode");
+    shoppingListSpy.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchShoppingList,
+    } as unknown as ReturnType<typeof useShoppingListModule.useShoppingList>);
+
+    const { getByText, queryByText } = renderPage();
+
+    expect(queryByText(i18n.t("shopping:noItems"))).toBeNull();
+    expect(getByText(i18n.t("common:unknownError"))).toBeDefined();
+
+    fireEvent.click(getByText(i18n.t("common:retry")));
+    expect(refetchShoppingList).toHaveBeenCalled();
+  });
+
+  it("買い物中モードで在庫アイテムの取得に失敗した場合、「確認することはありません」ではなくエラーカードを表示する", () => {
+    localStorage.setItem("shopping.mode", "1");
+    itemsSpy.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchItems,
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getByText, queryByText } = renderPage();
+
+    expect(
+      queryByText(/shoppingModeAllClear|買い物中に確認することはありません|Nothing to check/),
+    ).toBeNull();
+    expect(getByText(i18n.t("common:unknownError"))).toBeDefined();
+
+    fireEvent.click(getByText(i18n.t("common:retry")));
+    expect(refetchItems).toHaveBeenCalled();
   });
 });
 
@@ -635,5 +750,159 @@ describe("ShoppingPage - オフラインキュー経由の購入確定で画像�
       expect(readOfflineActionQueue()).toHaveLength(0);
     });
     expect(uploadItemImageSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("ShoppingPage - 一緒に買われることが多いもののサジェスト (#1009)", () => {
+  let shoppingListSpy: ReturnType<typeof spyOn>;
+  let itemsSpy: ReturnType<typeof spyOn>;
+  let categoriesSpy: ReturnType<typeof spyOn>;
+  let userSettingsSpy: ReturnType<typeof spyOn>;
+  let templatesSpy: ReturnType<typeof spyOn>;
+  let forecastAlertsSpy: ReturnType<typeof spyOn>;
+  let storePriceComparisonsSpy: ReturnType<typeof spyOn>;
+  let purchaseHistorySpy: ReturnType<typeof spyOn>;
+  let upsertSpy: ReturnType<typeof spyOn>;
+  let upsertMutateAsync: ReturnType<typeof mock>;
+
+  beforeEach(() => {
+    shoppingListSpy = spyOn(useShoppingListModule, "useShoppingList").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useShoppingListModule.useShoppingList>);
+
+    itemsSpy = spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+
+    categoriesSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useMasterDataModule.useCategories>);
+
+    userSettingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+
+    templatesSpy = spyOn(useShoppingTemplatesModule, "useShoppingTemplates").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useShoppingTemplatesModule.useShoppingTemplates>);
+
+    forecastAlertsSpy = spyOn(useStatsModule, "useForecastAlerts").mockReturnValue({
+      alerts: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useForecastAlerts>);
+
+    storePriceComparisonsSpy = spyOn(useStatsModule, "useStorePriceComparisons").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useStatsModule.useStorePriceComparisons>);
+
+    // 「牛乳」と「パン」が同じ購入完了バッチ（同一 archived_at）でアーカイブされた
+    // 履歴。牛乳を追加した直後にパンがサジェストされることを検証する。
+    purchaseHistorySpy = spyOn(usePurchaseHistoryModule, "usePurchaseHistory").mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          user_id: "u1",
+          name: "牛乳",
+          desired_units: 1,
+          note: null,
+          archived_at: "2026-07-01T10:00:00Z",
+        },
+        {
+          id: "a2",
+          user_id: "u1",
+          name: "パン",
+          desired_units: 1,
+          note: null,
+          archived_at: "2026-07-01T10:00:00Z",
+        },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof usePurchaseHistoryModule.usePurchaseHistory>);
+
+    upsertMutateAsync = mock(async () => ({ id: "shopping-new" }));
+    upsertSpy = spyOn(useShoppingListModule, "useUpsertShoppingItem").mockReturnValue({
+      mutateAsync: upsertMutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useShoppingListModule.useUpsertShoppingItem>);
+  });
+
+  afterEach(() => {
+    shoppingListSpy.mockRestore();
+    itemsSpy.mockRestore();
+    categoriesSpy.mockRestore();
+    userSettingsSpy.mockRestore();
+    templatesSpy.mockRestore();
+    forecastAlertsSpy.mockRestore();
+    storePriceComparisonsSpy.mockRestore();
+    purchaseHistorySpy.mockRestore();
+    upsertSpy.mockRestore();
+    cleanup();
+  });
+
+  const addPlannedItemViaForm = async (
+    { getByRole, getByLabelText }: ReturnType<typeof renderPage>,
+    name: string,
+  ) => {
+    const user = userEvent.setup();
+    await user.click(getByRole("button", { name: /^追加$|^add$/i }));
+    await user.type(getByLabelText(/商品名|item name/i), name);
+
+    const form = document.querySelector("#shopping-add-form");
+    if (!form) throw new Error("add form not found");
+    const submitButton = within(form as HTMLElement).getByRole("button", {
+      name: /^追加$|^add$/i,
+    });
+    await user.click(submitButton);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  };
+
+  it("アイテムを追加すると、同じバッチで一緒にアーカイブされてきた商品がサジェストされる", async () => {
+    const page = renderPage();
+    await addPlannedItemViaForm(page, "牛乳");
+
+    expect(upsertMutateAsync).toHaveBeenCalledWith({ name: "牛乳", note: null });
+    expect(await page.findByRole("button", { name: /パン/ })).toBeTruthy();
+  });
+
+  it("サジェストのチップをタップすると、その商品名でリストに追加される", async () => {
+    const page = renderPage();
+    await addPlannedItemViaForm(page, "牛乳");
+
+    const suggestionChip = await page.findByRole("button", { name: /パン/ });
+    await act(async () => {
+      fireEvent.click(suggestionChip);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(upsertMutateAsync).toHaveBeenLastCalledWith({ name: "パン", note: null });
+  });
+
+  it("サジェストのチップタップが失敗しても、チップは消えずリトライできる", async () => {
+    const page = renderPage();
+    await addPlannedItemViaForm(page, "牛乳");
+
+    // 直前の「牛乳」追加（フォーム経由）は成功させ、直後のサジェストチップタップ
+    // （2回目の呼び出し）だけ失敗させる。
+    upsertMutateAsync.mockImplementationOnce(async () => {
+      throw new Error("network error");
+    });
+
+    const suggestionChip = await page.findByRole("button", { name: /パン/ });
+    await act(async () => {
+      fireEvent.click(suggestionChip);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // 失敗時はサジェスト行の状態を変更しない（handleAdd と同じ規約）ので、
+    // チップは残ったまま再タップでリトライできる。
+    expect(await page.findByRole("button", { name: /パン/ })).toBeTruthy();
   });
 });

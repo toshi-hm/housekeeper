@@ -115,7 +115,8 @@ create table item_lots (
   expiry_date date,
   store_name text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint item_lots_opened_requires_unit check (opened_remaining is null or units >= 1)
 );
 
 create index item_lots_item_idx on item_lots(item_id, created_at asc);
@@ -123,6 +124,9 @@ create index item_lots_user_idx on item_lots(user_id);
 create index item_lots_expiry_idx on item_lots(expiry_date);
 ```
 
+- `item_lots_opened_requires_unit`: `opened_remaining` に非 `NULL` 値を持てるのは `units >= 1` の場合のみ
+  （開封中のロットは在庫としてまだ1点残っている必要がある）。アプリの検証（`0 <= opened_remaining <= content_amount`、
+  `docs/specs/features/inventory.md`）と併せて、DB 側の最終防衛線として機能する。
 - `unit_price`（円単位の整数）: 1 点あたりの購入単価。**任意入力**、`NULL` = 未設定（#342）。
   - 既存ロットは全て `NULL`（後方互換）。集計時は `unit_price IS NULL` のロットを除外する。
   - 購入時（ロット追加フォーム / `PurchaseDialog`）に入力できる。編集はロット単位（`useUpdateLot`）。
@@ -145,12 +149,14 @@ create table categories (
   color text,                            -- hex color or token
   icon text,                             -- lucide icon name など任意
   kind text not null default 'food' check (kind in ('food', 'daily_goods')), -- このカテゴリの既定のアイテム種別（item-type.md）
+  sort_order integer not null default 0, -- 表示順（お店の売り場順、#1008）
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, name)
 );
 
 create index categories_user_id_idx on categories(user_id);
+create index categories_sort_order_idx on categories(user_id, sort_order);
 ```
 
 - `kind`: このカテゴリに属するアイテムの既定の種別（食料品 / 日用品）。
@@ -158,6 +164,9 @@ create index categories_user_id_idx on categories(user_id);
   （`resolveItemType`、`docs/specs/features/item-type.md`）。
   `not null default 'food'` なので既存カテゴリは全て食料品扱いのまま。
 - `days_use_after_opening`（#752）も同じ「カテゴリ既定 + アイテム個別上書き」の構造を取る
+- `sort_order`（#1008）: カテゴリ管理画面の並べ替えで設定する表示順。買い物リスト・
+  買い物中モードは、この順でカテゴリごとにアイテムを並べる。`not null default 0` の
+  ため既存カテゴリは全て同値で、その場合は名前順にフォールバックする
 
 ## storage_locations
 

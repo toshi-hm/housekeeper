@@ -32,11 +32,11 @@ const SlotEditActions = ({
 }) => {
   const { t } = useTranslation("mealPlan");
   return (
-    <div className="flex shrink-0 gap-1">
+    <div className="flex shrink-0 gap-2">
       <Button
         size="icon"
         variant="ghost"
-        className="h-7 w-7"
+        className="h-11 w-11"
         aria-label={t("changeRecipe")}
         onClick={onStartEdit}
       >
@@ -45,7 +45,7 @@ const SlotEditActions = ({
       <Button
         size="icon"
         variant="ghost"
-        className="h-7 w-7"
+        className="h-11 w-11"
         aria-label={t("unassign")}
         onClick={onUnassign}
       >

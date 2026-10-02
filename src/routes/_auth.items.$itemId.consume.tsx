@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +14,13 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { LOTS_KEY, restoreLotConsumption, useConsumeLot, useItemLots } from "@/hooks/useItemLots";
 import { useItem } from "@/hooks/useItems";
+import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
+import { parseConsumeSpeech } from "@/lib/consumeSpeechParse";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
-import { convertUnit, getConvertibleUnits } from "@/lib/units";
+import { convertUnit, getConvertibleUnits, isConversionPrecisionLossy } from "@/lib/units";
 import {
   computeConsumption,
   CONSUME_REASONS,
@@ -151,6 +154,15 @@ export const ItemConsumePage = () => {
   const convertibleUnits = item ? getConvertibleUnits(item.content_unit) : [];
   const canConvertUnit = convertibleUnits.length > 1;
 
+  // #1010: 消費フォームは既に対象アイテムが確定しているため、発話からアイテム名を
+  // 特定する必要は無く、数量・単位だけを抽出してフォームへ反映する（自動送信はしない）。
+  const speechInput = useSpeechInput((transcript) => {
+    const { amount, unit } = parseConsumeSpeech(transcript, convertibleUnits);
+    if (amount !== null) setDelta(String(amount));
+    if (unit !== null) setDeltaUnit(unit);
+    setValidationError("");
+  });
+
   // A `lotId` carried over from a stale link (browser back/forward, another
   // tab/device consuming the last of that lot concurrently, etc.) may no
   // longer exist among the active lots. Treat that the same as "no lot
@@ -171,6 +183,13 @@ export const ItemConsumePage = () => {
       ? (convertUnit(deltaNum, deltaUnit, item.content_unit) ?? deltaNum)
       : deltaNum;
   const isConverting = item !== undefined && deltaUnit !== item.content_unit;
+  // 小さい量を大きい単位へ換算すると小数2桁（DB精度）への丸めで消費量が大きくずれるため、
+  // その場合は丸めた量で消費せず、入力単位の見直しを促す（#1143）。
+  const isPrecisionLossy =
+    item !== undefined &&
+    !isNaN(deltaNum) &&
+    deltaNum > 0 &&
+    isConversionPrecisionLossy(deltaNum, deltaUnit, item.content_unit);
   const preview =
     item && selectedLot && !isNaN(convertedDeltaNum) && convertedDeltaNum > 0
       ? computeConsumption(
@@ -189,6 +208,10 @@ export const ItemConsumePage = () => {
     const amount = convertedDeltaNum;
     if (isNaN(amount) || amount <= 0) {
       setValidationError(t("consumeValidationError"));
+      return;
+    }
+    if (isPrecisionLossy && item) {
+      setValidationError(t("consumeUnitPrecisionError", { unit: item.content_unit }));
       return;
     }
     if (!preview || preview.error) {
@@ -456,6 +479,13 @@ export const ItemConsumePage = () => {
                   ))}
                 </Select>
               )}
+              <VoiceInputButton
+                isSupported={speechInput.isSupported}
+                isListening={speechInput.isListening}
+                onStart={speechInput.start}
+                label={tc("voiceInput")}
+                listeningLabel={tc("voiceInputListening")}
+              />
             </div>
             {isConverting && !isNaN(deltaNum) && deltaNum > 0 && (
               <p className="text-xs text-muted-foreground">

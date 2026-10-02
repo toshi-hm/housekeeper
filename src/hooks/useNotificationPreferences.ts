@@ -63,7 +63,9 @@ export const subscribePush = async (): Promise<void> => {
   if (error) throw error;
 };
 
-export const unsubscribePush = async (): Promise<void> => {
+export const unsubscribePush = async (
+  options: { tolerateServerError?: boolean } = {},
+): Promise<void> => {
   requireOnline();
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
@@ -72,8 +74,28 @@ export const unsubscribePush = async (): Promise<void> => {
   const { error } = await supabase.functions.invoke("subscribe-push", {
     body: { action: "unsubscribe", endpoint: subscription.endpoint },
   });
-  if (error) throw error;
+  // #1134: サインアウト時はセッション失効でEdge Functionが401になり得る。その場合も
+  // ブラウザ側の購読は必ず解除し、以降の通知がこの端末に届かないようにする。
+  if (error && !options.tolerateServerError) throw error;
   await subscription.unsubscribe();
+};
+
+/**
+ * #1086: サインアウト時のベストエフォート購読解除。通知設定画面でユーザーが明示的に
+ * OFFにする場合の `unsubscribePush` と異なり、失敗（オフライン・Service Worker未登録・
+ * 購読なし等）を呼び出し元へ伝播させない。前ユーザーが通知ONのままサインアウトすると
+ * `push_subscriptions` の行が残り、ログアウト後もその端末へ期限アラート等の個人情報を
+ * 含む通知が届き続けてしまうため、`AuthProvider.tsx` の `SIGNED_OUT` ハンドラから、他の
+ * ログアウト時クリーンアップ（`clearOfflineActionQueue()` 等）と同じ非致命フォールバック
+ * 方針で呼ぶ。オフライン時はサーバー側の行を削除できないが、その場合は次回のログイン時
+ * 等に改めて試みる他なく、ログアウト自体をブロックすべきではない。
+ */
+export const unsubscribePushOnSignOut = async (): Promise<void> => {
+  try {
+    await unsubscribePush({ tolerateServerError: true });
+  } catch {
+    // 非致命: 上記の通りログアウト処理は継続させる
+  }
 };
 
 const sendTestNotification = async (): Promise<void> => {

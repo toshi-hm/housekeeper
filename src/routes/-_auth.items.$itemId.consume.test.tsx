@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { I18nextProvider } from "react-i18next";
 
 import * as useItemLotsModule from "@/hooks/useItemLots";
 import * as useItemsModule from "@/hooks/useItems";
+import i18n from "@/lib/i18n";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
 import type { Item, ItemLot } from "@/types/item";
 
@@ -380,6 +382,35 @@ describe("ItemConsumePage", () => {
 
       expect(queryByText(/insufficientStockError|Not enough stock|在庫が足りません/)).toBeNull();
     });
+
+    it("小さい量をmL→Lに換算すると精度が失われる場合は消費せずエラーを表示する (#1143)", async () => {
+      // 15mL = 0.015L は小数2桁に丸めると0.02L(=20mL)になってしまうため、拒否する。
+      itemspy.mockReturnValue({
+        data: { ...baseItem, content_unit: "L", content_amount: 1 },
+        isLoading: false,
+      } as ReturnType<typeof useItemsModule.useItem>);
+      const consumeMock = mock(async () => baseLot);
+      consumespy.mockReturnValue({
+        mutateAsync: consumeMock,
+        isPending: false,
+      } as unknown as ReturnType<typeof useItemLotsModule.useConsumeLot>);
+
+      const user = userEvent.setup();
+      const { getByRole, getByText } = renderPage();
+      await act(async () => {
+        fireEvent.change(
+          getByRole("combobox", { name: /consumeUnit|消費量の単位|Unit for amount used/ }),
+          { target: { value: "mL" } },
+        );
+      });
+      await user.type(getByRole("spinbutton"), "15");
+      await act(async () => {
+        fireEvent.click(getByRole("button", { name: /^(使う|Use|consume)$/ }));
+      });
+
+      expect(getByText(/consumeUnitPrecisionError|rounded to 2 decimals|丸められ/)).toBeDefined();
+      expect(consumeMock).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -476,5 +507,126 @@ describe("ItemConsumePage consume undo", () => {
       openedRemainingAfter: baseLot.opened_remaining ?? null,
       logId: "log-1",
     });
+  });
+});
+
+// #1010: 消費フォームへの音声入力対応。アイテムは既に確定しているため、発話から
+// 数量・単位を抽出してフォームへ反映するだけで、自動送信はしない。
+describe("ItemConsumePage voice input", () => {
+  interface MockRecognitionInstance {
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    onresult: ((event: { results: { transcript: string }[][] }) => void) | null;
+    onerror: ((event: { error: string }) => void) | null;
+    onend: (() => void) | null;
+    start: () => void;
+    stop: () => void;
+    abort: () => void;
+  }
+
+  interface SpeechRecognitionTestWindow {
+    SpeechRecognition?: new () => MockRecognitionInstance;
+  }
+
+  const getTestWindow = () => window as unknown as SpeechRecognitionTestWindow;
+
+  let lotsspy: ReturnType<typeof spyOn>;
+  let itemspy: ReturnType<typeof spyOn>;
+  let consumespy: ReturnType<typeof spyOn>;
+  let paramsspy: ReturnType<typeof spyOn>;
+  let searchspy: ReturnType<typeof spyOn>;
+  let instances: MockRecognitionInstance[];
+  let mutateAsyncMock: ReturnType<typeof mock>;
+
+  beforeEach(() => {
+    paramsspy = spyOn(Route, "useParams").mockReturnValue({
+      itemId: "test-item-id",
+    } as ReturnType<typeof Route.useParams>);
+
+    searchspy = spyOn(Route, "useSearch").mockReturnValue({
+      lotId: undefined,
+    } as ReturnType<typeof Route.useSearch>);
+
+    lotsspy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data: [baseLot],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useItemLotsModule.useItemLots>);
+
+    itemspy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: baseItem,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+
+    mutateAsyncMock = mock(() => Promise.resolve(baseLot));
+    consumespy = spyOn(useItemLotsModule, "useConsumeLot").mockReturnValue({
+      mutateAsync: mutateAsyncMock,
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemLotsModule.useConsumeLot>);
+
+    instances = [];
+    class MockSpeechRecognition implements MockRecognitionInstance {
+      lang = "";
+      continuous = true;
+      interimResults = true;
+      onresult: MockRecognitionInstance["onresult"] = null;
+      onerror: MockRecognitionInstance["onerror"] = null;
+      onend: MockRecognitionInstance["onend"] = null;
+      start = () => {};
+      stop = () => {};
+      abort = () => {};
+
+      constructor() {
+        instances.push(this);
+      }
+    }
+    getTestWindow().SpeechRecognition = MockSpeechRecognition;
+  });
+
+  afterEach(() => {
+    paramsspy.mockRestore();
+    searchspy.mockRestore();
+    lotsspy.mockRestore();
+    itemspy.mockRestore();
+    consumespy.mockRestore();
+    delete getTestWindow().SpeechRecognition;
+    cleanup();
+  });
+
+  // #1010: useSpeechInput は `i18n.language`（音声認識の言語コード解決用）を
+  // 直接参照するため、他のブロックが使う共有Wrapperと違いI18nextProviderが必須
+  // （共有Wrapperには無く、他のテストは未初期化時のフォールバック文言に頼っている）。
+  const VoiceInputWrapper = ({ children }: { children: React.ReactNode }) => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return (
+      <QueryClientProvider client={queryClient}>
+        <routerContext.Provider value={stubRouter}>
+          <ToastContext.Provider value={stubToast}>
+            <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+          </ToastContext.Provider>
+        </routerContext.Provider>
+      </QueryClientProvider>
+    );
+  };
+
+  it("マイクボタンから確定した発話の数量・単位が入力欄へ反映される（自動送信はしない）", () => {
+    const { getByRole } = render(<ItemConsumePage />, {
+      wrapper: VoiceInputWrapper as React.ComponentType,
+    });
+
+    fireEvent.click(getByRole("button", { name: /voiceInput|音声入力|Voice input/i }));
+    expect(instances).toHaveLength(1);
+
+    act(() => {
+      // baseItem.content_unit は "mL"（"L" と相互換算可能）。カタカナ読み
+      // "ミリリットル" から "mL" を判別できることを確認する。
+      instances[0]?.onresult?.({ results: [[{ transcript: "300ミリリットル使った" }]] });
+    });
+
+    expect((getByRole("spinbutton") as HTMLInputElement).value).toBe("300");
+    expect((getByRole("combobox", { name: /単位|Unit/i }) as HTMLSelectElement).value).toBe("mL");
+    // 抽出結果はあくまで入力欄への反映のみで、自動送信はされない。
+    expect(mutateAsyncMock).not.toHaveBeenCalled();
   });
 });

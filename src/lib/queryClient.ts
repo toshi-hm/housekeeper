@@ -1,5 +1,5 @@
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { QueryClient } from "@tanstack/react-query";
+import { defaultShouldDehydrateQuery, type Query, QueryClient } from "@tanstack/react-query";
 import { createStore, del, get, set } from "idb-keyval";
 
 export const queryClient = new QueryClient({
@@ -35,3 +35,18 @@ export const persister = createAsyncStoragePersister({
   storage: idbStorage,
   key: "housekeeper-query-cache",
 });
+
+/**
+ * item-image / item-images / location-photo queries cache Storage signed
+ * URLs whose embedded token expires after 50 min (SIGNED_URL_TTL in
+ * useItemImage.ts / useLocationPhoto.ts). IndexedDB persistence below keeps
+ * queries for `maxAge` (24h), so reopening the app after being idle longer
+ * than 50 min rehydrates an already-expired signed URL — the image briefly
+ * 400s until the background refetch replaces it. Excluding these from
+ * persistence means they're always fetched fresh on mount instead.
+ */
+const NEVER_PERSISTED_QUERY_KEYS = new Set(["item-image", "item-images", "location-photo"]);
+
+export const shouldDehydrateQuery = (query: Query): boolean =>
+  defaultShouldDehydrateQuery(query) &&
+  !(typeof query.queryKey[0] === "string" && NEVER_PERSISTED_QUERY_KEYS.has(query.queryKey[0]));

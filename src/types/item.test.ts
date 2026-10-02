@@ -14,6 +14,7 @@ import {
   isAlreadyInStock,
   isBackupExportOverdue,
   isItemUnverified,
+  isLotDepleted,
   isOpenedAlertDue,
   itemFormSchema,
   type ItemLot,
@@ -46,9 +47,9 @@ describe("itemFormSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  test("units=0 fails", () => {
+  test("units=0 is allowed (fully consumed but not deleted, #1093)", () => {
     const result = itemFormSchema.safeParse({ ...validForm, units: 0 });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   test("units=-1 fails", () => {
@@ -809,5 +810,17 @@ describe("getExpiryApprox", () => {
     const result = getExpiryApprox(fmt(addDays(60)), now);
     expect(result.unit).toBe("month");
     expect(result.value).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("isLotDepleted (#1144)", () => {
+  test("units が0で開封残量もなければ使い切り済み", () => {
+    expect(isLotDepleted(0, null)).toBe(true);
+    expect(isLotDepleted(0, 0)).toBe(true);
+  });
+
+  test("units が1以上、または開封残量があれば使い切りではない", () => {
+    expect(isLotDepleted(1, null)).toBe(false);
+    expect(isLotDepleted(0, 0.5)).toBe(false);
   });
 });

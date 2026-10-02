@@ -9,6 +9,7 @@ import { ShareButton } from "@/components/atoms/ShareButton";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { CooccurrenceSuggestion } from "@/components/molecules/CooccurrenceSuggestion";
 import { OfflineQueuePanel } from "@/components/molecules/OfflineQueuePanel";
 import { ScanToShoppingDialog } from "@/components/molecules/ScanToShoppingDialog";
 import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
@@ -29,6 +30,7 @@ import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemIma
 import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
 import { useOfflineActionQueue } from "@/hooks/useOfflineActionQueue";
+import { usePurchaseHistory } from "@/hooks/usePurchaseHistory";
 import { useRovingTabs } from "@/hooks/useRovingTabs";
 import {
   QUERY_KEY as SHOPPING_QUERY_KEY,
@@ -53,6 +55,7 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import type { OfflineQueuedAction } from "@/lib/offlineActionQueue";
 import { takePendingPurchaseImage } from "@/lib/offlinePendingPurchaseImage";
 import { OfflineError } from "@/lib/requireOnline";
+import { buildCooccurrenceSuggestions } from "@/lib/shoppingCooccurrence";
 import {
   type CategoryResolver,
   groupShoppingItemsByCategory,
@@ -121,6 +124,9 @@ export const ShoppingPage = () => {
   const [addName, setAddName] = useState("");
   const [addNote, setAddNote] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  // #1009: 直前に追加したアイテム名。「一緒に買われることが多いもの」の
+  // サジェスト表示のトリガーとして使う（null なら非表示）。
+  const [cooccurrenceFor, setCooccurrenceFor] = useState<string | null>(null);
   const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -146,11 +152,48 @@ export const ShoppingPage = () => {
   const [isLooking, setIsLooking] = useState(false);
   const speechInput = useSpeechInput((transcript) => setAddName(transcript));
 
-  const { data: items = [], isLoading } = useShoppingList(tab);
-  const { data: plannedItems = [], isLoading: plannedItemsLoading } = useShoppingList("planned");
+  const {
+    data: items = [],
+    isLoading,
+    isError: itemsListIsError,
+    refetch: refetchShoppingList,
+  } = useShoppingList(tab);
+  const {
+    data: plannedItems = [],
+    isLoading: plannedItemsLoading,
+    isError: plannedItemsIsError,
+    refetch: refetchPlannedItems,
+  } = useShoppingList("planned");
   const { data: templates = [] } = useShoppingTemplates();
-  const { data: inventoryItems = [], isLoading: inventoryItemsLoading } = useItems();
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  // #1009: 「一緒に買われることが多いもの」レコメンドの計算元データ。
+  const { data: archivedPurchases = [] } = usePurchaseHistory();
+  const {
+    data: inventoryItems = [],
+    isLoading: inventoryItemsLoading,
+    isError: inventoryItemsIsError,
+    refetch: refetchInventoryItems,
+  } = useItems();
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    isError: categoriesIsError,
+    refetch: refetchCategories,
+  } = useCategories();
+  // #1094: 買い物リスト画面はLoading/Empty/Content止まりで、フェッチ失敗（isError）を
+  // どこにも反映していなかった。取得元別に検知し、タブ表示・買い物中モードそれぞれで
+  // エラーカード + 再試行導線を出す（_auth.stats.tsx と同じパターン）。
+  const shoppingTabIsError = itemsListIsError || inventoryItemsIsError || categoriesIsError;
+  const shoppingModeIsError = plannedItemsIsError || inventoryItemsIsError || categoriesIsError;
+  const retryShoppingTab = () => {
+    void refetchShoppingList();
+    void refetchInventoryItems();
+    void refetchCategories();
+  };
+  const retryShoppingMode = () => {
+    void refetchPlannedItems();
+    void refetchInventoryItems();
+    void refetchCategories();
+  };
   const { data: userSettings } = useUserSettings();
   const upsert = useUpsertShoppingItem();
   const deleteItem = useDeleteShoppingItem();
@@ -212,13 +255,30 @@ export const ShoppingPage = () => {
   });
 
   const handleAdd = async () => {
-    if (!addName.trim()) return;
+    const name = addName.trim();
+    if (!name) return;
     try {
-      await upsert.mutateAsync({ name: addName.trim(), note: addNote || null });
+      await upsert.mutateAsync({ name, note: addNote || null });
       toast(t("addSuccess"), "success");
       setAddName("");
       setAddNote("");
       setShowAdd(false);
+      // #1009: 追加成功をトリガに「一緒に買われることが多いもの」を提示する。
+      setCooccurrenceFor(name);
+    } catch {
+      // Error toast is handled by useUpsertShoppingItem.onError
+    }
+  };
+
+  // #1009: サジェストチップのワンタップ追加。フォームの入力状態は変更せず、
+  // 成功時のみ提示していた行を消す（同じサジェストへの連続タップを防ぐ）。
+  // handleAdd と同様、失敗時は状態を変更せずチップを残してリトライできるようにする
+  // （エラートーストは useUpsertShoppingItem.onError が表示する）。
+  const handleAddSuggested = async (name: string) => {
+    try {
+      await upsert.mutateAsync({ name, note: null });
+      toast(t("addSuccess"), "success");
+      setCooccurrenceFor(null);
     } catch {
       // Error toast is handled by useUpsertShoppingItem.onError
     }
@@ -505,11 +565,31 @@ export const ShoppingPage = () => {
     if (!categoryId) return null;
     const category = categoryMap.get(categoryId);
     if (!category) return null;
-    return { id: category.id, name: category.name, color: category.color ?? null };
+    return {
+      id: category.id,
+      name: category.name,
+      color: category.color ?? null,
+      sortOrder: category.sort_order ?? 0,
+    };
   };
 
   const sortedItems = sortShoppingItems(items, sort, resolveCategory);
   const groups = sort === "category" ? groupShoppingItemsByCategory(items, resolveCategory) : null;
+  // 買い物中モード（#1008）: 店内で行ったり来たりしないよう、カテゴリの表示順
+  // （お店の売り場順）でリストを並べる。通常タブのソート設定（sort state）とは
+  // 独立して、常にカテゴリ順を使う（この画面は編集操作を持たずソートUIも無い）。
+  const shoppingModePlannedItems = sortShoppingItems(plannedItems, "category", resolveCategory);
+
+  // #1009: 直前に追加したアイテムと同じ「購入完了」バッチで一緒にアーカイブされてきた
+  // 商品名の頻度を集計する。既にリストにあるものは除外する。件数が少なくコストも低いため
+  // メモ化はしない。
+  const cooccurrenceSuggestions = cooccurrenceFor
+    ? buildCooccurrenceSuggestions(
+        archivedPurchases,
+        cooccurrenceFor,
+        plannedItems.map((item) => item.name),
+      )
+    : [];
 
   // 買い物中モード（#926）: ダッシュボード（`_auth.index.tsx`）と同じ算出ロジックを
   // 再利用する。minimum_stock ベースのアラートは既に取得済みの inventoryItems から
@@ -831,6 +911,15 @@ export const ShoppingPage = () => {
         </div>
       )}
 
+      {/* #1009: 直前に追加したアイテムと一緒に買われることが多い商品のサジェスト */}
+      <CooccurrenceSuggestion
+        suggestions={cooccurrenceSuggestions}
+        onAdd={(name) => {
+          void handleAddSuggested(name);
+        }}
+        onDismiss={() => setCooccurrenceFor(null)}
+      />
+
       {shoppingMode ? (
         <>
           {/* #1021: 買い物中モードのオフラインキューに残っている未同期アクション
@@ -840,7 +929,7 @@ export const ShoppingPage = () => {
             onRequestDiscard={(action) => setDiscardQueueAction(action)}
           />
           <ShoppingModeView
-            plannedItems={plannedItems}
+            plannedItems={shoppingModePlannedItems}
             onPurchase={(id) => {
               clearPendingPurchaseImage();
               setPendingPurchaseId(id);
@@ -854,6 +943,8 @@ export const ShoppingPage = () => {
             }}
             addingItemId={addingAlertId}
             isLoading={shoppingModeLoading}
+            isError={shoppingModeIsError}
+            onRetry={retryShoppingMode}
             resolveCheapestStore={resolveCheapestStore}
             checkedCartItemIds={cartCheckOff.checkedIds}
             onToggleCartCheck={cartCheckOff.toggle}
@@ -941,6 +1032,13 @@ export const ShoppingPage = () => {
                     <Skeleton className="h-8 w-16 rounded-md" />
                   </div>
                 ))}
+              </div>
+            ) : shoppingTabIsError ? (
+              <div className="flex flex-col items-center gap-4 rounded-lg border border-destructive p-6 text-center text-destructive">
+                <p className="text-sm">{tc("unknownError")}</p>
+                <Button variant="outline" size="sm" onClick={retryShoppingTab}>
+                  {tc("retry")}
+                </Button>
               </div>
             ) : items.length === 0 ? (
               <p className="py-8 text-center text-muted-foreground">

@@ -14,13 +14,13 @@ type Story = StoryObj<typeof meta>;
 export const AllItemsMatched: Story = {
   args: {
     total: 348,
-    hasExcludedItems: false,
+    excludedItemNames: [],
   },
 };
 
 export const SomeItemsExcluded: Story = {
   args: {
     total: 198,
-    hasExcludedItems: true,
+    excludedItemNames: ["牛乳", "卵"],
   },
 };

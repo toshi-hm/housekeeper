@@ -2,6 +2,7 @@ import { Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useBudgetStatus } from "@/hooks/useStats";
 import type { BudgetStatus, BudgetTier } from "@/types/stats";
 
@@ -65,13 +66,32 @@ export const BudgetBannerView = ({ status }: BudgetBannerViewProps) => {
 /**
  * 今月の支出が月次予算（`user_settings.monthly_budget`）に対してどの程度かを表示する
  * ダッシュボード用バナー（#991）。予算未設定のユーザーには一切表示されない
- * （`useBudgetStatus()` が `status: null` を返す間は何もレンダリングしない、
+ * （`useBudgetStatus()` が `status: null` かつ `isError: false` の間は何もレンダリングしない、
  * `SecurityQuestionReminderBanner` と同じ「条件付き表示・常時マウント」パターン）。
+ *
+ * 取得エラー時は「予算未設定」と区別できるよう、インラインエラー + 再試行ボタンを表示する（#1077）。
  */
 export const BudgetBanner = () => {
-  const { status, isLoading } = useBudgetStatus();
+  const { t: tc } = useTranslation("common");
+  const { status, isLoading, isError, refetch } = useBudgetStatus();
 
-  if (isLoading || !status) return null;
+  if (isLoading) return null;
+
+  if (isError) {
+    return (
+      <div
+        role="alert"
+        className="flex items-center justify-between gap-3 rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive"
+      >
+        <p>{tc("unknownError")}</p>
+        <Button variant="outline" size="sm" onClick={() => void refetch()}>
+          {tc("retry")}
+        </Button>
+      </div>
+    );
+  }
+
+  if (!status) return null;
 
   return <BudgetBannerView status={status} />;
 };

@@ -1,6 +1,7 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
+import { removeItemImageFile } from "@/hooks/useItemImage";
 import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
 import { maybeAutoReorder } from "@/lib/autoReorder";
 import { upsertItemInListCache } from "@/lib/itemCache";
@@ -769,6 +770,59 @@ export const useRestoreItem = () => {
         qc.invalidateQueries({ queryKey: DELETED_ITEMS_KEY, refetchType: "all" }),
       ]);
       toast(t("settings:restoreSuccess"), "success");
+    },
+    onError: (error) => {
+      toast(t(MUTATION_ERROR_MESSAGE_KEY[classifyMutationError(error)]), "error");
+    },
+  });
+};
+
+interface DeleteItemPermanentlyInput {
+  id: string;
+  /** Storage `item-images` バケット内のオブジェクトキー。存在すればあわせて削除する。 */
+  imagePath?: string | null;
+}
+
+/**
+ * アーカイブ済み（ソフトデリート済み）アイテムを完全に削除する（ハードデリート, #1099）。
+ * 単一ユーザー・自己ホスト型のこのアプリではソフトデリートのみだと `items` / `item_lots` /
+ * `consumption_logs` の行と Storage の画像が無期限に蓄積し続けるため、パージ手段を提供する。
+ *
+ * - `item_lots` / `consumption_logs` に加え、`recipe_items`（レシピの材料登録）・
+ *   `floor_plan_item_placements`（間取りマップのピン）も `items` への FK が `on delete cascade`
+ *   （docs/specs/database.md）のため、`items` 行の削除だけで自動的に削除される。個別の削除呼び出しは不要。
+ *   （`shopping_list_items.linked_item_id` / `created_item_id` は `on delete set null` のため対象外）
+ * - Storage の画像削除はDB行の削除が成功した後に行うベストエフォート処理。`removeItemImageFile`
+ *   自体がエラーを握りつぶす設計（#564〜: 既存の差し替えフローと同じ方針）のため、ここでも
+ *   画像削除の失敗でパージ全体を失敗扱いにはしない（孤立オブジェクトが残る可能性はあるが、
+ *   DB行の削除が先に確定していることを優先する）。
+ */
+export const deleteItemPermanently = async ({
+  id,
+  imagePath,
+}: DeleteItemPermanentlyInput): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase.from("items").delete().eq("id", id);
+  if (error) throw error;
+
+  if (imagePath) {
+    await removeItemImageFile(imagePath);
+  }
+};
+
+export const useDeleteItemPermanently = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation(["common", "settings"]);
+  return useMutation({
+    mutationFn: deleteItemPermanently,
+    onSuccess: async (_result, { id }) => {
+      qc.removeQueries({ queryKey: [...ITEMS_KEY, id] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: DELETED_ITEMS_KEY, refetchType: "all" }),
+      ]);
+      toast(t("settings:purgeItemSuccess"), "success");
     },
     onError: (error) => {
       toast(t(MUTATION_ERROR_MESSAGE_KEY[classifyMutationError(error)]), "error");

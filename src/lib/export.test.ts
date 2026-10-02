@@ -14,6 +14,7 @@ import {
   historyRowsToCSV,
   ImportParseError,
   itemsToCSV,
+  itemsToICS,
   itemsToJSON,
   jsonToItems,
 } from "./export";
@@ -440,6 +441,97 @@ describe("jsonToItems", () => {
     const payload = { exported_at: "2026-07-19T00:00:00Z", version: 1, items: [{ name: "" }] };
     expect(() => jsonToItems(JSON.stringify(payload))).toThrow(ImportParseError);
   });
+
+  // #1092: opened_remaining must not exceed content_amount
+  // (docs/specs/features/inventory.md "バリデーション"). A hand-edited or
+  // corrupted backup file must not be able to smuggle in an inconsistent lot.
+  test("rejects a v2 lot whose opened_remaining exceeds the item's content_amount", () => {
+    const payload = {
+      exported_at: "2026-07-19T00:00:00Z",
+      version: 2,
+      items: [
+        {
+          name: "牛乳",
+          barcode: null,
+          content_amount: 1000,
+          content_unit: "mL",
+          expiry_type: null,
+          item_type: null,
+          notes: null,
+          minimum_stock: null,
+          auto_reorder: false,
+          reorder_threshold: null,
+          days_use_after_opening: null,
+          reorder_lead_days: null,
+          pin_x: null,
+          pin_y: null,
+          lots: [
+            {
+              units: 1,
+              opened_remaining: 1500,
+              unit_price: null,
+              purchase_date: null,
+              expiry_date: null,
+              store_name: null,
+              opened_at: null,
+            },
+          ],
+        },
+      ],
+    };
+    expect(() => jsonToItems(JSON.stringify(payload))).toThrow(ImportParseError);
+    try {
+      jsonToItems(JSON.stringify(payload));
+    } catch (err) {
+      expect(err).toBeInstanceOf(ImportParseError);
+      expect((err as ImportParseError).reason).toBe("invalid_format");
+    }
+  });
+
+  test("rejects a v1 item whose opened_remaining exceeds content_amount", () => {
+    const payload = {
+      exported_at: "2026-07-19T00:00:00Z",
+      version: 1,
+      items: [
+        {
+          name: "牛乳",
+          barcode: null,
+          units: 1,
+          content_amount: 1000,
+          content_unit: "mL",
+          opened_remaining: 1500,
+          purchase_date: null,
+          expiry_date: null,
+          notes: null,
+          minimum_stock: null,
+        },
+      ],
+    };
+    expect(() => jsonToItems(JSON.stringify(payload))).toThrow(ImportParseError);
+  });
+
+  test("accepts opened_remaining exactly equal to content_amount (boundary)", () => {
+    const payload = {
+      exported_at: "2026-07-19T00:00:00Z",
+      version: 1,
+      items: [
+        {
+          name: "牛乳",
+          barcode: null,
+          units: 1,
+          content_amount: 1000,
+          content_unit: "mL",
+          opened_remaining: 1000,
+          purchase_date: null,
+          expiry_date: null,
+          notes: null,
+          minimum_stock: null,
+        },
+      ],
+    };
+    const result = jsonToItems(JSON.stringify(payload));
+    expect(result[0]?.lots[0]?.opened_remaining).toBe(1000);
+  });
 });
 
 describe("buildConsumptionHistoryRows", () => {
@@ -709,5 +801,100 @@ describe("buildExportFilename", () => {
   test("formats base-YYYYMMDD.ext", () => {
     const fixedNow = () => new Date(2026, 6, 9); // 2026-07-09 local
     expect(buildExportFilename("items", "csv", fixedNow)).toBe("items-20260709.csv");
+  });
+});
+
+describe("itemsToICS", () => {
+  const fixedNow = () => new Date(2026, 6, 9, 12, 0, 0); // 2026-07-09 12:00 local
+
+  test("wraps events in a VCALENDAR with the RFC5545 required properties", () => {
+    const ics = itemsToICS([], [], fixedNow);
+    expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
+    expect(ics).toContain("VERSION:2.0");
+    // RFC5545 3.1: every content line, including the last one, ends in CRLF.
+    expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
+  });
+
+  test("emits one all-day VEVENT per item with an expiry date", () => {
+    const item = makeItem({ id: "item-1", name: "牛乳", expiry_date: "2026-07-15" });
+    const ics = itemsToICS([item], [], fixedNow);
+    expect(ics).toContain("BEGIN:VEVENT");
+    expect(ics).toContain("UID:housekeeper-expiry-item-1@housekeeper");
+    expect(ics).toContain("DTSTART;VALUE=DATE:20260715");
+    // DTEND is the exclusive end date for an all-day event (the next day).
+    expect(ics).toContain("DTEND;VALUE=DATE:20260716");
+    expect(ics).toContain("SUMMARY:牛乳");
+    expect(ics).toContain("END:VEVENT");
+  });
+
+  test("skips items without an expiry date", () => {
+    const item = makeItem({ expiry_date: null });
+    const ics = itemsToICS([item], [], fixedNow);
+    expect(ics).not.toContain("BEGIN:VEVENT");
+  });
+
+  test("excludes daily goods even if expiry_date is still set on the row (#953)", () => {
+    const item = makeItem({
+      category_id: "cat-1",
+      item_type: null,
+      expiry_date: "2026-07-15",
+    });
+    const ics = itemsToICS([item], [{ id: "cat-1", kind: "daily_goods" }], fixedNow);
+    expect(ics).not.toContain("BEGIN:VEVENT");
+  });
+
+  test("escapes commas, semicolons, backslashes, and newlines in SUMMARY", () => {
+    const item = makeItem({ name: "牛乳; 1L, 特売\\品\nメモ", expiry_date: "2026-07-15" });
+    const ics = itemsToICS([item], [], fixedNow);
+    expect(ics).toContain("SUMMARY:牛乳\\; 1L\\, 特売\\\\品\\nメモ");
+  });
+
+  test("DTSTAMP reflects the injected now() as a UTC basic-format timestamp", () => {
+    const ics = itemsToICS(
+      [makeItem({ expiry_date: "2026-07-15" })],
+      [],
+      () => new Date("2026-07-09T03:04:05.000Z"),
+    );
+    expect(ics).toContain("DTSTAMP:20260709T030405Z");
+  });
+
+  test("emits one VEVENT with its own UID per item, skipping items without an expiry date", () => {
+    const items = [
+      makeItem({ id: "item-1", name: "牛乳", expiry_date: "2026-07-15" }),
+      makeItem({ id: "item-2", name: "卵", expiry_date: "2026-07-20" }),
+      makeItem({ id: "item-3", name: "米", expiry_date: null }),
+    ];
+    const ics = itemsToICS(items, [], fixedNow);
+
+    const veventCount = (ics.match(/BEGIN:VEVENT/g) ?? []).length;
+    expect(veventCount).toBe(2);
+    expect(ics).toContain("UID:housekeeper-expiry-item-1@housekeeper");
+    expect(ics).toContain("UID:housekeeper-expiry-item-2@housekeeper");
+    expect(ics).not.toContain("UID:housekeeper-expiry-item-3@housekeeper");
+    expect(ics).toContain("SUMMARY:牛乳");
+    expect(ics).toContain("SUMMARY:卵");
+  });
+
+  test("folds long/multibyte SUMMARY lines at 75 octets per RFC5545 3.1", () => {
+    const longName = "きゅうり".repeat(20);
+    const item = makeItem({ name: longName, expiry_date: "2026-07-15" });
+    const ics = itemsToICS([item], [], fixedNow);
+
+    const encoder = new TextEncoder();
+    const physicalLines = ics.split("\r\n");
+    for (const line of physicalLines) {
+      expect(encoder.encode(line).length).toBeLessThanOrEqual(75);
+    }
+
+    const summaryLineIndex = physicalLines.findIndex((line) => line.startsWith("SUMMARY:"));
+    expect(summaryLineIndex).toBeGreaterThanOrEqual(0);
+    // The SUMMARY property must have wrapped onto a folded continuation line
+    // (a single leading space, per RFC5545 3.1).
+    expect(physicalLines[summaryLineIndex + 1]?.startsWith(" ")).toBe(true);
+
+    // Unfolding (removing CRLF immediately followed by a single space) must
+    // reconstruct the original, unescaped-boundary content exactly.
+    const unfolded = ics.replace(/\r\n /g, "");
+    expect(unfolded).toContain(`SUMMARY:${longName}`);
   });
 });

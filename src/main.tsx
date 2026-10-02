@@ -7,7 +7,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { registerPwaServiceWorker } from "@/lib/pwa";
-import { persister, queryClient } from "@/lib/queryClient";
+import { persister, queryClient, shouldDehydrateQuery } from "@/lib/queryClient";
 import { initSentry } from "@/lib/sentry";
 import { ToastProvider } from "@/lib/toast";
 
@@ -36,7 +36,11 @@ createRoot(rootElement).render(
   <StrictMode>
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 }}
+      persistOptions={{
+        persister,
+        maxAge: 1000 * 60 * 60 * 24,
+        dehydrateOptions: { shouldDehydrateQuery },
+      }}
     >
       <ToastProvider>
         <RouterProvider router={router} />

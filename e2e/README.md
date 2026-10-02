@@ -64,6 +64,7 @@ things specs depend on.
 - `pwa-sw-navigation.spec.ts` — real Service Worker navigation fallback for
   offline direct navigation to a non-precached route (#784).
 - `calendar.spec.ts` — expiry calendar check-off + undo (#658).
+- `categories.spec.ts` — category master data CRUD: create → rename → delete blocked while in use → delete, with axe checks (#1041).
 - `recipes.spec.ts` — recipe creation and execution (consumption recording, #658).
 - `bulk-actions.spec.ts` — dashboard multi-select bulk move/consume/delete (#658).
 - `quick-consume.spec.ts` — barcode lookup for an existing item and quick consumption (#924).
@@ -71,6 +72,7 @@ things specs depend on.
 - `budget-banner.spec.ts` — dashboard budget banner against current-month spending (#991).
 - `similar-item-suggestion.spec.ts` — similar-name suggestion and navigation to the match (#990).
 - `meal-plan.spec.ts` — assigning a note to a weekly meal-plan slot (#715).
+- `data-export-import.spec.ts` — JSON backup export and restore round trip (#1065).
 
 ## Projects: `chromium` (desktop) and `mobile-chromium` (#753)
 
@@ -136,3 +138,6 @@ you add a new spec:
   needs an explicit `table === "rpc/<fn>"` case added to
   `fixtures/supabaseMock.ts` that mirrors the migration's SQL against the
   in-memory store — see the `bulk_consume_items` case for the pattern.
+  `import_items_batch` has a narrow insert-path mock for the JSON backup
+  round-trip E2E (#1065); it does not verify real Postgres transaction,
+  duplicate, or rollback semantics.

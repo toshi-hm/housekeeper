@@ -26,8 +26,8 @@ const makeItem = (overrides: Partial<ShoppingItem> = {}): ShoppingItem => ({
 });
 
 const categories: Record<string, ResolvedCategory> = {
-  food: { id: "food", name: "食品", color: "#22c55e" },
-  daily: { id: "daily", name: "日用品", color: "#3b82f6" },
+  food: { id: "food", name: "食品", color: "#22c55e", sortOrder: 0 },
+  daily: { id: "daily", name: "日用品", color: "#3b82f6", sortOrder: 1 },
 };
 
 const resolver: CategoryResolver = (item) =>
@@ -62,20 +62,37 @@ describe("sortShoppingItems", () => {
     expect(sorted.map((i) => i.id)).toEqual(["a", "b"]);
   });
 
-  test("category: カテゴリ名順、未分類は末尾", () => {
+  test("category: カテゴリの sort_order 順、未分類は末尾", () => {
     const items = [
       makeItem({ id: "x", linked_item_id: null }),
       makeItem({ id: "d", linked_item_id: "daily" }),
       makeItem({ id: "f", linked_item_id: "food" }),
     ];
     const sorted = sortShoppingItems(items, "category", resolver);
-    // 食品 < 日用品 < 未分類
+    // food(sort_order 0) < daily(sort_order 1) < 未分類
     expect(sorted.map((i) => i.id)).toEqual(["f", "d", "x"]);
+  });
+
+  test("category: sort_order がカテゴリ名の五十音順より優先される（#1008）", () => {
+    // 名前の五十音順（Intl.Collator("ja")）では「日用品」より「食品」が先だが、
+    // sort_order を逆に振ると表示順もそれに従うことを確認する
+    const reordered: Record<string, ResolvedCategory> = {
+      food: { id: "food", name: "食品", color: "#22c55e", sortOrder: 1 },
+      daily: { id: "daily", name: "日用品", color: "#3b82f6", sortOrder: 0 },
+    };
+    const reorderedResolver: CategoryResolver = (item) =>
+      item.linked_item_id ? (reordered[item.linked_item_id] ?? null) : null;
+    const items = [
+      makeItem({ id: "f", linked_item_id: "food" }),
+      makeItem({ id: "d", linked_item_id: "daily" }),
+    ];
+    const sorted = sortShoppingItems(items, "category", reorderedResolver);
+    expect(sorted.map((i) => i.id)).toEqual(["d", "f"]);
   });
 });
 
 describe("groupShoppingItemsByCategory", () => {
-  test("カテゴリ別にグループ化し、未分類を末尾にする", () => {
+  test("カテゴリの sort_order 順にグループ化し、未分類を末尾にする", () => {
     const items = [
       makeItem({ id: "x", name: "メモ", linked_item_id: null }),
       makeItem({ id: "f1", name: "牛乳", linked_item_id: "food" }),
@@ -83,6 +100,7 @@ describe("groupShoppingItemsByCategory", () => {
       makeItem({ id: "f2", name: "卵", linked_item_id: "food" }),
     ];
     const groups = groupShoppingItemsByCategory(items, resolver);
+    // food(sort_order 0) < daily(sort_order 1) < 未分類
     expect(groups.map((g) => g.categoryName)).toEqual(["食品", "日用品", null]);
     const food = groups[0];
     expect(food?.items.map((i) => i.name)).toEqual(["牛乳", "卵"]); // グループ内も名前順

@@ -69,6 +69,8 @@
   "mapToolWall": "Line",
   "mapUnknownItem": "Unknown item",
   "mapUnknownStorageLocation": "Unknown storage location",
+  "moveDown": "Move down",
+  "moveUp": "Move up",
   "navAddItem": "Add",
   "navCalendar": "Calendar",
   "navHome": "Home",

@@ -6,7 +6,7 @@ import { maybeAutoReorder } from "@/lib/autoReorder";
 import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import { computeConsumption, type ConsumeParams, type Item } from "@/types/item";
+import { computeConsumption, type ConsumeParams, isLotDepleted, type Item } from "@/types/item";
 
 /**
  * #752: mirrors the item_lots_set_opened_at DB trigger for the "direct"
@@ -81,14 +81,18 @@ export const consumeItem = async ({
     .select("*")
     .eq("item_id", item.id)
     .order("expiry_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true })
-    .limit(1);
+    .order("created_at", { ascending: true });
   if (lotsError) throw lotsError;
 
   let logInsertFailed = false;
   let undoInfo: ConsumeItemUndo;
 
-  const targetLot = lots && lots.length > 0 ? lots[0] : undefined;
+  // 使い切り済み（残量0）のロットは消費できないため飛ばし、次に期限の近いロットを使う。
+  // 全ロットが使い切り済みなら先頭ロットで消費を試み、在庫不足エラーに任せる。
+  const targetLot =
+    lots && lots.length > 0
+      ? (lots.find((l) => !isLotDepleted(l.units, l.opened_remaining ?? null)) ?? lots[0])
+      : undefined;
   if (targetLot) {
     const lotResult = await consumeLotFn({ lot: targetLot, item, deltaAmount, note });
     logInsertFailed = !!lotResult._logInsertFailed;

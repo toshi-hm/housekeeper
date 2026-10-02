@@ -58,6 +58,8 @@ export const ReceiptReviewPanel = ({
 
   const [rowStatus, setRowStatus] = useState<Record<string, ReceiptRowStatus>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // 失敗行の再試行を挟んでも完了画面に全体の登録件数を出すため、実行をまたいで累積する。
+  const totalSucceededRef = useRef(0);
 
   // handleBulkRegisterはループ中に非同期でawaitを挟むため、ループ開始時に
   // 閉じ込めた`drafts`は途中でユーザーが失敗行を削除しても更新されない古い
@@ -110,6 +112,7 @@ export const ReceiptReviewPanel = ({
           forceNew: true,
         });
         succeededIds.add(draft.id);
+        totalSucceededRef.current += 1;
         setRowStatus((prev) => ({ ...prev, [draft.id]: "success" }));
       } catch {
         failed += 1;
@@ -119,7 +122,7 @@ export const ReceiptReviewPanel = ({
     setIsSubmitting(false);
 
     if (failed === 0) {
-      onDone({ succeeded: succeededIds.size, failed });
+      onDone({ succeeded: totalSucceededRef.current, failed });
       return;
     }
     // 失敗行が残る場合は一覧に留まり、再試行できるようにする。成功済みの行は
@@ -194,7 +197,7 @@ export const ReceiptReviewPanel = ({
         {t("addRow")}
       </Button>
 
-      <div className="fixed inset-x-0 bottom-0 border-t bg-background p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <div className="fixed inset-x-0 bottom-16 z-40 border-t bg-background p-3 lg:bottom-0 lg:left-64 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="mx-auto max-w-2xl">
           <Button
             className="w-full"

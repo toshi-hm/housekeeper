@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { useBulkItemAction } from "@/hooks/useItems";
 import type { ShelfScanMatchItem } from "@/lib/shelfScanMatch";
@@ -39,6 +40,7 @@ export const ShelfScanReviewPanel = ({
   // と同様、ミューテーション成功後にローカルの表示状態だけ更新する）。
   const [handledIds, setHandledIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const visibleConsumedCandidates = possiblyConsumed.filter((item) => !handledIds.has(item.id));
   const allSelected =
@@ -66,6 +68,8 @@ export const ShelfScanReviewPanel = ({
       setSelectedIds(new Set());
     } catch {
       // Error toast is handled by useBulkItemAction's onError
+    } finally {
+      setIsConfirmOpen(false);
     }
   };
 
@@ -110,7 +114,7 @@ export const ShelfScanReviewPanel = ({
             <Button
               className="w-full"
               disabled={selectedIds.size === 0 || bulkAction.isPending}
-              onClick={() => void handleMarkConsumed()}
+              onClick={() => setIsConfirmOpen(true)}
             >
               {bulkAction.isPending
                 ? t("markConsumedPending")
@@ -119,6 +123,16 @@ export const ShelfScanReviewPanel = ({
           </>
         )}
       </section>
+
+      <ConfirmDialog
+        open={isConfirmOpen}
+        title={t("markConsumedConfirmTitle")}
+        message={t("markConsumedConfirmMessage", { count: selectedIds.size })}
+        confirmLabel={t("markConsumed", { count: selectedIds.size })}
+        isConfirming={bulkAction.isPending}
+        onConfirm={() => void handleMarkConsumed()}
+        onCancel={() => setIsConfirmOpen(false)}
+      />
 
       <section className="space-y-3">
         <div>

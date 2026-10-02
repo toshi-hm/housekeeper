@@ -47,9 +47,10 @@
 
 | hook                                                                                    | 機能                                             |
 | --------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `useCategories()`                                                                       | 一覧                                             |
+| `useCategories()`                                                                       | 一覧（`sort_order` 昇順 → `name` 昇順）          |
 | `useUpsertCategory()`                                                                   | 追加・編集（`kind` = 既定のアイテム種別 を含む） |
 | `useDeleteCategory(id)`                                                                 | 削除（FK は SET NULL）                           |
+| `useReorderCategories(orderedIds)`                                                      | 表示順の一括更新（#1008）                        |
 | `useStorageLocations()` / `useUpsertStorageLocation()` / `useDeleteStorageLocation(id)` | 同上                                             |
 | `useCustomUnits()`                                                                      | 一覧                                             |
 | `useCreateCustomUnit()`                                                                 | 追加                                             |
@@ -96,10 +97,21 @@
 - 既存 item が参照していたカスタム単位を削除しても、ItemForm はコピー済みの単位文字列を
   引き続き表示・保持する
 
+## v1.19: カテゴリの表示順（#1008）
+
+- `categories.sort_order`（`docs/specs/database.md`）を追加。カテゴリ管理画面の各行に
+  「上へ移動」「下へ移動」ボタンを置き、隣接する行と `sort_order` を入れ替える
+  （ドラッグ＆ドロップではなくボタン操作。新規ライブラリ依存を増やさず、
+  タップ操作のみで完結させるための実装判断）
+- 買い物リスト（カテゴリ別グループ表示）・買い物中モードのアイテム表示順は、
+  この `sort_order` に従う（未設定＝全カテゴリ同値のときは名前順にフォールバック）
+- `docs/specs/features/shopping-mode.md` も参照
+
 ## Backlog
 
 - カテゴリツリー（親子関係）
 - カスタム単位の改名（update）・並び替え
+- カテゴリ表示順のドラッグ＆ドロップ並べ替え（現状はボタンでの1件ずつの移動のみ）
 
 保管場所のレイアウト図（写真+ピンでの収納位置の可視化）は
 `docs/specs/features/storage-location-map.md`（#574）で実装済み。

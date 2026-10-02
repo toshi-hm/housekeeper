@@ -60,6 +60,7 @@ export interface Database {
           id: string;
           kind: string;
           name: string;
+          sort_order: number;
           updated_at: string;
           user_id: string;
         };
@@ -71,6 +72,7 @@ export interface Database {
           id?: string;
           kind?: string;
           name: string;
+          sort_order?: number;
           updated_at?: string;
           user_id: string;
         };
@@ -82,6 +84,7 @@ export interface Database {
           id?: string;
           kind?: string;
           name?: string;
+          sort_order?: number;
           updated_at?: string;
           user_id?: string;
         };
@@ -933,6 +936,24 @@ export interface Database {
         };
         Relationships: [];
       };
+      shelf_scan_rate_limits: {
+        Row: {
+          request_count: number;
+          user_id: string;
+          window_start: string;
+        };
+        Insert: {
+          request_count?: number;
+          user_id: string;
+          window_start?: string;
+        };
+        Update: {
+          request_count?: number;
+          user_id?: string;
+          window_start?: string;
+        };
+        Relationships: [];
+      };
       shopping_list_archive: {
         Row: {
           archived_at: string;
@@ -1271,6 +1292,13 @@ export interface Database {
           retry_after_seconds: number;
         }[];
       };
+      check_shelf_scan_rate_limit: {
+        Args: never;
+        Returns: {
+          allowed: boolean;
+          retry_after_seconds: number;
+        }[];
+      };
       create_household: { Args: { p_name: string }; Returns: string };
       delete_category_if_unused: { Args: { p_id: string }; Returns: undefined };
       delete_storage_location_if_unused: {
@@ -1290,6 +1318,10 @@ export interface Database {
           error_code: string;
           household_id: string;
         }[];
+      };
+      save_recipe: {
+        Args: { p_id: string; p_items: Json; p_name: string };
+        Returns: string;
       };
       save_shopping_list_template: {
         Args: { p_id: string; p_items: Json; p_name: string };

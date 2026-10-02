@@ -26,6 +26,9 @@ export interface Database {
           /** 開封後使用推奨日数（既定値）。items.days_use_after_opening が
            *  未設定のアイテムはこの値にフォールバックする（#752）。 */
           days_use_after_opening: number | null;
+          /** 表示順（お店の売り場順）。既存カテゴリは全て 0 のままで、その場合は
+           *  名前順にフォールバックする（#1008）。 */
+          sort_order: number;
           created_at: string;
           updated_at: string;
         };
@@ -37,6 +40,7 @@ export interface Database {
           icon?: string | null;
           kind?: "food" | "daily_goods";
           days_use_after_opening?: number | null;
+          sort_order?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -48,6 +52,7 @@ export interface Database {
           icon?: string | null;
           kind?: "food" | "daily_goods";
           days_use_after_opening?: number | null;
+          sort_order?: number;
           updated_at?: string;
         };
         Relationships: [];
@@ -923,6 +928,16 @@ export interface Database {
       bulk_consume_items: {
         Args: { p_item_ids: string[] };
         Returns: void;
+      };
+      // #1126: atomic recipe upsert + item replacement — see
+      // supabase/migrations/20260928000001_atomic_save_recipe.sql
+      save_recipe: {
+        Args: {
+          p_id: string | null;
+          p_name: string;
+          p_items: { item_id: string; amount: number }[];
+        };
+        Returns: string;
       };
     };
     Enums: Record<string, never>;

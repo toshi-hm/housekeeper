@@ -1,0 +1,145 @@
+name: Deploy Supabase Edge Functions
+
+# #1087: main へのマージのたびに supabase/functions/ の変更を検知して自動デプロイし、
+# 「コードは main にマージ済みだが Edge Function は本番未デプロイ」というドリフト
+# （#934, #1043 と同種の問題）を構造的に防ぐ。db-types.yml と同じ認証情報ハンドリング
+# （SUPABASE_ACCESS_TOKEN 未設定時はスキップ）を採用する。
+#
+# `push: branches: [main]` ではなく `workflow_run` で CI ワークフロー完了後にのみ発火
+# させている。別ワークフローファイルをまたぐ `needs:` は存在しないため、push トリガー
+# で ci.yml と並走させると「CI（Deno Edge Function Tests 等）が落ちた/終わっていない
+# コミットの Edge Function が本番にデプロイされる」事故を防げない。`branches: [main]`
+# フィルタは CI 側の実行元ブランチに対して掛かるため、CI が main への push で走った
+# 回（PR 上の実行は対象外）にのみ後続する。
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      function_name:
+        description: "デプロイ対象のFunction名（空欄なら全Functionを再デプロイ）"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  # main への連続マージ等で複数回分の実行が重なった場合に、デプロイ処理が競合・
+  # 割り込みして中途半端な状態になるのを防ぐ（cancel-in-progressはfalseにし、
+  # 実行中のデプロイを打ち切らずキューイングして順番に完走させる）。
+  group: deploy-edge-functions-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy changed Edge Functions
+    runs-on: ubuntu-latest
+    # `secrets` はジョブ/ステップの `if:` から直接参照できないため、db-types.yml と
+    # 同様に vars.SUPABASE_PROJECT_ID の有無だけをここでゲートし、
+    # SUPABASE_ACCESS_TOKEN の有無は最初のステップで確認する。
+    #
+    # 加えて、実際にデプロイして良い状況かどうかもここでゲートする:
+    #   - workflow_run トリガーの場合は、対象の CI 実行が成功(success)していること
+    #   - workflow_dispatch（手動実行）の場合は、main ブランチからの実行であること
+    #     （workflow_dispatch は任意のブランチ/タグを実行元に選べてしまうため、これが
+    #     ないと未レビューのfeatureブランチからでも本番デプロイできてしまう）
+    if: "vars.SUPABASE_PROJECT_ID != '' && ((github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # workflow_run イベントではデフォルトのrefがワークフロー定義ファイル自体の
+          # ブランチになってしまうため、CIが実際に走った対象コミットを明示的にcheckout
+          # する。workflow_dispatchの場合はgithub.sha（実行元ブランチのHEAD）でよい。
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          # 差分検出（対象コミットと親コミットの比較）に必要。
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check Supabase credentials
+        id: creds
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SUPABASE_ACCESS_TOKEN is not set — skipping Edge Function deploy. Set the secret to enable it."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine target functions
+        if: steps.creds.outputs.configured == 'true'
+        id: targets
+        env:
+          CURRENT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          # 入力値はシェルに直接展開せず環境変数経由で受け取る（スクリプトインジェクション対策）。
+          INPUT_FUNCTION_NAME: ${{ inputs.function_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          cd supabase/functions
+
+          if [ -n "$INPUT_FUNCTION_NAME" ]; then
+            # パストラバーサル等を避けるため、Function名として妥当な文字のみ許可する。
+            if ! echo "$INPUT_FUNCTION_NAME" | grep -Eq '^[A-Za-z0-9_-]+$'; then
+              echo "::error::Invalid function_name: $INPUT_FUNCTION_NAME"
+              exit 1
+            fi
+            TARGETS="$INPUT_FUNCTION_NAME"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            # 手動実行かつ対象未指定 = 全Function再デプロイ（デプロイ漏れの復旧用）。
+            TARGETS=$(find . -maxdepth 1 -mindepth 1 -type d -not -name "_shared" -printf "%f\n" | sort)
+          else
+            # workflow_run イベントには push イベントの `before` に相当する値がないため、
+            # 直前1コミットとの差分を見る（mainはsquash mergeで1マージ=1コミットになる
+            # 運用のため、親コミットとの比較で当該マージの変更点を検出できる）。
+            BEFORE="${CURRENT_SHA}~1"
+            CHANGED=$(git diff --name-only --relative "$BEFORE" "$CURRENT_SHA" -- . || true)
+            if echo "$CHANGED" | grep -q '^_shared/'; then
+              # 共有コードの変更は影響範囲が読めないため、安全側に全Functionを再デプロイする。
+              TARGETS=$(find . -maxdepth 1 -mindepth 1 -type d -not -name "_shared" -printf "%f\n" | sort)
+            else
+              TARGETS=$(echo "$CHANGED" | awk -F'/' 'NF>1 {print $1}' | sort -u | grep -v '^_shared$' || true)
+            fi
+          fi
+
+          # Function削除コミットでは、diffにそのディレクトリ配下のパスが残ったままに
+          # なる。存在しないディレクトリを`supabase functions deploy`しようとすると
+          # 失敗してジョブ全体が赤くなってしまうため、現存するディレクトリのみに絞る。
+          if [ -n "$TARGETS" ]; then
+            TARGETS=$(echo "$TARGETS" | while IFS= read -r fn; do [ -d "$fn" ] && echo "$fn"; done)
+          fi
+
+          if [ -z "$TARGETS" ]; then
+            echo "No Edge Function changes detected; nothing to deploy."
+            echo "targets=" >> "$GITHUB_OUTPUT"
+          else
+            echo "Target functions:"
+            echo "$TARGETS"
+            echo "targets<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$TARGETS" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy functions
+        if: steps.creds.outputs.configured == 'true' && steps.targets.outputs.targets != ''
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+          TARGETS: ${{ steps.targets.outputs.targets }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r fn; do
+            [ -z "$fn" ] && continue
+            echo "::group::Deploying $fn"
+            bunx supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_ID"
+            echo "::endgroup::"
+          done <<< "$TARGETS"

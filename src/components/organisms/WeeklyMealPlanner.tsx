@@ -18,6 +18,7 @@ import {
 import { fetchFefoLotByItemId, useRecipes } from "@/hooks/useRecipes";
 import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
 import { useUpsertShoppingItem } from "@/hooks/useShoppingList";
+import { useUserSettings } from "@/hooks/useUserSettings";
 import { toLocalDateKey } from "@/lib/dateUtils";
 import { useToast } from "@/lib/toast-context";
 import { dropExpiryForDailyGoods, getExpiryStatus } from "@/types/item";
@@ -50,6 +51,8 @@ export const WeeklyMealPlanner = () => {
   const { data: rawItems = [] } = useItems();
   const { data: categories = [] } = useCategories();
   const { data: recipes = [] } = useRecipes();
+  const { data: userSettings } = useUserSettings();
+  const warningDays = userSettings?.expiry_warning_days;
   const { slots, isLoading, error } = useMealPlans(range);
   const upsertMealPlan = useUpsertMealPlan();
   const executeMealPlan = useExecuteMealPlan();
@@ -93,10 +96,10 @@ export const WeeklyMealPlanner = () => {
   // 空き枠向けレコメンド。対象は「期限間近の在庫」全般でありスロットの日付には
   // 依存しないため、週内の全空き枠で共通の結果を使い回す。
   const urgentItems = items.filter((item) => {
-    const status = getExpiryStatus(item.expiry_date);
+    const status = getExpiryStatus(item.expiry_date, warningDays);
     return (status === "expired" || status === "expiring-soon") && item.units > 0;
   });
-  const internalCandidates = rankRecipesByExpiringStock(recipes, itemsById).slice(
+  const internalCandidates = rankRecipesByExpiringStock(recipes, itemsById, warningDays).slice(
     0,
     RECOMMENDATION_LIMIT,
   );

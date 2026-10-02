@@ -52,8 +52,9 @@ export const NotificationSettings = () => {
   const handlePushToggle = async () => {
     if (!isPushSupported) return;
     setIsPushLoading(true);
+    const wasEnabled = !!prefs?.push_enabled;
     try {
-      if (prefs?.push_enabled) {
+      if (wasEnabled) {
         await unsubscribePush();
       } else {
         const permission = await Notification.requestPermission();
@@ -74,13 +75,22 @@ export const NotificationSettings = () => {
       return;
     }
     try {
-      if (prefs?.push_enabled) {
-        await updatePrefs.mutateAsync({ push_enabled: false });
-      } else {
-        await updatePrefs.mutateAsync({ push_enabled: true });
-        toast(t("pushEnabled"), "success");
-      }
+      await updatePrefs.mutateAsync({ push_enabled: !wasEnabled });
+      if (!wasEnabled) toast(t("pushEnabled"), "success");
     } catch (err) {
+      // ブラウザ側の購読処理（成功済み）とDBのpush_enabledが分裂したままだと、
+      // push_subscriptions行は存在するのにpush_enabledが更新前の値のままになり、
+      // 通知が届かないサイレント障害になる (#1081)。ベストエフォートで購読状態を
+      // 元に戻し、不整合を残さないようにする。
+      try {
+        if (wasEnabled) {
+          await subscribePush();
+        } else {
+          await unsubscribePush();
+        }
+      } catch {
+        // ロールバックにも失敗した場合は次回操作時の自己修復に委ねる
+      }
       if (!(err instanceof OfflineError)) {
         toast(t("common:unknownError"), "error");
       }

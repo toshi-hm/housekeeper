@@ -1,3 +1,5 @@
+import "fake-indexeddb/auto";
+
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 
@@ -22,11 +24,21 @@ mock.module("@/lib/supabase", () => ({
   },
 }));
 
+// #1086: unsubscribePush自体（Service Worker/Edge Function呼び出し）は
+// useNotificationPreferences.test.tsで個別に検証済み。ここではAuthProviderが
+// SIGNED_OUT時にこれを呼び出すこと自体だけを検証したいのでモジュールごとモックする。
+const unsubscribePushOnSignOutMock = mock(() => Promise.resolve());
+mock.module("@/hooks/useNotificationPreferences", () => ({
+  unsubscribePushOnSignOut: unsubscribePushOnSignOutMock,
+}));
+
 const { AuthProvider } = await import("./AuthProvider");
 const { useAuthSession } = await import("./auth-context");
 const { persister, queryClient } = await import("./queryClient");
 const { enqueueOfflineAction, readOfflineActionQueue } = await import("./offlineActionQueue");
 const { loadItemFormDraft, saveItemFormDraft } = await import("./itemFormDraft");
+const { storePendingPurchaseImage, takePendingPurchaseImage } =
+  await import("./offlinePendingPurchaseImage");
 
 // mock.module replaces the module for the entire bun:test process (leaks across
 // files), so spy on the real queryClient/persister instances instead.
@@ -78,6 +90,7 @@ beforeEach(() => {
   navigateMock.mockClear();
   queryClientClearSpy.mockClear();
   removeClientSpy.mockClear();
+  unsubscribePushOnSignOutMock.mockClear();
   window.localStorage.clear();
 });
 
@@ -169,6 +182,69 @@ describe("AuthProvider", () => {
     await waitFor(() => expect(readOfflineActionQueue()).toEqual([]));
     expect(window.localStorage.getItem(CART_CHECK_OFF_STORAGE_KEY)).toBeNull();
     expect(loadItemFormDraft("new-item")).toBeNull();
+  });
+
+  // #1085: 買い物中モードのオフライン購入キューに添付した画像はIndexedDB
+  // （offlinePendingPurchaseImage.ts）にactionId単位で保存され、上のテストが検証する
+  // localStorage側のキュークリアだけでは消えない。キューが残ったままログアウトした
+  // 場合、そのactionIdはもう辿れないため、ストア自体を丸ごとクリアする必要がある。
+  test("clears pending offline-purchase images (IndexedDB) on SIGNED_OUT", async () => {
+    const actionId = crypto.randomUUID();
+    await storePendingPurchaseImage(
+      actionId,
+      new File(["x"], "receipt.jpg", { type: "image/jpeg" }),
+    );
+    expect(await takePendingPurchaseImage(actionId)).not.toBeNull();
+    // 取り出すと削除されるので、判定用にもう一度保存し直す
+    await storePendingPurchaseImage(
+      actionId,
+      new File(["x"], "receipt.jpg", { type: "image/jpeg" }),
+    );
+
+    renderWithRouter(
+      "/",
+      <AuthProvider>
+        <SessionProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(authChangeCallback).not.toBeNull());
+    authChangeCallback?.("SIGNED_OUT", null);
+
+    await waitFor(async () => expect(await takePendingPurchaseImage(actionId)).toBeNull());
+  });
+
+  // #1086: 通知ONのままサインアウトすると前ユーザーのPush購読が残り、ログアウト後も
+  // その端末へ通知が届き続けてしまう問題の回帰テスト。実際のService Worker/Edge
+  // Function呼び出しはuseNotificationPreferences.test.tsで検証済みなので、ここでは
+  // SIGNED_OUT時に呼び出されること自体だけを確認する。
+  test("calls unsubscribePushOnSignOut on SIGNED_OUT", async () => {
+    renderWithRouter(
+      "/",
+      <AuthProvider>
+        <SessionProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(authChangeCallback).not.toBeNull());
+    authChangeCallback?.("SIGNED_OUT", null);
+
+    await waitFor(() => expect(unsubscribePushOnSignOutMock).toHaveBeenCalled());
+  });
+
+  test("does not call unsubscribePushOnSignOut on non-SIGNED_OUT events", async () => {
+    renderWithRouter(
+      "/",
+      <AuthProvider>
+        <SessionProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(authChangeCallback).not.toBeNull());
+    authChangeCallback?.("TOKEN_REFRESHED", { user: { id: "u1" } });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(unsubscribePushOnSignOutMock).not.toHaveBeenCalled();
   });
 
   // #1057: Service Worker（src/sw.ts）のSupabase RESTキャッシュ（Cache Storage）は

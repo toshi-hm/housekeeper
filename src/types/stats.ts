@@ -483,31 +483,60 @@ interface WasteCategoryCount {
   categoryId: string | null;
   name: string;
   count: number;
+  /** カテゴリ内の推定廃棄金額（円、#1100）。単価未設定のロットは含まれない。 */
+  value: number;
 }
 
 export interface MonthlyWasteEntry {
   month: string;
   total: number;
+  /** 月内の推定廃棄金額合計（円、#1100）。単価未設定のロットは含まれない。 */
+  estimatedValue: number;
   byCategory: WasteCategoryCount[];
 }
 
 /** ソフトデリート済みアイテムのうち `deletion_reason = 'expired_waste'` のもの。
- *  `deleted_at` は呼び出し側のクエリで NOT NULL に絞り込み済み。 */
+ *  `deleted_at` は呼び出し側のクエリで NOT NULL に絞り込み済み。
+ *  `id`/`content_amount` は #1100 の推定金額計算で `LotValueRow` と突き合わせるために使う。 */
 export interface RawWasteItem {
+  id: string;
   category_id: string | null;
+  content_amount: number;
   deleted_at: string;
 }
 
-/** 月別・カテゴリ別の廃棄件数を集計する（食品ロスダッシュボード用）。
- *  `computeMonthlyConsumption` と同じ「直近 N ヶ月を新しい順に並べる」方針に揃えている。
- *  unit_price（#342, 未マージ）が入るまでは金額換算せず件数のみを対象にする。 */
+/**
+ * 月別・カテゴリ別の廃棄件数・推定金額を集計する（食品ロスダッシュボード用）。
+ * `computeMonthlyConsumption` と同じ「直近 N ヶ月を新しい順に並べる」方針に揃えている。
+ *
+ * 推定金額（#1100）: 廃棄（ソフトデリート）はアイテム行にフラグを立てるだけで
+ * `item_lots` 行は削除しないため、削除時点でそのアイテムに残っていたロットの
+ * `units`/`opened_remaining`/`unit_price` がそのまま「捨てられた分」を表す。
+ * `computeCategoryValueStats`（在庫総額）と同じ `getPricedEquivalentUnits` の
+ * 按分ロジックを再利用する。単価未設定のロットは金額不明として除外する。
+ */
 export const computeMonthlyWasteStats = (
   items: RawWasteItem[],
+  lots: LotValueRow[],
   categoryMap: Record<string, string>,
   months = 6,
   now = new Date(),
 ): MonthlyWasteEntry[] => {
   const result: MonthlyWasteEntry[] = [];
+
+  const contentAmountByItemId = new Map(items.map((item) => [item.id, item.content_amount]));
+  const valueByItemId = new Map<string, number>();
+  for (const lot of lots) {
+    if (lot.unit_price === null || lot.unit_price === undefined) continue;
+    const contentAmount = contentAmountByItemId.get(lot.item_id);
+    if (contentAmount === undefined) continue;
+    const equivalentUnits = getPricedEquivalentUnits(lot, contentAmount);
+    if (equivalentUnits <= 0) continue;
+    valueByItemId.set(
+      lot.item_id,
+      (valueByItemId.get(lot.item_id) ?? 0) + equivalentUnits * lot.unit_price,
+    );
+  }
 
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -521,9 +550,12 @@ export const computeMonthlyWasteStats = (
     });
 
     const countMap = new Map<string | null, number>();
+    const valueMap = new Map<string | null, number>();
     for (const item of monthItems) {
       const key = item.category_id ?? null;
       countMap.set(key, (countMap.get(key) ?? 0) + 1);
+      const itemValue = valueByItemId.get(item.id) ?? 0;
+      valueMap.set(key, (valueMap.get(key) ?? 0) + itemValue);
     }
 
     const byCategory: WasteCategoryCount[] = [...countMap.entries()]
@@ -531,10 +563,13 @@ export const computeMonthlyWasteStats = (
         categoryId,
         name: categoryId ? (categoryMap[categoryId] ?? "?") : "__uncategorized__",
         count,
+        value: Math.round(valueMap.get(categoryId) ?? 0),
       }))
       .sort((a, b) => b.count - a.count);
 
-    result.push({ month: label, total: monthItems.length, byCategory });
+    const estimatedValue = Math.round([...valueMap.values()].reduce((sum, v) => sum + v, 0));
+
+    result.push({ month: label, total: monthItems.length, estimatedValue, byCategory });
   }
 
   return result;

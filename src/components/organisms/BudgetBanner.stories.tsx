@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { BudgetBanner, BudgetBannerView } from "./BudgetBanner";
 
@@ -32,11 +33,27 @@ export const Over: Story = {
   },
 };
 
-// Storybook環境ではsupabaseがモック化され未認証扱いになり、useBudgetStatusは
-// monthly_budgetを読めず status: null を返すため、実データ取得を担う
-// BudgetBanner（container）は何も表示しない。予算未設定ユーザーへの
-// 影響ゼロという仕様どおりの状態。
+// Storybook環境ではsupabaseがモック化され未認証扱いになるため、useMonthlySpending
+// （item_lots取得）が「Not authenticated」でreject＝isError: trueになってしまう
+// （#1077でBudgetBannerがisErrorを尊重するようになった影響で表面化）。
+// 「予算未設定ユーザーには何も表示されない」という本来の仕様どおりの状態を
+// 再現するため、react-queryのキャッシュに未設定状態のデータを事前投入し、
+// 実際のネットワーク呼び出し（＝unauthenticatedエラー）を発生させないようにする。
 export const Hidden: Story = {
   args: { status: { monthlyBudget: 30000, currentSpend: 0, percentUsed: 0, tier: "normal" } },
-  render: () => <BudgetBanner />,
+  render: () => {
+    // gcTime: 0（他ストーリーのデフォルト）だとマウント前にキャッシュが
+    // ガベージコレクトされてしまい、結局実クエリが発火してしまうため、
+    // ここでは意図的にデフォルトのgcTimeのままにする。
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(["settings"], null);
+    queryClient.setQueryData(["item-lots", "spending-all"], []);
+    return (
+      <QueryClientProvider client={queryClient}>
+        <BudgetBanner />
+      </QueryClientProvider>
+    );
+  },
 };

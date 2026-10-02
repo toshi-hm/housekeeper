@@ -270,6 +270,78 @@ export const installSupabaseMock = async (page: Page): Promise<Store> => {
     const url = new URL(request.url());
     const table = url.pathname.replace(/^.*\/rest\/v1\//, "");
 
+    if (table === "rpc/delete_category_if_unused") {
+      // Mirrors the delete_category_if_unused RPC (#1041): refuses (HK001) while a
+      // non-deleted item still references the category, otherwise deletes the row.
+      const body = (request.postDataJSON() as { p_id?: string }) ?? {};
+      const inUse = (store.items ?? []).some(
+        (i) => i.category_id === body.p_id && (i.deleted_at ?? null) === null,
+      );
+      if (inUse) {
+        await route.fulfill({
+          status: 400,
+          contentType: "application/json",
+          body: JSON.stringify({ code: "HK001", message: "category in use", details: null }),
+        });
+        return;
+      }
+      store.categories = (store.categories ?? []).filter((c) => c.id !== body.p_id);
+      await route.fulfill({ status: 204, body: "" });
+      return;
+    }
+
+    if (table === "rpc/save_recipe") {
+      // Mirrors supabase/migrations/20260928000001_atomic_save_recipe.sql
+      // (#1126): recipe upsert + recipe_items replacement, applied to the
+      // in-memory store as if it ran in one transaction.
+      const body =
+        (request.postDataJSON() as {
+          p_id?: string | null;
+          p_name?: string;
+          p_items?: { item_id: string; amount: number }[];
+        }) ?? {};
+      const recipesStore = (store.recipes ??= []);
+      const itemsStore = (store.recipe_items ??= []);
+
+      let recipeId = body.p_id ?? null;
+      if (recipeId) {
+        const existing = recipesStore.find((r) => r.id === recipeId && r.user_id === FAKE_USER_ID);
+        if (!existing) {
+          await route.fulfill({ status: 404, body: "" });
+          return;
+        }
+        existing.name = body.p_name;
+        existing.updated_at = nowIso();
+      } else {
+        recipeId = uuid();
+        recipesStore.push({
+          id: recipeId,
+          user_id: FAKE_USER_ID,
+          name: body.p_name,
+          created_at: nowIso(),
+          updated_at: nowIso(),
+        });
+      }
+
+      store.recipe_items = itemsStore.filter((ri) => ri.recipe_id !== recipeId);
+      for (const item of body.p_items ?? []) {
+        store.recipe_items.push({
+          id: uuid(),
+          recipe_id: recipeId,
+          item_id: item.item_id,
+          amount: item.amount,
+          created_at: nowIso(),
+        });
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(recipeId),
+      });
+      return;
+    }
+
     if (table === "rpc/bulk_consume_items") {
       // Mirrors supabase/migrations/20260805000002_atomic_bulk_consume_items.sql
       // (#743): consumption_logs insert + item_lots delete + items reset, all
@@ -315,6 +387,69 @@ export const installSupabaseMock = async (page: Page): Promise<Store> => {
       }
 
       await route.fulfill({ status: 204, body: "" });
+      return;
+    }
+
+    if (table === "rpc/import_items_batch") {
+      // Mirrors the user-visible effects of import_items_batch from
+      // supabase/migrations/20260731000001_atomic_import_items.sql (#694).
+      // This deliberately covers only the insert path needed by the backup
+      // round-trip E2E; overwrite/duplicate and transaction rollback semantics
+      // remain the real database function's responsibility.
+      const body =
+        (request.postDataJSON() as {
+          p_items?: Row[];
+          p_duplicate_strategy?: string;
+        }) ?? {};
+      const results: Row[] = [];
+      const strategy = body.p_duplicate_strategy;
+      const itemsStore = (store.items ??= []);
+      const lotsStore = (store.item_lots ??= []);
+
+      for (const input of body.p_items ?? []) {
+        const barcode = input.barcode;
+        const existing =
+          typeof barcode === "string"
+            ? itemsStore.find((item) => item.barcode === barcode && item.deleted_at == null)
+            : undefined;
+        if (existing && strategy === "skip") {
+          results.push({ item_id: existing.id, action: "skipped" });
+          continue;
+        }
+
+        const itemId = uuid();
+        const { lots: inputLots, ...itemValues } = input;
+        const item: Row = {
+          id: itemId,
+          user_id: FAKE_USER_ID,
+          created_at: nowIso(),
+          updated_at: nowIso(),
+          auto_reorder: false,
+          ...itemValues,
+          barcode: barcode ?? null,
+        };
+        itemsStore.push(item);
+
+        const lots = Array.isArray(inputLots) ? inputLots : [];
+        for (const value of lots) {
+          const lot = value as Row;
+          lotsStore.push({
+            id: uuid(),
+            user_id: FAKE_USER_ID,
+            item_id: itemId,
+            created_at: nowIso(),
+            updated_at: nowIso(),
+            ...lot,
+          });
+        }
+        results.push({ item_id: itemId, action: "created" });
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(results),
+      });
       return;
     }
 

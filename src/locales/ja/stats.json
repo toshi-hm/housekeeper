@@ -14,6 +14,7 @@
   "consumptionSpeedRankingSubtitle": "直近30日間の1日あたり消費量順",
   "consumptionTrend": "月別消費量",
   "dailyRateLabel": "1日あたり",
+  "estimatedWasteValue": "推定廃棄金額",
   "expiryBreakdown": "期限ステータス分布",
   "historyHint": "履歴が貯まると表示されます",
   "itemCount": "件",

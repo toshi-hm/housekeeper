@@ -34,6 +34,7 @@ import {
   DashboardNotificationCenter,
   type NotificationChip,
 } from "@/components/organisms/DashboardNotificationCenter";
+import { TodayMealPlanCard } from "@/components/organisms/TodayMealPlanCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -62,9 +63,8 @@ import {
   itemTypeTabPanelId,
   parseItemTypeTab,
 } from "@/lib/itemType";
-import { updateAppBadge } from "@/lib/pwa";
 import { OfflineError } from "@/lib/requireOnline";
-import { toggleId, toggleSelectAll } from "@/lib/selection";
+import { pruneSelection, toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
 import {
   DEFAULT_LOW_STOCK_FORECAST_DAYS,
@@ -286,7 +286,7 @@ export const DashboardPage = () => {
 
   // 一括操作（#359）
   const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIdsRaw, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkMoveDialog, setBulkMoveDialog] = useState<"location" | "category" | null>(null);
   const [bulkConfirm, setBulkConfirm] = useState<"consume" | "delete" | null>(null);
   const bulkAction = useBulkItemAction();
@@ -386,6 +386,11 @@ export const DashboardPage = () => {
     daily_goods: expiryFiltered.filter((item) => itemTypeOf(item) === "daily_goods").length,
   };
   const filtered = typeFiltered.filter(matchesExpiryFilter);
+  // フィルタ変更で画面から消えた選択は無効にする（見えないアイテムへの一括操作を防ぐ、#1140）
+  const selectedIds = pruneSelection(
+    selectedIdsRaw,
+    filtered.map((i) => i.id),
+  );
 
   const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${itemTypeTab}|${hideEmpty}|${effectiveSort}`;
   const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
@@ -432,10 +437,6 @@ export const DashboardPage = () => {
     (item) => getExpiryStatus(item.expiry_date, warningDays) === "expiring-soon",
   );
   const urgentCount = urgentItems.length;
-
-  useEffect(() => {
-    void updateAppBadge(urgentCount);
-  }, [urgentCount]);
 
   // 期限切れ/期限間近アイテムを使い切れる外部レシピの提案 (#461)。
   // sanitizeItemNames (Edge Function側) と合わせて先頭5件までに絞る。
@@ -628,6 +629,11 @@ export const DashboardPage = () => {
           </Button>
         </div>
       )}
+
+      {/* #1035: 通知センターとは別に、開いた瞬間に「今日は何を作るか」「在庫は
+          足りているか」がわかるよう常時表示する（折りたたみ式の通知センターの
+          中に置くと、クリックしないと見えず毎日の主要動線として機能しないため）。 */}
+      <TodayMealPlanCard />
 
       <DashboardNotificationCenter chips={visibleNotificationChips}>
         {/* 月次予算超過アラート（#991）。予算未設定なら何も表示しない。 */}
@@ -1040,7 +1046,7 @@ export const DashboardPage = () => {
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-            {items.length === 0 ? (
+            {allItems.length === 0 ? (
               <>
                 <p className="text-lg font-medium">{t("noItems")}</p>
                 <p className="mt-1 text-sm">{t("firstAddHint")}</p>

@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
 
-import { handler } from "./index.ts";
+import { handler, toRecipeSuggestPayload } from "./index.ts";
+
+Deno.test("recipe-suggest response - reports a missing legacy App ID", () => {
+  assert.deepStrictEqual(toRecipeSuggestPayload({ kind: "missing_api_key" }), {
+    recipes: [],
+    reason: "missing_api_key",
+  });
+});
+
+Deno.test("recipe-suggest response - reports a missing Rakuten access key", () => {
+  assert.deepStrictEqual(toRecipeSuggestPayload({ kind: "missing_access_key" }), {
+    recipes: [],
+    reason: "missing_access_key",
+  });
+});
 
 Deno.test("recipe-suggest handler - responds to preflight", async () => {
   const response = await handler(new Request("https://example.test", { method: "OPTIONS" }));

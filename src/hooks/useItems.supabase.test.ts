@@ -69,8 +69,18 @@ const rpcMock = mock((name: string, args?: unknown) => {
   return Promise.resolve(response);
 });
 
+const storageRemoveMock = mock((paths: string[]) => {
+  callLog.push({ table: "storage:item-images", method: "remove", args: [paths] });
+  return Promise.resolve({ data: null, error: null });
+});
+
 mock.module("@/lib/supabase", () => ({
-  supabase: { from: fromMock, auth: { getUser: getUserMock }, rpc: rpcMock },
+  supabase: {
+    from: fromMock,
+    auth: { getUser: getUserMock },
+    rpc: rpcMock,
+    storage: { from: () => ({ remove: storageRemoveMock }) },
+  },
 }));
 
 const {
@@ -84,6 +94,8 @@ const {
   useBulkItemAction,
   useItemsWithExpiry,
   countRecentExpiredWaste,
+  deleteItemPermanently,
+  useDeleteItemPermanently,
 } = await import("@/hooks/useItems");
 const { ToastContext } = await import("@/lib/toast-context");
 
@@ -121,6 +133,7 @@ const makeItem = (overrides: Partial<Item> = {}): Item => ({
 beforeEach(() => {
   callLog = [];
   for (const key of Object.keys(responseQueues)) delete responseQueues[key];
+  storageRemoveMock.mockClear();
 });
 
 describe("fetchItem", () => {
@@ -431,5 +444,84 @@ describe("countRecentExpiredWaste (#735)", () => {
     responseQueues.items = [{ data: null, error: { message: "boom" } }];
 
     await expect(countRecentExpiredWaste({ name: "牛乳" })).rejects.toBeTruthy();
+  });
+});
+
+describe("deleteItemPermanently (#1099)", () => {
+  test("items行を削除する。item_lots/consumption_logsはFK ON DELETE CASCADEのため個別に削除しない", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    await deleteItemPermanently({ id: "item-1", imagePath: null });
+
+    const deleteCall = callLog.find((c) => c.table === "items" && c.method === "delete");
+    expect(deleteCall).toBeTruthy();
+    const eqCall = callLog.find((c) => c.table === "items" && c.method === "eq");
+    expect(eqCall?.args).toEqual(["id", "item-1"]);
+
+    expect(callLog.find((c) => c.table === "item_lots")).toBeUndefined();
+    expect(callLog.find((c) => c.table === "consumption_logs")).toBeUndefined();
+  });
+
+  test("imagePathが指定されていればStorageから画像も削除する", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    await deleteItemPermanently({ id: "item-1", imagePath: "user-1/item-1.webp" });
+
+    expect(storageRemoveMock).toHaveBeenCalledWith(["user-1/item-1.webp"]);
+  });
+
+  test("imagePathが未指定/nullならStorageを呼ばない", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    await deleteItemPermanently({ id: "item-1" });
+    await deleteItemPermanently({ id: "item-1", imagePath: null });
+
+    expect(storageRemoveMock).not.toHaveBeenCalled();
+  });
+
+  test("items行の削除がエラーの場合はthrowし、画像削除は呼ばれない（不整合を残さない）", async () => {
+    responseQueues.items = [{ data: null, error: { message: "boom" } }];
+
+    await expect(
+      deleteItemPermanently({ id: "item-1", imagePath: "user-1/item-1.webp" }),
+    ).rejects.toBeTruthy();
+
+    expect(storageRemoveMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("useDeleteItemPermanently (#1099)", () => {
+  test("成功時にitems一覧とアーカイブ一覧(deleted)のキャッシュを無効化する", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useDeleteItemPermanently(), { wrapper: makeWrapper(qc) });
+    result.current.mutate({ id: "item-1", imagePath: null });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["items"]);
+    expect(invalidatedKeys).toContainEqual(["items", "deleted"]);
+  });
+
+  test("失敗時はキャッシュを無効化しない", async () => {
+    responseQueues.items = [{ data: null, error: { message: "boom" } }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useDeleteItemPermanently(), { wrapper: makeWrapper(qc) });
+    result.current.mutate({ id: "item-1", imagePath: null });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });

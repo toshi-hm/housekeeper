@@ -74,17 +74,18 @@ describe("ItemForm — aria-describedby / aria-invalid (#621)", () => {
     expect(errorEl?.textContent).not.toBe("");
   });
 
-  it("個数が0の状態で送信するとunitsフィールドがaria-invalidになる", () => {
+  it("個数が0の状態でも送信できる（消費し切った在庫のメタデータ編集を許可する、#1093）", () => {
+    const onSubmit = mock(() => {});
     const { container } = render(
-      <ItemForm onSubmit={() => {}} defaultValues={{ name: "テスト", units: 0 }} />,
+      <ItemForm onSubmit={onSubmit} defaultValues={{ name: "テスト", units: 0 }} />,
       { wrapper },
     );
     const form = container.querySelector("form")!;
     fireEvent.submit(form);
 
     const unitsInput = container.querySelector("#units") as HTMLInputElement;
-    expect(unitsInput.getAttribute("aria-invalid")).toBe("true");
-    expect(unitsInput.getAttribute("aria-describedby")).toBe("units-error");
+    expect(unitsInput.getAttribute("aria-invalid")).toBe("false");
+    expect(onSubmit).toHaveBeenCalled();
   });
 
   it("エラーがない場合はaria-invalidがfalseでaria-describedbyは付与されない（minimum_stock）", () => {

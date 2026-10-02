@@ -28,5 +28,8 @@
   "stockShortageTitle": "Not enough stock",
   "subtitle": "Plan what to cook this week, prioritizing what you already have",
   "title": "Weekly Meal Planner",
+  "todayCardEmpty": "Tap to plan today's meal",
+  "todayCardTitle": "Today's Meal",
+  "todayCardViewWeek": "View weekly plan",
   "unassign": "Unassign"
 }

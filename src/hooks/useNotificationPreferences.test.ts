@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
+import {
+  subscribePush,
+  unsubscribePush,
+  unsubscribePushOnSignOut,
+} from "@/hooks/useNotificationPreferences";
+
 interface InvokeResponse {
   data: unknown;
   error: unknown;
@@ -8,12 +14,33 @@ interface InvokeResponse {
 let invokeResponse: InvokeResponse = { data: {}, error: null };
 const invokeMock = mock(() => Promise.resolve(invokeResponse));
 
-mock.module("@/lib/supabase", () => ({
-  supabase: { functions: { invoke: invokeMock } },
-}));
-
-const { subscribePush, unsubscribePush } = await import("@/hooks/useNotificationPreferences");
-
+// #1113/#1114: `import { supabase } from "@/lib/supabase"` is a *live*
+// ES-module binding — every hook test file in this repo, including this one,
+// re-establishes its own `mock.module("@/lib/supabase", ...)` shape in
+// `beforeEach`, immediately before exercising the code under test, because
+// whatever shape another file's own `mock.module` call last left in place
+// otherwise carries over (`mock.restore()` only undoes `spyOn`, never
+// `mock.module`). Skipping that re-assertion here (an earlier version of
+// this fix tried spying on the real `FunctionsClient.prototype.invoke`
+// instead) intermittently left `supabase.functions` as whatever shape a
+// *different* hook's test file had mocked, which doesn't define `.functions`
+// at all.
+//
+// This file used to import the hook with a top-level
+// `mock.module(...)` + dynamic `await import()` pair (required, since a
+// static import is hoisted and would resolve before the mock.module call).
+// That combination hit a Bun ESM-linker race under CI specifically (never
+// reproduced locally, even with a matching Bun version and repeated
+// full-suite runs): "Export named 'subscribePush' not found" even though the
+// export is statically present. The actual trigger was
+// src/routes/-_auth.settings.test.tsx, which statically imports this same
+// hook module for its own `spyOn` — two different import paths (this file's
+// dynamic mock-gated one vs. that file's static one) racing to link the
+// *same* source module for the first time, matching
+// https://github.com/AsafMah/dafman/issues/259. A preload-time warm-up
+// import of this module in src/test/setup.ts (the same fix that repo
+// landed on) makes every later import — this file's now-static one included
+// — a cache hit instead, so the mock can be applied per-test as usual.
 const originalServiceWorker = navigator.serviceWorker;
 
 const setServiceWorker = (value: unknown) => {
@@ -23,10 +50,12 @@ const setServiceWorker = (value: unknown) => {
 beforeEach(() => {
   invokeResponse = { data: {}, error: null };
   invokeMock.mockClear();
+  mock.module("@/lib/supabase", () => ({
+    supabase: { functions: { invoke: invokeMock } },
+  }));
 });
 
 afterEach(() => {
-  mock.restore();
   setServiceWorker(originalServiceWorker);
 });
 
@@ -96,6 +125,25 @@ describe("unsubscribePush", () => {
     expect(unsubscribe).not.toHaveBeenCalled();
   });
 
+  // #1134: unsubscribePushOnSignOut は AuthProvider.test.tsx の mock.module で
+  // 差し替わり得るため、サインアウト用の挙動は実体の unsubscribePush で検証する。
+  test("tolerateServerError: サーバーがエラーでもローカル購読は解除する (#1134)", async () => {
+    invokeResponse = { data: null, error: { message: "401" } };
+    const unsubscribe = mock(() => Promise.resolve(true));
+    setServiceWorker({
+      ready: Promise.resolve({
+        pushManager: {
+          getSubscription: () =>
+            Promise.resolve({ endpoint: "https://push.example/abc", unsubscribe }),
+        },
+      }),
+    });
+
+    await unsubscribePush({ tolerateServerError: true });
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
   test("invokes subscribe-push with action=unsubscribe and unsubscribes locally on success", async () => {
     const unsubscribe = mock(() => Promise.resolve(true));
     setServiceWorker({
@@ -113,5 +161,48 @@ describe("unsubscribePush", () => {
       body: { action: "unsubscribe", endpoint: "https://push.example/abc" },
     });
     expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+});
+
+// #1086: サインアウト処理（AuthProvider.tsx）からベストエフォートで呼ばれる想定の
+// ラッパー。unsubscribePush() 自体が失敗しても、ログアウト処理を止めないために
+// 例外を外へ伝播させないことを確認する。
+describe("unsubscribePushOnSignOut", () => {
+  test("does not throw when the Edge Function call returns an error", async () => {
+    invokeResponse = { data: null, error: { message: "network error" } };
+    setServiceWorker({
+      ready: Promise.resolve({
+        pushManager: {
+          getSubscription: () =>
+            Promise.resolve({
+              endpoint: "https://push.example/abc",
+              unsubscribe: mock(() => Promise.resolve(true)),
+            }),
+        },
+      }),
+    });
+
+    await expect(unsubscribePushOnSignOut()).resolves.toBeUndefined();
+  });
+
+  test("does not throw when there is no Service Worker registration (e.g. requireOnline/ready rejects)", async () => {
+    const readyRejection = Promise.reject(new Error("no service worker"));
+    // Attach a no-op handler synchronously so the runtime never sees this as
+    // an unhandled rejection in the gap before unsubscribePushOnSignOut's own
+    // `await ... .ready` attaches its handler — under CI's timing this gap
+    // was wide enough to flag it and fail the test even though the code
+    // under test does correctly await and swallow the rejection below.
+    readyRejection.catch(() => {});
+    setServiceWorker({ ready: readyRejection });
+
+    await expect(unsubscribePushOnSignOut()).resolves.toBeUndefined();
+  });
+
+  test("resolves without invoking the Edge Function when there is no active subscription", async () => {
+    setServiceWorker({ ready: Promise.resolve({ pushManager: { getSubscription: () => null } }) });
+
+    await unsubscribePushOnSignOut();
+
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 });

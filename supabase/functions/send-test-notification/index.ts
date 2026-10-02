@@ -1,4 +1,5 @@
 import { type NotificationPreferenceRow, planTestChannels } from "./channelPlan.ts";
+import { sendTestEmail } from "./email.ts";
 import { summarizeResults } from "./result.ts";
 
 const corsHeaders = {
@@ -179,26 +180,15 @@ export const handler = async (req: Request): Promise<Response> => {
       // prefs.email_address is non-null here — planTestChannels only sets
       // sendEmail when it is.
       const emailAddress = prefs?.email_address as string;
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: resendFrom,
-          to: emailAddress,
-          subject: testNotificationTitle,
-          text: testNotificationBody,
-        }),
+      const result = await sendTestEmail({
+        apiKey: resendApiKey,
+        from: resendFrom,
+        to: emailAddress,
+        subject: testNotificationTitle,
+        text: testNotificationBody,
       });
-      if (res.ok) {
-        emailSent = true;
-      } else {
-        const responseText = await res.text();
-        console.error("Test email send failed:", responseText);
-        emailError = "Failed to send test email";
-      }
+      emailSent = result.sent;
+      emailError = result.error;
     }
   }
 

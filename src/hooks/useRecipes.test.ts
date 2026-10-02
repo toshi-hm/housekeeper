@@ -267,6 +267,31 @@ describe("executeRecipe", () => {
     expect(callLog.some((c) => c.method === "limit")).toBe(false);
   });
 
+  test("先頭ロットが使い切り済みなら、事前チェックは次のロットの残量で判定する (#1144)", async () => {
+    const recipe = makeRecipe({
+      items: [{ id: "ri-1", recipe_id: "recipe-1", item_id: "item-1", amount: 3, created_at: "" }],
+    });
+    const itemsById = {
+      "item-1": makeItem({ id: "item-1", units: 1, content_amount: 1, opened_remaining: null }),
+    };
+    responseQueues.item_lots = [
+      {
+        data: [
+          { item_id: "item-1", units: 0, opened_remaining: null },
+          { item_id: "item-1", units: 1, opened_remaining: null },
+        ],
+        error: null,
+      },
+    ];
+
+    const result = await executeRecipe({ recipe, itemsById });
+
+    expect(result.status).toBe("blocked");
+    expect(result.shortages).toEqual([
+      { item_id: "item-1", item_name: "Test Item", required: 3, available: 1, unit: "個" },
+    ]);
+  });
+
   test("ロット未作成アイテムが同一item_idで複数行にある場合、2行目は1行目の消費結果を踏まえて計算する(#896)", async () => {
     // 醤油(units=5, ロット無し=no-lotsフォールバック経路)が同一レシピに
     // amount=2 / amount=1 の2行で登場するケース。2行目は「開始時点のスナップ

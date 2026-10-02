@@ -42,3 +42,12 @@ export const Editing: Story = {
 export const NoAvailableItems: Story = {
   args: { availableItems: [] },
 };
+
+export const InvalidAmount: Story = {
+  args: {
+    defaultValues: {
+      name: "朝のコーヒー",
+      items: [{ item_id: "item-1", amount: 0 }],
+    },
+  },
+};
