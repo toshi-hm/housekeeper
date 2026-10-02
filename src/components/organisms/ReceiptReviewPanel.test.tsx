@@ -358,7 +358,7 @@ describe("ReceiptReviewPanel retry success count (#1142)", () => {
       },
     } as unknown as ReturnType<typeof useItemsModule.useCreateItem>);
 
-    const onDone = mock((_result: { succeeded: number; failed: number }) => {});
+    const onDone = mock<(result: { succeeded: number; failed: number }) => void>();
     const Harness = () => {
       const [drafts, setDrafts] = useState([draftA, draftB]);
       return (
