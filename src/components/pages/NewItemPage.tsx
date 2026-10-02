@@ -130,8 +130,14 @@ export const NewItemPage = ({ cloneFrom, prefillName }: NewItemPageProps) => {
     }
   };
 
-  const handleBarcodeScanned = async (barcode: string, source: "db" | "api" | null) => {
+  const handleBarcodeScanned = async (
+    barcode: string,
+    source: "db" | "api" | null,
+    _defaults?: Partial<ItemFormValues>,
+    tagIds?: string[],
+  ) => {
     void warnIfRepeatWaste({ barcode });
+    if (source === "db" && tagIds) setSelectedTagIds(tagIds);
     if (source !== "db") {
       setExistingItem(null);
       setQuickConsumeItem(null);
