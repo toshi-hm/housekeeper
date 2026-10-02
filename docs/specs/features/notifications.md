@@ -79,7 +79,8 @@ for each user:
 
 - Push 購読失敗（権限拒否 / VAPID 不整合）→ 設定画面でメッセージ
 - 失効した購読は配信時に削除
-- Email 送信失敗 → 失敗ログ（v1 はコンソール、Backlog で永続化）
+- Push / Email の配信失敗や未設定チャネルは `notification_failures` に固定コードで記録し、設定画面に本人の最近20件を表示する（#1102）。
+- 失敗履歴にはプロバイダー応答本文、メールアドレス、Push endpoint、アイテム名を保存しない。Edge Function の `service_role` のみ書き込み、RLS で本人の履歴だけを読める。
 
 ## 必要な Web 標準
 
@@ -171,3 +172,9 @@ M
 - `low_stock_notification_states(user_id, item_id)` は Edge Function/service_role のみが書き込み、所有者は自分の行のみ SELECT できる。UNIQUE/PRIMARY KEY による claim で重複する cron 実行の通知を抑止する。
 - 毎時の pg_cron が Function を呼び、ユーザーの `notify_at` / `timezone` に一致した実行だけ処理する。Push は失効購読を削除し、Email は `RESEND_API_KEY` 設定時のみ送る。本文は `user_settings.language` の ja/en で作成し、未設定時は ja。
 - 設定/状態は `20261003000001_add_low_stock_notifications.sql` で追加。Function は `CRON_SECRET` による `X-Cron-Secret` 検証を行う。
+
+## 配信失敗履歴（#1102）
+
+- `send-expiry-notifications`、`send-waste-digest`、`send-low-stock-notifications` は、opt-in 済みの Push / Email チャネルで配信失敗、送信先未登録、またはサーバー設定不足を検出した場合、`notification_failures` に失敗コードを追記する。成功した他チャネルがあっても失敗したチャネルを記録する。
+- 設定画面は認証ユーザー ID を明示して最近20件を取得し、RLS でも本人の行に制限する。ローディング、エラーと再試行、空履歴を表示する。失敗理由は日本語/英語にローカライズする。
+- DB は許可リスト値のみ記録し、配信先やプロバイダーのレスポンスを永続化しない。`20261002000002_create_notification_failures.sql` で schema / RLS / 最小権限を追加する。

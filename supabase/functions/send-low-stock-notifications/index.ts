@@ -1,4 +1,5 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
+import { recordNotificationFailure } from "../_shared/notificationFailures.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { buildLowStockMessage, resolveLanguage } from "./content.ts";
 import { zonedNow } from "./date.ts";
@@ -178,7 +179,31 @@ export const handler = async (req: Request): Promise<Response> => {
               .select("id, endpoint, p256dh, auth")
               .eq("user_id", pref.user_id);
             if (error) console.error("Failed to read push subscriptions", pref.user_id, error);
-            for (const subscription of (subscriptions ?? []) as PushSubscription[]) {
+            if (error) {
+              await recordNotificationFailure(
+                (failure) => supabase.from("notification_failures").insert(failure),
+                {
+                  user_id: pref.user_id,
+                  notification_type: "low_stock",
+                  channel: "push",
+                  failure_code: "push_subscriptions_unavailable",
+                },
+              );
+            }
+            const availableSubscriptions = subscriptions ?? [];
+            if (!error && availableSubscriptions.length === 0) {
+              await recordNotificationFailure(
+                (failure) => supabase.from("notification_failures").insert(failure),
+                {
+                  user_id: pref.user_id,
+                  notification_type: "low_stock",
+                  channel: "push",
+                  failure_code: "push_no_subscriptions",
+                },
+              );
+            }
+            let hadDeliveryFailure = false;
+            for (const subscription of availableSubscriptions as PushSubscription[]) {
               try {
                 await webpush.sendNotification(
                   subscription,
@@ -199,33 +224,95 @@ export const handler = async (req: Request): Promise<Response> => {
                 } else {
                   console.error("Push delivery failed", pref.user_id, error);
                 }
+                hadDeliveryFailure = true;
               }
             }
+            if (hadDeliveryFailure) {
+              await recordNotificationFailure(
+                (failure) => supabase.from("notification_failures").insert(failure),
+                {
+                  user_id: pref.user_id,
+                  notification_type: "low_stock",
+                  channel: "push",
+                  failure_code: "push_delivery_failed",
+                },
+              );
+            }
+          } else {
+            await recordNotificationFailure(
+              (failure) => supabase.from("notification_failures").insert(failure),
+              {
+                user_id: pref.user_id,
+                notification_type: "low_stock",
+                channel: "push",
+                failure_code: "push_config_missing",
+              },
+            );
           }
         } catch (error) {
           console.error("Failed to prepare push delivery", pref.user_id, error);
+          await recordNotificationFailure(
+            (failure) => supabase.from("notification_failures").insert(failure),
+            {
+              user_id: pref.user_id,
+              notification_type: "low_stock",
+              channel: "push",
+              failure_code: "push_delivery_failed",
+            },
+          );
         }
       }
 
-      if (pref.email_enabled && pref.email_address && resendApiKey) {
-        try {
-          const response = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json",
+      if (pref.email_enabled) {
+        if (!pref.email_address) {
+          await recordNotificationFailure(
+            (failure) => supabase.from("notification_failures").insert(failure),
+            {
+              user_id: pref.user_id,
+              notification_type: "low_stock",
+              channel: "email",
+              failure_code: "email_address_missing",
             },
-            body: JSON.stringify({
-              from: resendFrom,
-              to: [pref.email_address],
-              subject: message.title,
-              text: message.emailText,
-            }),
-          });
-          if (!response.ok) throw new Error(`Resend returned ${response.status}`);
-          delivered = true;
-        } catch (error) {
-          console.error("Email delivery failed", pref.user_id, error);
+          );
+        } else if (!resendApiKey) {
+          await recordNotificationFailure(
+            (failure) => supabase.from("notification_failures").insert(failure),
+            {
+              user_id: pref.user_id,
+              notification_type: "low_stock",
+              channel: "email",
+              failure_code: "email_config_missing",
+            },
+          );
+        } else {
+          try {
+            const response = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${resendApiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: resendFrom,
+                to: [pref.email_address],
+                subject: message.title,
+                text: message.emailText,
+              }),
+            });
+            if (!response.ok) throw new Error(`Resend returned ${response.status}`);
+            delivered = true;
+          } catch (error) {
+            console.error("Email delivery failed", pref.user_id, error);
+            await recordNotificationFailure(
+              (failure) => supabase.from("notification_failures").insert(failure),
+              {
+                user_id: pref.user_id,
+                notification_type: "low_stock",
+                channel: "email",
+                failure_code: "email_delivery_failed",
+              },
+            );
+          }
         }
       }
 

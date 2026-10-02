@@ -1,7 +1,7 @@
 -- RLS regression tests for tables that are intentionally NOT fully
 -- client-writable:
 --
--- - notification_logs: RLS has a SELECT-only policy for the owner; writes
+-- - notification_logs and notification_failures (#1102): RLS has a SELECT-only policy for the owner; writes
 --   are performed exclusively by the send-expiry-notifications Edge
 --   Function using the service_role key (which bypasses RLS entirely).
 -- - waste_streaks (#925) and low_stock_notification_states (#1055): same SELECT-only-for-owner shape as
@@ -17,7 +17,7 @@
 --   concept on this table).
 begin;
 
-select plan(19);
+select plan(24);
 
 insert into auth.users (id, email)
 values
@@ -35,6 +35,9 @@ values ('eeeeeeee-0000-0000-0000-000000000002', '11111111-1111-1111-1111-1111111
 
 insert into low_stock_notification_states (user_id, item_id)
 values ('11111111-1111-1111-1111-111111111111', 'eeeeeeee-0000-0000-0000-000000000002');
+
+insert into notification_failures (id, user_id, notification_type, channel, failure_code)
+values ('eeeeeeee-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', 'expiry', 'email', 'email_delivery_failed');
 
 insert into security_reset_attempts (scope, identifier)
 values ('password-reset', 'user-a+rls-service@example.com');
@@ -68,6 +71,31 @@ with del as (
   delete from notification_logs where id = 'eeeeeeee-0000-0000-0000-000000000001' returning 1
 )
 select is((select count(*)::int from del), 0, 'even the owner cannot DELETE their own notification_logs row (no DELETE policy)');
+
+-- ===== notification_failures (#1102) =====
+
+select is((select count(*) from notification_failures)::int, 1, 'owner can SELECT their own notification failure');
+select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-2222-2222-222222222222', 'role', 'authenticated')::text, true);
+select is((select count(*) from notification_failures)::int, 0, 'other user cannot SELECT another user''s notification failure');
+select set_config('request.jwt.claims', json_build_object('sub', '11111111-1111-1111-1111-111111111111', 'role', 'authenticated')::text, true);
+select throws_ok(
+  $$insert into notification_failures (user_id, notification_type, channel, failure_code) values ('11111111-1111-1111-1111-111111111111', 'expiry', 'email', 'email_delivery_failed')$$,
+  '42501',
+  'permission denied for table notification_failures',
+  'owner cannot INSERT notification failures directly (service_role only)'
+);
+select throws_ok(
+  $$update notification_failures set failure_code = 'push_delivery_failed' where id = 'eeeeeeee-0000-0000-0000-000000000003'$$,
+  '42501',
+  'permission denied for table notification_failures',
+  'owner cannot UPDATE notification failures (no UPDATE privilege; service_role only)'
+);
+select throws_ok(
+  $$delete from notification_failures where id = 'eeeeeeee-0000-0000-0000-000000000003'$$,
+  '42501',
+  'permission denied for table notification_failures',
+  'owner cannot DELETE notification failures (no DELETE privilege; service_role only)'
+);
 
 -- ===== waste_streaks (#925) =====
 
