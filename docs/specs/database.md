@@ -679,13 +679,13 @@ create policy "item_images_owner_write"
 
 - `.github/workflows/deploy-database-migrations.yml` は `main` の CI が成功した後に
   Supabase CLI の `db push --linked --yes` を実行し、リポジトリにある未適用の
-  migration を本番へ反映する。自動配備はCIが通ったコミットで変更されたmigrationが
-  ある場合に限るため、過去の配備失敗後に未適用migrationを再適用するときは
-  `allow_destructive` を有効にしたworkflow_dispatchで明示的に復旧する
+  migration を本番へ反映する。配備前に `supabase db push --dry-run` で
+  「実際に適用される未適用migration」を全て列挙して検査する（最新コミットの差分ではない）。
+  過去の配備失敗で残った未適用migrationも同じ検査を受ける
 - GitHub Actions に `SUPABASE_PROJECT_ID` repository variable と
   `SUPABASE_ACCESS_TOKEN` / `SUPABASE_DB_PASSWORD` secrets が必要。欠けている場合は
   警告して配備をスキップする
-- 変更された migration に `DROP TABLE` / `DROP COLUMN` / `TRUNCATE` など既知の
+- 未適用 migration に `DROP ...` / `TRUNCATE` / `DELETE FROM` / `ALTER TABLE ... DROP|RENAME|TYPE` など既知の
   破壊的SQLが含まれると自動配備を止める。内容をレビューしたうえで、`main` から
   workflow_dispatch を実行し `allow_destructive` を有効にした場合のみ続行する
 - `production-migrations` GitHub Environment にRequired reviewersを設定すると、
