@@ -174,32 +174,46 @@ export const getExpiryStatus = (
 2. `useRecipeSuggestions(itemNames)`（`src/hooks/useRecipeSuggestions.ts`, TanStack Query）が
    Edge Function `recipe-suggest` を呼ぶ。結果は `staleTime` 長め（6時間）でキャッシュする
 3. Edge Function は `barcode-lookup` と同じ CORS 回避パターン（authチェック → 外部API呼び出し →
-   レスポンス整形）を踏襲し、外部レシピ検索API（例: 楽天レシピAPI等）にアイテム名を渡す
+   レスポンス整形）を踏襲し、楽天レシピ API のカテゴリ名と材料名を使って候補を絞り込む
 4. 結果は `ExpiryRecipeSuggestions` molecule（`src/components/molecules/ExpiryRecipeSuggestions.tsx`）
    として `ExpiryBanner` 付近に表示する
+
+楽天レシピ API にはフリーワード検索 endpoint がないため、`CategoryList` でアイテム名と一致する
+カテゴリを探し、`CategoryRanking` でそのカテゴリの上位レシピを取得してから、返された材料名
+（`recipeMaterial`）に対象アイテム名が含まれる候補だけを返す。一致カテゴリがなければ総合ランキングを
+取得して同じ材料名フィルターを適用する。カテゴリランキングは最大3カテゴリまで問い合わせ、
+候補は重複排除して最大6件にする。
 
 ### API
 
 ```
 POST /functions/v1/recipe-suggest
 body: { itemNames: string[] }   // 1〜5件、空文字・重複・101文字以上は除外
-res:  { recipes: { id, title, url, imageUrl }[], reason?: "missing_api_key" }
+res:  { recipes: { id, title, url, imageUrl }[], reason?: "missing_api_key" | "missing_access_key" }
 ```
 
 Edge Function 実装: `supabase/functions/recipe-suggest/index.ts`
 （外部API呼び出し本体・整形ロジックは `recipe.ts` にDI可能な形で分離し、Deno単体テストを容易にしている）
 
-### 必要なSecret
+### 必要な Secrets
 
-- `RECIPE_API_KEY`: 外部レシピ検索APIのアプリケーションキー。**未設定時は例外を投げず、
-  `{ recipes: [], reason: "missing_api_key" }` を返してソフトデグレードする**（`barcode-lookup` の
-  `YAHOO_SHOPPING_APP_ID` 未設定時と同様の考え方）。Supabase の Secrets に設定が必要
-  （`supabase secrets set RECIPE_API_KEY=...`）。未設定でもアプリは壊れず、レシピ提案が非表示になるだけ
+- `RECIPE_API_KEY`: 既存 secret。楽天の `applicationId`（App ID）として使う。
+- `RECIPE_ACCESS_KEY`: 楽天 API の必須 access key。`accessKey` HTTP header で送信する。
+- Supabase Functions Secrets に両方を設定する。秘密値はリポジトリへコミットしない
+  （CLI 手順はルート `README.md` を参照）。どちらかが未設定の場合、外部 API を呼ばずに
+  `{ recipes: [], reason: "missing_api_key" }` または
+  `{ recipes: [], reason: "missing_access_key" }` を返す。
+
+楽天の現行 endpoint は `https://openapi.rakuten.co.jp/recipems/api/Recipe/CategoryList/20170426`
+および `.../Recipe/CategoryRanking/20170426`。カテゴリ一覧で一致する `categoryId` を選び、
+`CategoryRanking` に渡す。カテゴリ API は keyword 検索をサポートしないため、材料名の絞り込みは
+アプリ側で行う。
 
 ### エラー / 空データ
 
 - `itemNames` が空（期限切れ/期限間近アイテムなし） → hook 自体を `enabled: false` にして呼ばない
-- `RECIPE_API_KEY` 未設定・外部API呼び出し失敗・タイムアウト（8秒） → いずれも `{ recipes: [] }` を返す
+- `RECIPE_API_KEY` / `RECIPE_ACCESS_KEY` 未設定 → 上記の `reason` 付きレスポンスを返し、外部APIを呼ばない
+- 外部API呼び出し失敗・タイムアウト（リクエストあたり8秒） → `{ recipes: [] }` を返す
   （HTTPステータスは 200 のまま。これは `barcode-lookup` が 5xx を返すのと異なり、任意のサジェスト機能で
   あるため、クライアント側でエラーハンドリングを分岐させないための意図的な設計）
 - `ExpiryRecipeSuggestions` は `suggestions` が空配列のときは何も描画しない（バナーが出ない = 静かに機能degrade）

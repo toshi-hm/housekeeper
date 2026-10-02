@@ -56,6 +56,15 @@ supabase link --project-ref your-project-ref
 supabase functions deploy barcode-lookup
 ```
 
+The optional expiry recipe suggestions use Rakuten's Category List and Category Ranking APIs. Keep both Rakuten credentials in Supabase Edge Function Secrets; `RECIPE_API_KEY` remains the existing App ID and `RECIPE_ACCESS_KEY` is also required:
+
+```bash
+supabase secrets set RECIPE_API_KEY=your-rakuten-application-id RECIPE_ACCESS_KEY=your-rakuten-access-key
+supabase functions deploy recipe-suggest
+```
+
+Run these after `supabase link --project-ref your-project-ref`. Do not commit either secret. Without either value, `recipe-suggest` returns an empty list with a `missing_api_key` or `missing_access_key` reason and does not call Rakuten.
+
 ### 3. Configure Environment Variables
 
 ```bash
