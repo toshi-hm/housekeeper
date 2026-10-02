@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { I18nextProvider } from "react-i18next";
 
@@ -60,8 +60,8 @@ const withItemsRecipe: RecipeWithItems = {
     {
       id: "ri-1",
       recipe_id: "recipe-full",
-      item_id: "item-1",
-      amount: 1,
+      item_id: "item-2",
+      amount: 250,
       created_at: "2026-01-01T00:00:00Z",
     },
   ],
@@ -81,7 +81,10 @@ describe("RecipesPage — 実行ボタン無効化理由の明示 (#1058)", () =
       error: null,
     } as unknown as ReturnType<typeof useRecipesModule.useRecipes>);
     itemsSpy = spyOn(useItemsModule, "useItems").mockReturnValue({
-      data: [],
+      data: [
+        { id: "item-1", name: "コーヒー豆", content_unit: "g" },
+        { id: "item-2", name: "牛乳", content_unit: "mL" },
+      ],
     } as unknown as ReturnType<typeof useItemsModule.useItems>);
     saveSpy = spyOn(useRecipesModule, "useSaveRecipe").mockReturnValue({
       mutate: mock(() => {}),
@@ -125,5 +128,26 @@ describe("RecipesPage — 実行ボタン無効化理由の明示 (#1058)", () =
     expect(enabledButton.hasAttribute("disabled")).toBe(false);
     expect(enabledButton.getAttribute("title")).toBeNull();
     expect(enabledButton.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("別のレシピを編集するとフォームに新しいレシピの値を表示する", () => {
+    const { getAllByRole, getByLabelText } = renderPage();
+    const editButtons = getAllByRole("button", { name: i18n.t("recipes:edit") });
+
+    fireEvent.click(editButtons[0]);
+    expect((getByLabelText(i18n.t("recipes:recipeName")) as HTMLInputElement).value).toBe(
+      noItemsRecipe.name,
+    );
+    expect((getByLabelText(i18n.t("recipes:recipeItemSelect")) as HTMLSelectElement).value).toBe(
+      "item-1",
+    );
+
+    fireEvent.click(editButtons[1]);
+    expect((getByLabelText(i18n.t("recipes:recipeName")) as HTMLInputElement).value).toBe(
+      withItemsRecipe.name,
+    );
+    expect((getByLabelText(i18n.t("recipes:recipeItemSelect")) as HTMLSelectElement).value).toBe(
+      "item-2",
+    );
   });
 });
