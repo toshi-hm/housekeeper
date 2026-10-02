@@ -16,8 +16,22 @@ interface LookupResult {
 }
 
 interface ItemLookupRow {
+  id: string;
   name: string;
   image_path: string | null;
+  category_id: string | null;
+  item_type: "food" | "daily_goods" | null;
+  content_amount: number;
+  content_unit: string;
+  expiry_type: "best_before" | "use_by" | null;
+  notes: string | null;
+  minimum_stock: number | null;
+  days_use_after_opening: number | null;
+  unit_price: number | null;
+  store_name: string | null;
+  auto_reorder: boolean;
+  reorder_threshold: number | null;
+  reorder_lead_days: number | null;
 }
 
 /** "not_found"（該当商品なし）は成功レスポンス（200 + product: null）として
@@ -49,7 +63,9 @@ export const useBarcodeLookup = () => {
 
       const { data: localData, error: localError } = await supabase
         .from("items")
-        .select("name, image_path")
+        .select(
+          "id, name, image_path, category_id, item_type, content_amount, content_unit, expiry_type, notes, minimum_stock, days_use_after_opening, unit_price, store_name, auto_reorder, reorder_threshold, reorder_lead_days",
+        )
         .eq("barcode", barcode)
         .eq("user_id", userData.user.id)
         .is("deleted_at", null)
@@ -58,6 +74,10 @@ export const useBarcodeLookup = () => {
         .maybeSingle<ItemLookupRow>();
 
       if (!localError && localData?.name) {
+        const { data: itemTags } = await supabase
+          .from("items_to_tags")
+          .select("tag_id")
+          .eq("item_id", localData.id);
         let image_url: string | undefined;
         if (localData.image_path) {
           const { data: signedData } = await supabase.storage
@@ -68,6 +88,22 @@ export const useBarcodeLookup = () => {
         return {
           product: { name: localData.name, image_url },
           source: "db",
+          itemDefaults: {
+            category_id: localData.category_id,
+            item_type: localData.item_type,
+            content_amount: localData.content_amount,
+            content_unit: localData.content_unit,
+            expiry_type: localData.expiry_type,
+            notes: localData.notes ?? "",
+            minimum_stock: localData.minimum_stock,
+            days_use_after_opening: localData.days_use_after_opening,
+            unit_price: localData.unit_price,
+            store_name: localData.store_name,
+            auto_reorder: localData.auto_reorder,
+            reorder_threshold: localData.reorder_threshold,
+            reorder_lead_days: localData.reorder_lead_days,
+          },
+          tagIds: (itemTags ?? []).map(({ tag_id }) => tag_id),
         };
       }
 
