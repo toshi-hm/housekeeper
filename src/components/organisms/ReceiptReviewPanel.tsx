@@ -194,7 +194,7 @@ export const ReceiptReviewPanel = ({
         {t("addRow")}
       </Button>
 
-      <div className="fixed inset-x-0 bottom-0 border-t bg-background p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <div className="fixed inset-x-0 bottom-16 z-40 border-t bg-background p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:bottom-0 lg:left-64">
         <div className="mx-auto max-w-2xl">
           <Button
             className="w-full"

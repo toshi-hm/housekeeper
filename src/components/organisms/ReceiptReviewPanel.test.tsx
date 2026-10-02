@@ -9,6 +9,7 @@ import * as useItemsModule from "@/hooks/useItems";
 import * as useMasterDataModule from "@/hooks/useMasterData";
 import * as useReceiptPriceHistoryModule from "@/hooks/useReceiptPriceHistory";
 import i18n from "@/lib/i18n";
+import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
 import type { ReceiptDraftItem } from "@/types/receipt";
 
 import { ReceiptReviewPanel } from "./ReceiptReviewPanel";
@@ -27,9 +28,12 @@ const draft: ReceiptDraftItem = {
 
 const Wrapper = ({ children }: { children: ReactNode }) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const stubToast: ToastContextValue = { toasts: [], toast: () => "toast-id", dismiss: () => {} };
   return (
     <I18nextProvider i18n={i18n}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <ToastContext.Provider value={stubToast}>{children}</ToastContext.Provider>
+      </QueryClientProvider>
     </I18nextProvider>
   );
 };
@@ -37,6 +41,40 @@ const Wrapper = ({ children }: { children: ReactNode }) => {
 describe("ReceiptReviewPanel remove (#923)", () => {
   afterEach(() => {
     mock.restore();
+  });
+
+  test("一括登録バーはモバイルナビとデスクトップサイドバーを避ける (#1141)", () => {
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+    spyOn(useReceiptPriceHistoryModule, "useReceiptPriceHistory").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useReceiptPriceHistoryModule.useReceiptPriceHistory>);
+
+    const { container } = render(
+      <ReceiptReviewPanel
+        drafts={[draft]}
+        storeName={null}
+        onDraftsChange={() => {}}
+        onStoreNameChange={() => {}}
+        onDone={() => {}}
+      />,
+      { wrapper: Wrapper },
+    );
+    const actionBar = container.querySelector(".fixed.inset-x-0");
+
+    expect(actionBar?.classList.contains("bottom-16")).toBe(true);
+    expect(actionBar?.classList.contains("z-40")).toBe(true);
+    expect(actionBar?.classList.contains("lg:bottom-0")).toBe(true);
+    expect(actionBar?.classList.contains("lg:left-64")).toBe(true);
   });
 
   // #923: bulk registration leaves a partially-failed row's status as
