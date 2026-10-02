@@ -3,8 +3,10 @@ import { describe, expect, test } from "bun:test";
 import {
   areUnitsConvertible,
   convertUnit,
+  convertUnitExact,
   findUnitGroup,
   getConvertibleUnits,
+  isConversionPrecisionLossy,
   roundUnitAmount,
 } from "./units";
 
@@ -132,5 +134,36 @@ describe("roundUnitAmount", () => {
   test("integers are unaffected", () => {
     expect(roundUnitAmount(5)).toBe(5);
     expect(roundUnitAmount(0)).toBe(0);
+  });
+});
+
+describe("convertUnitExact", () => {
+  test("丸めずに換算する", () => {
+    expect(convertUnitExact(15, "mL", "L")).toBeCloseTo(0.015, 10);
+  });
+
+  test("同一単位はそのまま、換算不能は null", () => {
+    expect(convertUnitExact(1.234, "L", "L")).toBe(1.234);
+    expect(convertUnitExact(1, "mL", "g")).toBeNull();
+  });
+});
+
+describe("isConversionPrecisionLossy (#1143)", () => {
+  test("小さい量を大きい単位に換算すると丸めで大きくずれる場合は true", () => {
+    expect(isConversionPrecisionLossy(15, "mL", "L")).toBe(true); // 0.015 → 0.02 (+33%)
+    expect(isConversionPrecisionLossy(5, "g", "kg")).toBe(true); // 0.005 → 0.01
+    expect(isConversionPrecisionLossy(3, "mL", "L")).toBe(true); // 0.003 → 0
+  });
+
+  test("2桁で表せる、または誤差が小さい場合は false", () => {
+    expect(isConversionPrecisionLossy(350, "mL", "L")).toBe(false); // 0.35
+    expect(isConversionPrecisionLossy(1234, "mL", "L")).toBe(false); // 1.234 → 1.23 (-0.3%)
+    expect(isConversionPrecisionLossy(1, "L", "mL")).toBe(false);
+  });
+
+  test("同一単位・換算不能・0以下は false", () => {
+    expect(isConversionPrecisionLossy(1, "L", "L")).toBe(false);
+    expect(isConversionPrecisionLossy(1, "mL", "g")).toBe(false);
+    expect(isConversionPrecisionLossy(0, "mL", "L")).toBe(false);
   });
 });

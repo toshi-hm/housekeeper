@@ -55,6 +55,39 @@ export const convertUnit = (amount: number, fromUnit: string, toUnit: string): n
 };
 
 /**
+ * `convertUnit` と同じ換算を行うが、DB 精度（小数2桁）への丸めをしない。
+ * 換算で精度が失われるか（{@link isConversionPrecisionLossy}）の判定用。
+ */
+export const convertUnitExact = (
+  amount: number,
+  fromUnit: string,
+  toUnit: string,
+): number | null => {
+  if (fromUnit === toUnit) return amount;
+  const group = findUnitGroup(fromUnit);
+  if (!group || !Object.hasOwn(group.factors, toUnit)) return null;
+  return (amount * group.factors[fromUnit]!) / group.factors[toUnit]!;
+};
+
+/** 小数2桁への丸めによる相対誤差がこの割合を超える換算は「精度が失われる」とみなす。 */
+const PRECISION_LOSS_TOLERANCE = 0.05;
+
+/**
+ * `amount` (`fromUnit`) を `toUnit` に換算して小数2桁へ丸めたとき、元の量から
+ * 無視できない誤差（例: 15 mL → 0.02 L で +33%、3 mL → 0 L）が出るかどうか。
+ * 換算できない組み合わせは `false`（呼び出し側が個別単位として扱う）。
+ */
+export const isConversionPrecisionLossy = (
+  amount: number,
+  fromUnit: string,
+  toUnit: string,
+): boolean => {
+  const exact = convertUnitExact(amount, fromUnit, toUnit);
+  if (exact === null || exact <= 0) return false;
+  return Math.abs(roundUnitAmount(exact) - exact) / exact > PRECISION_LOSS_TOLERANCE;
+};
+
+/**
  * `unit` と相互換算可能な単位一覧（`unit` 自身を含む）を返す。
  * グループに属さない単位（個数系・カスタム単位）は `[unit]` のみを返す。
  */

@@ -79,6 +79,7 @@
   "consumeUnit": "Unit for amount used",
   "consumeUnitsDisplay": "{{units}} units",
   "consumeValidationError": "Enter a value greater than 0",
+  "consumeUnitPrecisionError": "This amount would be rounded to 2 decimals when converted to {{unit}}, changing the amount consumed. Change the unit or enter it in {{unit}}",
   "consumptionPaceAveragePerMonth": "Avg: {{amount}}{{unit}}/month",
   "consumptionPaceEstimatedWeeks": "Est. remaining: ~{{weeks}} weeks",
   "consumptionPaceInsufficientData": "Not enough history to estimate consumption pace",

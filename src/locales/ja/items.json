@@ -69,6 +69,7 @@
   "consumeUnit": "消費量の単位",
   "consumeUnitsDisplay": "{{units}}点",
   "consumeValidationError": "0より大きい値を入力してください",
+  "consumeUnitPrecisionError": "この量は{{unit}}に換算すると小数第2位で丸められ、消費量がずれます。単位を変更するか、{{unit}}単位で入力してください",
   "consumptionPaceAveragePerMonth": "平均: {{amount}}{{unit}}/月",
   "consumptionPaceEstimatedWeeks": "推定残り: 約{{weeks}}週",
   "consumptionPaceInsufficientData": "履歴が少なく、消費ペースを計算できません",
