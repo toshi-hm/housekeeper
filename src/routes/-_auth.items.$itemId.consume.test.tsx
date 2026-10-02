@@ -382,6 +382,35 @@ describe("ItemConsumePage", () => {
 
       expect(queryByText(/insufficientStockError|Not enough stock|在庫が足りません/)).toBeNull();
     });
+
+    it("小さい量をmL→Lに換算すると精度が失われる場合は消費せずエラーを表示する (#1143)", async () => {
+      // 15mL = 0.015L は小数2桁に丸めると0.02L(=20mL)になってしまうため、拒否する。
+      itemspy.mockReturnValue({
+        data: { ...baseItem, content_unit: "L", content_amount: 1 },
+        isLoading: false,
+      } as ReturnType<typeof useItemsModule.useItem>);
+      const consumeMock = mock(async () => baseLot);
+      consumespy.mockReturnValue({
+        mutateAsync: consumeMock,
+        isPending: false,
+      } as unknown as ReturnType<typeof useItemLotsModule.useConsumeLot>);
+
+      const user = userEvent.setup();
+      const { getByRole, getByText } = renderPage();
+      await act(async () => {
+        fireEvent.change(
+          getByRole("combobox", { name: /consumeUnit|消費量の単位|Unit for amount used/ }),
+          { target: { value: "mL" } },
+        );
+      });
+      await user.type(getByRole("spinbutton"), "15");
+      await act(async () => {
+        fireEvent.click(getByRole("button", { name: /^(使う|Use|consume)$/ }));
+      });
+
+      expect(getByText(/consumeUnitPrecisionError|rounded to 2 decimals|丸められ/)).toBeDefined();
+      expect(consumeMock).not.toHaveBeenCalled();
+    });
   });
 });
 
