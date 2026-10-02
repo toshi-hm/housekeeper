@@ -136,6 +136,34 @@ describe("DashboardPage", () => {
     expect(queryByText(URGENT_BANNER_RE)).toBeNull();
   });
 
+  it("検索・フィルター結果が0件でも在庫があれば該当なしを表示する", async () => {
+    itemsspy
+      .mockReturnValueOnce({
+        data: [makeItem()],
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof useItemsModule.useItems>)
+      .mockReturnValueOnce({
+        data: [],
+        isLoading: false,
+        error: null,
+      } as ReturnType<typeof useItemsModule.useItems>);
+
+    const { getByText, queryByText } = await renderPage();
+
+    expect(getByText(/No matching items|該当する在庫がありません/)).not.toBeNull();
+    expect(queryByText(/No items|在庫がありません$/)).toBeNull();
+    expect(queryByText(/Add your first item|最初の在庫を追加しましょう/)).toBeNull();
+  });
+
+  it("在庫が0件なら初回向けの追加案内を表示する", async () => {
+    const { getByText, queryByText } = await renderPage();
+
+    expect(getByText(/No items|在庫がありません$/)).not.toBeNull();
+    expect(getByText(/Add your first item|最初の在庫を追加しましょう/)).not.toBeNull();
+    expect(queryByText(/No matching items|該当する在庫がありません/)).toBeNull();
+  });
+
   it("期限切れアイテムがある場合に警告バナーが表示される", async () => {
     itemsspy.mockReturnValue({
       data: [makeItem({ id: "expired", expiry_date: "2000-01-01", units: 1 })],

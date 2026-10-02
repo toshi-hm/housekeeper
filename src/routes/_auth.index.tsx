@@ -1040,7 +1040,7 @@ export const DashboardPage = () => {
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-            {items.length === 0 ? (
+            {rawAllItems.length === 0 ? (
               <>
                 <p className="text-lg font-medium">{t("noItems")}</p>
                 <p className="mt-1 text-sm">{t("firstAddHint")}</p>
