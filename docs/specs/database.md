@@ -55,7 +55,7 @@ create table items (
   units int not null default 1 check (units >= 0),
   content_amount numeric(12,2) not null default 1 check (content_amount > 0),
   content_unit text not null default '個',
-  opened_remaining numeric(12,2) check (opened_remaining is null or opened_remaining >= 0),
+  opened_remaining numeric(16,6) check (opened_remaining is null or opened_remaining >= 0),
 
   purchase_date date,
   expiry_date date,
@@ -109,7 +109,7 @@ create table item_lots (
   user_id uuid not null references auth.users(id) on delete cascade,
   item_id uuid not null references items(id) on delete cascade,
   units int not null default 1 check (units >= 0),
-  opened_remaining numeric(12,2) check (opened_remaining is null or opened_remaining >= 0),
+  opened_remaining numeric(16,6) check (opened_remaining is null or opened_remaining >= 0),
   unit_price integer check (unit_price is null or unit_price >= 0),
   purchase_date date,
   expiry_date date,
@@ -335,12 +335,12 @@ create table consumption_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   item_id uuid not null references items(id) on delete cascade,
-  delta_amount numeric(12,2) not null check (delta_amount > 0),
+  delta_amount numeric(16,6) not null check (delta_amount > 0),
   delta_unit text not null,
   units_before int not null,
   units_after int not null,
-  opened_remaining_before numeric(12,2),
-  opened_remaining_after numeric(12,2),
+  opened_remaining_before numeric(16,6),
+  opened_remaining_after numeric(16,6),
   occurred_at timestamptz not null default now(),
   note text
 );
@@ -350,6 +350,7 @@ create index consumption_logs_user_idx on consumption_logs(user_id, occurred_at 
 ```
 
 - `delta_unit` は item の `content_unit` と一致するのが基本だが、将来単位換算を入れる余地のため別カラムにしている
+- 少量の mL→L / g→kg 換算を正しく保存するため、消費量と開封残量は `numeric(16,6)` で保持する。`content_amount` は引き続き `numeric(12,2)`。
 - ログから状態は復元できる（`units_after` / `opened_remaining_after`）
 - `note`（#418）: 消費画面で入力する任意メモ。「消費理由プリセット」チップ（料理で使用 / 廃棄・期限切れ /
   贈り物 / その他）はこのカラムに専用の値を持たず、選択されたプリセットのラベルと自由記述を

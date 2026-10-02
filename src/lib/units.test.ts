@@ -55,6 +55,8 @@ describe("convertUnit", () => {
   test("mL -> L", () => {
     expect(convertUnit(500, "mL", "L")).toBe(0.5);
     expect(convertUnit(1000, "mL", "L")).toBe(1);
+    expect(convertUnit(15, "mL", "L")).toBe(0.015);
+    expect(convertUnit(3, "mL", "L")).toBe(0.003);
   });
 
   test("L -> mL", () => {
@@ -64,6 +66,8 @@ describe("convertUnit", () => {
 
   test("g -> kg", () => {
     expect(convertUnit(1500, "g", "kg")).toBe(1.5);
+    expect(convertUnit(15, "g", "kg")).toBe(0.015);
+    expect(convertUnit(3, "g", "kg")).toBe(0.003);
   });
 
   test("kg -> g", () => {
@@ -78,8 +82,8 @@ describe("convertUnit", () => {
     expect(back).toBe(original);
   });
 
-  test("same-unit conversion is a no-op (still rounded)", () => {
-    expect(convertUnit(123.456, "mL", "mL")).toBe(123.46);
+  test("same-unit conversion preserves the input precision", () => {
+    expect(convertUnit(123.456, "mL", "mL")).toBe(123.456);
   });
 
   test("zero converts to zero", () => {
@@ -98,10 +102,9 @@ describe("convertUnit", () => {
     expect(convertUnit(3, "個", "個")).toBe(3);
   });
 
-  test("avoids floating point noise (0.1 + 0.2 style errors)", () => {
-    // 333 mL -> L would be 0.333 without rounding; conversions are rounded
-    // to 2 decimal places to match the DB's numeric(12,2) precision.
-    expect(convertUnit(333, "mL", "L")).toBe(0.33);
+  test("preserves small amounts while trimming floating point noise", () => {
+    expect(convertUnit(333, "mL", "L")).toBe(0.333);
+    expect(convertUnit(1, "L", "mL")).toBe(1000);
   });
 });
 

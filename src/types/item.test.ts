@@ -185,6 +185,11 @@ describe("formatRemaining", () => {
     // 1 × 1.5 opened=0.75 → (0 × 1.5) + 0.75 = 0.75
     expect(formatRemaining(1, 1.5, 0.75)).toBe("0.75");
   });
+
+  test("small converted remainders remain visible", () => {
+    expect(formatRemaining(1, 1, 0.985)).toBe("0.985");
+    expect(formatRemaining(1, 1, 0.003)).toBe("0.003");
+  });
 });
 
 // --- getLotRemainingAmount ---
@@ -530,6 +535,15 @@ describe("computeConsumption", () => {
     const r = computeConsumption({ ...baseItem, opened_remaining: 300 }, 100);
     expect(r.units_after).toBe(3);
     expect(r.opened_remaining_after).toBe(200);
+  });
+
+  test("preserves milliliter-scale consumption when the item is measured in liters", () => {
+    const literItem = { ...baseItem, content_amount: 1, content_unit: "L", units: 1 };
+    const r = computeConsumption(literItem, 0.015);
+
+    expect(r.units_after).toBe(1);
+    expect(r.opened_remaining_after).toBe(0.985);
+    expect(r.error).toBeUndefined();
   });
 
   test("opened: consume across unit boundary", () => {

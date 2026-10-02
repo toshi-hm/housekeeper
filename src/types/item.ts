@@ -511,10 +511,10 @@ export const formatRemaining = (
   openedRemaining: number | null,
 ): string => {
   const total = getLotRemainingAmount(units, contentAmount, openedRemaining);
-  return total % 1 === 0 ? String(total) : total.toFixed(2).replace(/\.?0+$/, "");
+  return total % 1 === 0 ? String(total) : total.toFixed(6).replace(/\.?0+$/, "");
 };
 
-// Round to avoid floating-point noise (DB stores numeric(12,2))
+// Round to avoid floating-point noise while keeping more precision than the DB's numeric scale.
 export const roundFloat = (n: number) => Math.round(n * 1e10) / 1e10;
 
 export const computeConsumption = (

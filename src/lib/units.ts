@@ -37,9 +37,11 @@ export const areUnitsConvertible = (a: string, b: string): boolean => {
   return Object.hasOwn(group.factors, b);
 };
 
-// DB は content_amount を numeric(12,2) で保持するため、換算結果もそれに
-// 合わせて小数2桁に丸め、浮動小数点誤差によるノイズ（例: 0.1 + 0.2）を防ぐ。
+// 表示・互換用途で小数2桁に丸める関数。少量の単位換算には使わないこと。
 export const roundUnitAmount = (n: number): number => Math.round(n * 100) / 100;
+
+// 単位換算の小数量を保ちつつ、浮動小数点演算の微小な誤差を取り除く。
+const roundConvertedAmount = (n: number): number => Math.round(n * 1e10) / 1e10;
 
 /**
  * `amount` (`fromUnit`) を `toUnit` に換算する。
@@ -47,11 +49,11 @@ export const roundUnitAmount = (n: number): number => Math.round(n * 100) / 100;
  * `null` を返す — 呼び出し側は「換算せず、そのまま個別単位として扱う」フォールバックを行うこと。
  */
 export const convertUnit = (amount: number, fromUnit: string, toUnit: string): number | null => {
-  if (fromUnit === toUnit) return roundUnitAmount(amount);
+  if (fromUnit === toUnit) return roundConvertedAmount(amount);
   const group = findUnitGroup(fromUnit);
   if (!group || !Object.hasOwn(group.factors, toUnit)) return null;
   const baseAmount = amount * group.factors[fromUnit]!;
-  return roundUnitAmount(baseAmount / group.factors[toUnit]!);
+  return roundConvertedAmount(baseAmount / group.factors[toUnit]!);
 };
 
 /**
