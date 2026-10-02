@@ -465,6 +465,10 @@ export const isBackupExportOverdue = (
   return (nowMs - new Date(baseline).getTime()) / msPerDay >= reminderDays;
 };
 
+/** ロットが使い切り済み（消費できる残量がない）かどうか。FEFO のロット選定で使う。 */
+export const isLotDepleted = (units: number, openedRemaining: number | null): boolean =>
+  units <= 0 && (openedRemaining ?? 0) <= 0;
+
 /** ロット（またはアイテム）1件の実残量を計算する。opened_remaining がある場合は
  *  開封中の1個を除いた残りの未開封数量にopened_remainingを加算する。 */
 export const getLotRemainingAmount = (

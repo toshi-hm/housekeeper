@@ -153,6 +153,37 @@ describe("consumeItem", () => {
     expect(result._logInsertFailed).toBe(false);
   });
 
+  test("先頭ロットが使い切り済みなら、残量のある次の期限のロットを消費する (#1144)", async () => {
+    const baseLot = {
+      user_id: "user-1",
+      item_id: "item-1",
+      opened_remaining: null,
+      purchase_date: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    const depletedLot = { ...baseLot, id: "lot-depleted", units: 0, expiry_date: "2026-10-10" };
+    const activeLot = { ...baseLot, id: "lot-active", units: 3, expiry_date: "2026-11-01" };
+    responseQueues.item_lots = [
+      { data: [depletedLot, activeLot], error: null }, // FEFO select in consumeItem
+      { data: { ...activeLot, units: 2 }, error: null }, // consumeLot's conditional update
+      { data: [{ units: 2, expiry_date: null, opened_remaining: null }], error: null }, // syncItemAggregate
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: makeItem({ units: 2 }), error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    await consumeItem({ item: makeItem({ units: 3 }), deltaAmount: 1 });
+
+    const lotEqIds = callLog
+      .filter((c) => c.table === "item_lots" && c.method === "eq" && c.args[0] === "id")
+      .map((c) => c.args[1]);
+    expect(lotEqIds).toContain("lot-active");
+    expect(lotEqIds).not.toContain("lot-depleted");
+  });
+
   test("ロットが存在しない場合、consumption_logsのinsert失敗を_logInsertFailedとして返す (#441)", async () => {
     responseQueues.item_lots = [{ data: [], error: null }];
     responseQueues.consumption_logs = [{ data: null, error: { message: "insert failed" } }];
