@@ -6,7 +6,12 @@ import { maybeAutoReorder } from "@/lib/autoReorder";
 import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import { computeConsumption, type ConsumeParams, type Item } from "@/types/item";
+import {
+  computeConsumption,
+  type ConsumeParams,
+  type Item,
+  pickFefoConsumableLot,
+} from "@/types/item";
 
 /**
  * #752: mirrors the item_lots_set_opened_at DB trigger for the "direct"
@@ -81,14 +86,14 @@ export const consumeItem = async ({
     .select("*")
     .eq("item_id", item.id)
     .order("expiry_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true })
-    .limit(1);
+    .order("created_at", { ascending: true });
   if (lotsError) throw lotsError;
 
   let logInsertFailed = false;
   let undoInfo: ConsumeItemUndo;
 
-  const targetLot = lots && lots.length > 0 ? lots[0] : undefined;
+  const targetLot = lots?.length ? pickFefoConsumableLot(lots, item.content_amount) : null;
+  if (lots?.length && !targetLot) throw new Error("insufficient_stock");
   if (targetLot) {
     const lotResult = await consumeLotFn({ lot: targetLot, item, deltaAmount, note });
     logInsertFailed = !!lotResult._logInsertFailed;

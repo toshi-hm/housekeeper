@@ -267,6 +267,57 @@ describe("executeRecipe", () => {
     expect(callLog.some((c) => c.method === "limit")).toBe(false);
   });
 
+  test("残量0のFEFO先行ロットを飛ばして後続ロットで在庫確認・消費する", async () => {
+    const recipe = makeRecipe({
+      items: [{ id: "ri-1", recipe_id: "recipe-1", item_id: "item-1", amount: 1, created_at: "" }],
+    });
+    const itemsById = {
+      "item-1": makeItem({ id: "item-1", units: 1, content_amount: 1, opened_remaining: null }),
+    };
+    const depletedLot = {
+      id: "lot-depleted",
+      user_id: "user-1",
+      item_id: "item-1",
+      units: 0,
+      opened_remaining: null,
+      expiry_date: "2026-01-01",
+      created_at: "2026-01-01T00:00:00Z",
+    };
+    const activeLot = { ...depletedLot, id: "lot-active", units: 1, expiry_date: "2026-02-01" };
+    responseQueues.item_lots = [
+      { data: [depletedLot, activeLot], error: null }, // recipe stock pre-check
+      { data: [depletedLot, activeLot], error: null }, // consumeItem FEFO selection
+      { data: { ...activeLot, units: 0 }, error: null }, // selected lot update
+      {
+        data: [
+          { units: 0, expiry_date: "2026-01-01", opened_remaining: null },
+          { units: 0, expiry_date: "2026-02-01", opened_remaining: null },
+        ],
+        error: null,
+      }, // aggregate sync
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: makeItem({ id: "item-1", units: 0 }), error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    const result = await executeRecipe({ recipe, itemsById });
+
+    expect(result.status).toBe("executed");
+    expect(result.consumedItemIds).toEqual(["item-1"]);
+    expect(result.shortages).toEqual([]);
+    expect(
+      callLog.some(
+        (call) =>
+          call.table === "item_lots" &&
+          call.method === "eq" &&
+          call.args[0] === "id" &&
+          call.args[1] === "lot-active",
+      ),
+    ).toBe(true);
+  });
+
   test("ロット未作成アイテムが同一item_idで複数行にある場合、2行目は1行目の消費結果を踏まえて計算する(#896)", async () => {
     // 醤油(units=5, ロット無し=no-lotsフォールバック経路)が同一レシピに
     // amount=2 / amount=1 の2行で登場するケース。2行目は「開始時点のスナップ

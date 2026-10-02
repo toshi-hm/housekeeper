@@ -153,6 +153,56 @@ describe("consumeItem", () => {
     expect(result._logInsertFailed).toBe(false);
   });
 
+  test("残量0の先行ロットを飛ばして次の消費可能なロットを使う", async () => {
+    const depletedLot = {
+      id: "lot-depleted",
+      user_id: "user-1",
+      item_id: "item-1",
+      units: 0,
+      opened_remaining: null,
+      purchase_date: null,
+      expiry_date: "2026-01-01",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    const activeLot = {
+      ...depletedLot,
+      id: "lot-active",
+      units: 2,
+      expiry_date: "2026-02-01",
+    };
+    responseQueues.item_lots = [
+      { data: [depletedLot, activeLot], error: null }, // FEFO selection
+      { data: { ...activeLot, units: 1 }, error: null }, // selected lot update
+      {
+        data: [
+          { units: 0, expiry_date: "2026-01-01", opened_remaining: null },
+          { units: 1, expiry_date: "2026-02-01", opened_remaining: null },
+        ],
+        error: null,
+      }, // aggregate sync
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1 }, error: null },
+      { data: makeItem({ units: 1 }), error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    await consumeItem({ item: makeItem({ units: 2 }), deltaAmount: 1 });
+
+    expect(
+      callLog.find((call) => call.table === "item_lots" && call.method === "update")?.args[0],
+    ).toMatchObject({ units: 1 });
+    expect(
+      callLog.find((call) => call.table === "item_lots" && call.method === "eq")?.args,
+    ).toEqual(["item_id", "item-1"]);
+    expect(
+      callLog
+        .filter((call) => call.table === "item_lots" && call.method === "eq")
+        .some((call) => call.args[0] === "id" && call.args[1] === "lot-active"),
+    ).toBe(true);
+  });
+
   test("ロットが存在しない場合、consumption_logsのinsert失敗を_logInsertFailedとして返す (#441)", async () => {
     responseQueues.item_lots = [{ data: [], error: null }];
     responseQueues.consumption_logs = [{ data: null, error: { message: "insert failed" } }];

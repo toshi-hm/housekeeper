@@ -485,10 +485,12 @@ export const getLotRemainingAmount = (
  * 消費デクリメント自体のアルゴリズムはここでは持たず、既存の `consumeLot` /
  * `useConsumeItem` にそのまま委譲する。
  */
-export const pickFefoConsumableLot = (
-  lots: readonly ItemLot[],
+export const pickFefoConsumableLot = <
+  T extends Pick<ItemLot, "expiry_date" | "created_at" | "units" | "opened_remaining">,
+>(
+  lots: readonly T[],
   contentAmount: number,
-): ItemLot | null => {
+): T | null => {
   const sorted = [...lots].sort((a, b) => {
     const aDate = a.expiry_date ?? null;
     const bDate = b.expiry_date ?? null;

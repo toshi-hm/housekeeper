@@ -38,8 +38,14 @@ export const fetchFefoLotByItemId = async (
   const result: Record<string, RecipeFefoLot | undefined> = {};
   for (const lot of data ?? []) {
     // Rows arrive pre-sorted in FEFO order; keep only the first (soonest
-    // expiring) lot seen per item.
-    if (result[lot.item_id as string]) continue;
+    // expiring) lot with stock per item. Keep a depleted lot as a fallback
+    // only when every lot for that item is depleted, so stale aggregate stock
+    // cannot make a recipe look executable when it has no consumable lot.
+    const itemId = lot.item_id as string;
+    const current = result[itemId];
+    const hasRemaining = lot.units > 0 || (lot.opened_remaining ?? 0) > 0;
+    if (current && (current.units > 0 || (current.opened_remaining ?? 0) > 0)) continue;
+    if (current && !hasRemaining) continue;
     result[lot.item_id as string] = {
       units: lot.units as number,
       opened_remaining: lot.opened_remaining as number | null,
