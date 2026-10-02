@@ -318,6 +318,69 @@ export const installSupabaseMock = async (page: Page): Promise<Store> => {
       return;
     }
 
+    if (table === "rpc/import_items_batch") {
+      // Mirrors the user-visible effects of import_items_batch from
+      // supabase/migrations/20260731000001_atomic_import_items.sql (#694).
+      // This deliberately covers only the insert path needed by the backup
+      // round-trip E2E; overwrite/duplicate and transaction rollback semantics
+      // remain the real database function's responsibility.
+      const body =
+        (request.postDataJSON() as {
+          p_items?: Row[];
+          p_duplicate_strategy?: string;
+        }) ?? {};
+      const results: Row[] = [];
+      const strategy = body.p_duplicate_strategy;
+      const itemsStore = (store.items ??= []);
+      const lotsStore = (store.item_lots ??= []);
+
+      for (const input of body.p_items ?? []) {
+        const barcode = input.barcode;
+        const existing =
+          typeof barcode === "string"
+            ? itemsStore.find((item) => item.barcode === barcode && item.deleted_at == null)
+            : undefined;
+        if (existing && strategy === "skip") {
+          results.push({ item_id: existing.id, action: "skipped" });
+          continue;
+        }
+
+        const itemId = uuid();
+        const { lots: inputLots, ...itemValues } = input;
+        const item: Row = {
+          id: itemId,
+          user_id: FAKE_USER_ID,
+          created_at: nowIso(),
+          updated_at: nowIso(),
+          auto_reorder: false,
+          ...itemValues,
+          barcode: barcode ?? null,
+        };
+        itemsStore.push(item);
+
+        const lots = Array.isArray(inputLots) ? inputLots : [];
+        for (const value of lots) {
+          const lot = value as Row;
+          lotsStore.push({
+            id: uuid(),
+            user_id: FAKE_USER_ID,
+            item_id: itemId,
+            created_at: nowIso(),
+            updated_at: nowIso(),
+            ...lot,
+          });
+        }
+        results.push({ item_id: itemId, action: "created" });
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(results),
+      });
+      return;
+    }
+
     if (!(table in store)) store[table] = [];
     const rows = store[table]!;
     const method = request.method();

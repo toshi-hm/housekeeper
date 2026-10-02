@@ -66,6 +66,7 @@ things specs depend on.
 - `calendar.spec.ts` — expiry calendar check-off + undo (#658).
 - `recipes.spec.ts` — recipe creation and execution (consumption recording, #658).
 - `bulk-actions.spec.ts` — dashboard multi-select bulk move/consume/delete (#658).
+- `data-export-import.spec.ts` — JSON backup export and restore round trip (#1065).
 
 ## Projects: `chromium` (desktop) and `mobile-chromium` (#753)
 
@@ -131,3 +132,6 @@ you add a new spec:
   needs an explicit `table === "rpc/<fn>"` case added to
   `fixtures/supabaseMock.ts` that mirrors the migration's SQL against the
   in-memory store — see the `bulk_consume_items` case for the pattern.
+  `import_items_batch` has a narrow insert-path mock for the JSON backup
+  round-trip E2E (#1065); it does not verify real Postgres transaction,
+  duplicate, or rollback semantics.
