@@ -637,10 +637,10 @@ create policy "item_images_owner_write"
   3. `quantity` を drop
      この順で安全に移行
 
-### 本番への適用（手動デプロイ手順）
+### 本番への適用
 
-- マイグレーションを本番へ適用する CI は **無い**。フロントエンドは Cloudflare Pages が
-  自動デプロイするが、DB は `bun run db:push`（= `supabase db push`）を人が実行する必要がある
+- 本番マイグレーションは、main の CI 成功後に GitHub Actions から適用する
+  （手順と安全条件は「本番マイグレーション配備（#1047）」を参照）
 - **フロントのデプロイより先に（または同時に）適用する**。逆順にすると、アプリが
   マイグレーションで追加された列を送るのに DB 側に無く、PostgREST が `PGRST204` で
   書き込みを拒否する（アイテムの保存が失敗する）
@@ -648,6 +648,9 @@ create policy "item_images_owner_write"
 - `db:status` はマイグレーション **履歴テーブル** の比較なので、履歴が誤った version で
   記録されている場合はドリフトを見逃す。実スキーマとの突き合わせは
   `bun run gen:types` 後の `src/types/supabase.ts` の差分で確認する
+- PR に migration の変更が含まれる場合、まだ本番DBに未適用のため、CI の hosted DB 型比較を
+  適用後まで保留する。アプリの TypeScript チェックは通常どおり実行し、配備後の型比較で
+  migration とコミット済み型の一致を確認する
 - アプリ側は「DB にアプリの期待する列/RPC が無い」エラー（`PGRST204` / `PGRST202` /
   `42703` / `42P01` / `42883`）を `isSchemaMismatchError`（`src/lib/supabaseErrors.ts`）で
   判別し、汎用の「エラーが発生しました」ではなく適用漏れを示すメッセージを表示する
@@ -671,3 +674,23 @@ create policy "item_images_owner_write"
   テスト依存で、アプリの実行時経路からは呼ばれない。`extensions` へ移しても
   `postgres` ロールの `search_path`（`"$user", public, extensions`）に含まれるため、
   テスト内の無修飾の `plan()` / `results_eq()` はそのまま解決される
+
+### 本番マイグレーション配備（#1047）
+
+- `.github/workflows/deploy-database-migrations.yml` は `main` の CI が成功した後に
+  Supabase CLI の `db push --linked --yes` を実行し、リポジトリにある未適用の
+  migration を本番へ反映する。自動配備はCIが通ったコミットで変更されたmigrationが
+  ある場合に限るため、過去の配備失敗後に未適用migrationを再適用するときは
+  `allow_destructive` を有効にしたworkflow_dispatchで明示的に復旧する
+- GitHub Actions に `SUPABASE_PROJECT_ID` repository variable と
+  `SUPABASE_ACCESS_TOKEN` / `SUPABASE_DB_PASSWORD` secrets が必要。欠けている場合は
+  警告して配備をスキップする
+- 変更された migration に `DROP TABLE` / `DROP COLUMN` / `TRUNCATE` など既知の
+  破壊的SQLが含まれると自動配備を止める。内容をレビューしたうえで、`main` から
+  workflow_dispatch を実行し `allow_destructive` を有効にした場合のみ続行する
+- `production-migrations` GitHub Environment にRequired reviewersを設定すると、
+  SQLパターン検査を通過した配備にも人の承認を必須にできる
+- 配備後に `bun run gen:types` を実行する。生成結果がコミット済み型と異なる場合は
+  差分を Actions ログに出して失敗し、型ファイルの更新を促す
+- 配備失敗はGitHub Actionsの失敗として通知される。migrationはdown migrationで
+  自動ロールバックできる前提にせず、後続の修正migrationで前進させる
