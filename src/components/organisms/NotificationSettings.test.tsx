@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:te
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
+import * as useNotificationFailuresModule from "@/hooks/useNotificationFailures";
 import * as useNotificationPreferencesModule from "@/hooks/useNotificationPreferences";
 import i18n from "@/lib/i18n";
 import { ToastContext, type ToastContextValue } from "@/lib/toast-context";
@@ -24,6 +25,7 @@ describe("NotificationSettings", () => {
   let prefsSpy: ReturnType<typeof spyOn>;
   let updateSpy: ReturnType<typeof spyOn>;
   let testNotificationSpy: ReturnType<typeof spyOn>;
+  let failuresSpy: ReturnType<typeof spyOn>;
   const mutateAsync = mock(() => Promise.resolve());
   const testNotificationMutate = mock(() => {});
 
@@ -76,12 +78,20 @@ describe("NotificationSettings", () => {
       mutate: testNotificationMutate,
       isPending: false,
     } as unknown as ReturnType<typeof useNotificationPreferencesModule.useTestNotification>);
+
+    failuresSpy = spyOn(useNotificationFailuresModule, "useNotificationFailures").mockReturnValue({
+      data: [],
+      isPending: false,
+      isError: false,
+      refetch: mock(() => Promise.resolve({})),
+    } as unknown as ReturnType<typeof useNotificationFailuresModule.useNotificationFailures>);
   });
 
   afterEach(() => {
     prefsSpy.mockRestore();
     updateSpy.mockRestore();
     testNotificationSpy.mockRestore();
+    failuresSpy.mockRestore();
   });
 
   it("プッシュ・メールともに無効な場合はテスト送信ボタンが表示されない", () => {

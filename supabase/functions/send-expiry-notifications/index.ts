@@ -6,6 +6,7 @@ import { zonedDateString, zonedNow } from "./date.ts";
 import { shouldClaimNotificationSlot, wasAnyPushDelivered } from "./deliveryClaim.ts";
 import { buildNotificationTargetUrl } from "./notificationUrl.ts";
 import { type OpenedAlertItemRow, selectOpenedAlertItems } from "./openedAlertSelection.ts";
+import { recordNotificationFailure } from "../_shared/notificationFailures.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -257,6 +258,15 @@ export const handler = async (req: Request): Promise<Response> => {
             // throw here — an uncaught error would skip the email fallback
             // below and leave the user with zero notifications for the day.
             console.error("Failed to fetch push_subscriptions:", subsError);
+            await recordNotificationFailure(
+              (failure) => supabase.from("notification_failures").insert(failure),
+              {
+                user_id: pref.user_id,
+                notification_type: "expiry",
+                channel: "push",
+                failure_code: "push_subscriptions_unavailable",
+              },
+            );
           } else {
             const outcomes = await Promise.all(
               (subs as PushSubscription[]).map(async (sub) => {
@@ -278,32 +288,97 @@ export const handler = async (req: Request): Promise<Response> => {
               }),
             );
             pushDelivered = wasAnyPushDelivered(outcomes);
+            if (outcomes.length === 0 || outcomes.some((delivered) => !delivered)) {
+              await recordNotificationFailure(
+                (failure) => supabase.from("notification_failures").insert(failure),
+                {
+                  user_id: pref.user_id,
+                  notification_type: "expiry",
+                  channel: "push",
+                  failure_code:
+                    outcomes.length === 0 ? "push_no_subscriptions" : "push_delivery_failed",
+                },
+              );
+            }
           }
         } else {
           console.warn("VAPID secrets not configured, skipping push for user", pref.user_id);
+          await recordNotificationFailure(
+            (failure) => supabase.from("notification_failures").insert(failure),
+            {
+              user_id: pref.user_id,
+              notification_type: "expiry",
+              channel: "push",
+              failure_code: "push_config_missing",
+            },
+          );
         }
       }
 
       // Send email notifications via Resend
       let emailDelivered = false;
-      if (pref.email_enabled && pref.email_address && resendApiKey) {
-        const res = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: resendFrom,
-            to: pref.email_address,
-            subject: title,
-            text: emailText,
-          }),
-        });
-        if (res.ok) {
-          emailDelivered = true;
+      if (pref.email_enabled) {
+        if (!pref.email_address) {
+          await recordNotificationFailure(
+            (failure) => supabase.from("notification_failures").insert(failure),
+            {
+              user_id: pref.user_id,
+              notification_type: "expiry",
+              channel: "email",
+              failure_code: "email_address_missing",
+            },
+          );
+        } else if (!resendApiKey) {
+          await recordNotificationFailure(
+            (failure) => supabase.from("notification_failures").insert(failure),
+            {
+              user_id: pref.user_id,
+              notification_type: "expiry",
+              channel: "email",
+              failure_code: "email_config_missing",
+            },
+          );
         } else {
-          console.error("Email send failed:", await res.text());
+          try {
+            const res = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${resendApiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: resendFrom,
+                to: pref.email_address,
+                subject: title,
+                text: emailText,
+              }),
+            });
+            if (res.ok) {
+              emailDelivered = true;
+            } else {
+              console.error("Email send failed:", await res.text());
+              await recordNotificationFailure(
+                (failure) => supabase.from("notification_failures").insert(failure),
+                {
+                  user_id: pref.user_id,
+                  notification_type: "expiry",
+                  channel: "email",
+                  failure_code: "email_delivery_failed",
+                },
+              );
+            }
+          } catch (error) {
+            console.error("Email send failed", error);
+            await recordNotificationFailure(
+              (failure) => supabase.from("notification_failures").insert(failure),
+              {
+                user_id: pref.user_id,
+                notification_type: "expiry",
+                channel: "email",
+                failure_code: "email_delivery_failed",
+              },
+            );
+          }
         }
       }
 

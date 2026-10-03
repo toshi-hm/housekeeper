@@ -3,6 +3,32 @@
   "emailAddress": "メールアドレス",
   "emailAddressMissingWarning": "メールアドレスが未設定のため、通知は届きません。上の欄に入力してください。",
   "emailEnabled": "メール通知",
+  "failureHistory": {
+    "channels": {
+      "email": "メール",
+      "push": "プッシュ通知"
+    },
+    "codes": {
+      "email_address_missing": "メールアドレスが登録されていません",
+      "email_config_missing": "メール通知のサーバー設定がありません",
+      "email_delivery_failed": "メール配信に失敗しました",
+      "push_config_missing": "プッシュ通知のサーバー設定がありません",
+      "push_delivery_failed": "プッシュ通知の配信に失敗しました",
+      "push_no_subscriptions": "プッシュ通知の登録先がありません",
+      "push_subscriptions_unavailable": "プッシュ通知の登録情報を読み込めませんでした"
+    },
+    "empty": "失敗履歴はありません。",
+    "loadError": "失敗履歴を読み込めませんでした。",
+    "loading": "失敗履歴を読み込んでいます…",
+    "privacy": "最近の20件を表示します。配信先やプロバイダーの応答内容は保存しません。",
+    "retry": "再試行",
+    "title": "通知配信の失敗履歴",
+    "types": {
+      "expiry": "期限通知",
+      "low_stock": "日用品の低在庫通知",
+      "waste_digest": "食品ロス週次通知"
+    }
+  },
   "invalidEmailAddress": "有効なメールアドレスを入力してください",
   "invalidNotifyAt": "通知時刻を入力してください",
   "invalidThresholdDays": "0〜30の範囲で入力してください",

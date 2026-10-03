@@ -33,6 +33,7 @@ Supabase (Postgres 15+)
 | `shopping_list_archive`               | 買い物リストの購入履歴アーカイブ         | v1.2 | user 削除で CASCADE（行自体は不変・更新なし）       |
 | `notification_preferences`            | 通知 ON/OFF                              | v1.2 | user 削除で CASCADE                                 |
 | `low_stock_notification_states`       | 日用品低在庫通知の重複抑止状態 (#1055)   | v1.2 | user/item 削除で CASCADE                            |
+| `notification_failures`               | 通知配信失敗の安全な履歴 (#1102)         | v1.2 | user 削除で CASCADE                                 |
 | `push_subscriptions`                  | Web Push 購読                            | v1.2 | user 削除で CASCADE                                 |
 | `recipes`                             | レシピ/セット消費のテンプレート          | v1.3 | user 削除で CASCADE                                 |
 | `recipe_items`                        | レシピの構成アイテムと消費量             | v1.3 | recipe 削除で CASCADE / item 削除で CASCADE         |
@@ -474,6 +475,18 @@ create table low_stock_notification_states (
 ```
 
 `low_stock_notification_states`（#1055）は `(user_id, item_id)` を主キーとする低在庫通知済み状態。
+
+## notification_failures（#1102）
+
+通知 Edge Function が配信に失敗した際、ユーザー設定画面で確認できる履歴を追記する。
+保存するのは通知種別（`expiry` / `waste_digest` / `low_stock`）、配信チャネル
+（`push` / `email`）、許可リストの `failure_code`、`failed_at` のみとする。プロバイダーの
+応答本文、メールアドレス、Push endpoint、通知アイテム名などの機微情報は保存しない。
+
+RLS は有効化し、認証済みユーザーは `auth.uid() = user_id` の行だけ SELECT できる。
+クライアント向け INSERT / UPDATE / DELETE ポリシーは設けず、Edge Function の
+`service_role` のみが INSERT する。テーブル権限も `authenticated` には SELECT、
+`service_role` には INSERT のみを付与する。ユーザー削除時は履歴も CASCADE 削除する。
 同一アイテムが低在庫である間の重複通知を止め、在庫が閾値を上回ったとき Edge Function が行を削除する。
 RLS は所有者の SELECT のみ許可し、状態の claim / reset は `send-low-stock-notifications` の service_role に限定する。
 
