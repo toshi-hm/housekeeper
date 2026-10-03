@@ -127,14 +127,24 @@ const createHouseholdInvite = async (householdId: string, userId: string) => {
   throw new Error("Unable to create invite code");
 };
 
-const redeemHouseholdInvite = async (code: string): Promise<string> => {
+export interface RedeemHouseholdInviteInput {
+  code: string;
+  /** User explicitly acknowledged that personal data of the former household becomes inaccessible. */
+  confirmPersonalDataInaccessible: boolean;
+}
+
+const redeemHouseholdInvite = async ({
+  code,
+  confirmPersonalDataInaccessible,
+}: RedeemHouseholdInviteInput): Promise<string> => {
   requireOnline();
+  if (!confirmPersonalDataInaccessible) throw new HouseholdInviteError("HK006");
   const normalizedCode = code.trim().toUpperCase();
   if (!/^[A-Z0-9]{6,32}$/.test(normalizedCode)) throw new HouseholdInviteError("HK006");
 
   const { data, error } = await supabase.rpc("redeem_household_invite", {
     p_code: normalizedCode,
-    p_confirm_personal_data_inaccessible: true,
+    p_confirm_personal_data_inaccessible: confirmPersonalDataInaccessible,
   });
   if (error) throw error;
 

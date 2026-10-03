@@ -92,10 +92,13 @@ describe("HouseholdSettingsPage", () => {
       isPending: false,
     } as unknown as ReturnType<typeof HouseholdHooks.useCreateHouseholdInvite>);
     redeemInviteSpy = spyOn(HouseholdHooks, "useRedeemHouseholdInvite").mockReturnValue({
-      mutateAsync: mock(async (code: string) => {
-        redeemedCode = code;
-        return "household-1";
-      }),
+      mutateAsync: mock(
+        async (input: { code: string; confirmPersonalDataInaccessible: boolean }) => {
+          expect(input.confirmPersonalDataInaccessible).toBe(true);
+          redeemedCode = input.code;
+          return "household-1";
+        },
+      ),
       isPending: false,
     } as unknown as ReturnType<typeof HouseholdHooks.useRedeemHouseholdInvite>);
   });

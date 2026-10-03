@@ -37,7 +37,10 @@ export const HouseholdSettingsPage = () => {
 
   const handleRedeemInvite = async () => {
     try {
-      await redeemInvite.mutateAsync(inviteCode);
+      await redeemInvite.mutateAsync({
+        code: inviteCode,
+        confirmPersonalDataInaccessible: confirmPrivateData,
+      });
       setInviteCode("");
       setConfirmPrivateData(false);
       toast(t("householdJoined"), "success");
