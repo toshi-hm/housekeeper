@@ -1543,7 +1543,10 @@ export interface Database {
           household_id: string;
         }[];
       };
-      remove_household_member: { Args: { p_user_id: string }; Returns: undefined };
+      remove_household_member: {
+        Args: { p_user_id: string };
+        Returns: undefined;
+      };
       rename_household: { Args: { p_name: string }; Returns: undefined };
       save_recipe: {
         Args: { p_id: string | null; p_items: Json; p_name: string };
