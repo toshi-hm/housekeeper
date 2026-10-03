@@ -26,7 +26,7 @@ describe("archivePurchasedItems", () => {
     await archivePurchasedItems();
 
     expect(rpcMock).toHaveBeenCalledTimes(1);
-    expect(rpcMock).toHaveBeenCalledWith("archive_purchased_shopping_items", {});
+    expect(rpcMock).toHaveBeenCalledWith("archive_purchased_shopping_items");
   });
 
   test("対象が0件の冪等な再実行も成功する", async () => {

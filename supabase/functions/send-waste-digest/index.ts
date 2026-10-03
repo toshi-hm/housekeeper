@@ -1,5 +1,6 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
+import { recordNotificationFailure } from "../_shared/notificationFailures.ts";
 import { zonedNowHour } from "./date.ts";
 import { buildWasteDigestMessage, resolveWasteDigestLanguage } from "./digestText.ts";
 import {
@@ -219,46 +220,123 @@ export const handler = async (req: Request): Promise<Response> => {
 
           if (subsError) {
             console.error("Failed to fetch push_subscriptions:", subsError);
+            await recordNotificationFailure(
+              (failure) => supabase.from("notification_failures").insert(failure),
+              {
+                user_id: pref.user_id,
+                notification_type: "waste_digest",
+                channel: "push",
+                failure_code: "push_subscriptions_unavailable",
+              },
+            );
           } else {
-            await Promise.all(
-              (subs as PushSubscription[]).map(async (sub) => {
+            const subscriptions = (subs ?? []) as PushSubscription[];
+            const outcomes = await Promise.all(
+              subscriptions.map(async (sub) => {
                 try {
                   await webpush.sendNotification(
                     { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
                     JSON.stringify({ title: message.title, body: message.body }),
                   );
+                  return true;
                 } catch (err: unknown) {
                   const status = (err as { statusCode?: number }).statusCode;
                   if (status === 410 || status === 404) {
                     await supabase.from("push_subscriptions").delete().eq("id", sub.id);
                   }
                   console.error("Push failed:", err);
+                  return false;
                 }
               }),
             );
+            if (outcomes.length === 0 || outcomes.some((delivered) => !delivered)) {
+              await recordNotificationFailure(
+                (failure) => supabase.from("notification_failures").insert(failure),
+                {
+                  user_id: pref.user_id,
+                  notification_type: "waste_digest",
+                  channel: "push",
+                  failure_code:
+                    outcomes.length === 0 ? "push_no_subscriptions" : "push_delivery_failed",
+                },
+              );
+            }
           }
         } else {
           console.warn("VAPID secrets not configured, skipping push for user", pref.user_id);
+          await recordNotificationFailure(
+            (failure) => supabase.from("notification_failures").insert(failure),
+            {
+              user_id: pref.user_id,
+              notification_type: "waste_digest",
+              channel: "push",
+              failure_code: "push_config_missing",
+            },
+          );
         }
       }
 
       // Send email notifications via Resend
-      if (pref.email_enabled && pref.email_address && resendApiKey) {
-        const res = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: resendFrom,
-            to: pref.email_address,
-            subject: message.emailSubject,
-            text: message.emailBody,
-          }),
-        });
-        if (!res.ok) {
-          console.error("Email send failed:", await res.text());
+      if (pref.email_enabled) {
+        if (!pref.email_address) {
+          await recordNotificationFailure(
+            (failure) => supabase.from("notification_failures").insert(failure),
+            {
+              user_id: pref.user_id,
+              notification_type: "waste_digest",
+              channel: "email",
+              failure_code: "email_address_missing",
+            },
+          );
+        } else if (!resendApiKey) {
+          await recordNotificationFailure(
+            (failure) => supabase.from("notification_failures").insert(failure),
+            {
+              user_id: pref.user_id,
+              notification_type: "waste_digest",
+              channel: "email",
+              failure_code: "email_config_missing",
+            },
+          );
+        } else {
+          try {
+            const res = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${resendApiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: resendFrom,
+                to: pref.email_address,
+                subject: message.emailSubject,
+                text: message.emailBody,
+              }),
+            });
+            if (!res.ok) {
+              console.error("Email send failed:", await res.text());
+              await recordNotificationFailure(
+                (failure) => supabase.from("notification_failures").insert(failure),
+                {
+                  user_id: pref.user_id,
+                  notification_type: "waste_digest",
+                  channel: "email",
+                  failure_code: "email_delivery_failed",
+                },
+              );
+            }
+          } catch (error) {
+            console.error("Email send failed", error);
+            await recordNotificationFailure(
+              (failure) => supabase.from("notification_failures").insert(failure),
+              {
+                user_id: pref.user_id,
+                notification_type: "waste_digest",
+                channel: "email",
+                failure_code: "email_delivery_failed",
+              },
+            );
+          }
         }
       }
     }),

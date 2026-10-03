@@ -2,10 +2,12 @@ import { Bell, Loader2, Mail, Recycle, Send } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { NotificationFailureHistory } from "@/components/organisms/NotificationFailureHistory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useNotificationFailures } from "@/hooks/useNotificationFailures";
 import {
   subscribePush,
   unsubscribePush,
@@ -31,6 +33,7 @@ const toHourOnly = (value: string): string => {
 export const NotificationSettings = () => {
   const { t } = useTranslation("notifications");
   const { data: prefs } = useNotificationPreferences();
+  const failures = useNotificationFailures();
   const updatePrefs = useUpdateNotificationPreferences();
   const testNotification = useTestNotification();
   const { toast } = useToast();
@@ -383,6 +386,13 @@ export const NotificationSettings = () => {
         </div>
         <p className="text-xs text-muted-foreground">{t("lowStockHelp")}</p>
       </div>
+
+      <NotificationFailureHistory
+        failures={failures.data ?? []}
+        isLoading={failures.isPending}
+        hasError={failures.isError}
+        onRetry={() => void failures.refetch()}
+      />
     </div>
   );
 };
