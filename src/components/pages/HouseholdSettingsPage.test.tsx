@@ -74,11 +74,29 @@ describe("HouseholdSettingsPage", () => {
   let redeemInviteSpy: ReturnType<typeof spyOn>;
   let createInviteCalled: boolean;
   let redeemedCode: string | null;
+  let renameSpy: ReturnType<typeof spyOn>;
+  let removeSpy: ReturnType<typeof spyOn>;
+  let renamedTo: string | null;
+  let removedMemberId: string | null;
 
   beforeEach(async () => {
     await i18n.changeLanguage("en");
     createInviteCalled = false;
     redeemedCode = null;
+    renamedTo = null;
+    removedMemberId = null;
+    renameSpy = spyOn(HouseholdHooks, "useRenameHousehold").mockReturnValue({
+      mutateAsync: mock(async (name: string) => {
+        renamedTo = name;
+      }),
+      isPending: false,
+    } as unknown as ReturnType<typeof HouseholdHooks.useRenameHousehold>);
+    removeSpy = spyOn(HouseholdHooks, "useRemoveHouseholdMember").mockReturnValue({
+      mutateAsync: mock(async (userId: string) => {
+        removedMemberId = userId;
+      }),
+      isPending: false,
+    } as unknown as ReturnType<typeof HouseholdHooks.useRemoveHouseholdMember>);
     householdSpy = spyOn(HouseholdHooks, "useHousehold").mockReturnValue({
       data: householdData,
       isLoading: false,
@@ -107,6 +125,8 @@ describe("HouseholdSettingsPage", () => {
     householdSpy.mockRestore();
     createInviteSpy.mockRestore();
     redeemInviteSpy.mockRestore();
+    renameSpy.mockRestore();
+    removeSpy.mockRestore();
     cleanup();
     void i18n.changeLanguage("ja");
   });
@@ -147,5 +167,71 @@ describe("HouseholdSettingsPage", () => {
     const { getByRole } = render(<HouseholdSettingsPage />, { wrapper: Wrapper });
 
     expect(getByRole("alert")).toBeDefined();
+  });
+
+  it("hides rename and remove controls from non-owner members", () => {
+    const { queryByLabelText, queryByRole } = render(<HouseholdSettingsPage />, {
+      wrapper: Wrapper,
+    });
+
+    expect(queryByLabelText("Household name")).toBeNull();
+    expect(queryByRole("button", { name: "Rename" })).toBeNull();
+    expect(queryByRole("button", { name: /^Remove member/ })).toBeNull();
+  });
+
+  describe("as the owner", () => {
+    beforeEach(() => {
+      householdSpy.mockReturnValue({
+        data: { ...householdData, currentUserId: "owner-1" },
+        isLoading: false,
+        isError: false,
+      } as ReturnType<typeof HouseholdHooks.useHousehold>);
+    });
+
+    it("renames the household with the entered name", async () => {
+      const { getByLabelText, getByRole } = render(<HouseholdSettingsPage />, {
+        wrapper: Wrapper,
+      });
+      const user = userEvent.setup();
+      const renameButton = getByRole("button", { name: "Rename" });
+      expect(renameButton.hasAttribute("disabled")).toBe(true);
+
+      const input = getByLabelText("Household name");
+      await user.clear(input);
+      await user.type(input, "Our Home");
+      await waitFor(() => expect(renameButton.hasAttribute("disabled")).toBe(false));
+      fireEvent.click(renameButton);
+
+      await waitFor(() => expect(renamedTo).toBe("Our Home"));
+    });
+
+    it("offers removal only for other members and asks for confirmation", async () => {
+      const { getAllByRole, getByRole, queryByRole } = render(<HouseholdSettingsPage />, {
+        wrapper: Wrapper,
+      });
+
+      // The owner's own row has no remove button; only member-1 does.
+      expect(getAllByRole("button", { name: /^Remove member/ })).toHaveLength(1);
+      expect(queryByRole("alertdialog")).toBeNull();
+
+      fireEvent.click(getByRole("button", { name: /^Remove member/ }));
+      expect(getByRole("alertdialog")).toBeDefined();
+      expect(removedMemberId).toBeNull();
+
+      fireEvent.click(getByRole("button", { name: "Remove" }));
+
+      await waitFor(() => expect(removedMemberId).toBe("member-1"));
+      await waitFor(() => expect(queryByRole("alertdialog")).toBeNull());
+    });
+
+    it("does not remove anyone when the confirmation is cancelled", async () => {
+      const { getByRole, queryByRole } = render(<HouseholdSettingsPage />, { wrapper: Wrapper });
+
+      fireEvent.click(getByRole("button", { name: /^Remove member/ }));
+      fireEvent.click(getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(queryByRole("alertdialog")).toBeNull());
+      expect(removedMemberId).toBeNull();
+    });
   });
 });

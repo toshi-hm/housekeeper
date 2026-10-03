@@ -37,6 +37,27 @@ export class HouseholdInviteError extends Error {
   }
 }
 
+export type HouseholdManagementErrorCode = "HK010" | "HK011" | "HK012" | "HK013";
+
+const isHouseholdManagementErrorCode = (code: unknown): code is HouseholdManagementErrorCode =>
+  code === "HK010" || code === "HK011" || code === "HK012" || code === "HK013";
+
+/** Owner-only management RPCs (rename / remove member) failed with a known reason. */
+export class HouseholdManagementError extends Error {
+  readonly code: HouseholdManagementErrorCode;
+
+  constructor(code: HouseholdManagementErrorCode) {
+    super(code);
+    this.name = "HouseholdManagementError";
+    this.code = code;
+  }
+}
+
+const throwManagementError = (error: { code?: string }): never => {
+  if (isHouseholdManagementErrorCode(error.code)) throw new HouseholdManagementError(error.code);
+  throw error;
+};
+
 const fetchHousehold = async (): Promise<HouseholdDetails> => {
   const {
     data: { user },
@@ -207,5 +228,39 @@ export const useRedeemHouseholdInvite = () => {
   return useMutation({
     mutationFn: redeemHouseholdInvite,
     onSuccess: () => resetCachesAfterHouseholdChange(queryClient),
+  });
+};
+
+const renameHousehold = async (name: string): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase.rpc("rename_household", { p_name: name });
+  if (error) throwManagementError(error);
+};
+
+const removeHouseholdMember = async (userId: string): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase.rpc("remove_household_member", { p_user_id: userId });
+  if (error) throwManagementError(error);
+};
+
+export const useRenameHousehold = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: renameHousehold,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: HOUSEHOLD_KEY });
+    },
+  });
+};
+
+export const useRemoveHouseholdMember = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: removeHouseholdMember,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: HOUSEHOLD_KEY });
+    },
   });
 };

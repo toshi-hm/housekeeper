@@ -1,19 +1,37 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Check, Copy, Plus, Users } from "lucide-react";
+import { ArrowLeft, Check, Copy, Plus, UserMinus, Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  type HouseholdDetails,
   HouseholdInviteError,
+  HouseholdManagementError,
+  type HouseholdManagementErrorCode,
   useCreateHouseholdInvite,
   useHousehold,
   useRedeemHouseholdInvite,
+  useRemoveHouseholdMember,
+  useRenameHousehold,
 } from "@/hooks/useHousehold";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
+
+const isOwner = (household: HouseholdDetails): boolean =>
+  household.members.some(
+    (member) => member.user_id === household.currentUserId && member.role === "owner",
+  );
+
+const managementErrorKey = {
+  HK010: "householdNotOwner",
+  HK011: "householdNameInvalid",
+  HK012: "householdCannotRemoveOwner",
+  HK013: "householdMemberNotFound",
+} as const satisfies Record<HouseholdManagementErrorCode, string>;
 
 export const HouseholdSettingsPage = () => {
   const { t } = useTranslation("settings");
@@ -23,6 +41,10 @@ export const HouseholdSettingsPage = () => {
   const { data, isLoading, isError } = useHousehold();
   const createInvite = useCreateHouseholdInvite();
   const redeemInvite = useRedeemHouseholdInvite();
+  const renameHousehold = useRenameHousehold();
+  const removeMember = useRemoveHouseholdMember();
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [confirmPrivateData, setConfirmPrivateData] = useState(false);
 
@@ -59,6 +81,39 @@ export const HouseholdSettingsPage = () => {
       } else {
         toast(tCommon("unknownError"), "error");
       }
+    }
+  };
+
+  const showManagementError = (error: unknown) => {
+    if (error instanceof HouseholdManagementError) {
+      toast(t(managementErrorKey[error.code]), "error");
+    } else if (error instanceof OfflineError) {
+      toast(tCommon("offlineError"), "error");
+    } else {
+      toast(tCommon("unknownError"), "error");
+    }
+  };
+
+  const handleRename = async () => {
+    if (nameDraft === null) return;
+    try {
+      await renameHousehold.mutateAsync(nameDraft);
+      setNameDraft(null);
+      toast(t("householdRenamed"), "success");
+    } catch (error) {
+      showManagementError(error);
+    }
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove) return;
+    try {
+      await removeMember.mutateAsync(memberToRemove);
+      toast(t("householdMemberRemoved"), "success");
+    } catch (error) {
+      showManagementError(error);
+    } finally {
+      setMemberToRemove(null);
     }
   };
 
@@ -100,6 +155,40 @@ export const HouseholdSettingsPage = () => {
               <Users className="h-5 w-5 text-muted-foreground" />
               <h2 className="font-semibold">{data.household.name}</h2>
             </div>
+            {isOwner(data) && (
+              <form
+                className="flex flex-wrap items-end gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleRename();
+                }}
+              >
+                <div className="min-w-0 flex-1">
+                  <label className="text-sm text-muted-foreground" htmlFor="household-name">
+                    {t("householdNameLabel")}
+                  </label>
+                  <Input
+                    id="household-name"
+                    value={nameDraft ?? data.household.name}
+                    maxLength={50}
+                    autoComplete="off"
+                    onChange={(event) => setNameDraft(event.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={
+                    nameDraft === null ||
+                    nameDraft.trim().length === 0 ||
+                    nameDraft.trim() === data.household.name ||
+                    renameHousehold.isPending
+                  }
+                >
+                  {renameHousehold.isPending && <Spinner className="mr-2 h-4 w-4" />}
+                  {t("householdRenameButton")}
+                </Button>
+              </form>
+            )}
             <p className="text-sm text-muted-foreground">
               {t("householdMemberCount", { count: data.members.length })}
             </p>
@@ -114,8 +203,21 @@ export const HouseholdSettingsPage = () => {
                       ? t("householdYou")
                       : `${member.user_id.slice(0, 8)}…`}
                   </span>
-                  <span className="shrink-0 text-muted-foreground">
+                  <span className="flex shrink-0 items-center gap-2 text-muted-foreground">
                     {t(member.role === "owner" ? "householdOwner" : "householdMember")}
+                    {isOwner(data) && member.user_id !== data.currentUserId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={t("householdRemoveMemberAria", {
+                          member: `${member.user_id.slice(0, 8)}…`,
+                        })}
+                        onClick={() => setMemberToRemove(member.user_id)}
+                      >
+                        <UserMinus className="mr-1 h-4 w-4" />
+                        {t("householdRemoveMember")}
+                      </Button>
+                    )}
                   </span>
                 </li>
               ))}
@@ -218,6 +320,16 @@ export const HouseholdSettingsPage = () => {
           </section>
         </>
       )}
+
+      <ConfirmDialog
+        open={memberToRemove !== null}
+        title={t("householdRemoveConfirmTitle")}
+        message={t("householdRemoveConfirmMessage")}
+        confirmLabel={t("householdRemoveMember")}
+        isConfirming={removeMember.isPending}
+        onConfirm={() => void handleRemoveMember()}
+        onCancel={() => setMemberToRemove(null)}
+      />
     </div>
   );
 };
