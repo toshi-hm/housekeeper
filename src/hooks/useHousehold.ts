@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { persister } from "@/lib/queryClient";
 import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { SUPABASE_REST_CACHE_NAME } from "@/lib/swCacheNames";
 import type { Database } from "@/types/supabase";
 
 const HOUSEHOLD_KEY = ["household"] as const;
@@ -176,16 +177,25 @@ export const useCreateHouseholdInvite = () => {
   });
 };
 
+/**
+ * Membership changed, so cached rows from the former household must not remain
+ * visible while queries refresh under the new RLS scope. The Service Worker's
+ * NetworkFirst REST cache is keyed by URL only and shared-data queries no longer
+ * filter by user_id, so it must be dropped as well (same hazard as sign-out, #1057).
+ */
+export const resetCachesAfterHouseholdChange = async (queryClient: QueryClient) => {
+  queryClient.clear();
+  await persister.removeClient();
+  if (typeof caches !== "undefined") {
+    await caches.delete(SUPABASE_REST_CACHE_NAME);
+  }
+};
+
 export const useRedeemHouseholdInvite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: redeemHouseholdInvite,
-    onSuccess: async () => {
-      // Membership changed, so cached rows from the former household must not
-      // remain visible while queries refresh under the new RLS scope.
-      queryClient.clear();
-      await persister.removeClient();
-    },
+    onSuccess: () => resetCachesAfterHouseholdChange(queryClient),
   });
 };
