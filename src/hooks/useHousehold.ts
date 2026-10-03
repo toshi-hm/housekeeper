@@ -127,7 +127,7 @@ const createHouseholdInvite = async (householdId: string, userId: string) => {
   throw new Error("Unable to create invite code");
 };
 
-export interface RedeemHouseholdInviteInput {
+interface RedeemHouseholdInviteInput {
   code: string;
   /** User explicitly acknowledged that personal data of the former household becomes inaccessible. */
   confirmPersonalDataInaccessible: boolean;
