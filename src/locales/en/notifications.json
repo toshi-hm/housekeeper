@@ -6,6 +6,8 @@
   "invalidEmailAddress": "Please enter a valid email address",
   "invalidNotifyAt": "Please enter a notification time",
   "invalidThresholdDays": "Please enter a value between 0 and 30",
+  "lowStockEnabled": "Notify me when daily goods are low",
+  "lowStockHelp": "Get a push or email at the notification time above when daily goods reach or fall below their minimum stock. The same item will not be reported again until it is restocked.",
   "notifyAt": "Notification time",
   "notifyAtHelp": "Notifications are delivered hourly, so minutes can't be set (sent at the top of the hour)",
   "pushEnabled": "Push Notifications",

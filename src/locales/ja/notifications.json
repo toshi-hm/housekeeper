@@ -6,6 +6,8 @@
   "invalidEmailAddress": "有効なメールアドレスを入力してください",
   "invalidNotifyAt": "通知時刻を入力してください",
   "invalidThresholdDays": "0〜30の範囲で入力してください",
+  "lowStockEnabled": "日用品の低在庫通知を受け取る",
+  "lowStockHelp": "日用品の在庫が最低在庫数以下になったとき、上記の通知時刻にPushまたはメールでお知らせします。在庫が補充されるまで同じアイテムへの通知は繰り返しません。",
   "notifyAt": "通知時刻",
   "notifyAtHelp": "通知は1時間ごとに配信されるため、分は指定できません（毎時0分に配信）",
   "pushEnabled": "プッシュ通知",

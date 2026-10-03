@@ -34,6 +34,7 @@ describe("NotificationSettings", () => {
       email_address: string | null;
       notify_at: string;
       waste_digest_enabled: boolean;
+      low_stock_enabled: boolean;
     }> = {},
   ) => {
     prefsSpy.mockReturnValue({
@@ -45,6 +46,7 @@ describe("NotificationSettings", () => {
         threshold_days: 3,
         notify_at: "08:00",
         waste_digest_enabled: false,
+        low_stock_enabled: false,
         ...overrides,
       },
     } as unknown as ReturnType<typeof useNotificationPreferencesModule.useNotificationPreferences>);
@@ -418,5 +420,26 @@ describe("NotificationSettings", () => {
       subscribeSpy.mockRestore();
       unsubscribeSpy.mockRestore();
     });
+  });
+
+  it("日用品の低在庫通知は初期状態で無効で、有効化を保存する (#1055)", () => {
+    setPrefs({ low_stock_enabled: false });
+    const { getByText } = render(<NotificationSettings />, { wrapper });
+    const toggle = getByText(/日用品の低在庫通知を受け取る|Notify me when daily goods are low/i)
+      .closest("div")
+      ?.parentElement?.querySelector("button") as HTMLButtonElement;
+    expect(toggle.textContent).toMatch(/無効|Disabled/i);
+    fireEvent.click(toggle);
+    expect(mutateAsync).toHaveBeenCalledWith({ low_stock_enabled: true });
+  });
+
+  it("日用品の低在庫通知を無効化できる (#1055)", () => {
+    setPrefs({ low_stock_enabled: true });
+    const { getByText } = render(<NotificationSettings />, { wrapper });
+    const toggle = getByText(/日用品の低在庫通知を受け取る|Notify me when daily goods are low/i)
+      .closest("div")
+      ?.parentElement?.querySelector("button") as HTMLButtonElement;
+    fireEvent.click(toggle);
+    expect(mutateAsync).toHaveBeenCalledWith({ low_stock_enabled: false });
   });
 });

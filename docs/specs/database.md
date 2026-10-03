@@ -32,6 +32,7 @@ Supabase (Postgres 15+)
 | `shopping_list_items`                 | 買い物リスト                             | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに）       |
 | `shopping_list_archive`               | 買い物リストの購入履歴アーカイブ         | v1.2 | user 削除で CASCADE（行自体は不変・更新なし）       |
 | `notification_preferences`            | 通知 ON/OFF                              | v1.2 | user 削除で CASCADE                                 |
+| `low_stock_notification_states`       | 日用品低在庫通知の重複抑止状態 (#1055)   | v1.2 | user/item 削除で CASCADE                            |
 | `push_subscriptions`                  | Web Push 購読                            | v1.2 | user 削除で CASCADE                                 |
 | `recipes`                             | レシピ/セット消費のテンプレート          | v1.3 | user 削除で CASCADE                                 |
 | `recipe_items`                        | レシピの構成アイテムと消費量             | v1.3 | recipe 削除で CASCADE / item 削除で CASCADE         |
@@ -457,9 +458,24 @@ create table notification_preferences (
   threshold_days int not null default 3 check (threshold_days >= 0),
   notify_at time not null default '08:00',
   timezone text not null default 'Asia/Tokyo', -- #660: notify_at の解釈に使うIANAタイムゾーン
+  waste_digest_enabled boolean not null default false,
+  low_stock_enabled boolean not null default false, -- #1055: 日用品の最低在庫通知（初期値OFF）
   updated_at timestamptz not null default now()
 );
 ```
+
+```sql
+create table low_stock_notification_states (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  item_id uuid not null references items(id) on delete cascade,
+  notified_at timestamptz not null default now(),
+  primary key (user_id, item_id)
+);
+```
+
+`low_stock_notification_states`（#1055）は `(user_id, item_id)` を主キーとする低在庫通知済み状態。
+同一アイテムが低在庫である間の重複通知を止め、在庫が閾値を上回ったとき Edge Function が行を削除する。
+RLS は所有者の SELECT のみ許可し、状態の claim / reset は `send-low-stock-notifications` の service_role に限定する。
 
 ## push_subscriptions（v1.2）
 

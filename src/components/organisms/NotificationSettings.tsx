@@ -178,6 +178,16 @@ export const NotificationSettings = () => {
     }
   };
 
+  const handleLowStockToggle = async () => {
+    try {
+      await updatePrefs.mutateAsync({ low_stock_enabled: !prefs?.low_stock_enabled });
+    } catch (error) {
+      if (!(error instanceof OfflineError)) {
+        toast(t("common:unknownError"), "error");
+      }
+    }
+  };
+
   const handleTimezoneChange = async (value: string) => {
     try {
       await updatePrefs.mutateAsync({ timezone: value });
@@ -354,6 +364,24 @@ export const NotificationSettings = () => {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">{t("wasteDigestHelp")}</p>
+      </div>
+
+      {/* Daily goods low stock alerts (#1055) */}
+      <div className="rounded-lg border p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">{t("lowStockEnabled")}</span>
+          </div>
+          <Button
+            variant={prefs?.low_stock_enabled ? "default" : "outline"}
+            size="sm"
+            onClick={() => void handleLowStockToggle()}
+          >
+            {prefs?.low_stock_enabled ? t("common:enabled") : t("common:disabled")}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("lowStockHelp")}</p>
       </div>
     </div>
   );
