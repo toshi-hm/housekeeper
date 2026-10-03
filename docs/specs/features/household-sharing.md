@@ -18,10 +18,12 @@ housekeeper は当初「単一ユーザー・セルフホスト」を前提に�
 ### 段階導入状況
 
 - **基盤** (`20260801020000_create_household_foundation.sql`): 世帯/メンバー/招待テーブル、現在世帯取得、作成/参加RPC、招待試行レート制限を追加済み。
-- **この段階**: `items`, `item_lots`, `categories`, `storage_locations`, `custom_units`, `consumption_logs`, `item_tags`, `items_to_tags` に household_id を追加し、既存行を現在の所有者世帯へ割り当てる。サインアップ時の個人世帯作成と、既存ユーザーが明示確認してから招待先へ移るDB経路を用意する。
-- **未実装の後続段階**: 招待/参加UIと既存データが個人世帯に残ることの確認画面、Storage オブジェクトの世帯パスへの移行と Storage RLS、shopping list と recipes の世帯化。これらが完了するまでは、世帯共有はアプリ上で有効化しない。
+- **DB基盤** (`20261002010749_household_membership_and_shared_inventory.sql`): `items`, `item_lots`, `categories`, `storage_locations`, `custom_units`, `consumption_logs`, `item_tags`, `items_to_tags` に household_id を追加し、既存行を現在の所有者世帯へ割り当てる。サインアップ時の個人世帯作成と、既存ユーザーが明示確認してから招待先へ移るDB経路を用意済み。
+- **共有データ** (`20261002013151_household_sharing_remaining_tables.sql`): shopping list / 購入履歴 / 買い物テンプレート / recipes とその構成行も household_id と世帯単位 RLS に移行済み。`user_id` は作成者記録として維持する。
+- **この段階**: 招待/参加UIと、個人世帯の既存データが旧世帯に残ることの確認画面を実装する。共有データのクライアントクエリでは `user_id` で絞り込まず、RLS をアクセス制御の正本とする。
+- **未実装の後続段階**: Storage オブジェクトの世帯パスへの移行と Storage RLS。画像の共有はその移行が完了するまでサポートしない。
 
-この段階の招待RPCは `p_confirm_personal_data_inaccessible` が明示的に `true` の場合だけ既存 membership を切り替える。切り替え前の household とそのデータは削除も移管もしない。アプリUIが未実装のため、このRPCを直接呼ぶユーザー向け操作は提供しない。
+招待RPCは `p_confirm_personal_data_inaccessible` が明示的に `true` の場合だけ既存 membership を切り替える。切り替え前の household とそのデータは削除も移管もしない。UIはこの確認を表示し、利用者の明示操作後だけRPCを呼び出す。
 
 ## 2. スコープ判断
 

@@ -1,36 +1,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5";
-  };
-  graphql_public: {
-    Tables: {
-      [_ in never]: never;
-    };
-    Views: {
-      [_ in never]: never;
-    };
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json;
-          operationName?: string;
-          query?: string;
-          variables?: Json;
-        };
-        Returns: Json;
-      };
-    };
-    Enums: {
-      [_ in never]: never;
-    };
-    CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
   public: {
     Tables: {
       barcode_rate_limits: {
@@ -56,6 +26,7 @@ export interface Database {
           color: string | null;
           created_at: string;
           days_use_after_opening: number | null;
+          household_id: string;
           icon: string | null;
           id: string;
           kind: string;
@@ -68,6 +39,7 @@ export interface Database {
           color?: string | null;
           created_at?: string;
           days_use_after_opening?: number | null;
+          household_id?: string;
           icon?: string | null;
           id?: string;
           kind?: string;
@@ -80,6 +52,7 @@ export interface Database {
           color?: string | null;
           created_at?: string;
           days_use_after_opening?: number | null;
+          household_id?: string;
           icon?: string | null;
           id?: string;
           kind?: string;
@@ -88,7 +61,15 @@ export interface Database {
           updated_at?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "categories_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       chat_rate_limits: {
         Row: {
@@ -112,6 +93,7 @@ export interface Database {
         Row: {
           delta_amount: number;
           delta_unit: string;
+          household_id: string;
           id: string;
           item_id: string;
           note: string | null;
@@ -125,6 +107,7 @@ export interface Database {
         Insert: {
           delta_amount: number;
           delta_unit: string;
+          household_id?: string;
           id?: string;
           item_id: string;
           note?: string | null;
@@ -138,6 +121,7 @@ export interface Database {
         Update: {
           delta_amount?: number;
           delta_unit?: string;
+          household_id?: string;
           id?: string;
           item_id?: string;
           note?: string | null;
@@ -150,6 +134,13 @@ export interface Database {
         };
         Relationships: [
           {
+            foreignKeyName: "consumption_logs_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "consumption_logs_item_id_fkey";
             columns: ["item_id"];
             isOneToOne: false;
@@ -161,23 +152,34 @@ export interface Database {
       custom_units: {
         Row: {
           created_at: string;
+          household_id: string;
           id: string;
           name: string;
           user_id: string;
         };
         Insert: {
           created_at?: string;
+          household_id?: string;
           id?: string;
           name: string;
           user_id: string;
         };
         Update: {
           created_at?: string;
+          household_id?: string;
           id?: string;
           name?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "custom_units_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       floor_plan_item_placements: {
         Row: {
@@ -459,6 +461,7 @@ export interface Database {
         Row: {
           created_at: string;
           expiry_date: string | null;
+          household_id: string;
           id: string;
           item_id: string;
           opened_at: string | null;
@@ -474,6 +477,7 @@ export interface Database {
         Insert: {
           created_at?: string;
           expiry_date?: string | null;
+          household_id?: string;
           id?: string;
           item_id: string;
           opened_at?: string | null;
@@ -489,6 +493,7 @@ export interface Database {
         Update: {
           created_at?: string;
           expiry_date?: string | null;
+          household_id?: string;
           id?: string;
           item_id?: string;
           opened_at?: string | null;
@@ -503,6 +508,13 @@ export interface Database {
         };
         Relationships: [
           {
+            foreignKeyName: "item_lots_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "item_lots_item_id_fkey";
             columns: ["item_id"];
             isOneToOne: false;
@@ -515,6 +527,7 @@ export interface Database {
         Row: {
           color: string | null;
           created_at: string;
+          household_id: string;
           id: string;
           name: string;
           user_id: string;
@@ -522,6 +535,7 @@ export interface Database {
         Insert: {
           color?: string | null;
           created_at?: string;
+          household_id?: string;
           id?: string;
           name: string;
           user_id: string;
@@ -529,11 +543,20 @@ export interface Database {
         Update: {
           color?: string | null;
           created_at?: string;
+          household_id?: string;
           id?: string;
           name?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "item_tags_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       items: {
         Row: {
@@ -548,6 +571,7 @@ export interface Database {
           deletion_reason: string | null;
           expiry_date: string | null;
           expiry_type: string | null;
+          household_id: string;
           id: string;
           image_path: string | null;
           item_type: string | null;
@@ -579,6 +603,7 @@ export interface Database {
           deletion_reason?: string | null;
           expiry_date?: string | null;
           expiry_type?: string | null;
+          household_id?: string;
           id?: string;
           image_path?: string | null;
           item_type?: string | null;
@@ -610,6 +635,7 @@ export interface Database {
           deletion_reason?: string | null;
           expiry_date?: string | null;
           expiry_type?: string | null;
+          household_id?: string;
           id?: string;
           image_path?: string | null;
           item_type?: string | null;
@@ -638,6 +664,13 @@ export interface Database {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "items_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "items_storage_location_id_fkey";
             columns: ["storage_location_id"];
             isOneToOne: false;
@@ -648,21 +681,31 @@ export interface Database {
       };
       items_to_tags: {
         Row: {
+          household_id: string;
           item_id: string;
           tag_id: string;
           user_id: string;
         };
         Insert: {
+          household_id?: string;
           item_id: string;
           tag_id: string;
           user_id: string;
         };
         Update: {
+          household_id?: string;
           item_id?: string;
           tag_id?: string;
           user_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "items_to_tags_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "items_to_tags_item_id_fkey";
             columns: ["item_id"];
@@ -832,6 +875,7 @@ export interface Database {
         Row: {
           amount: number;
           created_at: string;
+          household_id: string;
           id: string;
           item_id: string;
           recipe_id: string;
@@ -839,6 +883,7 @@ export interface Database {
         Insert: {
           amount: number;
           created_at?: string;
+          household_id?: string;
           id?: string;
           item_id: string;
           recipe_id: string;
@@ -846,11 +891,19 @@ export interface Database {
         Update: {
           amount?: number;
           created_at?: string;
+          household_id?: string;
           id?: string;
           item_id?: string;
           recipe_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "recipe_items_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "recipe_items_item_id_fkey";
             columns: ["item_id"];
@@ -888,6 +941,7 @@ export interface Database {
       recipes: {
         Row: {
           created_at: string;
+          household_id: string;
           id: string;
           name: string;
           updated_at: string;
@@ -895,6 +949,7 @@ export interface Database {
         };
         Insert: {
           created_at?: string;
+          household_id?: string;
           id?: string;
           name: string;
           updated_at?: string;
@@ -902,12 +957,21 @@ export interface Database {
         };
         Update: {
           created_at?: string;
+          household_id?: string;
           id?: string;
           name?: string;
           updated_at?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "recipes_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       security_reset_attempts: {
         Row: {
@@ -958,6 +1022,7 @@ export interface Database {
         Row: {
           archived_at: string;
           desired_units: number;
+          household_id: string;
           id: string;
           name: string;
           note: string | null;
@@ -966,6 +1031,7 @@ export interface Database {
         Insert: {
           archived_at?: string;
           desired_units?: number;
+          household_id?: string;
           id?: string;
           name: string;
           note?: string | null;
@@ -974,12 +1040,21 @@ export interface Database {
         Update: {
           archived_at?: string;
           desired_units?: number;
+          household_id?: string;
           id?: string;
           name?: string;
           note?: string | null;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_archive_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       shopping_list_items: {
         Row: {
@@ -987,6 +1062,7 @@ export interface Database {
           created_at: string;
           created_item_id: string | null;
           desired_units: number;
+          household_id: string;
           id: string;
           linked_item_id: string | null;
           name: string;
@@ -1001,6 +1077,7 @@ export interface Database {
           created_at?: string;
           created_item_id?: string | null;
           desired_units?: number;
+          household_id?: string;
           id?: string;
           linked_item_id?: string | null;
           name: string;
@@ -1015,6 +1092,7 @@ export interface Database {
           created_at?: string;
           created_item_id?: string | null;
           desired_units?: number;
+          household_id?: string;
           id?: string;
           linked_item_id?: string | null;
           name?: string;
@@ -1033,6 +1111,13 @@ export interface Database {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "shopping_list_items_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "shopping_list_items_linked_item_id_fkey";
             columns: ["linked_item_id"];
             isOneToOne: false;
@@ -1045,6 +1130,7 @@ export interface Database {
         Row: {
           created_at: string;
           desired_units: number;
+          household_id: string;
           id: string;
           name: string;
           template_id: string;
@@ -1053,6 +1139,7 @@ export interface Database {
         Insert: {
           created_at?: string;
           desired_units?: number;
+          household_id?: string;
           id?: string;
           name: string;
           template_id: string;
@@ -1061,12 +1148,20 @@ export interface Database {
         Update: {
           created_at?: string;
           desired_units?: number;
+          household_id?: string;
           id?: string;
           name?: string;
           template_id?: string;
           user_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "shopping_list_template_items_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "shopping_list_template_items_template_id_fkey";
             columns: ["template_id"];
@@ -1079,6 +1174,7 @@ export interface Database {
       shopping_list_templates: {
         Row: {
           created_at: string;
+          household_id: string;
           id: string;
           name: string;
           updated_at: string;
@@ -1086,6 +1182,7 @@ export interface Database {
         };
         Insert: {
           created_at?: string;
+          household_id?: string;
           id?: string;
           name: string;
           updated_at?: string;
@@ -1093,16 +1190,26 @@ export interface Database {
         };
         Update: {
           created_at?: string;
+          household_id?: string;
           id?: string;
           name?: string;
           updated_at?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_templates_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       storage_locations: {
         Row: {
           created_at: string;
+          household_id: string;
           icon: string | null;
           id: string;
           name: string;
@@ -1112,6 +1219,7 @@ export interface Database {
         };
         Insert: {
           created_at?: string;
+          household_id?: string;
           icon?: string | null;
           id?: string;
           name: string;
@@ -1121,6 +1229,7 @@ export interface Database {
         };
         Update: {
           created_at?: string;
+          household_id?: string;
           icon?: string | null;
           id?: string;
           name?: string;
@@ -1128,7 +1237,15 @@ export interface Database {
           updated_at?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "storage_locations_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       user_security_questions: {
         Row: {
@@ -1313,18 +1430,18 @@ export interface Database {
         }[];
       };
       redeem_household_invite: {
-        Args: { p_code: string };
+        Args: { p_code: string; p_confirm_personal_data_inaccessible?: boolean };
         Returns: {
           error_code: string;
           household_id: string;
         }[];
       };
       save_recipe: {
-        Args: { p_id: string; p_items: Json; p_name: string };
+        Args: { p_id: string | null; p_items: Json; p_name: string };
         Returns: string;
       };
       save_shopping_list_template: {
-        Args: { p_id: string; p_items: Json; p_name: string };
+        Args: { p_id: string | null; p_items: Json; p_name: string };
         Returns: string;
       };
       undo_auto_archive: {
@@ -1457,9 +1574,6 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       household_role: ["owner", "member"],
