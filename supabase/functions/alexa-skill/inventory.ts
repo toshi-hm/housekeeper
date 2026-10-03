@@ -1,6 +1,6 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
 import { dropExpiryForDailyGoods } from "../_shared/itemType.ts";
-import { z } from "zod";
+import { z } from "npm:zod@4";
 import type { InventoryItem, RecentlyConsumedItem } from "./types.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 export type { RemainingFields } from "./inventory-formatters.ts";
