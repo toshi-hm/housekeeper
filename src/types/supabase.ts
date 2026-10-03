@@ -1,3 +1,4 @@
+// TODO-regenerate: placeholder to trigger the CI drift check; replaced by the generated output.
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
