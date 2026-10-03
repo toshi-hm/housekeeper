@@ -213,12 +213,16 @@ household モデル導入後、Alexa 側の変更は #159 に記載の技術方�
 （household 固有の追加実装は不要 — RLS が household 単位になっているため、
 JWTベースの認証さえ通せば自動的にスコープされる）。
 
-- Alexa Developer Console で Account Linking を設定（Authorization URL /
-  Token URL に Supabase Auth の OAuth エンドポイントを使用）
+- Supabase Auth の OAuth Server と Alexa Developer Console の Account Linking を設定
+  （OAuth authorize/token endpoints と OAuth client の登録が必要）
+- OAuth consent UI でログイン済みユーザーに Alexa client の権限を確認させて承認する
 - Edge Function 側は `SUPABASE_SERVICE_ROLE_KEY` + 環境変数 `USER_ID` 固定を廃止し、
-  Alexa が渡す `accessToken` から user-scoped Supabase client（anon key + JWT）を生成
+  Alexa が渡す `accessToken` を Supabase Auth で検証し、user-scoped Supabase client
+  （anon key + JWT）を生成
 - 未リンク時は `LinkAccount` カードを返す `buildLinkAccountResponse()` を追加
 - 環境変数: `SUPABASE_SERVICE_ROLE_KEY` / `USER_ID` を削除、`SUPABASE_ANON_KEY` を追加
+- OAuth Server Authorization Path と client redirect URI は各コンソールで設定し、
+  Alexa Developer Console に表示される地域別 redirect URI を全て OAuth client に登録
 - **依存関係**: 本機能（household の RLS 切り替え）が先行実装されている必要がある
   （#64 のマイグレーションが完了していないと、Alexa 側だけ Account Linking しても
   既存の service-role 前提のクエリが壊れる）

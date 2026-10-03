@@ -1,7 +1,8 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
 import { dropExpiryForDailyGoods } from "../_shared/itemType.ts";
+import { z } from "zod";
 import type { InventoryItem, RecentlyConsumedItem } from "./types.ts";
-import { getSupabaseClient } from "./supabase-client.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 export type { RemainingFields } from "./inventory-formatters.ts";
 export { formatExpiryDate, formatTotalRemaining } from "./inventory-formatters.ts";
 
@@ -12,13 +13,51 @@ const ITEM_SELECT =
 const LOCATION_ITEM_SELECT =
   "id, name, category_id, storage_location_id, units, content_amount, content_unit, opened_remaining, expiry_date, deleted_at, item_type, categories(name, kind), storage_locations!inner(name)";
 
-export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
-  const ctx = getSupabaseClient();
-  if (!ctx) {
-    console.error("[inventory] Missing required environment variables");
-    return null;
-  }
-  const { supabase, userId } = ctx;
+const itemTypeSchema = z.enum(["food", "daily_goods"]).nullable();
+const categorySchema = z.object({ name: z.string(), kind: itemTypeSchema });
+const storageLocationSchema = z.object({ name: z.string() });
+
+const inventoryItemSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    category_id: z.string().nullable(),
+    storage_location_id: z.string().nullable(),
+    units: z.number(),
+    content_amount: z.number(),
+    content_unit: z.string(),
+    opened_remaining: z.number().nullable(),
+    expiry_date: z.string().nullable(),
+    deleted_at: z.string().nullable(),
+    item_type: itemTypeSchema,
+    categories: z.union([categorySchema, z.array(categorySchema)]).nullable(),
+    storage_locations: z.union([storageLocationSchema, z.array(storageLocationSchema)]).nullable(),
+  })
+  .transform((item): InventoryItem => ({
+    ...item,
+    categories: Array.isArray(item.categories) ? (item.categories[0] ?? null) : item.categories,
+    storage_locations: Array.isArray(item.storage_locations)
+      ? (item.storage_locations[0] ?? null)
+      : item.storage_locations,
+  }));
+
+const recentItemSchema = z.object({
+  name: z.string(),
+  units: z.number(),
+  deleted_at: z.string().nullable(),
+});
+const recentlyConsumedRowSchema = z
+  .object({
+    item_id: z.string(),
+    occurred_at: z.string(),
+    items: z.union([recentItemSchema, z.array(recentItemSchema)]).nullable(),
+  })
+  .transform((row) => ({
+    ...row,
+    items: Array.isArray(row.items) ? (row.items[0] ?? null) : row.items,
+  }));
+
+export const fetchAllItems = async (supabase: SupabaseClient): Promise<InventoryItem[] | null> => {
   try {
     // #695: mirrors the #669 fix — a single unbounded select silently
     // truncates once a user's items exceed PostgREST's row cap (default
@@ -27,12 +66,11 @@ export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
       const { data, error } = await supabase
         .from("items")
         .select(ITEM_SELECT)
-        .eq("user_id", userId)
         .is("deleted_at", null)
         .order("id", { ascending: true })
         .range(from, to);
       if (error) throw error;
-      return (data ?? []) as InventoryItem[];
+      return z.array(inventoryItemSchema).parse(data ?? []);
     });
     // #966: a category (or item) switched to daily_goods after the fact can
     // still have a stale expiry_date left over from when it was food.
@@ -43,13 +81,9 @@ export const fetchAllItems = async (): Promise<InventoryItem[] | null> => {
   }
 };
 
-export const fetchRecentlyConsumedItems = async (): Promise<RecentlyConsumedItem[] | null> => {
-  const ctx = getSupabaseClient();
-  if (!ctx) {
-    console.error("[inventory] Missing required environment variables");
-    return null;
-  }
-  const { supabase, userId } = ctx;
+export const fetchRecentlyConsumedItems = async (
+  supabase: SupabaseClient,
+): Promise<RecentlyConsumedItem[] | null> => {
   const twoMonthsAgo = new Date();
   twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
 
@@ -69,13 +103,12 @@ export const fetchRecentlyConsumedItems = async (): Promise<RecentlyConsumedItem
       const { data, error } = await supabase
         .from("consumption_logs")
         .select("item_id, occurred_at, items(name, units, deleted_at)")
-        .eq("user_id", userId)
         .gte("occurred_at", twoMonthsAgo.toISOString())
         .order("occurred_at", { ascending: false })
         .order("id", { ascending: true })
         .range(from, to);
       if (error) throw error;
-      return data ?? [];
+      return z.array(recentlyConsumedRowSchema).parse(data ?? []);
     });
   } catch (error) {
     console.error("[inventory] fetchRecentlyConsumedItems error:", error);
@@ -103,14 +136,9 @@ export const fetchRecentlyConsumedItems = async (): Promise<RecentlyConsumedItem
 };
 
 export const fetchItemsByLocation = async (
+  supabase: SupabaseClient,
   locationName: string,
 ): Promise<InventoryItem[] | null> => {
-  const ctx = getSupabaseClient();
-  if (!ctx) {
-    console.error("[inventory] Missing required environment variables");
-    return null;
-  }
-  const { supabase, userId } = ctx;
   try {
     // #695: mirrors the #669 fix — page through instead of a single
     // unbounded select.
@@ -118,13 +146,12 @@ export const fetchItemsByLocation = async (
       const { data, error } = await supabase
         .from("items")
         .select(LOCATION_ITEM_SELECT)
-        .eq("user_id", userId)
         .is("deleted_at", null)
         .eq("storage_locations.name", locationName)
         .order("id", { ascending: true })
         .range(from, to);
       if (error) throw error;
-      return (data ?? []) as InventoryItem[];
+      return z.array(inventoryItemSchema).parse(data ?? []);
     });
     // #966: mirrors fetchAllItems's daily_goods expiry_date scrub.
     return dropExpiryForDailyGoods(items);

@@ -24,7 +24,7 @@ export interface AlexaRequest {
   context: {
     System: {
       application: { applicationId: string };
-      user: { userId: string };
+      user: { userId: string; accessToken?: string };
     };
   };
   request:

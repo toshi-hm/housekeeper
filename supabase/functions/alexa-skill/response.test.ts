@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   buildAskResponse,
   buildErrorResponse,
+  buildLinkAccountResponse,
   buildTellResponse,
   buildTimeoutResponse,
 } from "./response.ts";
@@ -58,4 +59,13 @@ Deno.test("buildTimeoutResponse - ends session with non-empty message", () => {
   assert.strictEqual(res.response.shouldEndSession, true);
   const text = res.response.outputSpeech.text ?? "";
   assert.ok(text.length > 0);
+});
+
+Deno.test("buildLinkAccountResponse - ends session and emits the Alexa link card", () => {
+  const response = buildLinkAccountResponse();
+  assert.strictEqual(response.version, "1.0");
+  assert.strictEqual(response.response.card?.type, "LinkAccount");
+  assert.strictEqual(response.response.shouldEndSession, true);
+  assert.strictEqual(response.response.outputSpeech.type, "PlainText");
+  assert.ok(response.response.outputSpeech.text?.includes("アカウント連携"));
 });

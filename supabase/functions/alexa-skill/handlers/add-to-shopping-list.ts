@@ -1,4 +1,5 @@
 import type { AlexaResponse, GeminiMatchResult, SessionAttributes } from "../types.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   buildAskResponse,
   buildErrorResponse,
@@ -50,6 +51,7 @@ const buildConfirmSpeech = (
 export const handleAddToShoppingList = async (
   query: string,
   sessionAttributes: SessionAttributes,
+  supabase: SupabaseClient,
 ): Promise<AlexaResponse> => {
   if (!query) {
     return buildAskResponse(
@@ -59,7 +61,7 @@ export const handleAddToShoppingList = async (
     );
   }
 
-  const items = await fetchAllItems();
+  const items = await fetchAllItems(supabase);
   if (!items) return buildErrorResponse("在庫情報の取得に失敗しました。");
 
   const geminiResult = await queryGemini(buildAddToShoppingListPrompt(query), items);

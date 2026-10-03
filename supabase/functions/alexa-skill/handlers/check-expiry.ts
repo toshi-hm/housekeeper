@@ -1,4 +1,5 @@
 import type { AlexaResponse } from "../types.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   buildAskResponse,
   buildErrorResponse,
@@ -8,7 +9,10 @@ import {
 import { fetchAllItems, fetchRecentlyConsumedItems, formatExpiryDate } from "../inventory.ts";
 import { buildCheckExpiryPrompt, queryGemini } from "../gemini.ts";
 
-export const handleCheckExpiry = async (query: string): Promise<AlexaResponse> => {
+export const handleCheckExpiry = async (
+  query: string,
+  supabase: SupabaseClient,
+): Promise<AlexaResponse> => {
   if (!query) {
     return buildAskResponse(
       "何の賞味期限を確認しますか？商品名を教えてください。",
@@ -18,8 +22,8 @@ export const handleCheckExpiry = async (query: string): Promise<AlexaResponse> =
   }
 
   const [items, recentlyConsumed] = await Promise.all([
-    fetchAllItems(),
-    fetchRecentlyConsumedItems(),
+    fetchAllItems(supabase),
+    fetchRecentlyConsumedItems(supabase),
   ]);
   if (!items) return buildErrorResponse("在庫情報の取得に失敗しました。");
 

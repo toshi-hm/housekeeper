@@ -16,7 +16,7 @@ import { SUPABASE_REST_CACHE_NAME } from "@/lib/swCacheNames";
 // これらのパス自体はセッションが無いことを許容している（/login はコード入力
 // ステップの表示に、/forgot-password はパスワードリセットフローに必要なため）ので、
 // 遷移中の無限ループや意図しないリダイレクトを避ける。
-const PUBLIC_PATHS = ["/login", "/forgot-password"];
+const PUBLIC_PATHS = ["/login", "/forgot-password", "/oauth/consent"];
 
 const isPublicPath = (pathname: string): boolean =>
   PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
