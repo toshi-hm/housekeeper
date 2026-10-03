@@ -642,7 +642,7 @@ create trigger items_set_updated_at before update on items
 
 - 種別: **private**
 - 新規パス規約: `<household_id>/<item_id>.<ext>`（`ext` は `webp` / `jpg` / `png`）
-- 既存パス: `<user_id>/<item_id>.<ext>`。段階移行中は本人と、そのオブジェクトを参照している同一 household のメンバーが読み取り可能
+- 既存パス: `<user_id>/<item_id>.<ext>`。段階移行中は本人と、そのオブジェクトを参照している同一 household のメンバーが読み取り可能。共有読み取りは `image_path` 一致だけで判断せず、変更不能な `items.user_id` と item ID に紐づく検証関数で認可する
 - アクセス: `supabase.storage.from('item-images').createSignedUrl(path, 3600)` を `useUploadItemImage` / `ItemImage` 経由で取得
 - アップロード上限: 5 MB（クライアント側で検証）
 - 新規 upload / upsert / delete は現在の household prefix 内に限定する。旧 user prefix への書き込みは許可しない
@@ -657,11 +657,7 @@ create policy item_images_household_select
     and (
       (storage.foldername(name))[1] = private.current_household_id()::text
       or (storage.foldername(name))[1] = auth.uid()::text
-      or exists (
-        select 1 from public.items i
-        where i.image_path = storage.objects.name
-          and i.household_id = private.current_household_id()
-      )
+      or private.household_legacy_storage_object_access(bucket_id, name, true)
     )
   );
 
@@ -672,14 +668,23 @@ create policy item_images_household_insert
     and (storage.foldername(name))[1] = private.current_household_id()::text
   );
 
--- update / delete も同様
+-- update / delete は世帯 prefix に加え、旧パスについては
+-- 作成者・entity ID・世帯の対応を検証する関数で移行中の削除を許可する。
 ```
+
+`items.image_path` と `storage_locations.photo_path` は、該当行の ID に一致する
+`<household_id>/<entity_id>.<ext>` または `<user_id>/<entity_id>.<ext>` のみを許可する。
+DB trigger で path spoofing と `user_id` の変更を拒否する。旧 prefix の参照については
+非公開 `private` schema に creator / household / entity の検証済み対応表を保持する。
+旧 object の削除時は、現在の household membership と保存した完全一致 path/entity を検証し、
+同じ creator/entity が別 household に再割当てされていないことも確認する。参照解除または
+行削除後も cleanup を認可でき、Storage API が object を削除した後に対応表を消す。
 
 ### バケット `location-photos`（#574）
 
 - 種別: **private**
 - 新規パス規約: `<household_id>/<location_id>.<ext>`（`ext` は `webp` / `jpg` / `png`）
-- 既存パス: `<user_id>/<location_id>.<ext>`。段階移行中は本人と、そのオブジェクトを参照している同一 household のメンバーが読み取り可能
+- 既存パス: `<user_id>/<location_id>.<ext>`。段階移行中は本人と、そのオブジェクトを参照している同一 household のメンバーが読み取り可能。参照先 path は行 ID・作成者・世帯との対応を DB trigger で検証する
 - アクセス: `supabase.storage.from('location-photos').createSignedUrl(path, 3000)` を
   `useSignedLocationPhoto` 経由で取得
 - アップロード上限: 5 MB（クライアント側で検証、`item-images` と共通の `ImageUploader` を流用）

@@ -25,7 +25,7 @@ Storage に移行し、`items.image_path` でオブジェクトキーのみ保�
 ## データ
 
 - 新規 `items.image_path text`: `<household_id>/<item_id>.<ext>`
-- 移行前 `image_path` は `<user_id>/<item_id>.<ext>` のまま保持される。移行中は旧パスの owner と参照行の household member が読み取りできる
+- 移行前 `image_path` は `<user_id>/<item_id>.<ext>` のまま保持される。移行中は旧パスの owner と参照行の household member が読み取りできる。DB は entity ID・変更不能な creator ID に一致する household / user prefix のみを許可し、クライアントが別ユーザーの path を参照に設定できない
 - バケット `item-images` (private)
 
 ## 処理フロー（アップロード）
@@ -55,7 +55,7 @@ Storage に移行し、`items.image_path` でオブジェクトキーのみ保�
 
 ## RLS
 
-`docs/specs/database.md` の Storage 節参照。新規オブジェクトは現在の household ID prefix に制限する。旧 user ID prefix は owner に加えて、現在の `items.image_path` が一致する household のメンバーに限り読み取り可能とし、書き込みは許可しない。
+`docs/specs/database.md` の Storage 節参照。新規オブジェクトは現在の household ID prefix に制限する。旧 user ID prefix は owner に加えて、creator / entity ID / household との対応を検証した上で、現在の `items.image_path` が一致する household のメンバーに読み取り可能とする。旧オブジェクトの cleanup 用対応は非公開DB schemaに保持し、参照解除後や item 完全削除後も元 household のメンバーが削除できるようにする。Storage API が削除に成功した後に対応を消す。旧 path への新規書き込みは許可しない。
 
 既存参照の一括移行は `scripts/migrate-household-storage.ts` で行う。最初は dry run を実施し、差分一覧とバックアップを確認した後、`--apply` 付きで Storage API copy → SHA-256 検証 → 旧パス条件付きDB更新 → 未参照確認 → 旧オブジェクト削除を行う。実行環境にだけ `SUPABASE_URL` と `SUPABASE_SERVICE_ROLE_KEY` を設定し、service role key をブラウザやリポジトリへ保存しない。欠損 source、検証失敗、参照更新失敗では旧オブジェクトを削除しない。
 
