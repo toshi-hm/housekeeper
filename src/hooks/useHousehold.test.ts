@@ -3,11 +3,12 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { createElement, type ReactNode } from "react";
 
-const rpcMock = mock(
-  (_fn: string, _args: Record<string, unknown>) =>
-    Promise.resolve({ error: null }) as Promise<{
-      error: { code?: string; message?: string } | null;
-    }>,
+interface RpcResult {
+  error: { code?: string; message?: string } | null;
+}
+
+const rpcMock = mock<(fn: string, args: Record<string, unknown>) => Promise<RpcResult>>(() =>
+  Promise.resolve({ error: null }),
 );
 
 mock.module("@/lib/supabase", () => ({ supabase: { rpc: rpcMock } }));

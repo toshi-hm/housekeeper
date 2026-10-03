@@ -22,7 +22,7 @@ housekeeper は当初「単一ユーザー・セルフホスト」を前提に�
 - **共有データ** (`20261003000003_household_sharing_remaining_tables.sql`): shopping list / 購入履歴 / 買い物テンプレート / recipes とその構成行も household_id と世帯単位 RLS に移行済み。`user_id` は作成者記録として維持する。
 - **招待/参加UI**（#1168）: 招待/参加UIと、個人世帯の既存データが旧世帯に残ることの確認画面を実装済み。共有データのクライアントクエリでは `user_id` で絞り込まず、RLS をアクセス制御の正本とする。
 - **Storage**: `item-images` / `location-photos` の世帯パス移行と Storage RLS。新規アップロードを世帯prefixにし、既存オブジェクトはコピーを検証してDB pathを条件付き更新した後でのみ旧pathを削除する（`scripts/migrate-household-storage.ts`）。コピー/検証/DB更新のいずれかが失敗した場合は旧オブジェクトを保持する。移行中は旧所有者prefixのSELECTを残す。画像の共有は既存オブジェクトの移行完了まで一部制限される。
-- **未実装（後続）**: 世帯メンバーの削除（強制退会、オーナーのみ）と世帯名の変更（オーナーのみ）。DB の権限モデルは 3.4 のとおりだが、UI と hook（`useRemoveHouseholdMember` / `useRenameHousehold`）は未実装。
+- **メンバー管理**: 世帯名の変更（`rename_household`）とメンバーの強制退会（`remove_household_member`）を、owner のみ実行できる security definer RPC として実装済み（UI は世帯管理画面）。エラーコードは `HK010`（owner ではない）、`HK011`（世帯名は1〜50文字）、`HK012`（owner は削除できない。自分自身を含む）、`HK013`（対象が自分の世帯のメンバーではない）。退会させたメンバーは新しい個人世帯（owner）へ移り、そのメンバーが作成したデータは元の世帯に残る（削除も移動もしない）。
 
 招待RPCは `p_confirm_personal_data_inaccessible` が明示的に `true` の場合だけ既存 membership を切り替える。切り替え前の household とそのデータは削除も移管もしない。UIはこの確認を表示し、利用者の明示操作後だけRPCを呼び出す。
 世帯切替が成功しても、前の世帯に紐づく未同期の買い物queueと保留中の購入画像は削除せず端末に保持する。買い物queueは各entryに作成時の世帯IDを保存し、再接続時に現在のmembershipを再確認して一致しない限り再生しない。古い世帯のqueueは画面に表示し、元の世帯へ戻った後の明示的な再試行または個別破棄を可能にする。
@@ -181,13 +181,13 @@ insert/update trigger で現在世帯を付与し、RLS と参照先チェック
 
 ## 6. API（hook、実装時の想定）
 
-| hook                         | 機能                                                   |
-| ---------------------------- | ------------------------------------------------------ |
-| `useHousehold()`             | 自分の所属する household + メンバー一覧を取得          |
-| `useCreateHouseholdInvite()` | 招待コード発行（`household_invites` insert）           |
-| `useRedeemHouseholdInvite()` | コード入力による参加（`redeem_household_invite` RPC）  |
-| `useRemoveHouseholdMember()` | メンバー強制退会（owner のみ、RLS + アプリ側チェック） |
-| `useRenameHousehold()`       | 世帯名変更（owner のみ）                               |
+| hook                         | 機能                                                          |
+| ---------------------------- | ------------------------------------------------------------- |
+| `useHousehold()`             | 自分の所属する household + メンバー一覧を取得                 |
+| `useCreateHouseholdInvite()` | 招待コード発行（`household_invites` insert）                  |
+| `useRedeemHouseholdInvite()` | コード入力による参加（`redeem_household_invite` RPC）         |
+| `useRemoveHouseholdMember()` | メンバー強制退会（`remove_household_member` RPC、owner のみ） |
+| `useRenameHousehold()`       | 世帯名変更（`rename_household` RPC、owner のみ）              |
 
 既存の `useItems` 等のデータ取得 hook 自体は変更不要（RLS が household 単位に
 差し替わるため、クエリ条件はそのまま `.eq("household_id", ...)` を明示するか、
