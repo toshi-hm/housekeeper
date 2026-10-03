@@ -22,7 +22,6 @@ export const usePurchaseHistory = () => {
         const { data, error } = await supabase
           .from("shopping_list_archive")
           .select("*")
-          .eq("user_id", user.id)
           .order("archived_at", { ascending: false })
           .order("id", { ascending: true })
           .range(from, to);

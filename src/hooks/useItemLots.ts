@@ -384,7 +384,6 @@ const fetchAllLots = async (): Promise<PurchaseLotForExport[]> => {
     const { data, error } = await supabase
       .from("item_lots")
       .select("item_id, purchased_units, purchase_date, store_name")
-      .eq("user_id", userData.user.id)
       .order("purchase_date", { ascending: false })
       .order("id", { ascending: true })
       .range(from, to);
@@ -426,7 +425,6 @@ const fetchAllLotsFull = async (): Promise<FullLotForExport[]> => {
       .select(
         "item_id, units, opened_remaining, unit_price, purchase_date, expiry_date, store_name, opened_at, id",
       )
-      .eq("user_id", userData.user.id)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
       .range(from, to);
@@ -458,7 +456,6 @@ const fetchStoreNameSuggestions = async (): Promise<string[]> => {
   const { data, error } = await supabase
     .from("item_lots")
     .select("store_name")
-    .eq("user_id", userData.user.id)
     .not("store_name", "is", null)
     .order("created_at", { ascending: false })
     .limit(200);

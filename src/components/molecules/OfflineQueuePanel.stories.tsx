@@ -26,6 +26,7 @@ const purchaseAction = (id: string, name: string): OfflineQueuedAction => ({
   kind: "purchase",
   payload: { shoppingItemId: id, itemValues: makeFormValues(name), applyMergeFields: false },
   queuedAt: new Date().toISOString(),
+  householdId: "household-1",
 });
 
 const addAlertAction = (id: string, name: string): OfflineQueuedAction => ({
@@ -33,6 +34,7 @@ const addAlertAction = (id: string, name: string): OfflineQueuedAction => ({
   kind: "add-alert",
   payload: { name, linked_item_id: id },
   queuedAt: new Date().toISOString(),
+  householdId: "household-1",
 });
 
 const meta = {

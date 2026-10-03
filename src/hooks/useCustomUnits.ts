@@ -36,7 +36,6 @@ const fetchCustomUnits = async (): Promise<CustomUnit[]> => {
   const { data, error } = await supabase
     .from("custom_units")
     .select("*")
-    .eq("user_id", userData.user.id)
     .order("name", { ascending: true });
   if (error) throw error;
   return (data ?? []) as CustomUnit[];

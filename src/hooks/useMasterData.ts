@@ -68,7 +68,6 @@ const fetchCategories = async (): Promise<Category[]> => {
   const { data, error } = await supabase
     .from("categories")
     .select("*")
-    .eq("user_id", userData.user.id)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   if (error) throw error;
@@ -303,22 +302,18 @@ export const useDeleteCategory = () => {
  * カテゴリの表示順を一括更新する（#1008）。`orderedIds` の並び順どおりに
  * `sort_order` を 0 始まりの連番で振り直す。1回のユーザー操作（1つ上/下へ移動）
  * につき全件を書き直す単純な実装だが、カテゴリ件数はユーザーごとに高々
- * 数十件程度（マスタデータ）であり、単一ユーザー利用（`user_id` scoped RLS）
- * のため他クライアントとの競合も想定しない。
+ * 数十件程度のマスタデータを household RLS の範囲で更新する。
  */
 export const reorderCategories = async (orderedIds: string[]): Promise<void> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Not authenticated");
-  const userId = userData.user.id;
-
   const results = await Promise.all(
     orderedIds.map((id, index) =>
       supabase
         .from("categories")
         .update({ sort_order: index, updated_at: new Date().toISOString() })
-        .eq("id", id)
-        .eq("user_id", userId),
+        .eq("id", id),
     ),
   );
   for (const { error } of results) {
@@ -369,7 +364,6 @@ const fetchStorageLocations = async (): Promise<StorageLocation[]> => {
   const { data, error } = await supabase
     .from("storage_locations")
     .select("*")
-    .eq("user_id", userData.user.id)
     .order("name", { ascending: true });
   if (error) throw error;
   return (data ?? []) as StorageLocation[];

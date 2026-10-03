@@ -34,6 +34,7 @@ const purchaseAction = (id: string, name: string): OfflineQueuedAction => ({
   kind: "purchase",
   payload: { shoppingItemId: id, itemValues: makeFormValues(name), applyMergeFields: false },
   queuedAt: new Date().toISOString(),
+  householdId: "household-1",
 });
 
 const addAlertAction = (id: string, name: string): OfflineQueuedAction => ({
@@ -41,6 +42,7 @@ const addAlertAction = (id: string, name: string): OfflineQueuedAction => ({
   kind: "add-alert",
   payload: { name, linked_item_id: id },
   queuedAt: new Date().toISOString(),
+  householdId: "household-1",
 });
 
 describe("OfflineQueuePanel", () => {
@@ -75,6 +77,25 @@ describe("OfflineQueuePanel", () => {
     expect(getByText(i18n.t("shopping:offlineQueuePanelKindPurchase"))).toBeTruthy();
     expect(getByText("卵")).toBeTruthy();
     expect(getByText(i18n.t("shopping:offlineQueuePanelKindAddAlert"))).toBeTruthy();
+  });
+
+  it("household mismatch時に自動同期しない旨を表示する", () => {
+    const onRetry = mock(() => {});
+    const { getByRole, getByText } = render(
+      <OfflineQueuePanel
+        actions={[purchaseAction("1", "牛乳")]}
+        householdMismatch
+        onRetry={onRetry}
+        onRequestDiscard={() => {}}
+      />,
+      { wrapper },
+    );
+    fireEvent.click(
+      getByRole("button", { name: i18n.t("shopping:offlineQueuePanelTitle", { count: 1 }) }),
+    );
+    expect(getByText(i18n.t("shopping:offlineQueueHouseholdMismatch"))).toBeTruthy();
+    fireEvent.click(getByRole("button", { name: i18n.t("shopping:offlineQueueRetry") }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
   it("破棄ボタンをクリックすると対象のアクションでonRequestDiscardを呼ぶ", () => {

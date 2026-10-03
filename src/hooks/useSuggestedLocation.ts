@@ -39,7 +39,6 @@ export const fetchSuggestedStorageLocation = async (
   let query = supabase
     .from("items")
     .select("storage_location_id")
-    .eq("user_id", userData.user.id)
     .is("deleted_at", null)
     .not("storage_location_id", "is", null)
     .order("updated_at", { ascending: false })

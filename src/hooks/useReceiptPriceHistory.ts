@@ -31,7 +31,6 @@ const fetchActiveItemNames = async (): Promise<ItemNameRow[]> => {
     const { data, error } = await supabase
       .from("items")
       .select("id, name")
-      .eq("user_id", userData.user.id)
       .is("deleted_at", null)
       .order("id", { ascending: true })
       .range(from, to);
@@ -59,7 +58,6 @@ const fetchReceiptPriceLots = async (): Promise<ReceiptPriceLotRow[]> => {
     const { data, error } = await supabase
       .from("item_lots")
       .select("item_id, store_name, unit_price, purchase_date, created_at")
-      .eq("user_id", userData.user.id)
       .not("store_name", "is", null)
       .not("unit_price", "is", null)
       .order("id", { ascending: true })

@@ -9,6 +9,10 @@ interface OfflineQueuePanelProps {
   /** `useOfflineActionQueue().queuedActions`。積まれた順のまま渡す。空配列なら
    *  何も描画しない。 */
   actions: OfflineQueuedAction[];
+  /** Different or missing household scope stops automatic replay until resolved. */
+  householdMismatch?: boolean;
+  /** User-requested replay; the hook verifies the live household before sending. */
+  onRetry?: () => void;
   /** 指定したアクションの手動破棄をリクエストする。実際の削除確認は呼び出し元
    *  （`_auth.shopping.tsx`）の `ConfirmDialog` に委ね、このコンポーネント自体は
    *  破棄を確定しない（誤タップで同期前の操作を失わないようにするため）。 */
@@ -33,7 +37,12 @@ const actionDisplayName = (action: OfflineQueuedAction): string =>
  * 買い物中モードの他のUI（`ShoppingModeAlertRow`等）と同じく大きめタップ領域を
  * 意識しつつ、通常は表示頻度が低い補助的な情報のため折りたたみ表示にしている。
  */
-export const OfflineQueuePanel = ({ actions, onRequestDiscard }: OfflineQueuePanelProps) => {
+export const OfflineQueuePanel = ({
+  actions,
+  householdMismatch = false,
+  onRetry,
+  onRequestDiscard,
+}: OfflineQueuePanelProps) => {
   const { t } = useTranslation("shopping");
   const [isOpen, setIsOpen] = useState(false);
 
@@ -56,30 +65,42 @@ export const OfflineQueuePanel = ({ actions, onRequestDiscard }: OfflineQueuePan
         )}
       </button>
       {isOpen && (
-        <ul id="offline-queue-panel-list" className="space-y-1 border-t p-2">
-          {actions.map((action) => (
-            <li
-              key={action.id}
-              className="flex items-center justify-between gap-2 rounded-md p-2 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{actionDisplayName(action)}</p>
-                <p className="text-xs text-muted-foreground">{t(kindLabelKey[action.kind])}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-11 w-11 shrink-0 text-muted-foreground hover:text-destructive"
-                onClick={() => onRequestDiscard(action)}
-                aria-label={t("offlineQueuePanelDiscardAriaLabel", {
-                  name: actionDisplayName(action),
-                })}
+        <div id="offline-queue-panel-list" className="border-t p-2">
+          {householdMismatch && (
+            <p role="alert" className="mb-2 rounded-md border border-amber-500/40 p-2 text-sm">
+              {t("offlineQueueHouseholdMismatch")}
+              {onRetry && (
+                <Button variant="outline" className="mt-2 block" onClick={onRetry}>
+                  {t("offlineQueueRetry")}
+                </Button>
+              )}
+            </p>
+          )}
+          <ul className="space-y-1">
+            {actions.map((action) => (
+              <li
+                key={action.id}
+                className="flex items-center justify-between gap-2 rounded-md p-2 text-sm"
               >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </li>
-          ))}
-        </ul>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{actionDisplayName(action)}</p>
+                  <p className="text-xs text-muted-foreground">{t(kindLabelKey[action.kind])}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => onRequestDiscard(action)}
+                  aria-label={t("offlineQueuePanelDiscardAriaLabel", {
+                    name: actionDisplayName(action),
+                  })}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

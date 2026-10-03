@@ -24,15 +24,10 @@ const MAX_MERGE_ATTEMPTS = 3;
  * 最新の行を再取得し、その値を基準に増分を計算し直してリトライする（23505 競合時の
  * リトライパターンと同様）。
  */
-const mergeAutoReorderRow = async (
-  userId: string,
-  itemId: string,
-  name: string,
-): Promise<ShoppingItem | null> => {
+const mergeAutoReorderRow = async (itemId: string, name: string): Promise<ShoppingItem | null> => {
   const { data: plannedRows, error: plannedError } = await supabase
     .from("shopping_list_items")
     .select("*")
-    .eq("user_id", userId)
     .eq("status", "planned");
   if (plannedError) throw plannedError;
 
@@ -148,7 +143,7 @@ export const maybeAutoReorder = async (itemId: string): Promise<boolean> => {
     const paceDue = thresholdDue ? false : await isPaceBasedReorderDue(item);
     if (!thresholdDue && !paceDue) return false;
 
-    const merged = await mergeAutoReorderRow(item.user_id, item.id, item.name);
+    const merged = await mergeAutoReorderRow(item.id, item.name);
     if (merged) return true;
 
     const { error: insertError } = await supabase.from("shopping_list_items").insert({
@@ -159,7 +154,7 @@ export const maybeAutoReorder = async (itemId: string): Promise<boolean> => {
       auto_added: true,
     });
     if (insertError?.code === "23505") {
-      const mergedAfterConflict = await mergeAutoReorderRow(item.user_id, item.id, item.name);
+      const mergedAfterConflict = await mergeAutoReorderRow(item.id, item.name);
       return mergedAfterConflict !== null;
     }
     if (insertError) throw insertError;

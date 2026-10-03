@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
 import { useCartCheckOff } from "@/hooks/useCartCheckOff";
+import { fetchCurrentHouseholdId, useCurrentHouseholdId } from "@/hooks/useHousehold";
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
@@ -198,6 +199,7 @@ export const ShoppingPage = () => {
   const upsert = useUpsertShoppingItem();
   const deleteItem = useDeleteShoppingItem();
   const purchase = usePurchaseShoppingItem();
+  const { data: currentHouseholdId } = useCurrentHouseholdId();
   const clearPurchased = useDeleteAllPurchasedItems();
   const saveTemplate = useSaveShoppingTemplate();
   const deleteTemplate = useDeleteShoppingTemplate();
@@ -212,6 +214,8 @@ export const ShoppingPage = () => {
   // 渡す関数は既存の purchase/upsert mutation の mutateAsync（クエリ無効化・エラートースト
   // はそのまま活きる）。useShoppingList.ts 自体は変更しない。
   const offlineQueue = useOfflineActionQueue({
+    householdId: currentHouseholdId ?? null,
+    getCurrentHouseholdId: fetchCurrentHouseholdId,
     purchase: purchase.mutateAsync,
     addAlert: upsert.mutateAsync,
     // #1020: キューに積まれた購入確定が再接続後にリプレイ成功した直後、保存しておいた
@@ -384,6 +388,10 @@ export const ShoppingPage = () => {
         );
         return;
       }
+      if (outcome.status === "blocked") {
+        toast(t("offlineQueueHouseholdUnavailable"), "error");
+        return;
+      }
       const newItem = outcome.result;
 
       // 購入で作成したアイテムに、ダイアログで選択された画像をアップロードする (#453)。
@@ -478,6 +486,8 @@ export const ShoppingPage = () => {
       });
       if (outcome.status === "queued") {
         toast(t("offlineQueuedAddAlert"), "default");
+      } else if (outcome.status === "blocked") {
+        toast(t("offlineQueueHouseholdUnavailable"), "error");
       } else {
         toast(t("restockSuccess"), "success");
       }
@@ -926,6 +936,8 @@ export const ShoppingPage = () => {
               （購入確定・買い物リストへの追加）の確認・個別破棄の導線。 */}
           <OfflineQueuePanel
             actions={offlineQueue.queuedActions}
+            householdMismatch={offlineQueue.householdMismatch}
+            onRetry={offlineQueue.retryQueuedActions}
             onRequestDiscard={(action) => setDiscardQueueAction(action)}
           />
           <ShoppingModeView

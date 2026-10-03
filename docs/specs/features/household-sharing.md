@@ -20,10 +20,11 @@ housekeeper は当初「単一ユーザー・セルフホスト」を前提に�
 - **基盤** (`20260801020000_create_household_foundation.sql`): 世帯/メンバー/招待テーブル、現在世帯取得、作成/参加RPC、招待試行レート制限を追加済み。
 - **DB基盤** (`20261002010749_household_membership_and_shared_inventory.sql`): `items`, `item_lots`, `categories`, `storage_locations`, `custom_units`, `consumption_logs`, `item_tags`, `items_to_tags` に household_id を追加し、既存行を現在の所有者世帯へ割り当てる。サインアップ時の個人世帯作成と、既存ユーザーが明示確認してから招待先へ移るDB経路を用意済み。
 - **共有データ** (`20261003000003_household_sharing_remaining_tables.sql`): shopping list / 購入履歴 / 買い物テンプレート / recipes とその構成行も household_id と世帯単位 RLS に移行済み。`user_id` は作成者記録として維持する。
-- **この段階**: 招待/参加UIと、個人世帯の既存データが旧世帯に残ることの確認画面を実装する。共有データのクライアントクエリでは `user_id` で絞り込まず、RLS をアクセス制御の正本とする。
-- **未実装の後続段階**: Storage オブジェクトの世帯パスへの移行と Storage RLS。画像の共有はその移行が完了するまでサポートしない。
+- **招待UI/共有クエリ** (後続PR): 世帯メンバー・招待コードの表示/発行、招待参加と個人世帯データの確認画面を実装する。共有データのクライアントクエリでは `user_id` で絞り込まず、RLS をアクセス制御の正本とする。この段階はDBの安全修正PR #1167 が main に入った後にのみ有効化する。
+- **後続のStorage段階**: `item-images` / `location-photos` の世帯パス移行と Storage RLS。新規アップロードを世帯prefixにし、既存オブジェクトはコピーを検証してDB pathを条件付き更新した後でのみ旧pathを削除する。コピー/検証/DB更新のいずれかが失敗した場合は旧オブジェクトを保持する。移行中は旧所有者prefixのSELECTを残す。画像の共有は既存オブジェクトの移行完了まで一部制限される。
 
 招待RPCは `p_confirm_personal_data_inaccessible` が明示的に `true` の場合だけ既存 membership を切り替える。切り替え前の household とそのデータは削除も移管もしない。UIはこの確認を表示し、利用者の明示操作後だけRPCを呼び出す。
+世帯切替が成功しても、前の世帯に紐づく未同期の買い物queueと保留中の購入画像は削除せず端末に保持する。買い物queueは各entryに作成時の世帯IDを保存し、再接続時に現在のmembershipを再確認して一致しない限り再生しない。古い世帯のqueueは画面に表示し、元の世帯へ戻った後の明示的な再試行または個別破棄を可能にする。
 
 ## 2. スコープ判断
 

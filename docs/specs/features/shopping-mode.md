@@ -55,7 +55,13 @@
 ### データへの影響
 
 なし（サーバー側スキーマ変更不要）。キューは `localStorage` に
-`{ id, kind: "purchase" | "add-alert", payload, queuedAt }[]` の形で保持する。
+`{ id, householdId, kind: "purchase" | "add-alert", payload, queuedAt }[]` の形で保持する。
+世帯ID不明のときはオフライン操作をキューへ保存しない。再接続時は現在のmembershipを
+Supabaseから取得し、各queue entryの世帯IDと一致する場合だけ順に再生する。不一致または
+古い世帯IDを持たない既存entryがある場合はqueue全体の再生を止め、内容を表示して個別破棄を
+可能にする。元の世帯へ戻った場合は利用者の明示操作で同期を再試行できる。未同期操作と関連画像は
+世帯切替後も端末に保持し、参加確認文で保留されることを説明する。同じブラウザの別タブにも
+明示的なqueue削除操作を通知する。
 
 ### 技術ポイント
 
