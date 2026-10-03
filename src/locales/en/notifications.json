@@ -3,6 +3,32 @@
   "emailAddress": "Email Address",
   "emailAddressMissingWarning": "No email address set, so notifications will not be delivered. Please fill in the field above.",
   "emailEnabled": "Email Notifications",
+  "failureHistory": {
+    "channels": {
+      "email": "Email",
+      "push": "Push notification"
+    },
+    "codes": {
+      "email_address_missing": "No email address is configured",
+      "email_config_missing": "Email server configuration is missing",
+      "email_delivery_failed": "Email delivery failed",
+      "push_config_missing": "Push server configuration is missing",
+      "push_delivery_failed": "Push delivery failed",
+      "push_no_subscriptions": "No push subscriptions are registered",
+      "push_subscriptions_unavailable": "Push subscriptions could not be loaded"
+    },
+    "empty": "No delivery failures have been recorded.",
+    "loadError": "Could not load failure history.",
+    "loading": "Loading failure history…",
+    "privacy": "Showing the 20 most recent entries. Destinations and provider responses are not stored.",
+    "retry": "Retry",
+    "title": "Notification delivery failures",
+    "types": {
+      "expiry": "Expiry notification",
+      "low_stock": "Daily goods low-stock notification",
+      "waste_digest": "Weekly food-waste digest"
+    }
+  },
   "invalidEmailAddress": "Please enter a valid email address",
   "invalidNotifyAt": "Please enter a notification time",
   "invalidThresholdDays": "Please enter a value between 0 and 30",

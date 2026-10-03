@@ -770,6 +770,54 @@ export interface Database {
           },
         ];
       };
+      notification_failures: {
+        Row: {
+          channel: "push" | "email";
+          failed_at: string;
+          failure_code:
+            | "push_config_missing"
+            | "push_subscriptions_unavailable"
+            | "push_no_subscriptions"
+            | "push_delivery_failed"
+            | "email_config_missing"
+            | "email_address_missing"
+            | "email_delivery_failed";
+          id: string;
+          notification_type: "expiry" | "waste_digest" | "low_stock";
+          user_id: string;
+        };
+        Insert: {
+          channel: "push" | "email";
+          failed_at?: string;
+          failure_code:
+            | "push_config_missing"
+            | "push_subscriptions_unavailable"
+            | "push_no_subscriptions"
+            | "push_delivery_failed"
+            | "email_config_missing"
+            | "email_address_missing"
+            | "email_delivery_failed";
+          id?: string;
+          notification_type: "expiry" | "waste_digest" | "low_stock";
+          user_id: string;
+        };
+        Update: {
+          channel?: "push" | "email";
+          failed_at?: string;
+          failure_code?:
+            | "push_config_missing"
+            | "push_subscriptions_unavailable"
+            | "push_no_subscriptions"
+            | "push_delivery_failed"
+            | "email_config_missing"
+            | "email_address_missing"
+            | "email_delivery_failed";
+          id?: string;
+          notification_type?: "expiry" | "waste_digest" | "low_stock";
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       notification_preferences: {
         Row: {
           email_address: string | null;
