@@ -25,22 +25,40 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # The hosted database cannot include migrations from an unmerged PR yet.
-      # The post-deployment workflow checks generated types after those migrations
-      # have been applied to production. Compare against main rather than the PR
-      # base so stacked code-only PRs also defer while their parent migration PRs
-      # have not reached the hosted database.
+      # Compare against main rather than the PR base so stacked code-only PRs
+      # defer while their parent migration PRs have not reached the hosted DB.
       - name: Detect migration changes
         id: migrations
         env:
           HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
           git fetch origin main --depth=1
-          if git diff --quiet origin/main "$HEAD_SHA" -- 'supabase/migrations/*.sql'; then
+          BASE_SHA=$(git merge-base origin/main "$HEAD_SHA")
+          if [ -z "$BASE_SHA" ]; then
+            echo "::error::Could not find a merge base between origin/main and $HEAD_SHA."
+            exit 1
+          fi
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          if git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- 'supabase/migrations/*.sql'; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Unmerged migration files are present relative to main; hosted DB type comparison will run after deployment."
+            echo "Unmerged migration files are present relative to the merge base; hosted DB type comparison will run after deployment."
+          fi
+
+      # A mismatch already present on main is not caused by a code-only PR.
+      # Track generated type changes independently so only that inherited drift
+      # can be deferred; PRs that edit the type file still fail on a mismatch.
+      - name: Detect generated type changes
+        id: types
+        env:
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ steps.migrations.outputs.base_sha }}
+        run: |
+          if git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- src/types/supabase.ts; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       # `secrets` cannot be referenced from a job- or step-level `if:`, so the
@@ -69,8 +87,19 @@ jobs:
 
       - name: Check for type drift
         if: steps.creds.outputs.configured == 'true' && steps.migrations.outputs.changed != 'true'
+        env:
+          BASE_SHA: ${{ steps.migrations.outputs.base_sha }}
         run: |
           if ! git diff --quiet src/types/supabase.ts; then
+            if [ "$GITHUB_EVENT_NAME" = "pull_request" ] && [ "${{ steps.types.outputs.changed }}" = "false" ]; then
+              base_types="$RUNNER_TEMP/base-supabase.ts"
+              git show "$BASE_SHA:src/types/supabase.ts" > "$base_types"
+              if ! diff -q "$base_types" src/types/supabase.ts >/dev/null; then
+                echo "::warning::Remote Supabase types differ from the checked-in merge-base types. This PR changes neither migrations nor generated types, so the existing base drift is deferred until the database migrations are deployed."
+                diff -u "$base_types" src/types/supabase.ts || true
+                exit 0
+              fi
+            fi
             echo "Supabase TypeScript types are out of sync with the DB schema."
             echo "Run 'bun run gen:types' and commit the result."
             git diff src/types/supabase.ts

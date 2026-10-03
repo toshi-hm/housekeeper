@@ -1,10 +1,17 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { z } from "zod";
 
 import { LoginPage } from "@/components/pages/LoginPage";
 import { isMfaChallengeRequired } from "@/lib/mfa";
 import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: z.object({
+    returnTo: z
+      .string()
+      .regex(/^\/oauth\/consent(?:\?|$)/)
+      .optional(),
+  }),
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();
     if (!data.session) return;
@@ -16,5 +23,8 @@ export const Route = createFileRoute("/login")({
 
     throw redirect({ to: "/" });
   },
-  component: LoginPage,
+  component: function LoginRouteComponent() {
+    const { returnTo } = Route.useSearch();
+    return <LoginPage returnTo={returnTo} />;
+  },
 });

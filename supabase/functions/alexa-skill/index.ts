@@ -1,6 +1,12 @@
 import type { AlexaRequest, AlexaResponse, AlexaSlot, SessionAttributes } from "./types.ts";
-import { buildAskResponse, buildErrorResponse, buildTellResponse } from "./response.ts";
+import {
+  buildAskResponse,
+  buildErrorResponse,
+  buildLinkAccountResponse,
+  buildTellResponse,
+} from "./response.ts";
 import { verifyAlexaSignature } from "./signature-verifier.ts";
+import { getSupabaseClient, type AlexaSupabaseContext } from "./supabase-client.ts";
 
 const verifyApplicationId = (req: AlexaRequest): Response | null => {
   // #834: read lazily (not at module top level) so importing this module in
@@ -54,6 +60,7 @@ const routeIntent = async (
   intentName: string,
   slots: Record<string, AlexaSlot>,
   sessionAttributes: SessionAttributes,
+  supabaseContext: AlexaSupabaseContext,
 ): Promise<AlexaResponse> => {
   switch (intentName) {
     case "AMAZON.HelpIntent":
@@ -66,37 +73,50 @@ const routeIntent = async (
     case "AMAZON.YesIntent":
     case "AMAZON.NoIntent": {
       const { handleYesNo } = await import("./handlers/yes-no.ts");
-      return handleYesNo(intentName === "AMAZON.YesIntent", sessionAttributes);
+      return handleYesNo(intentName === "AMAZON.YesIntent", sessionAttributes, supabaseContext);
     }
 
     case "CheckInventoryIntent": {
       const { handleCheckInventory } = await import("./handlers/check-inventory.ts");
-      return handleCheckInventory(slots["ItemQuery"]?.value?.trim() ?? "");
+      return handleCheckInventory(
+        slots["ItemQuery"]?.value?.trim() ?? "",
+        supabaseContext.supabase,
+      );
     }
 
     case "CheckExpiryIntent": {
       const { handleCheckExpiry } = await import("./handlers/check-expiry.ts");
-      return handleCheckExpiry(slots["ItemQuery"]?.value?.trim() ?? "");
+      return handleCheckExpiry(slots["ItemQuery"]?.value?.trim() ?? "", supabaseContext.supabase);
     }
 
     case "ListByLocationIntent": {
       const { handleListByLocation } = await import("./handlers/list-by-location.ts");
-      return handleListByLocation(slots["LocationQuery"]?.value?.trim() ?? "");
+      return handleListByLocation(
+        slots["LocationQuery"]?.value?.trim() ?? "",
+        supabaseContext.supabase,
+      );
     }
 
     case "CheckLocationIntent": {
       const { handleCheckLocation } = await import("./handlers/check-location.ts");
-      return handleCheckLocation(slots["ItemQuery"]?.value?.trim() ?? "");
+      return handleCheckLocation(slots["ItemQuery"]?.value?.trim() ?? "", supabaseContext.supabase);
     }
 
     case "CheckRemainingIntent": {
       const { handleCheckRemaining } = await import("./handlers/check-remaining.ts");
-      return handleCheckRemaining(slots["ItemQuery"]?.value?.trim() ?? "");
+      return handleCheckRemaining(
+        slots["ItemQuery"]?.value?.trim() ?? "",
+        supabaseContext.supabase,
+      );
     }
 
     case "AddToShoppingListIntent": {
       const { handleAddToShoppingList } = await import("./handlers/add-to-shopping-list.ts");
-      return handleAddToShoppingList(slots["ItemQuery"]?.value?.trim() ?? "", sessionAttributes);
+      return handleAddToShoppingList(
+        slots["ItemQuery"]?.value?.trim() ?? "",
+        sessionAttributes,
+        supabaseContext.supabase,
+      );
     }
 
     default:
@@ -183,6 +203,17 @@ export const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    const accessToken = body.context.System.user.accessToken;
+    if (!accessToken)
+      return new Response(JSON.stringify(buildLinkAccountResponse()), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const supabaseContext = await getSupabaseClient(accessToken);
+    if (!supabaseContext)
+      return new Response(JSON.stringify(buildLinkAccountResponse()), {
+        headers: { "Content-Type": "application/json" },
+      });
+
     const sessionAttributes = (body.session?.attributes ?? {}) as SessionAttributes;
     let alexaResponse: AlexaResponse;
 
@@ -192,7 +223,12 @@ export const handler = async (req: Request): Promise<Response> => {
       alexaResponse = handleSessionEnded();
     } else if (body.request.type === "IntentRequest") {
       const { intent } = body.request;
-      alexaResponse = await routeIntent(intent.name, intent.slots ?? {}, sessionAttributes);
+      alexaResponse = await routeIntent(
+        intent.name,
+        intent.slots ?? {},
+        sessionAttributes,
+        supabaseContext,
+      );
     } else {
       alexaResponse = buildErrorResponse();
     }

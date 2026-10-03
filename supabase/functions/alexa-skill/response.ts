@@ -32,3 +32,15 @@ export const buildErrorResponse = (message?: string): AlexaResponse =>
 
 export const buildTimeoutResponse = (): AlexaResponse =>
   buildTellResponse("ただいま応答に時間がかかっています。もう一度お試しください。");
+
+export const buildLinkAccountResponse = (): AlexaResponse => ({
+  version: "1.0",
+  response: {
+    outputSpeech: {
+      type: "PlainText",
+      text: "ハウスキーパーをご利用いただくには、Alexaアプリでアカウント連携を行ってください。",
+    },
+    card: { type: "LinkAccount" },
+    shouldEndSession: true,
+  },
+});

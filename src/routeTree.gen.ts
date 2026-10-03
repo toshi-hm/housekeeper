@@ -20,6 +20,7 @@ import { Route as AuthRecipesRouteImport } from './routes/_auth.recipes'
 import { Route as AuthSettingsRouteImport } from './routes/_auth.settings'
 import { Route as AuthShoppingRouteImport } from './routes/_auth.shopping'
 import { Route as AuthStatsRouteImport } from './routes/_auth.stats'
+import { Route as OauthConsentRouteImport } from './routes/oauth.consent'
 import { Route as AuthItemsItemIdRouteImport } from './routes/_auth.items.$itemId'
 import { Route as AuthItemsNewRouteImport } from './routes/_auth.items.new'
 import { Route as AuthItemsReceiptScanRouteImport } from './routes/_auth.items.receipt-scan'
@@ -88,6 +89,11 @@ const AuthStatsRoute = AuthStatsRouteImport.update({
   id: '/stats',
   path: '/stats',
   getParentRoute: () => AuthRoute,
+} as any)
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthItemsItemIdRoute = AuthItemsItemIdRouteImport.update({
   id: '/items/$itemId',
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthSettingsRouteWithChildren
   '/shopping': typeof AuthShoppingRoute
   '/stats': typeof AuthStatsRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
   '/items/receipt-scan': typeof AuthItemsReceiptScanRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthSettingsRouteWithChildren
   '/shopping': typeof AuthShoppingRoute
   '/stats': typeof AuthStatsRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/': typeof AuthIndexRoute
   '/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/items/new': typeof AuthItemsNewRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/_auth/settings': typeof AuthSettingsRouteWithChildren
   '/_auth/shopping': typeof AuthShoppingRoute
   '/_auth/stats': typeof AuthStatsRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/_auth/': typeof AuthIndexRoute
   '/_auth/items/$itemId': typeof AuthItemsItemIdRouteWithChildren
   '/_auth/items/new': typeof AuthItemsNewRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shopping'
     | '/stats'
+    | '/oauth/consent'
     | '/items/$itemId'
     | '/items/new'
     | '/items/receipt-scan'
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shopping'
     | '/stats'
+    | '/oauth/consent'
     | '/'
     | '/items/$itemId'
     | '/items/new'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/_auth/settings'
     | '/_auth/shopping'
     | '/_auth/stats'
+    | '/oauth/consent'
     | '/_auth/'
     | '/_auth/items/$itemId'
     | '/_auth/items/new'
@@ -329,6 +341,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  OauthConsentRoute: typeof OauthConsentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -409,6 +422,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/stats'
       preLoaderRoute: typeof AuthStatsRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_auth/items/$itemId': {
       id: '/_auth/items/$itemId'
@@ -599,6 +619,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  OauthConsentRoute: OauthConsentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
