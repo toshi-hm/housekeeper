@@ -6,7 +6,7 @@ import {
 } from "../../_shared/shoppingDuplicates.ts";
 import type { AlexaResponse, PendingShoppingItem, SessionAttributes } from "../types.ts";
 import { buildAskResponse, buildErrorResponse, buildTellResponse } from "../response.ts";
-import { getSupabaseClient } from "../supabase-client.ts";
+import type { AlexaSupabaseContext } from "../supabase-client.ts";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -22,14 +22,12 @@ export interface UpsertShoppingListItemResult {
  */
 const mergeIntoDuplicatePlannedItem = async (
   supabase: SupabaseClient,
-  userId: string,
   name: string,
   linkedItemId: string | null,
 ): Promise<ShoppingPlannedRow | null> => {
   const { data: plannedRows, error: plannedError } = await supabase
     .from("shopping_list_items")
     .select("id, name, desired_units, linked_item_id")
-    .eq("user_id", userId)
     .eq("status", "planned");
   if (plannedError) {
     console.error("[yes-no] planned rows fetch error:", plannedError);
@@ -78,7 +76,7 @@ export const upsertShoppingListItem = async (
   // Validate that linked_item_id is a proper UUID before using it; Gemini output may be malformed
   const linkedItemId = item.id && UUID_REGEX.test(item.id) ? item.id : null;
 
-  const merged = await mergeIntoDuplicatePlannedItem(supabase, userId, item.name, linkedItemId);
+  const merged = await mergeIntoDuplicatePlannedItem(supabase, item.name, linkedItemId);
   if (merged) return { ok: true, merged: true };
 
   const { error } = await supabase.from("shopping_list_items").insert({
@@ -91,7 +89,7 @@ export const upsertShoppingListItem = async (
   if (!error) return { ok: true, merged: false };
 
   if (error.code === "23505") {
-    const retried = await mergeIntoDuplicatePlannedItem(supabase, userId, item.name, linkedItemId);
+    const retried = await mergeIntoDuplicatePlannedItem(supabase, item.name, linkedItemId);
     if (retried) return { ok: true, merged: true };
   }
 
@@ -101,13 +99,9 @@ export const upsertShoppingListItem = async (
 
 const insertShoppingListItem = async (
   item: PendingShoppingItem,
+  context: AlexaSupabaseContext,
 ): Promise<UpsertShoppingListItemResult> => {
-  const ctx = getSupabaseClient();
-  if (!ctx) {
-    console.error("[yes-no] Missing required environment variables");
-    return { ok: false, merged: false };
-  }
-  return upsertShoppingListItem(ctx.supabase, ctx.userId, item);
+  return upsertShoppingListItem(context.supabase, context.userId, item);
 };
 
 /** 追加結果に応じた読み上げ文言。統合時に「追加しました」と誤って言わないようにする (#946)。 */
@@ -124,6 +118,7 @@ export const buildAddResultSpeech = (
 export const handleYesNo = async (
   isYes: boolean,
   sessionAttributes: SessionAttributes,
+  context: AlexaSupabaseContext,
 ): Promise<AlexaResponse> => {
   const { pendingAction, pendingItem } = sessionAttributes;
 
@@ -139,7 +134,7 @@ export const handleYesNo = async (
       return buildErrorResponse("追加する商品が見つかりませんでした。");
     }
     const item = pendingItem as PendingShoppingItem;
-    const result = await insertShoppingListItem(item);
+    const result = await insertShoppingListItem(item, context);
     return buildTellResponse(buildAddResultSpeech(item.name, result));
   }
 
@@ -149,7 +144,7 @@ export const handleYesNo = async (
         return buildErrorResponse("追加する商品が見つかりませんでした。");
       }
       const item = pendingItem as PendingShoppingItem;
-      const result = await insertShoppingListItem(item);
+      const result = await insertShoppingListItem(item, context);
       return buildTellResponse(buildAddResultSpeech(item.name, result));
     }
     // No → 全フレーズで言い直してもらう（インタラクションモデルに単品名のみの発話例がないため）

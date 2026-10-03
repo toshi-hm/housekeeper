@@ -49,7 +49,7 @@ const resolvePendingTotpFactorId = async (): Promise<string | null> => {
   return factor.id;
 };
 
-export const LoginPage = () => {
+export const LoginPage = ({ returnTo }: { returnTo?: string }) => {
   const { t } = useTranslation("auth");
   const { t: tm } = useTranslation("mfa");
   const navigate = useNavigate();
@@ -78,6 +78,14 @@ export const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const navigateAfterAuth = () => {
+    if (returnTo) {
+      window.location.assign(returnTo);
+      return;
+    }
+    void navigate({ to: "/" });
+  };
 
   const clearErrors = () => {
     setFieldErrors({});
@@ -134,7 +142,7 @@ export const LoginPage = () => {
       setMode("mfa");
       return;
     }
-    void navigate({ to: "/" });
+    navigateAfterAuth();
   };
 
   const handleSignup = async () => {
@@ -187,7 +195,7 @@ export const LoginPage = () => {
       );
     }
 
-    void navigate({ to: "/" });
+    navigateAfterAuth();
   };
 
   const handleMfaVerify = async () => {
@@ -206,7 +214,7 @@ export const LoginPage = () => {
       code: result.data,
     });
     if (error) throw new Error(tm(translateMfaError(error.message)));
-    void navigate({ to: "/" });
+    navigateAfterAuth();
   };
 
   const handleMfaCancel = async () => {
