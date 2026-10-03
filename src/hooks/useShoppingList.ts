@@ -85,7 +85,7 @@ const mergeIntoDuplicatePlannedItem = async (
       .select()
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (data) return data;
+    if (data) return data as ShoppingItem;
 
     // desired_units が読み取り時から変わっていた(並行マージがあった)ため、
     // 最新の行を再取得して増分を計算し直す。status="planned"も再度絞り込み、
@@ -286,7 +286,7 @@ export const lotValuesFromForm = (itemValues: ItemFormValues) => ({
 /** Atomically move every purchased row into immutable purchase history. */
 export const archivePurchasedItems = async (): Promise<void> => {
   requireOnline();
-  const { error } = await supabase.rpc("archive_purchased_shopping_items", {});
+  const { error } = await supabase.rpc("archive_purchased_shopping_items");
   if (error) throw new Error(error.message);
 };
 
