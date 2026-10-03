@@ -1,6 +1,36 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5";
+  };
+  graphql_public: {
+    Tables: {
+      [_ in never]: never;
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json;
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+        };
+        Returns: Json;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
   public: {
     Tables: {
       barcode_rate_limits: {
@@ -722,6 +752,32 @@ export interface Database {
           },
         ];
       };
+      low_stock_notification_states: {
+        Row: {
+          item_id: string;
+          notified_at: string;
+          user_id: string;
+        };
+        Insert: {
+          item_id: string;
+          notified_at?: string;
+          user_id: string;
+        };
+        Update: {
+          item_id?: string;
+          notified_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "low_stock_notification_states_item_id_fkey";
+            columns: ["item_id"];
+            isOneToOne: false;
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       meal_plans: {
         Row: {
           created_at: string;
@@ -759,56 +815,6 @@ export interface Database {
             columns: ["recipe_id"];
             isOneToOne: false;
             referencedRelation: "recipes";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      notification_logs: {
-        Row: {
-          created_at: string;
-          id: string;
-          item_count: number;
-          sent_on: string;
-          user_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          item_count?: number;
-          sent_on?: string;
-          user_id: string;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          item_count?: number;
-          sent_on?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
-      low_stock_notification_states: {
-        Row: {
-          item_id: string;
-          notified_at: string;
-          user_id: string;
-        };
-        Insert: {
-          item_id: string;
-          notified_at?: string;
-          user_id: string;
-        };
-        Update: {
-          item_id?: string;
-          notified_at?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "low_stock_notification_states_item_id_fkey";
-            columns: ["item_id"];
-            isOneToOne: false;
-            referencedRelation: "items";
             referencedColumns: ["id"];
           },
         ];
@@ -861,10 +867,35 @@ export interface Database {
         };
         Relationships: [];
       };
+      notification_logs: {
+        Row: {
+          created_at: string;
+          id: string;
+          item_count: number;
+          sent_on: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          item_count?: number;
+          sent_on?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          item_count?: number;
+          sent_on?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       notification_preferences: {
         Row: {
           email_address: string | null;
           email_enabled: boolean;
+          low_stock_enabled: boolean;
           notify_at: string;
           push_enabled: boolean;
           threshold_days: number;
@@ -872,11 +903,11 @@ export interface Database {
           updated_at: string;
           user_id: string;
           waste_digest_enabled: boolean;
-          low_stock_enabled: boolean;
         };
         Insert: {
           email_address?: string | null;
           email_enabled?: boolean;
+          low_stock_enabled?: boolean;
           notify_at?: string;
           push_enabled?: boolean;
           threshold_days?: number;
@@ -884,11 +915,11 @@ export interface Database {
           updated_at?: string;
           user_id: string;
           waste_digest_enabled?: boolean;
-          low_stock_enabled?: boolean;
         };
         Update: {
           email_address?: string | null;
           email_enabled?: boolean;
+          low_stock_enabled?: boolean;
           notify_at?: string;
           push_enabled?: boolean;
           threshold_days?: number;
@@ -896,7 +927,6 @@ export interface Database {
           updated_at?: string;
           user_id?: string;
           waste_digest_enabled?: boolean;
-          low_stock_enabled?: boolean;
         };
         Relationships: [];
       };
@@ -1651,6 +1681,9 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       household_role: ["owner", "member"],
