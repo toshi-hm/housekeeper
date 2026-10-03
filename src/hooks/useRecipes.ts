@@ -6,7 +6,7 @@ import { LOTS_KEY } from "@/hooks/useItemLots";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import type { Item } from "@/types/item";
+import { isLotDepleted, type Item } from "@/types/item";
 import {
   checkRecipeStock,
   type RecipeFefoLot,
@@ -38,8 +38,10 @@ export const fetchFefoLotByItemId = async (
   const result: Record<string, RecipeFefoLot | undefined> = {};
   for (const lot of data ?? []) {
     // Rows arrive pre-sorted in FEFO order; keep only the first (soonest
-    // expiring) lot seen per item.
+    // expiring) non-depleted lot seen per item. consumeItem skips depleted
+    // lots the same way, so the pre-check matches what will actually be used.
     if (result[lot.item_id as string]) continue;
+    if (isLotDepleted(lot.units as number, lot.opened_remaining as number | null)) continue;
     result[lot.item_id as string] = {
       units: lot.units as number,
       opened_remaining: lot.opened_remaining as number | null,

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 
 import * as useItemLotsModule from "@/hooks/useItemLots";
@@ -322,5 +322,68 @@ describe("ReceiptReviewPanel price increase alert wiring (#941)", () => {
 
     await findByDisplayValue(draft.name);
     expect(queryByText(/%/)).toBeNull();
+  });
+});
+
+describe("ReceiptReviewPanel retry success count (#1142)", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("失敗行の再試行後、onDoneには全体の登録件数が渡される", async () => {
+    const draftA: ReceiptDraftItem = { ...draft, id: "d1", name: "牛乳" };
+    const draftB: ReceiptDraftItem = { ...draft, id: "d2", name: "パン" };
+
+    spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useMasterDataModule.useCategories>);
+    spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+    spyOn(useItemLotsModule, "useStoreNameSuggestions").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useItemLotsModule.useStoreNameSuggestions>);
+    spyOn(useReceiptPriceHistoryModule, "useReceiptPriceHistory").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useReceiptPriceHistoryModule.useReceiptPriceHistory>);
+    let breadAttempts = 0;
+    spyOn(useItemsModule, "useCreateItem").mockReturnValue({
+      mutateAsync: async ({ values }: { values: { name: string } }) => {
+        if (values.name === "パン") {
+          breadAttempts += 1;
+          if (breadAttempts === 1) throw new Error("simulated registration failure");
+        }
+      },
+    } as unknown as ReturnType<typeof useItemsModule.useCreateItem>);
+
+    const onDone = mock<(result: { succeeded: number; failed: number }) => void>();
+    const Harness = () => {
+      const [drafts, setDrafts] = useState([draftA, draftB]);
+      return (
+        <ReceiptReviewPanel
+          drafts={drafts}
+          storeName={null}
+          onDraftsChange={setDrafts}
+          onStoreNameChange={() => {}}
+          onDone={onDone}
+        />
+      );
+    };
+    const { findByRole } = render(<Harness />, { wrapper: Wrapper });
+
+    fireEvent.click(
+      await findByRole("button", { name: i18n.t("bulkRegister", { ns: "receiptScan", count: 2 }) }),
+    );
+    // 1回目: 牛乳は成功、パンは失敗 → 残り1件で再試行ボタンが出る
+    const retryButton = await findByRole("button", {
+      name: i18n.t("bulkRegister", { ns: "receiptScan", count: 1 }),
+    });
+    expect(onDone).not.toHaveBeenCalled();
+    fireEvent.click(retryButton);
+
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+    expect(onDone.mock.calls[0]?.[0]).toEqual({ succeeded: 2, failed: 0 });
   });
 });

@@ -120,6 +120,7 @@ export const RecipesPage = () => {
 
       {editor.mode !== "closed" && (
         <RecipeForm
+          key={editor.mode === "edit" ? editor.recipe.id : "new"}
           availableItems={items}
           defaultValues={
             editor.mode === "edit"

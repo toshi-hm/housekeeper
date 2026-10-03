@@ -10,8 +10,8 @@ Supabase (Postgres 15+)
 
 ## 共通ルール
 
-- すべてのテーブルに `user_id uuid not null references auth.users(id) on delete cascade`
-- すべてのテーブルで RLS を有効化し、ポリシーは原則 `using (auth.uid() = user_id) with check (auth.uid() = user_id)`
+- user ごとのテーブルは `user_id uuid not null references auth.users(id) on delete cascade` を持つ。世帯共有対象は `user_id` を作成者として保持し、`household_id uuid not null references households(id) on delete cascade` をアクセス境界に使う
+- すべてのテーブルで RLS を有効化する。user ごとのテーブルは原則 `auth.uid() = user_id`、世帯共有対象は `household_id = private.current_household_id()` で認可する
 - すべてのテーブルに `created_at timestamptz not null default now()`、更新が頻繁な行は `updated_at timestamptz not null default now()` + トリガで自動更新
 - `id` は `uuid primary key default gen_random_uuid()`
 - 削除戦略は各テーブルの「削除動作」節を参照
@@ -26,6 +26,8 @@ Supabase (Postgres 15+)
 | `storage_locations`                   | 保管場所マスタ                           | ✅   | items.storage_location_id = NULL                    |
 | `custom_units`                        | カスタム単位マスタ                       | v1.1 | 削除は items に影響しない（FK ではない）            |
 | `consumption_logs`                    | 消費イベント履歴                         | ✅   | item 削除で CASCADE                                 |
+| `item_tags`                           | 世帯共通アイテムタグ                     | v1.1 | user 削除で CASCADE                                 |
+| `items_to_tags`                       | アイテムとタグの関連                     | v1.1 | item / tag / user 削除で CASCADE                    |
 | `user_settings`                       | ユーザー設定（言語/閾値/通知時刻 など）  | ✅   | user 削除で CASCADE                                 |
 | `shopping_list_items`                 | 買い物リスト                             | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに）       |
 | `shopping_list_archive`               | 買い物リストの購入履歴アーカイブ         | v1.2 | user 削除で CASCADE（行自体は不変・更新なし）       |
@@ -542,9 +544,27 @@ create index recipe_items_item_idx on recipe_items(item_id);
 
 ## RLS ポリシーひな形
 
+### 世帯共有テーブルの段階移行 (#64)
+
+`20261002010749_household_membership_and_shared_inventory.sql` で、最初の段階として
+`items`, `item_lots`, `categories`, `storage_locations`, `custom_units`,
+`consumption_logs`, `item_tags`, `items_to_tags` に `household_id` を追加した。
+既存行は既存の `user_id` とメンバー関係から割り当て、`user_id` は作成者情報として保持する。
+新規 auth user には個人 household を作成し、共有テーブルの RLS は
+`private.current_household_id()` を境界にする。新規行の `household_id` は DB trigger が設定し、
+クライアント指定値が現在の所属と異なる場合は拒否する。子行 (`item_lots`,
+`consumption_logs`, `items_to_tags`) は参照先も同じ household であることを RLS で確認する。
+
+招待参加 RPC はレート制限の非例外戻り値契約を維持する。個人 household 所属中に参加する場合は
+`p_confirm_personal_data_inaccessible = true` が必須で、既存行の削除や自動移管はしない。
+移行前後の household を確認するUIができるまで、この操作をアプリから呼び出さない。
+Storage、shopping list、recipe の household 化は後続 migration で行う。
+
+以下の単一所有者例は個人設定テーブルに適用する。世帯共有対象には上の household RLS を使う。
+
 ```sql
-alter table items enable row level security;
-create policy "items_owner_all" on items for all
+alter table user_settings enable row level security;
+create policy "user_settings_owner_all" on user_settings for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- 他テーブルも同様
@@ -695,13 +715,13 @@ create policy "item_images_owner_write"
 
 - `.github/workflows/deploy-database-migrations.yml` は `main` の CI が成功した後に
   Supabase CLI の `db push --linked --yes` を実行し、リポジトリにある未適用の
-  migration を本番へ反映する。自動配備はCIが通ったコミットで変更されたmigrationが
-  ある場合に限るため、過去の配備失敗後に未適用migrationを再適用するときは
-  `allow_destructive` を有効にしたworkflow_dispatchで明示的に復旧する
+  migration を本番へ反映する。配備前に `supabase db push --dry-run` で
+  「実際に適用される未適用migration」を全て列挙して検査する（最新コミットの差分ではない）。
+  過去の配備失敗で残った未適用migrationも同じ検査を受ける
 - GitHub Actions に `SUPABASE_PROJECT_ID` repository variable と
   `SUPABASE_ACCESS_TOKEN` / `SUPABASE_DB_PASSWORD` secrets が必要。欠けている場合は
   警告して配備をスキップする
-- 変更された migration に `DROP TABLE` / `DROP COLUMN` / `TRUNCATE` など既知の
+- 未適用 migration に `DROP ...` / `TRUNCATE` / `DELETE FROM` / `ALTER TABLE ... DROP|RENAME|TYPE` など既知の
   破壊的SQLが含まれると自動配備を止める。内容をレビューしたうえで、`main` から
   workflow_dispatch を実行し `allow_destructive` を有効にした場合のみ続行する
 - `production-migrations` GitHub Environment にRequired reviewersを設定すると、

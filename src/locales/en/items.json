@@ -77,6 +77,7 @@
   "consumeReasonOther": "Other",
   "consumeSuccess": "Consumption recorded",
   "consumeUnit": "Unit for amount used",
+  "consumeUnitPrecisionError": "This amount would be rounded to 2 decimals when converted to {{unit}}, changing the amount consumed. Change the unit or enter it in {{unit}}",
   "consumeUnitsDisplay": "{{units}} units",
   "consumeValidationError": "Enter a value greater than 0",
   "consumptionPaceAveragePerMonth": "Avg: {{amount}}{{unit}}/month",

@@ -15,7 +15,12 @@ Object.assign(noLocalMatchBuilder, {
   limit: () => noLocalMatchBuilder,
   maybeSingle: () => Promise.resolve({ data: null, error: null }),
 });
-const fromMock = mock(() => noLocalMatchBuilder);
+const noTagsBuilder: Record<string, unknown> = {};
+Object.assign(noTagsBuilder, {
+  select: () => noTagsBuilder,
+  eq: () => Promise.resolve({ data: [], error: null }),
+});
+const fromMock = mock((table: string) => (table === "items" ? noLocalMatchBuilder : noTagsBuilder));
 
 let invokeResponse: { data: unknown; error: { message: string } | FunctionsHttpError | null } = {
   data: null,
@@ -36,11 +41,66 @@ const { useBarcodeLookup } = await import("@/hooks/useBarcodeLookup");
 
 beforeEach(() => {
   fromMock.mockClear();
+  fromMock.mockImplementation((table: string) =>
+    table === "items" ? noLocalMatchBuilder : noTagsBuilder,
+  );
   invokeMock.mockClear();
   invokeResponse = { data: null, error: null };
 });
 
 describe("useBarcodeLookup (#655)", () => {
+  test("DBで一致した商品は再登録用の設定とタグを返す (#1106)", async () => {
+    const itemBuilder: Record<string, unknown> = {};
+    const item = {
+      id: "item-1",
+      name: "牛乳",
+      image_path: null,
+      category_id: "category-1",
+      item_type: "food",
+      content_amount: 900,
+      content_unit: "ml",
+      expiry_type: "use_by",
+      notes: "低脂肪",
+      minimum_stock: 2,
+      days_use_after_opening: 5,
+      unit_price: 198,
+      store_name: "スーパー",
+      auto_reorder: true,
+      reorder_threshold: 1,
+      reorder_lead_days: 3,
+    };
+    Object.assign(itemBuilder, {
+      select: () => itemBuilder,
+      eq: () => itemBuilder,
+      is: () => itemBuilder,
+      order: () => itemBuilder,
+      limit: () => itemBuilder,
+      maybeSingle: () => Promise.resolve({ data: item, error: null }),
+    });
+    const tagsBuilder: Record<string, unknown> = {};
+    Object.assign(tagsBuilder, {
+      select: () => tagsBuilder,
+      eq: () => Promise.resolve({ data: [{ tag_id: "tag-1" }], error: null }),
+    });
+    fromMock.mockImplementation((table: string) => (table === "items" ? itemBuilder : tagsBuilder));
+
+    const { result } = renderHook(() => useBarcodeLookup());
+    const lookupResult = await result.current.lookup("4901234567894");
+
+    expect(lookupResult.source).toBe("db");
+    expect(lookupResult.itemDefaults).toMatchObject({
+      category_id: "category-1",
+      item_type: "food",
+      content_amount: 900,
+      content_unit: "ml",
+      expiry_type: "use_by",
+      minimum_stock: 2,
+      auto_reorder: true,
+    });
+    expect(lookupResult.tagIds).toEqual(["tag-1"]);
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
   test("Edge Functionが400 (invalid_barcode) を返した場合はserver_errorになる", async () => {
     invokeResponse = {
       data: null,

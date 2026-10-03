@@ -11,7 +11,7 @@ export interface RecipeSuggestion {
 
 interface RecipeSuggestResponse {
   recipes: RecipeSuggestion[];
-  reason?: string;
+  reason?: "missing_api_key" | "missing_access_key";
 }
 
 // External recipe results don't need to be fresh — the same expiring items

@@ -651,4 +651,50 @@ describe("DashboardPage", () => {
     getByRole("button", { name: /期限切れ|expired/i, pressed: true });
     getByRole("button", { name: /すべて|all/i, pressed: false });
   });
+  it("検索結果が0件のとき「在庫がありません」ではなく「該当なし」を表示する (#1139)", async () => {
+    const item = makeItem({ id: "milk", name: "牛乳" });
+    itemsspy.mockImplementation(
+      (filters?: { search?: string }) =>
+        ({
+          data: filters?.search ? [] : [item],
+          isLoading: false,
+          error: null,
+        }) as ReturnType<typeof useItemsModule.useItems>,
+    );
+
+    const user = userEvent.setup();
+    const { getByPlaceholderText, findByText, queryByText } = await renderPage();
+    await user.type(getByPlaceholderText(/search by name|商品名・バーコードで検索/i), "zzz");
+
+    await findByText(i18n.t("noMatchingItems", { ns: "items" }));
+    expect(queryByText(i18n.t("firstAddHint", { ns: "items" }))).toBeNull();
+  });
+
+  it("フィルタで非表示になった選択アイテムは一括選択数に含まれない (#1140)", async () => {
+    const milk = makeItem({ id: "milk", name: "牛乳" });
+    const bread = makeItem({ id: "bread", name: "パン" });
+    itemsspy.mockImplementation(
+      (filters?: { search?: string }) =>
+        ({
+          data: filters?.search ? [bread] : [milk, bread],
+          isLoading: false,
+          error: null,
+        }) as ReturnType<typeof useItemsModule.useItems>,
+    );
+
+    const user = userEvent.setup();
+    const { getByPlaceholderText, getByRole, getAllByText } = await renderPage();
+    await user.click(getByRole("button", { name: i18n.t("bulkSelect", { ns: "items" }) }));
+    await user.click(getByRole("checkbox", { name: "牛乳" }));
+    expect(
+      getAllByText(i18n.t("bulkSelectedCount", { ns: "items", count: 1 })).length,
+    ).toBeGreaterThan(0);
+
+    await user.type(getByPlaceholderText(/search by name|商品名・バーコードで検索/i), "パン");
+    await waitFor(() =>
+      expect(
+        getAllByText(i18n.t("bulkSelectedCount", { ns: "items", count: 0 })).length,
+      ).toBeGreaterThan(0),
+    );
+  });
 });

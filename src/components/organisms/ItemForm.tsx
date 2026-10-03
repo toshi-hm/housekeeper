@@ -54,7 +54,14 @@ interface ItemFormProps {
   onPendingFileChange?: (file: File | null) => void;
   onPendingImageUrlChange?: (url: string | null) => void;
   /** Called after a barcode is scanned or manually looked up */
-  onBarcodeScanned?: (barcode: string, source: "db" | "api" | null) => void;
+  onBarcodeScanned?: (
+    barcode: string,
+    source: "db" | "api" | null,
+    defaults?: Partial<ItemFormValues>,
+    tagIds?: string[],
+  ) => void;
+  /** true のとき、DB ヒットした過去商品の設定を値へ引き継ぐ（新規登録フロー専用, #1106） */
+  prefillFromBarcode?: boolean;
   /** Called when the name field loses focus with a non-empty value (#735) */
   onNameBlur?: (name: string) => void;
   /** カテゴリ・保管場所の下に差し込む追加フィールド（タグ選択など） */
@@ -97,6 +104,7 @@ export const ItemForm = ({
   onPendingFileChange,
   onPendingImageUrlChange,
   onBarcodeScanned,
+  prefillFromBarcode = false,
   onNameBlur,
   extraFields,
   disableContentAmount = false,
@@ -275,6 +283,12 @@ export const ItemForm = ({
       setLookupResult(result.product);
       setLookupSource(result.source);
       if (result.product?.name) set("name", result.product.name);
+      if (prefillFromBarcode && result.itemDefaults) {
+        setValues((previous) => ({ ...previous, ...result.itemDefaults, units: previous.units }));
+        if (result.itemDefaults.content_amount !== undefined) {
+          setContentAmountRaw(String(result.itemDefaults.content_amount));
+        }
+      }
       if (result.product?.image_url && !localPreviewUrl) {
         setBarcodeImageUrl(result.product.image_url);
         // DB ヒット時は既にStorage済みの画像なので再アップロード不要。プレビュー表示のみ。
@@ -282,7 +296,7 @@ export const ItemForm = ({
           onPendingImageUrlChange?.(result.product.image_url);
         }
       }
-      onBarcodeScanned?.(barcode, result.source);
+      onBarcodeScanned?.(barcode, result.source, result.itemDefaults, result.tagIds);
     } catch {
       setLookupResult(null);
       toast(t("barcodeLookupError"), "error");
