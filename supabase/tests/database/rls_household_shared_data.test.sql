@@ -1,10 +1,11 @@
 -- Shopping list, templates, and recipes share across household memberships (#64).
 begin;
-select plan(16);
+select plan(17);
 
 insert into auth.users (id, email) values
   ('a1818181-8181-8181-8181-818181818181', 'shared-data-member@example.com'),
-  ('b1919191-9191-9191-9191-919191919191', 'shared-data-owner@example.com');
+  ('b1919191-9191-9191-9191-919191919191', 'shared-data-owner@example.com'),
+  ('c1919191-9191-9191-9191-919191919191', 'other-household-owner@example.com');
 
 select set_config('request.jwt.claims', json_build_object('sub', 'b1919191-9191-9191-9191-919191919191', 'role', 'authenticated')::text, true);
 insert into items (id, user_id, name) values ('b1919191-0000-0000-0000-000000000001', 'b1919191-9191-9191-9191-919191919191', 'shared item');
@@ -13,7 +14,6 @@ values ('b1919191-0000-0000-0000-000000000002', 'b1919191-9191-9191-9191-9191919
 insert into shopping_list_archive (user_id, name) values ('b1919191-9191-9191-9191-919191919191', 'shared archived item');
 select public.save_shopping_list_template(null, 'shared template', '[{"name":"shared template item","desired_units":2}]'::jsonb);
 select public.save_recipe(null, 'shared recipe', '[{"item_id":"b1919191-0000-0000-0000-000000000001","amount":1}]'::jsonb);
-insert into shopping_list_items (user_id, name, status) values ('b1919191-9191-9191-9191-919191919191', 'purchased by owner', 'purchased');
 insert into household_invites (household_id, code, created_by, expires_at)
 select household_id, 'SHAREDATA1', 'b1919191-9191-9191-9191-919191919191', now() + interval '1 day'
 from household_members where user_id = 'b1919191-9191-9191-9191-919191919191';
@@ -29,6 +29,8 @@ select is((select count(*) from shopping_list_items)::int, 1, 'member starts wit
 select is((select error_code from public.redeem_household_invite('SHAREDATA1', true)), null, 'member joins after explicit confirmation');
 select public.save_shopping_list_template(null, 'shared template', '[]'::jsonb);
 select public.save_recipe(null, 'shared recipe', '[]'::jsonb);
+insert into shopping_list_items (user_id, name, status)
+values ('a1818181-8181-8181-8181-818181818181', 'purchased by member', 'purchased');
 select is((select count(*) from shopping_list_items)::int, 2, 'joined member sees shared shopping rows and not previous private rows');
 select is((select count(*) from shopping_list_archive)::int, 1, 'joined member sees shared shopping archive');
 select is((select count(*) from shopping_list_templates)::int, 2, 'joining preserves same-named templates created by separate users');
@@ -55,14 +57,21 @@ select throws_ok(
 
 reset role;
 select is((select count(*) from shopping_list_items where name = 'private shopping row')::int, 1, 'former personal shopping row is preserved in its original household');
+insert into household_invites (household_id, code, created_by, expires_at)
+select household_id, 'MOVEHOUSE1', 'c1919191-9191-9191-9191-919191919191', now() + interval '1 day'
+from household_members where user_id = 'c1919191-9191-9191-9191-919191919191';
 select set_config('request.jwt.claims', json_build_object('sub', 'a1818181-8181-8181-8181-818181818181', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select error_code from public.redeem_household_invite('MOVEHOUSE1', true)), null, 'member can leave while their old household data stays behind');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', 'b1919191-9191-9191-9191-919191919191', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select results_eq(
   $$select public.archive_purchased_shopping_items()$$,
   $$select 1::integer$$,
-  'joined member can archive purchased rows for the shared household'
+  'remaining household member can archive rows created by a former member'
 );
 reset role;
-select is((select user_id from shopping_list_archive where name = 'purchased by owner'), 'b1919191-9191-9191-9191-919191919191'::uuid, 'archive preserves the purchased row original creator');
+select is((select user_id from shopping_list_archive where name = 'purchased by member'), 'a1818181-8181-8181-8181-818181818181'::uuid, 'archive preserves the former member original creator');
 select * from finish();
 rollback;

@@ -56,13 +56,6 @@ begin
     raise exception 'creator cannot be changed' using errcode = '42501';
   end if;
 
-  if not exists (
-    select 1 from public.household_members hm
-    where hm.user_id = new.user_id and hm.household_id = v_household_id
-  ) then
-    raise exception 'archive creator must belong to current household' using errcode = '42501';
-  end if;
-
   new.household_id := v_household_id;
   return new;
 end;
