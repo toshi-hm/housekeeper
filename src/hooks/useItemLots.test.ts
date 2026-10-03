@@ -587,6 +587,7 @@ describe("createLot", () => {
       user_id: "user-1",
       item_id: "item-1",
       units: 2,
+      purchased_units: 2,
       opened_remaining: null,
       unit_price: null,
       purchase_date: null,
