@@ -5,8 +5,8 @@
 Self-hosted home inventory management web app.
 No public-facing features. CRUD-centric.
 Data is shared per household (RLS is scoped by household membership; `user_id`
-records the creator). Household member removal / rename are not implemented yet —
-see docs/specs/features/household-sharing.md and docs/specs/features/auth.md.
+records the creator) — see docs/specs/features/household-sharing.md and
+docs/specs/features/auth.md.
 
 ## Tech Stack
 
