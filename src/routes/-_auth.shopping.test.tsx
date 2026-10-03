@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:te
 import { I18nextProvider } from "react-i18next";
 
 import * as ItemFormModule from "@/components/organisms/ItemForm";
+import * as useHouseholdModule from "@/hooks/useHousehold";
 import * as useItemImageModule from "@/hooks/useItemImage";
 import * as useItemsModule from "@/hooks/useItems";
 import * as useMasterDataModule from "@/hooks/useMasterData";
@@ -72,6 +73,7 @@ const stubToast: ToastContextValue = { toasts: [], toast: () => {}, dismiss: () 
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  queryClient.setQueryData(["household", "current-id"], "household-1");
   return (
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
@@ -423,6 +425,7 @@ describe("ShoppingPage - 買い物中モードのオフライン耐性強化 (#9
   let storePriceComparisonsSpy: ReturnType<typeof spyOn>;
   let upsertSpy: ReturnType<typeof spyOn>;
   let purchaseSpy: ReturnType<typeof spyOn>;
+  let currentHouseholdSpy: ReturnType<typeof spyOn>;
   let upsertMutateAsync: ReturnType<typeof mock>;
   let toastCalls: { message: string; variant?: ToastVariant; options?: ToastOptions }[];
   let originalOnLine: boolean;
@@ -433,6 +436,7 @@ describe("ShoppingPage - 買い物中モードのオフライン耐性強化 (#9
 
   const OfflineQueueWrapper = ({ children }: { children: React.ReactNode }) => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(["household", "current-id"], "household-1");
     const toast = mock((message: string, variant?: ToastVariant, options?: ToastOptions) => {
       toastCalls.push({ message, variant, options });
       return `toast-${toastCalls.length}`;
@@ -453,6 +457,9 @@ describe("ShoppingPage - 買い物中モードのオフライン耐性強化 (#9
   beforeEach(() => {
     originalOnLine = navigator.onLine;
     toastCalls = [];
+    currentHouseholdSpy = spyOn(useHouseholdModule, "fetchCurrentHouseholdId").mockResolvedValue(
+      "household-1",
+    );
     localStorage.setItem("shopping.mode", "1");
     window.localStorage.removeItem(OFFLINE_QUEUE_STORAGE_KEY);
 
@@ -516,6 +523,7 @@ describe("ShoppingPage - 買い物中モードのオフライン耐性強化 (#9
     storePriceComparisonsSpy.mockRestore();
     upsertSpy.mockRestore();
     purchaseSpy.mockRestore();
+    currentHouseholdSpy.mockRestore();
     localStorage.removeItem("shopping.mode");
     window.localStorage.removeItem(OFFLINE_QUEUE_STORAGE_KEY);
     cleanup();
@@ -576,6 +584,7 @@ describe("ShoppingPage - オフラインキュー経由の購入確定で画像�
   let forecastAlertsSpy: ReturnType<typeof spyOn>;
   let storePriceComparisonsSpy: ReturnType<typeof spyOn>;
   let purchaseSpy: ReturnType<typeof spyOn>;
+  let currentHouseholdSpy: ReturnType<typeof spyOn>;
   let itemFormSpy: ReturnType<typeof spyOn>;
   let uploadItemImageSpy: ReturnType<typeof spyOn>;
   let purchaseMutateAsync: ReturnType<typeof mock>;
@@ -588,6 +597,7 @@ describe("ShoppingPage - オフラインキュー経由の購入確定で画像�
 
   const Wrapper = ({ children }: { children: React.ReactNode }) => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(["household", "current-id"], "household-1");
     const toast = mock((message: string, variant?: ToastVariant, options?: ToastOptions) => {
       toastCalls.push({ message, variant, options });
       return `toast-${toastCalls.length}`;
@@ -607,6 +617,9 @@ describe("ShoppingPage - オフラインキュー経由の購入確定で画像�
   beforeEach(() => {
     originalOnLine = navigator.onLine;
     toastCalls = [];
+    currentHouseholdSpy = spyOn(useHouseholdModule, "fetchCurrentHouseholdId").mockResolvedValue(
+      "household-1",
+    );
     localStorage.setItem("shopping.mode", "1");
     window.localStorage.removeItem(OFFLINE_QUEUE_STORAGE_KEY);
 
@@ -675,6 +688,7 @@ describe("ShoppingPage - オフラインキュー経由の購入確定で画像�
     forecastAlertsSpy.mockRestore();
     storePriceComparisonsSpy.mockRestore();
     purchaseSpy.mockRestore();
+    currentHouseholdSpy.mockRestore();
     itemFormSpy.mockRestore();
     uploadItemImageSpy.mockRestore();
     localStorage.removeItem("shopping.mode");

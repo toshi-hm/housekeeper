@@ -24,6 +24,8 @@ export interface HouseholdDetails {
   currentUserId: string;
 }
 
+const CURRENT_HOUSEHOLD_ID_KEY = ["household", "current-id"] as const;
+
 export class HouseholdInviteError extends Error {
   readonly code: "HK006" | "HK007" | "HK008" | "HK009";
 
@@ -76,6 +78,23 @@ const fetchHousehold = async (): Promise<HouseholdDetails> => {
     })),
     currentUserId: user.id,
   };
+};
+
+export const fetchCurrentHouseholdId = async (): Promise<string> => {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("household_members")
+    .select("household_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Household membership is missing");
+  return data.household_id;
 };
 
 const createInviteCode = (): string => {
@@ -132,6 +151,13 @@ export const useHousehold = () =>
   useQuery({
     queryKey: HOUSEHOLD_KEY,
     queryFn: fetchHousehold,
+    staleTime: 30_000,
+  });
+
+export const useCurrentHouseholdId = () =>
+  useQuery({
+    queryKey: CURRENT_HOUSEHOLD_ID_KEY,
+    queryFn: fetchCurrentHouseholdId,
     staleTime: 30_000,
   });
 

@@ -8,6 +8,8 @@ interface OfflineQueuedPurchaseAction {
   kind: "purchase";
   payload: PurchaseInput;
   queuedAt: string;
+  /** null is retained for legacy queue records and must block replay. */
+  householdId: string | null;
 }
 
 interface OfflineQueuedAddAlertAction {
@@ -15,6 +17,8 @@ interface OfflineQueuedAddAlertAction {
   kind: "add-alert";
   payload: UpsertShoppingItemInput;
   queuedAt: string;
+  /** null is retained for legacy queue records and must block replay. */
+  householdId: string | null;
 }
 
 export type OfflineQueuedAction = OfflineQueuedPurchaseAction | OfflineQueuedAddAlertAction;
@@ -31,6 +35,7 @@ const isOfflineQueuedAction = (value: unknown): value is OfflineQueuedAction => 
     typeof v.id === "string" &&
     (v.kind === "purchase" || v.kind === "add-alert") &&
     typeof v.queuedAt === "string" &&
+    (typeof v.householdId === "string" || v.householdId === null || v.householdId === undefined) &&
     typeof v.payload === "object" &&
     v.payload !== null
   );
@@ -49,7 +54,10 @@ export const readOfflineActionQueue = (): OfflineQueuedAction[] => {
     if (!stored) return [];
     const parsed: unknown = JSON.parse(stored);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isOfflineQueuedAction);
+    return parsed.filter(isOfflineQueuedAction).map((action) => ({
+      ...action,
+      householdId: action.householdId ?? null,
+    }));
   } catch {
     return [];
   }
@@ -74,12 +82,14 @@ const writeOfflineActionQueue = (queue: readonly OfflineQueuedAction[]): void =>
 export const enqueueOfflineAction = (
   queue: readonly OfflineQueuedAction[],
   action: OfflineActionInput,
+  householdId: string | null = null,
   id: string = crypto.randomUUID(),
 ): OfflineQueuedAction[] => {
   const entry: OfflineQueuedAction = {
     ...action,
     id,
     queuedAt: new Date().toISOString(),
+    householdId,
   };
   const next = [...queue, entry];
   writeOfflineActionQueue(next);
@@ -110,4 +120,5 @@ export const clearOfflineActionQueue = (): void => {
     // 非致命: private browsing 等でlocalStorageにアクセスできない場合も、
     // ログアウト処理自体は継続させる。
   }
+  window.dispatchEvent(new Event("housekeeper:offline-action-queue-cleared"));
 };

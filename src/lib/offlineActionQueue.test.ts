@@ -71,6 +71,7 @@ describe("offlineActionQueue", () => {
     const queue = readOfflineActionQueue();
     expect(queue).toHaveLength(1);
     expect(queue[0]?.id).toBe("a");
+    expect(queue[0]?.householdId).toBeNull();
   });
 
   test("enqueueOfflineActionでpurchaseアクションを積み、id/queuedAtが採番されlocalStorageに永続化される", () => {

@@ -78,9 +78,18 @@ describe("useOfflineActionQueue", () => {
     const purchase = mock(async () => ({ id: "created-item" }));
     const addAlert = mock(async () => ({ id: "shopping-1" }));
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     let outcome;
     await act(async () => {
@@ -99,9 +108,18 @@ describe("useOfflineActionQueue", () => {
     const purchase = mock(async () => ({ id: "created-item" }));
     const addAlert = mock(async () => ({ id: "shopping-1" }));
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     let outcome;
     await act(async () => {
@@ -124,9 +142,18 @@ describe("useOfflineActionQueue", () => {
     const purchase = mock(async () => ({ id: "created-item" }));
     const addAlert = mock(async () => ({ id: "shopping-1" }));
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     let outcome;
     await act(async () => {
@@ -140,6 +167,73 @@ describe("useOfflineActionQueue", () => {
     expect(persisted[0]?.kind).toBe("add-alert");
   });
 
+  test("世帯変更後は以前の世帯のqueueを再生せず、queueを保持する", async () => {
+    setOnline(false);
+    const toastCalls: ToastCall[] = [];
+    const { Wrapper } = makeWrapper(toastCalls);
+    const purchase = mock(async () => ({ id: "created-item" }));
+    const addAlert = mock(async () => ({ id: "shopping-1" }));
+    const { result, rerender } = renderHook(
+      ({ householdId }: { householdId: string }) =>
+        useOfflineActionQueue({
+          householdId,
+          getCurrentHouseholdId: async () => householdId,
+          purchase,
+          addAlert,
+        }),
+      { initialProps: { householdId: "household-1" }, wrapper: Wrapper },
+    );
+
+    await act(async () => {
+      await result.current.queuePurchase(purchaseInput("s1"));
+    });
+    expect(result.current.queuedActions[0]?.householdId).toBe("household-1");
+
+    rerender({ householdId: "household-2" });
+    expect(result.current.householdMismatch).toBe(true);
+    setOnline(true);
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+      await Promise.resolve();
+    });
+
+    expect(purchase).not.toHaveBeenCalled();
+    expect(result.current.queueLength).toBe(1);
+    expect(result.current.householdMismatch).toBe(true);
+
+    rerender({ householdId: "household-1" });
+    await act(async () => {
+      result.current.retryQueuedActions();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(purchase).toHaveBeenCalledTimes(1));
+    expect(result.current.queueLength).toBe(0);
+  });
+
+  test("世帯IDが未取得ならオフライン操作をqueueせずブロックする", async () => {
+    setOnline(false);
+    const toastCalls: ToastCall[] = [];
+    const { Wrapper } = makeWrapper(toastCalls);
+    const purchase = mock(async () => ({ id: "created-item" }));
+    const addAlert = mock(async () => ({ id: "shopping-1" }));
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: null,
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      { wrapper: Wrapper },
+    );
+
+    await expect(result.current.queueAddAlert(addAlertInput("item-1"))).resolves.toEqual({
+      status: "blocked",
+    });
+    expect(readOfflineActionQueue()).toHaveLength(0);
+  });
+
   test("オンライン判定後にOfflineErrorが投げられた場合(競合状態)もキューへ積む", async () => {
     const toastCalls: ToastCall[] = [];
     const { Wrapper } = makeWrapper(toastCalls);
@@ -148,9 +242,18 @@ describe("useOfflineActionQueue", () => {
     });
     const addAlert = mock(async () => ({ id: "shopping-1" }));
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     let outcome;
     await act(async () => {
@@ -169,9 +272,18 @@ describe("useOfflineActionQueue", () => {
     });
     const addAlert = mock(async () => ({ id: "shopping-1" }));
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await expect(result.current.queuePurchase(purchaseInput("s1"))).rejects.toThrow("boom");
     expect(readOfflineActionQueue()).toHaveLength(0);
@@ -185,7 +297,13 @@ describe("useOfflineActionQueue", () => {
     const setupPurchase = mock(async () => ({ id: "x" }));
     const setupAddAlert = mock(async () => ({ id: "x" }));
     const { result: setupResult, unmount } = renderHook(
-      () => useOfflineActionQueue({ purchase: setupPurchase, addAlert: setupAddAlert }),
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase: setupPurchase,
+          addAlert: setupAddAlert,
+        }),
       { wrapper: setupWrapper },
     );
     await act(async () => {
@@ -198,9 +316,18 @@ describe("useOfflineActionQueue", () => {
     setOnline(true);
     const purchase = mock(async () => ({ id: "created-item" }));
     const addAlert = mock(async () => ({ id: "shopping-1" }));
-    renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: makeWrapper(toastCalls).Wrapper,
-    });
+    renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: makeWrapper(toastCalls).Wrapper,
+      },
+    );
 
     await waitFor(() => {
       expect(purchase).toHaveBeenCalledTimes(1);
@@ -219,9 +346,18 @@ describe("useOfflineActionQueue", () => {
     const addAlert = mock(async () => ({ id: "shopping-1" }));
     const { Wrapper } = makeWrapper(toastCalls);
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await act(async () => {
       await result.current.queuePurchase(purchaseInput("s1"));
@@ -259,9 +395,18 @@ describe("useOfflineActionQueue", () => {
     const addAlert = mock(async () => ({ id: "shopping-1" }));
     const { Wrapper } = makeWrapper(toastCalls);
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await act(async () => {
       await result.current.queuePurchase(purchaseInput("conflict"));
@@ -294,9 +439,18 @@ describe("useOfflineActionQueue", () => {
     const addAlert = mock(async () => ({ id: "shopping-1" }));
     const { Wrapper } = makeWrapper(toastCalls);
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await act(async () => {
       await result.current.queuePurchase(purchaseInput("goes-offline"));
@@ -327,9 +481,18 @@ describe("useOfflineActionQueue", () => {
     });
     const addAlert = mock(async () => ({ id: "shopping-1" }));
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     let outcome;
     await act(async () => {
@@ -348,9 +511,18 @@ describe("useOfflineActionQueue", () => {
       throw new TypeError("NetworkError when attempting to fetch resource.");
     });
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     let outcome;
     await act(async () => {
@@ -369,9 +541,18 @@ describe("useOfflineActionQueue", () => {
     });
     const addAlert = mock(async () => ({ id: "shopping-1" }));
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await expect(result.current.queuePurchase(purchaseInput("s1"))).rejects.toThrow();
     expect(readOfflineActionQueue()).toHaveLength(0);
@@ -391,9 +572,18 @@ describe("useOfflineActionQueue", () => {
     const addAlert = mock(async () => ({ id: "shopping-1" }));
     const { Wrapper } = makeWrapper(toastCalls);
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await act(async () => {
       await result.current.queuePurchase(purchaseInput("invalid"));
@@ -432,9 +622,18 @@ describe("useOfflineActionQueue", () => {
     const addAlert = mock(async () => ({ id: "shopping-1" }));
     const { Wrapper } = makeWrapper(toastCalls);
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await act(async () => {
       await result.current.queuePurchase(purchaseInput("invalid"));
@@ -472,9 +671,18 @@ describe("useOfflineActionQueue", () => {
     const addAlert = mock(async () => ({ id: "shopping-1" }));
     const { Wrapper } = makeWrapper(toastCalls);
 
-    const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useOfflineActionQueue({
+          householdId: "household-1",
+          getCurrentHouseholdId: async () => "household-1",
+          purchase,
+          addAlert,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await act(async () => {
       await result.current.queuePurchase(purchaseInput("s1"));
@@ -509,9 +717,18 @@ describe("useOfflineActionQueue", () => {
       const { Wrapper } = makeWrapper(toastCalls);
       const purchase = mock(async () => ({ id: "created-item" }));
       const addAlert = mock(async () => ({ id: "shopping-1" }));
-      const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-        wrapper: Wrapper,
-      });
+      const { result } = renderHook(
+        () =>
+          useOfflineActionQueue({
+            householdId: "household-1",
+            getCurrentHouseholdId: async () => "household-1",
+            purchase,
+            addAlert,
+          }),
+        {
+          wrapper: Wrapper,
+        },
+      );
       const file = new File(["x"], "photo.jpg", { type: "image/jpeg" });
 
       await act(async () => {
@@ -535,9 +752,18 @@ describe("useOfflineActionQueue", () => {
       const { Wrapper } = makeWrapper(toastCalls);
       const purchase = mock(async () => ({ id: "created-item" }));
       const addAlert = mock(async () => ({ id: "shopping-1" }));
-      const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-        wrapper: Wrapper,
-      });
+      const { result } = renderHook(
+        () =>
+          useOfflineActionQueue({
+            householdId: "household-1",
+            getCurrentHouseholdId: async () => "household-1",
+            purchase,
+            addAlert,
+          }),
+        {
+          wrapper: Wrapper,
+        },
+      );
 
       await act(async () => {
         await result.current.queuePurchase(purchaseInput("s1"));
@@ -555,7 +781,14 @@ describe("useOfflineActionQueue", () => {
       const addAlert = mock(async () => ({ id: "shopping-1" }));
       const afterPurchaseReplayed = mock(async () => {});
       const { result } = renderHook(
-        () => useOfflineActionQueue({ purchase, addAlert, afterPurchaseReplayed }),
+        () =>
+          useOfflineActionQueue({
+            householdId: "household-1",
+            getCurrentHouseholdId: async () => "household-1",
+            purchase,
+            addAlert,
+            afterPurchaseReplayed,
+          }),
         { wrapper: Wrapper },
       );
 
@@ -587,7 +820,14 @@ describe("useOfflineActionQueue", () => {
         throw new Error("upload failed");
       });
       const { result } = renderHook(
-        () => useOfflineActionQueue({ purchase, addAlert, afterPurchaseReplayed }),
+        () =>
+          useOfflineActionQueue({
+            householdId: "household-1",
+            getCurrentHouseholdId: async () => "household-1",
+            purchase,
+            addAlert,
+            afterPurchaseReplayed,
+          }),
         { wrapper: Wrapper },
       );
 
@@ -620,9 +860,18 @@ describe("useOfflineActionQueue", () => {
       const { Wrapper } = makeWrapper(toastCalls);
       const purchase = mock(async () => ({ id: "created-item" }));
       const addAlert = mock(async () => ({ id: "shopping-1" }));
-      const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-        wrapper: Wrapper,
-      });
+      const { result } = renderHook(
+        () =>
+          useOfflineActionQueue({
+            householdId: "household-1",
+            getCurrentHouseholdId: async () => "household-1",
+            purchase,
+            addAlert,
+          }),
+        {
+          wrapper: Wrapper,
+        },
+      );
 
       await act(async () => {
         await result.current.queuePurchase(purchaseInput("s1"));
@@ -650,9 +899,18 @@ describe("useOfflineActionQueue", () => {
         throw new Error('null value in column "name" violates not-null constraint');
       });
       const addAlert = mock(async () => ({ id: "shopping-1" }));
-      const { result } = renderHook(() => useOfflineActionQueue({ purchase, addAlert }), {
-        wrapper: Wrapper,
-      });
+      const { result } = renderHook(
+        () =>
+          useOfflineActionQueue({
+            householdId: "household-1",
+            getCurrentHouseholdId: async () => "household-1",
+            purchase,
+            addAlert,
+          }),
+        {
+          wrapper: Wrapper,
+        },
+      );
 
       await act(async () => {
         await result.current.queuePurchase(purchaseInput("invalid"));

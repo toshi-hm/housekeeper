@@ -8,6 +8,7 @@ import {
   readOfflineActionQueue,
 } from "@/lib/offlineActionQueue";
 import {
+  clearAllPendingPurchaseImages,
   discardPendingPurchaseImage,
   storePendingPurchaseImage,
 } from "@/lib/offlinePendingPurchaseImage";
@@ -18,9 +19,16 @@ import type { PurchaseInput, UpsertShoppingItemInput } from "@/types/shopping";
 
 /** `queuePurchase`/`queueAddAlert` の呼び出し結果。`"sent"` はオンラインで実際に
  *  実行できたことを、`"queued"` はオフラインのためキューに積んだだけであることを表す。 */
-type OfflineQueueSendResult<TResult> = { status: "sent"; result: TResult } | { status: "queued" };
+type OfflineQueueSendResult<TResult> =
+  | { status: "sent"; result: TResult }
+  | { status: "queued" }
+  | { status: "blocked" };
 
 export interface UseOfflineActionQueueOptions<TPurchaseResult, TAddAlertResult> {
+  /** Queue entries are bound to the household that was active when created. */
+  householdId: string | null;
+  /** Must fetch current membership from Supabase when replay begins. */
+  getCurrentHouseholdId: () => Promise<string>;
   /** オンライン時に実際に呼び出す `purchaseShoppingItem` 相当の関数。
    *  `usePurchaseShoppingItem().mutateAsync` を渡す想定（この関数自体の
    *  onSuccess/onError — クエリ無効化・エラートースト — がそのまま活きる）。 */
@@ -45,6 +53,10 @@ export interface UseOfflineActionQueueResult<TPurchaseResult, TAddAlertResult> {
   /** 現在キューに積まれているアクションそのもの（#1021）。UI側で内容の確認・
    *  個別破棄（`discardQueuedAction`）の導線を出すために公開している。積まれた順。 */
   queuedActions: OfflineQueuedAction[];
+  /** 現在の世帯と異なる、または世帯不明のqueueがあり自動再生を止めている。 */
+  householdMismatch: boolean;
+  /** membershipを再取得して明示的に再同期を試みる。 */
+  retryQueuedActions: () => void;
   /** 指定したアクションをユーザー操作でキューから取り除く（#1021）。`replay` の
    *  自動判定とは独立した、UIからの明示的な手動破棄用。同期は行わない —
    *  そのアクションの内容は失われる。 */
@@ -106,6 +118,7 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
   const { toast } = useToast();
   const { t } = useTranslation("shopping");
   const [queue, setQueue] = useState<OfflineQueuedAction[]>(() => readOfflineActionQueue());
+  const [householdMismatch, setHouseholdMismatch] = useState(false);
   const queueRef = useRef(queue);
   const optionsRef = useRef(options);
   // Refsはrender中に書き換えない — 毎render後に走るeffectで同期する
@@ -114,6 +127,24 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
     queueRef.current = queue;
     optionsRef.current = options;
   });
+  useEffect(() => {
+    const handleQueueCleared = () => {
+      setQueue([]);
+      setHouseholdMismatch(false);
+      void clearAllPendingPurchaseImages();
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "shopping.offlineActionQueue" && event.newValue === null) {
+        handleQueueCleared();
+      }
+    };
+    window.addEventListener("housekeeper:offline-action-queue-cleared", handleQueueCleared);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("housekeeper:offline-action-queue-cleared", handleQueueCleared);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
   const replayingRef = useRef(false);
 
   const enqueue = useCallback(
@@ -121,9 +152,10 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
       action:
         | { kind: "purchase"; payload: PurchaseInput }
         | { kind: "add-alert"; payload: UpsertShoppingItemInput },
+      householdId: string,
       id?: string,
     ) => {
-      setQueue((prev) => enqueueOfflineAction(prev, action, id));
+      setQueue((prev) => enqueueOfflineAction(prev, action, householdId, id));
     },
     [],
   );
@@ -146,8 +178,20 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
     if (replayingRef.current) return;
     replayingRef.current = true;
     try {
+      if (!navigator.onLine) return;
+      let householdId: string;
+      try {
+        householdId = await optionsRef.current.getCurrentHouseholdId();
+      } catch {
+        return;
+      }
       // リプレイ中に新規enqueueされた分は対象に含めない（次回のreplayに回す）。
       const snapshot = queueRef.current;
+      if (snapshot.some((action) => action.householdId !== householdId)) {
+        setHouseholdMismatch(true);
+        return;
+      }
+      setHouseholdMismatch(false);
       let succeeded = 0;
       let discarded = 0;
       for (const action of snapshot) {
@@ -201,6 +245,10 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
     }
   }, [dequeue, dequeueAndDiscardImage, t, toast]);
 
+  const retryQueuedActions = useCallback(() => {
+    void replay();
+  }, [replay]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     // マウント時点で既にオンラインかつキューが残っている（前回セッションでオフライン
@@ -224,13 +272,15 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
       // #1020: キューに積む場合だけ id を先に確定し、選択済みの画像があれば同じ id で
       // IndexedDBへ保存しておく。取り出しは replay 成功時の afterPurchaseReplayed で行う。
       const enqueueWithPendingImage = async () => {
+        const householdId = optionsRef.current.householdId;
+        if (!householdId) return false;
         const id = crypto.randomUUID();
         if (pendingImageFile) await storePendingPurchaseImage(id, pendingImageFile);
-        enqueue({ kind: "purchase", payload: input }, id);
+        enqueue({ kind: "purchase", payload: input }, householdId, id);
+        return true;
       };
       if (!navigator.onLine) {
-        await enqueueWithPendingImage();
-        return { status: "queued" };
+        return (await enqueueWithPendingImage()) ? { status: "queued" } : { status: "blocked" };
       }
       try {
         const result = await optionsRef.current.purchase(input);
@@ -240,8 +290,7 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
         // fetch自体が失敗することがある（`isNetworkFetchError`）。この場合も
         // OfflineError と同様にキューへ積み、操作内容を失わないようにする。
         if (err instanceof OfflineError || isNetworkFetchError(err)) {
-          await enqueueWithPendingImage();
-          return { status: "queued" };
+          return (await enqueueWithPendingImage()) ? { status: "queued" } : { status: "blocked" };
         }
         throw err;
       }
@@ -252,8 +301,10 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
   const queueAddAlert = useCallback(
     async (input: UpsertShoppingItemInput): Promise<OfflineQueueSendResult<TAddAlertResult>> => {
       if (!navigator.onLine) {
-        enqueue({ kind: "add-alert", payload: input });
-        return { status: "queued" };
+        const householdId = optionsRef.current.householdId;
+        return householdId
+          ? (enqueue({ kind: "add-alert", payload: input }, householdId), { status: "queued" })
+          : { status: "blocked" };
       }
       try {
         const result = await optionsRef.current.addAlert(input);
@@ -262,8 +313,10 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
         // #1022: queuePurchase と同様、navigator.onLine が true でも実際の
         // fetch失敗はキュー対象に含める。
         if (err instanceof OfflineError || isNetworkFetchError(err)) {
-          enqueue({ kind: "add-alert", payload: input });
-          return { status: "queued" };
+          const householdId = optionsRef.current.householdId;
+          return householdId
+            ? (enqueue({ kind: "add-alert", payload: input }, householdId), { status: "queued" })
+            : { status: "blocked" };
         }
         throw err;
       }
@@ -274,6 +327,11 @@ export const useOfflineActionQueue = <TPurchaseResult, TAddAlertResult>(
   return {
     queueLength: queue.length,
     queuedActions: queue,
+    householdMismatch:
+      householdMismatch ||
+      (queue.length > 0 &&
+        queue.some((action) => action.householdId !== (options.householdId ?? null))),
+    retryQueuedActions,
     discardQueuedAction: dequeueAndDiscardImage,
     queuePurchase,
     queueAddAlert,
