@@ -177,4 +177,4 @@ M
 
 - `send-expiry-notifications`、`send-waste-digest`、`send-low-stock-notifications` は、opt-in 済みの Push / Email チャネルで配信失敗、送信先未登録、またはサーバー設定不足を検出した場合、`notification_failures` に失敗コードを追記する。成功した他チャネルがあっても失敗したチャネルを記録する。
 - 設定画面は認証ユーザー ID を明示して最近20件を取得し、RLS でも本人の行に制限する。ローディング、エラーと再試行、空履歴を表示する。失敗理由は日本語/英語にローカライズする。
-- DB は許可リスト値のみ記録し、配信先やプロバイダーのレスポンスを永続化しない。`20261002000002_create_notification_failures.sql` で schema / RLS / 最小権限を追加する。
+- DB は許可リスト値のみ記録し、配信先やプロバイダーのレスポンスを永続化しない。`20261003000002_create_notification_failures.sql` で schema / RLS / 最小権限を追加する。
