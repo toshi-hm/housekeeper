@@ -170,4 +170,4 @@ M
 - 配信は期限ダイジェストと別の `send-low-stock-notifications` Edge Function とする。1つの日用品アイテムが最低在庫以下に初めてなったとき通知し、在庫が閾値を上回った実行で状態を解除するため、低在庫状態が続く間は同じアイテムを再通知しない。
 - `low_stock_notification_states(user_id, item_id)` は Edge Function/service_role のみが書き込み、所有者は自分の行のみ SELECT できる。UNIQUE/PRIMARY KEY による claim で重複する cron 実行の通知を抑止する。
 - 毎時の pg_cron が Function を呼び、ユーザーの `notify_at` / `timezone` に一致した実行だけ処理する。Push は失効購読を削除し、Email は `RESEND_API_KEY` 設定時のみ送る。本文は `user_settings.language` の ja/en で作成し、未設定時は ja。
-- 設定/状態は `20261002000001_add_low_stock_notifications.sql` で追加。Function は `CRON_SECRET` による `X-Cron-Secret` 検証を行う。
+- 設定/状態は `20261003000001_add_low_stock_notifications.sql` で追加。Function は `CRON_SECRET` による `X-Cron-Secret` 検証を行う。
