@@ -20,6 +20,11 @@ const updateEqMock = mock(() => {
 });
 const updateMock = mock(() => ({ eq: updateEqMock }));
 const getUserMock = mock(() => Promise.resolve({ data: { user: { id: "user-1" } }, error: null }));
+const householdSelectMock = mock(() => ({
+  eq: () => ({
+    single: () => Promise.resolve({ data: { household_id: "household-1" }, error: null }),
+  }),
+}));
 
 mock.module("@/lib/supabase", () => ({
   supabase: {
@@ -31,7 +36,8 @@ mock.module("@/lib/supabase", () => ({
         remove: removeMock,
       }),
     },
-    from: () => ({ update: updateMock }),
+    from: (table: string) =>
+      table === "household_members" ? { select: householdSelectMock } : { update: updateMock },
   },
 }));
 
@@ -54,6 +60,7 @@ afterEach(() => {
   );
   removeMock.mockClear();
   getUserMock.mockClear();
+  householdSelectMock.mockClear();
   updateMock.mockClear();
   updateEqMock.mockReset();
   updateEqMock.mockImplementation(() => {
@@ -93,12 +100,12 @@ describe("uploadLocationPhoto", () => {
       queryClient,
     });
 
-    expect(path).toBe("user-1/location-1.webp");
-    expect(uploadMock).toHaveBeenCalledWith("user-1/location-1.webp", file, {
+    expect(path).toBe("household-1/location-1.webp");
+    expect(uploadMock).toHaveBeenCalledWith("household-1/location-1.webp", file, {
       upsert: true,
       contentType: "image/webp",
     });
-    expect(updateMock).toHaveBeenCalledWith({ photo_path: "user-1/location-1.webp" });
+    expect(updateMock).toHaveBeenCalledWith({ photo_path: "household-1/location-1.webp" });
     expect(updateEqMock).toHaveBeenCalledWith("id", "location-1");
     expect(events).toEqual(["update", "remove:user-1/location-1.jpg"]);
   });
@@ -120,7 +127,7 @@ describe("uploadLocationPhoto", () => {
       }),
     ).rejects.toThrow("db failed");
 
-    expect(events).toEqual(["update", "remove:user-1/location-1.webp"]);
+    expect(events).toEqual(["update", "remove:household-1/location-1.webp"]);
     expect(removeMock).not.toHaveBeenCalledWith(["user-1/location-1.jpg"]);
   });
 });

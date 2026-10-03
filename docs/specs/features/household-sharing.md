@@ -20,8 +20,8 @@ housekeeper は当初「単一ユーザー・セルフホスト」を前提に�
 - **基盤** (`20260801020000_create_household_foundation.sql`): 世帯/メンバー/招待テーブル、現在世帯取得、作成/参加RPC、招待試行レート制限を追加済み。
 - **DB基盤** (`20261002010749_household_membership_and_shared_inventory.sql`): `items`, `item_lots`, `categories`, `storage_locations`, `custom_units`, `consumption_logs`, `item_tags`, `items_to_tags` に household_id を追加し、既存行を現在の所有者世帯へ割り当てる。サインアップ時の個人世帯作成と、既存ユーザーが明示確認してから招待先へ移るDB経路を用意済み。
 - **共有データ** (`20261003000003_household_sharing_remaining_tables.sql`): shopping list / 購入履歴 / 買い物テンプレート / recipes とその構成行も household_id と世帯単位 RLS に移行済み。`user_id` は作成者記録として維持する。
-- **この段階**: 招待/参加UIと、個人世帯の既存データが旧世帯に残ることの確認画面を実装する。共有データのクライアントクエリでは `user_id` で絞り込まず、RLS をアクセス制御の正本とする。
-- **未実装の後続段階**: Storage オブジェクトの世帯パスへの移行と Storage RLS。画像の共有はその移行が完了するまでサポートしない。
+- **招待/参加UI**（#1168）: 招待/参加UIと、個人世帯の既存データが旧世帯に残ることの確認画面を実装する。共有データのクライアントクエリでは `user_id` で絞り込まず、RLS をアクセス制御の正本とする。DB migration の適用前は有効化しない。
+- **Storage**（後続PR）: 新規オブジェクトを household prefix に保存し、Storage RLS で household access を許可する。既存オブジェクトはコピーと参照更新を検証して段階移行する。migration 適用とデータ移行が終わるまで household 間の画像共有は保証しない。
 
 招待RPCは `p_confirm_personal_data_inaccessible` が明示的に `true` の場合だけ既存 membership を切り替える。切り替え前の household とそのデータは削除も移管もしない。UIはこの確認を表示し、利用者の明示操作後だけRPCを呼び出す。
 
@@ -124,15 +124,15 @@ create policy "Household members can access their household's items"
 
 ### 3.3 Storage バケット（`item-images` / `location-photos`）
 
-現在のオブジェクトパスは `<user_id>/<item_id>.<ext>` で、RLS は
-`(storage.foldername(name))[1] = auth.uid()::text` により所有者本人のみアクセス可能。
-世帯共有では他メンバーも同じ画像を見られる必要があるため、**パスを
-`<household_id>/<item_id>.<ext>` に変更**し、RLS を
-`(storage.foldername(name))[1]::uuid = private.current_household_id()` に変更する。
+新規オブジェクトパスは `<household_id>/<entity_id>.<ext>` とし、アップロードごとに
+`household_members` から現在の household ID を取得する。RLS は household prefix を
+現在の世帯に限定する。旧 user prefix は移行中に保持し、参照中 DB 行と同じ household
+のメンバーに読み取りを許可する。旧 owner の読み取りも移行完了までは残す。
 
-- 既存オブジェクトの移行（`user_id` パス → `household_id` パス）が必要。個人世帯
-  移行時（4章）に合わせてオブジェクトを `copy` + 旧パス `remove` するバッチ処理を
-  Edge Function または一度限りの管理スクリプトとして用意する。
+既存オブジェクトは Storage API で新パスへ copy し、コピー先を検証してから、DB参照が
+旧パスのままであることを条件に `image_path` / `photo_path` を更新する。参照更新後にだけ
+他の参照がない旧 object を削除する。処理は再実行可能にし、欠損 object や更新失敗時に
+旧 object を推測で削除しない。Storage schema を直接変更せず、Storage API を使う。
 
 ### 3.4 ロール / 権限
 

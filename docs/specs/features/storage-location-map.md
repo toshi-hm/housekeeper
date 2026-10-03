@@ -63,11 +63,14 @@ hook は設けない。
 ### バケット `location-photos`
 
 - 種別: **private**
-- パス規約: `<user_id>/<location_id>.<ext>`（`ext` は `webp` / `jpg` / `png`）
+- 新規パス規約: `<household_id>/<location_id>.<ext>`（`ext` は `webp` / `jpg` / `png`）
+- 既存パス `<user_id>/<location_id>.<ext>` は段階移行中に保持し、本人または参照中 `photo_path` と同じ household のメンバーが読み取り可能
 - アクセス: `supabase.storage.from('location-photos').createSignedUrl(path, 3000)` を
   `useSignedLocationPhoto` 経由で取得
 - アップロード上限: 5 MB（`ImageUploader` で共通検証、`item-images` と同じ制約を流用）
-- RLS ポリシーは `item-images`（`docs/specs/database.md` Storage 節）と同じ所有者チェックパターン
+- 新規 upload / upsert / delete は現在の household prefix 内に限定する。旧 user prefix への書き込みは許可しない
+
+既存写真は Storage API で新パスへ copy して検証し、`photo_path` が旧パスのままであることを条件に DB 参照を更新した後で旧オブジェクトを削除する。参照更新に失敗した場合は旧 object を保持する。
 
 ## v1 範囲（本Issue #574 の実装範囲）
 
