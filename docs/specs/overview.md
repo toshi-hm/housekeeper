@@ -22,7 +22,7 @@ Create a new web application called "housekeeper" — a home inventory managemen
 2. **Product registration** — store product name, barcode, category, image
 3. **Inventory management** — track quantity, storage location, purchase date, expiry date, notes per item
 4. **Expiry alerts** — visually highlight items near or past expiry date
-5. **Authentication** — Supabase Auth (email/password), single user assumed
+5. **Authentication** — Supabase Auth (email/password); data is shared per household (see `docs/specs/features/household-sharing.md`)
 6. **Map** — 2D floor-plan editing, inventory placement/search, and 3D reference view
 
 ## Database Schema (Supabase Postgres)

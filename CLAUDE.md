@@ -4,9 +4,9 @@
 
 Self-hosted home inventory management web app.
 No public-facing features. CRUD-centric.
-Currently single-owner per Supabase project (`user_id`-scoped RLS); household
-(multi-user) sharing is planned but not yet implemented — see
-docs/specs/features/household-sharing.md and docs/specs/features/auth.md.
+Data is shared per household (RLS is scoped by household membership; `user_id`
+records the creator). Household member removal / rename are not implemented yet —
+see docs/specs/features/household-sharing.md and docs/specs/features/auth.md.
 
 ## Tech Stack
 

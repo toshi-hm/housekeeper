@@ -802,20 +802,22 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
       （`create_household` / `redeem_household_invite` RPC・`rls_household.test.sql` 込み。
       既存テーブルへの `household_id` 追加や RLS 切り替えは未実施、以降の PR で対応）
 - [x] `redeem_household_invite` RPC（招待コードによる参加をアトミックに処理）
-- [ ] 共有対象テーブル（items, item_lots, categories, storage_locations, custom_units,
+- [x] 共有対象テーブル（items, item_lots, categories, storage_locations, custom_units,
       consumption_logs, shopping_list_items, shopping_list_archive, shopping_list_templates,
       shopping_list_template_items, recipes, recipe_items, tags, items_to_tags）への
       `household_id` 追加 + RLS を `household_id` ベースに切り替え
-- [ ] Storage バケット（`item-images` / `location-photos`）のパスを `<household_id>/...` に変更 + RLS更新
-- [ ] 既存ユーザーの個人世帯自動作成 + `household_id` バックフィル（データマイグレーション）
+- [x] Storage バケット（`item-images` / `location-photos`）のパスを `<household_id>/...` に変更 + RLS更新（既存オブジェクトの移行は `scripts/migrate-household-storage.ts`。本番は完了済み）
+- [x] 既存ユーザーの個人世帯自動作成 + `household_id` バックフィル（データマイグレーション）
 - [ ] `useHousehold` / `useCreateHouseholdInvite` / `useRedeemHouseholdInvite` /
       `useRemoveHouseholdMember` / `useRenameHousehold` hook
-- [ ] 世帯管理画面（`/_auth/settings/household`）
-- [ ] pgTAP: `rls_household.test.sql` 新規 + 既存 RLS テストの household 対応更新
-- [ ] Alexa: Account Linking 設定 + Edge Function を service-role+USER_ID から
-      anon key+JWT に変更（#159）
-- [ ] `docs/specs/features/auth.md` の「単一ユーザー」記述を更新
-- [ ] テスト / CI 整備と PR CI グリーン化
+      （`useHousehold` / `useCreateHouseholdInvite` / `useRedeemHouseholdInvite` は実装済み。
+      `useRemoveHouseholdMember` / `useRenameHousehold` は未実装）
+- [x] 世帯管理画面（`/_auth/settings/household`。メンバー・招待コードの表示、招待コード発行、コード参加。メンバー削除・世帯名変更は未実装）
+- [x] pgTAP: `rls_household.test.sql` 新規 + 既存 RLS テストの household 対応更新
+- [x] Alexa: Account Linking 設定 + Edge Function を service-role+USER_ID から
+      anon key+JWT に変更（#159。コード側は #1166。Alexa Developer Console 側の設定は手動）
+- [x] `docs/specs/features/auth.md` の「単一ユーザー」記述を更新
+- [x] テスト / CI 整備と PR CI グリーン化
 
 - [ ] ダークモード <!-- issue:#65 -->
 - [x] CSV / JSON エクスポート <!-- issue:#66 -->

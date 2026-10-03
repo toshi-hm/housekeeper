@@ -2,16 +2,17 @@
 
 ## 概要
 
-Supabase Auth（email + password）による認証。現行実装は各ユーザーがデータの
-唯一の所有者となる単一ユーザーモデル（`user_id = auth.uid()` の RLS）。
+Supabase Auth（email + password）による認証。データの所有単位は世帯（household）で、
+共有対象テーブルの RLS は世帯メンバーシップ（`household_id`）で判定する。`user_id` は
+作成者の記録として残す（個人設定など、世帯共有の対象外のテーブルは `user_id = auth.uid()`
+の RLS のまま）。サインアップ時に個人世帯が自動作成される。
 未認証ユーザーは `/login` 以外にアクセスできない。
 
 > 2026-06 時点では個人利用を優先するため、`src/config/auth.ts` の `isAvailableRegisterNewUser` を `false` にして新規ユーザー登録の画面導線を一時的に閉じる。再開時は同フラグを `true` に戻す。
 
-> **移行予定（#64）**: 世帯（household）単位での多人数共有に対応する計画があり、
-> 設計は `docs/specs/features/household-sharing.md` を参照。実装後は各テーブルの
-> RLS が `user_id` 単位から `household_id`（世帯メンバーシップ）単位に切り替わる。
-> 本ファイルの「単一ユーザー」という記述は household-sharing 実装完了時に更新する。
+> **世帯共有（#64）**: 世帯単位の多人数共有は実装済み。設計と段階は
+> `docs/specs/features/household-sharing.md` を参照。世帯メンバーの削除と世帯名の変更
+> は未実装（同ファイルの「後続」を参照）。
 
 ## ユーザーストーリー
 
