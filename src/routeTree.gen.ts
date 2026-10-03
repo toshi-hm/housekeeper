@@ -27,6 +27,7 @@ import { Route as AuthItemsShelfScanRouteImport } from './routes/_auth.items.she
 import { Route as AuthLocationsLocationIdRouteImport } from './routes/_auth.locations.$locationId'
 import { Route as AuthSettingsArchivedItemsRouteImport } from './routes/_auth.settings.archived-items'
 import { Route as AuthSettingsCategoriesRouteImport } from './routes/_auth.settings.categories'
+import { Route as AuthSettingsHouseholdRouteImport } from './routes/_auth.settings.household'
 import { Route as AuthSettingsLocationsRouteImport } from './routes/_auth.settings.locations'
 import { Route as AuthSettingsPurchaseHistoryRouteImport } from './routes/_auth.settings.purchase-history'
 import { Route as AuthSettingsTagsRouteImport } from './routes/_auth.settings.tags'
@@ -124,6 +125,11 @@ const AuthSettingsCategoriesRoute = AuthSettingsCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AuthSettingsRoute,
 } as any)
+const AuthSettingsHouseholdRoute = AuthSettingsHouseholdRouteImport.update({
+  id: '/household',
+  path: '/household',
+  getParentRoute: () => AuthSettingsRoute,
+} as any)
 const AuthSettingsLocationsRoute = AuthSettingsLocationsRouteImport.update({
   id: '/locations',
   path: '/locations',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
+  '/settings/household': typeof AuthSettingsHouseholdRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
   '/settings/purchase-history': typeof AuthSettingsPurchaseHistoryRoute
   '/settings/tags': typeof AuthSettingsTagsRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/settings/categories': typeof AuthSettingsCategoriesRoute
+  '/settings/household': typeof AuthSettingsHouseholdRoute
   '/settings/locations': typeof AuthSettingsLocationsRoute
   '/settings/purchase-history': typeof AuthSettingsPurchaseHistoryRoute
   '/settings/tags': typeof AuthSettingsTagsRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/_auth/locations/$locationId': typeof AuthLocationsLocationIdRouteWithChildren
   '/_auth/settings/archived-items': typeof AuthSettingsArchivedItemsRoute
   '/_auth/settings/categories': typeof AuthSettingsCategoriesRoute
+  '/_auth/settings/household': typeof AuthSettingsHouseholdRoute
   '/_auth/settings/locations': typeof AuthSettingsLocationsRoute
   '/_auth/settings/purchase-history': typeof AuthSettingsPurchaseHistoryRoute
   '/_auth/settings/tags': typeof AuthSettingsTagsRoute
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/locations/$locationId'
     | '/settings/archived-items'
     | '/settings/categories'
+    | '/settings/household'
     | '/settings/locations'
     | '/settings/purchase-history'
     | '/settings/tags'
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/locations/$locationId'
     | '/settings/archived-items'
     | '/settings/categories'
+    | '/settings/household'
     | '/settings/locations'
     | '/settings/purchase-history'
     | '/settings/tags'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/_auth/locations/$locationId'
     | '/_auth/settings/archived-items'
     | '/_auth/settings/categories'
+    | '/_auth/settings/household'
     | '/_auth/settings/locations'
     | '/_auth/settings/purchase-history'
     | '/_auth/settings/tags'
@@ -447,6 +459,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSettingsCategoriesRouteImport
       parentRoute: typeof AuthSettingsRoute
     }
+    '/_auth/settings/household': {
+      id: '/_auth/settings/household'
+      path: '/household'
+      fullPath: '/settings/household'
+      preLoaderRoute: typeof AuthSettingsHouseholdRouteImport
+      parentRoute: typeof AuthSettingsRoute
+    }
     '/_auth/settings/locations': {
       id: '/_auth/settings/locations'
       path: '/locations'
@@ -495,6 +514,7 @@ declare module '@tanstack/react-router' {
 interface AuthSettingsRouteChildren {
   AuthSettingsArchivedItemsRoute: typeof AuthSettingsArchivedItemsRoute
   AuthSettingsCategoriesRoute: typeof AuthSettingsCategoriesRoute
+  AuthSettingsHouseholdRoute: typeof AuthSettingsHouseholdRoute
   AuthSettingsLocationsRoute: typeof AuthSettingsLocationsRoute
   AuthSettingsPurchaseHistoryRoute: typeof AuthSettingsPurchaseHistoryRoute
   AuthSettingsTagsRoute: typeof AuthSettingsTagsRoute
@@ -503,6 +523,7 @@ interface AuthSettingsRouteChildren {
 const AuthSettingsRouteChildren: AuthSettingsRouteChildren = {
   AuthSettingsArchivedItemsRoute: AuthSettingsArchivedItemsRoute,
   AuthSettingsCategoriesRoute: AuthSettingsCategoriesRoute,
+  AuthSettingsHouseholdRoute: AuthSettingsHouseholdRoute,
   AuthSettingsLocationsRoute: AuthSettingsLocationsRoute,
   AuthSettingsPurchaseHistoryRoute: AuthSettingsPurchaseHistoryRoute,
   AuthSettingsTagsRoute: AuthSettingsTagsRoute,

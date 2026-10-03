@@ -30,7 +30,6 @@ export const useShoppingList = (status: ShoppingStatus = "planned") => {
       const { data, error } = await supabase
         .from("shopping_list_items")
         .select("*")
-        .eq("user_id", user.id)
         .eq("status", status)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
@@ -59,13 +58,11 @@ const MAX_MERGE_ATTEMPTS = 3;
  * 増分を計算し直してリトライする（23505 競合時のリトライパターンと同様）。
  */
 const mergeIntoDuplicatePlannedItem = async (
-  userId: string,
   input: UpsertShoppingItemInput,
 ): Promise<ShoppingItem | null> => {
   const { data: plannedRows, error: plannedError } = await supabase
     .from("shopping_list_items")
     .select("*")
-    .eq("user_id", userId)
     .eq("status", "planned");
   if (plannedError) throw new Error(plannedError.message);
 
@@ -116,7 +113,7 @@ export const upsertShoppingItem = async (input: UpsertShoppingItemInput) => {
   if (!user) throw new Error("Not authenticated");
 
   if (!input.id) {
-    const merged = await mergeIntoDuplicatePlannedItem(user.id, input);
+    const merged = await mergeIntoDuplicatePlannedItem(input);
     if (merged) return merged;
   }
 
@@ -129,7 +126,6 @@ export const upsertShoppingItem = async (input: UpsertShoppingItemInput) => {
       .from("shopping_list_items")
       .select("linked_item_id")
       .eq("id", input.id)
-      .eq("user_id", user.id)
       .maybeSingle();
     if (existingError) throw new Error(existingError.message);
     linkedItemId = existing?.linked_item_id ?? null;
@@ -158,7 +154,7 @@ export const upsertShoppingItem = async (input: UpsertShoppingItemInput) => {
     // Retry the merge now that the conflicting row actually exists, instead
     // of surfacing a raw constraint-violation error to the user.
     if (!input.id && error.code === "23505") {
-      const merged = await mergeIntoDuplicatePlannedItem(user.id, input);
+      const merged = await mergeIntoDuplicatePlannedItem(input);
       if (merged) return merged;
     }
     throw new Error(error.message);
@@ -377,7 +373,6 @@ export const purchaseShoppingItem = async ({
     const { data: linkedActiveItem, error: linkedActiveItemError } = await supabase
       .from("items")
       .select("*")
-      .eq("user_id", user.id)
       .eq("id", linkedItemId)
       .is("deleted_at", null)
       .maybeSingle();
@@ -421,7 +416,6 @@ export const purchaseShoppingItem = async ({
     const { data: linkedDeletedItem, error: linkedDeletedItemError } = await supabase
       .from("items")
       .select("*")
-      .eq("user_id", user.id)
       .eq("id", linkedItemId)
       .not("deleted_at", "is", null)
       .maybeSingle();
@@ -462,7 +456,6 @@ export const purchaseShoppingItem = async ({
     const { data: activeItem, error: activeItemError } = await supabase
       .from("items")
       .select("*")
-      .eq("user_id", user.id)
       .eq("barcode", itemValues.barcode)
       .is("deleted_at", null)
       .limit(1)
@@ -491,7 +484,6 @@ export const purchaseShoppingItem = async ({
     const { data: deletedItem, error: deletedItemError } = await supabase
       .from("items")
       .select("*")
-      .eq("user_id", user.id)
       .eq("barcode", itemValues.barcode)
       .not("deleted_at", "is", null)
       .limit(1)

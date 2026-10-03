@@ -19,6 +19,7 @@ import {
   Tag,
   Tags,
   Upload,
+  Users,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -57,7 +58,8 @@ export const SettingsPage = () => {
       m.routeId === "/_auth/settings/locations" ||
       m.routeId === "/_auth/settings/tags" ||
       m.routeId === "/_auth/settings/archived-items" ||
-      m.routeId === "/_auth/settings/purchase-history",
+      m.routeId === "/_auth/settings/purchase-history" ||
+      m.routeId === "/_auth/settings/household",
   );
   const { data: settings, isLoading } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
@@ -633,6 +635,21 @@ export const SettingsPage = () => {
                 <div className="flex items-center gap-3">
                   <History className="h-5 w-5 text-muted-foreground" />
                   <span>{t("purchaseHistory")}</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+            </div>
+          </section>
+
+          <section>
+            <div className="divide-y rounded-lg border">
+              <Link
+                to="/settings/household"
+                className="flex items-center justify-between p-4 hover:bg-muted/50"
+              >
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                  <span>{t("householdTitle")}</span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </Link>

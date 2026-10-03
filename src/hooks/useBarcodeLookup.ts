@@ -67,7 +67,6 @@ export const useBarcodeLookup = () => {
           "id, name, image_path, category_id, item_type, content_amount, content_unit, expiry_type, notes, minimum_stock, days_use_after_opening, unit_price, store_name, auto_reorder, reorder_threshold, reorder_lead_days",
         )
         .eq("barcode", barcode)
-        .eq("user_id", userData.user.id)
         .is("deleted_at", null)
         .order("updated_at", { ascending: false })
         .limit(1)

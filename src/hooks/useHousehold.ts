@@ -1,0 +1,165 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { persister } from "@/lib/queryClient";
+import { requireOnline } from "@/lib/requireOnline";
+import { supabase } from "@/lib/supabase";
+import type { Database } from "@/types/supabase";
+
+const HOUSEHOLD_KEY = ["household"] as const;
+const INVITE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
+
+type Household = Database["public"]["Tables"]["households"]["Row"];
+type HouseholdMember = Database["public"]["Tables"]["household_members"]["Row"];
+type HouseholdInviteRow = Database["public"]["Tables"]["household_invites"]["Row"];
+
+interface HouseholdInvite extends HouseholdInviteRow {
+  isExpired: boolean;
+}
+
+export interface HouseholdDetails {
+  household: Household;
+  members: HouseholdMember[];
+  invites: HouseholdInvite[];
+  currentUserId: string;
+}
+
+export class HouseholdInviteError extends Error {
+  readonly code: "HK006" | "HK007" | "HK008" | "HK009";
+
+  constructor(code: "HK006" | "HK007" | "HK008" | "HK009") {
+    super(code);
+    this.name = "HouseholdInviteError";
+    this.code = code;
+  }
+}
+
+const fetchHousehold = async (): Promise<HouseholdDetails> => {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Not authenticated");
+
+  const { data: membership, error: membershipError } = await supabase
+    .from("household_members")
+    .select("household_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (membershipError) throw membershipError;
+  if (!membership) throw new Error("Household membership is missing");
+
+  const [householdResult, membersResult, invitesResult] = await Promise.all([
+    supabase.from("households").select("*").eq("id", membership.household_id).single(),
+    supabase
+      .from("household_members")
+      .select("*")
+      .eq("household_id", membership.household_id)
+      .order("joined_at", { ascending: true }),
+    supabase
+      .from("household_invites")
+      .select("*")
+      .eq("household_id", membership.household_id)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  if (householdResult.error) throw householdResult.error;
+  if (membersResult.error) throw membersResult.error;
+  if (invitesResult.error) throw invitesResult.error;
+
+  return {
+    household: householdResult.data,
+    members: membersResult.data ?? [],
+    invites: (invitesResult.data ?? []).map((invite) => ({
+      ...invite,
+      isExpired: Date.parse(invite.expires_at) <= Date.now(),
+    })),
+    currentUserId: user.id,
+  };
+};
+
+const createInviteCode = (): string => {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(bytes, (byte) => INVITE_CODE_ALPHABET[byte % INVITE_CODE_ALPHABET.length]).join(
+    "",
+  );
+};
+
+const createHouseholdInvite = async (householdId: string, userId: string) => {
+  requireOnline();
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data, error } = await supabase
+      .from("household_invites")
+      .insert({
+        household_id: householdId,
+        created_by: userId,
+        code: createInviteCode(),
+        expires_at: expiresAt,
+      })
+      .select()
+      .single();
+    if (!error) return data;
+    if (error.code !== "23505" || attempt === 2) throw error;
+  }
+
+  throw new Error("Unable to create invite code");
+};
+
+const redeemHouseholdInvite = async (code: string): Promise<string> => {
+  requireOnline();
+  const normalizedCode = code.trim().toUpperCase();
+  if (!/^[A-Z0-9]{6,32}$/.test(normalizedCode)) throw new HouseholdInviteError("HK006");
+
+  const { data, error } = await supabase.rpc("redeem_household_invite", {
+    p_code: normalizedCode,
+    p_confirm_personal_data_inaccessible: true,
+  });
+  if (error) throw error;
+
+  const result = data?.[0];
+  if (!result || result.error_code) {
+    const errorCode = result?.error_code;
+    throw new HouseholdInviteError(
+      errorCode === "HK007" || errorCode === "HK008" || errorCode === "HK009" ? errorCode : "HK006",
+    );
+  }
+  return result.household_id;
+};
+
+export const useHousehold = () =>
+  useQuery({
+    queryKey: HOUSEHOLD_KEY,
+    queryFn: fetchHousehold,
+    staleTime: 30_000,
+  });
+
+export const useCreateHouseholdInvite = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const current = queryClient.getQueryData<HouseholdDetails>(HOUSEHOLD_KEY);
+      if (!current) throw new Error("Household is not loaded");
+      return createHouseholdInvite(current.household.id, current.currentUserId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: HOUSEHOLD_KEY });
+    },
+  });
+};
+
+export const useRedeemHouseholdInvite = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: redeemHouseholdInvite,
+    onSuccess: async () => {
+      // Membership changed, so cached rows from the former household must not
+      // remain visible while queries refresh under the new RLS scope.
+      queryClient.clear();
+      await persister.removeClient();
+    },
+  });
+};

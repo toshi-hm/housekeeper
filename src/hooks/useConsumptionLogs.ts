@@ -47,7 +47,6 @@ export const useAllConsumptionLogs = (options?: { enabled?: boolean }) =>
         const { data, error } = await supabase
           .from("consumption_logs")
           .select("item_id, delta_amount, delta_unit, occurred_at")
-          .eq("user_id", user.id)
           .order("occurred_at", { ascending: true })
           .order("id", { ascending: true })
           .range(from, to);

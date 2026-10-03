@@ -59,7 +59,6 @@ const fetchAllLotsForValue = async (): Promise<LotValueRow[]> => {
     const { data, error } = await supabase
       .from("item_lots")
       .select("item_id, units, opened_remaining, unit_price")
-      .eq("user_id", user.id)
       .order("id", { ascending: true })
       .range(from, to);
     if (error) throw new Error(error.message);
@@ -86,7 +85,6 @@ const fetchAllLotsForSpending = async (): Promise<SpendingLotRow[]> => {
     const { data, error } = await supabase
       .from("item_lots")
       .select("unit_price, purchased_units, purchase_date")
-      .eq("user_id", user.id)
       .order("id", { ascending: true })
       .range(from, to);
     if (error) throw new Error(error.message);
@@ -230,7 +228,6 @@ const fetchAllWasteItems = async (): Promise<RawWasteItem[]> => {
     const { data, error } = await supabase
       .from("items")
       .select("id, category_id, content_amount, deleted_at")
-      .eq("user_id", user.id)
       .eq("deletion_reason", "expired_waste")
       .not("deleted_at", "is", null)
       .order("id", { ascending: true })
@@ -258,7 +255,6 @@ const fetchAllLotsForStorePrice = async (): Promise<StorePriceLotRow[]> => {
     const { data, error } = await supabase
       .from("item_lots")
       .select("item_id, store_name, unit_price, purchase_date, created_at")
-      .eq("user_id", user.id)
       .not("store_name", "is", null)
       .not("unit_price", "is", null)
       .order("id", { ascending: true })
@@ -319,7 +315,6 @@ const fetchWasteStreak = async (): Promise<number> => {
   const { data, error } = await supabase
     .from("waste_streaks")
     .select("current_streak_weeks")
-    .eq("user_id", user.id)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data?.current_streak_weeks ?? 0;

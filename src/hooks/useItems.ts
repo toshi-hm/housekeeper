@@ -113,11 +113,7 @@ export const fetchItems = async (
   if (userError || !userData.user) throw new Error("Not authenticated");
 
   const buildQuery = () => {
-    let query = supabase
-      .from("items")
-      .select("*")
-      .eq("user_id", userData.user.id)
-      .is("deleted_at", null);
+    let query = supabase.from("items").select("*").is("deleted_at", null);
 
     if (filters.search) {
       query = query.or(buildNameOrBarcodeSearchFilter(filters.search));
@@ -283,7 +279,6 @@ export const tryStackToActiveItem = async (
   const { data, error: findError } = await supabase
     .from("items")
     .select("*")
-    .eq("user_id", userId)
     .eq("barcode", barcode)
     .is("deleted_at", null)
     .limit(1)
@@ -323,7 +318,6 @@ const tryReviveItem = async (
   const { data, error: findError } = await supabase
     .from("items")
     .select("*")
-    .eq("user_id", userId)
     .eq("barcode", barcode)
     .not("deleted_at", "is", null)
     .limit(1)
@@ -522,7 +516,6 @@ const fetchItemsWithExpiry = async (): Promise<Item[]> => {
     const { data, error } = await supabase
       .from("items")
       .select("*")
-      .eq("user_id", userData.user.id)
       .is("deleted_at", null)
       .not("expiry_date", "is", null)
       .gt("units", 0)
@@ -686,7 +679,6 @@ const fetchItemsForExport = async (): Promise<ItemLookupForExport[]> => {
     const { data, error } = await supabase
       .from("items")
       .select("id, name, category_id, notes, content_unit")
-      .eq("user_id", userData.user.id)
       .order("id", { ascending: true })
       .range(from, to);
     if (error) throw error;
@@ -741,7 +733,6 @@ const fetchDeletedItems = async (): Promise<Item[]> => {
     const { data, error } = await supabase
       .from("items")
       .select("*")
-      .eq("user_id", userData.user.id)
       .not("deleted_at", "is", null)
       .order("deleted_at", { ascending: false })
       .order("id", { ascending: true })
