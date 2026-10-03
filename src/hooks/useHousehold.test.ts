@@ -1,25 +1,28 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-
-const removeClientMock = mock(() => Promise.resolve());
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 
 mock.module("@/lib/supabase", () => ({ supabase: {} }));
-mock.module("@/lib/queryClient", () => ({ persister: { removeClient: removeClientMock } }));
 mock.module("@/lib/requireOnline", () => ({
-  OfflineError: class OfflineError extends Error {},
+  ConcurrentUpdateError: class ConcurrentUpdateError extends Error {},
+  OfflineError: class OfflineError extends Error {
+    readonly isOffline = true;
+  },
   requireOnline: () => undefined,
 }));
 
 const { resetCachesAfterHouseholdChange } = await import("@/hooks/useHousehold");
+const { persister } = await import("@/lib/queryClient");
 const { SUPABASE_REST_CACHE_NAME } = await import("@/lib/swCacheNames");
 
 const originalCaches = (globalThis as { caches?: unknown }).caches;
+let removeClientSpy: ReturnType<typeof spyOn>;
 
 beforeEach(() => {
-  removeClientMock.mockClear();
+  removeClientSpy = spyOn(persister, "removeClient").mockResolvedValue(undefined);
 });
 
 afterEach(() => {
+  removeClientSpy.mockRestore();
   (globalThis as { caches?: unknown }).caches = originalCaches;
 });
 
@@ -32,7 +35,7 @@ describe("resetCachesAfterHouseholdChange", () => {
     await resetCachesAfterHouseholdChange({ clear } as unknown as QueryClient);
 
     expect(clear).toHaveBeenCalledTimes(1);
-    expect(removeClientMock).toHaveBeenCalledTimes(1);
+    expect(removeClientSpy).toHaveBeenCalledTimes(1);
     expect(deleteCache).toHaveBeenCalledWith(SUPABASE_REST_CACHE_NAME);
   });
 
