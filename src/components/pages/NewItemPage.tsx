@@ -130,8 +130,14 @@ export const NewItemPage = ({ cloneFrom, prefillName }: NewItemPageProps) => {
     }
   };
 
-  const handleBarcodeScanned = async (barcode: string, source: "db" | "api" | null) => {
+  const handleBarcodeScanned = async (
+    barcode: string,
+    source: "db" | "api" | null,
+    _defaults?: Partial<ItemFormValues>,
+    tagIds?: string[],
+  ) => {
     void warnIfRepeatWaste({ barcode });
+    if (source === "db" && tagIds) setSelectedTagIds(tagIds);
     if (source !== "db") {
       setExistingItem(null);
       setQuickConsumeItem(null);
@@ -385,8 +391,9 @@ export const NewItemPage = ({ cloneFrom, prefillName }: NewItemPageProps) => {
         onPendingImageUrlChange={(url) => {
           pendingImageUrlRef.current = url;
         }}
-        onBarcodeScanned={(barcode, source) => {
-          void handleBarcodeScanned(barcode, source);
+        prefillFromBarcode
+        onBarcodeScanned={(barcode, source, defaults, tagIds) => {
+          void handleBarcodeScanned(barcode, source, defaults, tagIds);
         }}
         onNameBlur={handleNameBlur}
         submitLabel={existingItem ? t("stackSubmitLabel") : undefined}

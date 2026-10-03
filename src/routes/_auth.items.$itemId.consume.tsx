@@ -20,7 +20,7 @@ import { parseConsumeSpeech } from "@/lib/consumeSpeechParse";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
-import { convertUnit, getConvertibleUnits } from "@/lib/units";
+import { convertUnit, getConvertibleUnits, isConversionPrecisionLossy } from "@/lib/units";
 import {
   computeConsumption,
   CONSUME_REASONS,
@@ -183,6 +183,13 @@ export const ItemConsumePage = () => {
       ? (convertUnit(deltaNum, deltaUnit, item.content_unit) ?? deltaNum)
       : deltaNum;
   const isConverting = item !== undefined && deltaUnit !== item.content_unit;
+  // 小さい量を大きい単位へ換算すると小数2桁（DB精度）への丸めで消費量が大きくずれるため、
+  // その場合は丸めた量で消費せず、入力単位の見直しを促す（#1143）。
+  const isPrecisionLossy =
+    item !== undefined &&
+    !isNaN(deltaNum) &&
+    deltaNum > 0 &&
+    isConversionPrecisionLossy(deltaNum, deltaUnit, item.content_unit);
   const preview =
     item && selectedLot && !isNaN(convertedDeltaNum) && convertedDeltaNum > 0
       ? computeConsumption(
@@ -201,6 +208,10 @@ export const ItemConsumePage = () => {
     const amount = convertedDeltaNum;
     if (isNaN(amount) || amount <= 0) {
       setValidationError(t("consumeValidationError"));
+      return;
+    }
+    if (isPrecisionLossy && item) {
+      setValidationError(t("consumeUnitPrecisionError", { unit: item.content_unit }));
       return;
     }
     if (!preview || preview.error) {

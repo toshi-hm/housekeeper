@@ -281,6 +281,38 @@ begin
     return;
   end if;
 
+  -- Re-joining the household the caller already belongs to would delete and
+  -- re-insert the membership, silently downgrading an owner to member.
+  if v_invite.household_id = v_current_household then
+    return query select null::uuid, 'HK006'::text;
+    return;
+  end if;
+
+  -- Leaving must never strand a shared household without an owner: block when
+  -- the caller is the last owner of a household that still has other members.
+  if v_current_household is not null
+    and exists (
+      select 1 from public.household_members hm
+      where hm.household_id = v_current_household
+        and hm.user_id = (select auth.uid())
+        and hm.role = 'owner'
+    )
+    and not exists (
+      select 1 from public.household_members hm
+      where hm.household_id = v_current_household
+        and hm.user_id <> (select auth.uid())
+        and hm.role = 'owner'
+    )
+    and exists (
+      select 1 from public.household_members hm
+      where hm.household_id = v_current_household
+        and hm.user_id <> (select auth.uid())
+    )
+  then
+    return query select null::uuid, 'HK009'::text;
+    return;
+  end if;
+
   if v_current_household is not null then
     delete from public.household_members
     where public.household_members.user_id = (select auth.uid())

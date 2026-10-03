@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { I18nextProvider } from "react-i18next";
 
@@ -125,5 +125,56 @@ describe("RecipesPage — 実行ボタン無効化理由の明示 (#1058)", () =
     expect(enabledButton.hasAttribute("disabled")).toBe(false);
     expect(enabledButton.getAttribute("title")).toBeNull();
     expect(enabledButton.getAttribute("aria-describedby")).toBeNull();
+  });
+});
+
+describe("RecipesPage — 別レシピの編集に切り替えたときフォームを再初期化する (#1138)", () => {
+  const recipeB: RecipeWithItems = { ...withItemsRecipe, id: "recipe-b", name: "夜のお茶" };
+  let recipesSpy: ReturnType<typeof spyOn>;
+  let itemsSpy: ReturnType<typeof spyOn>;
+  let saveSpy: ReturnType<typeof spyOn>;
+  let deleteSpy: ReturnType<typeof spyOn>;
+  let executeSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    recipesSpy = spyOn(useRecipesModule, "useRecipes").mockReturnValue({
+      data: [withItemsRecipe, recipeB],
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useRecipesModule.useRecipes>);
+    itemsSpy = spyOn(useItemsModule, "useItems").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useItemsModule.useItems>);
+    saveSpy = spyOn(useRecipesModule, "useSaveRecipe").mockReturnValue({
+      mutate: mock(() => {}),
+    } as unknown as ReturnType<typeof useRecipesModule.useSaveRecipe>);
+    deleteSpy = spyOn(useRecipesModule, "useDeleteRecipe").mockReturnValue({
+      mutate: mock(() => {}),
+    } as unknown as ReturnType<typeof useRecipesModule.useDeleteRecipe>);
+    executeSpy = spyOn(useRecipesModule, "useExecuteRecipe").mockReturnValue({
+      mutateAsync: mock(async () => ({})),
+    } as unknown as ReturnType<typeof useRecipesModule.useExecuteRecipe>);
+  });
+
+  afterEach(() => {
+    recipesSpy.mockRestore();
+    itemsSpy.mockRestore();
+    saveSpy.mockRestore();
+    deleteSpy.mockRestore();
+    executeSpy.mockRestore();
+    cleanup();
+  });
+
+  it("レシピAの編集中にレシピBの編集を押すと、フォームの名前がBに切り替わる", () => {
+    const { getAllByRole, getByLabelText } = renderPage();
+    const editButtons = getAllByRole("button", { name: i18n.t("recipes:edit") });
+    fireEvent.click(editButtons[0]);
+    expect((getByLabelText(i18n.t("recipes:recipeName")) as HTMLInputElement).value).toBe(
+      "朝のコーヒー",
+    );
+    fireEvent.click(getAllByRole("button", { name: i18n.t("recipes:edit") })[1]);
+    expect((getByLabelText(i18n.t("recipes:recipeName")) as HTMLInputElement).value).toBe(
+      "夜のお茶",
+    );
   });
 });

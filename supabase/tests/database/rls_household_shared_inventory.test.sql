@@ -1,7 +1,7 @@
 -- Household backfill, membership switching, and shared inventory RLS (#64).
 begin;
 
-select plan(20);
+select plan(23);
 
 insert into auth.users (id, email)
 values
@@ -130,6 +130,45 @@ select is(
   1,
   'new shared item is persisted'
 );
+
+-- ===== last-owner / self-join guards =====
+insert into auth.users (id, email)
+values ('a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', 'third+household-shared@example.com');
+
+insert into household_invites (household_id, code, created_by, expires_at)
+values
+  (
+    (select household_id from household_members where user_id = 'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1'),
+    'OTHERCODE1',
+    'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
+    now() + interval '1 day'
+  ),
+  (
+    (select household_id from household_members where user_id = '91919191-9191-9191-9191-919191919191'),
+    'OWNCODE001',
+    '91919191-9191-9191-9191-919191919191',
+    now() + interval '1 day'
+  );
+
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', '91919191-9191-9191-9191-919191919191', 'role', 'authenticated')::text, true);
+
+select results_eq(
+  $$select household_id, error_code from public.redeem_household_invite('OTHERCODE1', true)$$,
+  $$select null::uuid, 'HK009'::text$$,
+  'last owner of a household that still has members cannot leave it by redeeming another invite'
+);
+select results_eq(
+  $$select household_id, error_code from public.redeem_household_invite('OWNCODE001', true)$$,
+  $$select null::uuid, 'HK006'::text$$,
+  'redeeming an invite to the caller''s own household is rejected (no role downgrade)'
+);
+select is(
+  (select role::text from household_members where user_id = '91919191-9191-9191-9191-919191919191'),
+  'owner',
+  'owner membership is unchanged after rejected redemptions'
+);
+reset role;
 
 select * from finish();
 rollback;

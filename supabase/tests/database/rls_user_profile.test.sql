@@ -3,7 +3,7 @@
 -- user_security_questions.
 begin;
 
-select plan(18);
+select plan(19);
 
 insert into auth.users (id, email)
 values
@@ -53,6 +53,7 @@ select is((select count(*)::int from del), 0, 'other user cannot DELETE another 
 select set_config('request.jwt.claims', json_build_object('sub', '11111111-1111-1111-1111-111111111111', 'role', 'authenticated')::text, true);
 
 select is((select count(*) from notification_preferences)::int, 1, 'owner can SELECT their own notification_preferences row');
+select is((select low_stock_enabled from notification_preferences where user_id = '11111111-1111-1111-1111-111111111111'), false, 'low-stock notifications default to opt-out');
 
 select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-2222-2222-222222222222', 'role', 'authenticated')::text, true);
 

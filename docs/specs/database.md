@@ -32,6 +32,7 @@ Supabase (Postgres 15+)
 | `shopping_list_items`                 | 買い物リスト                             | v1.1 | item 削除で SET NULL（補充元 / 生成先ともに）       |
 | `shopping_list_archive`               | 買い物リストの購入履歴アーカイブ         | v1.2 | user 削除で CASCADE（行自体は不変・更新なし）       |
 | `notification_preferences`            | 通知 ON/OFF                              | v1.2 | user 削除で CASCADE                                 |
+| `low_stock_notification_states`       | 日用品低在庫通知の重複抑止状態 (#1055)   | v1.2 | user/item 削除で CASCADE                            |
 | `push_subscriptions`                  | Web Push 購読                            | v1.2 | user 削除で CASCADE                                 |
 | `recipes`                             | レシピ/セット消費のテンプレート          | v1.3 | user 削除で CASCADE                                 |
 | `recipe_items`                        | レシピの構成アイテムと消費量             | v1.3 | recipe 削除で CASCADE / item 削除で CASCADE         |
@@ -457,9 +458,24 @@ create table notification_preferences (
   threshold_days int not null default 3 check (threshold_days >= 0),
   notify_at time not null default '08:00',
   timezone text not null default 'Asia/Tokyo', -- #660: notify_at の解釈に使うIANAタイムゾーン
+  waste_digest_enabled boolean not null default false,
+  low_stock_enabled boolean not null default false, -- #1055: 日用品の最低在庫通知（初期値OFF）
   updated_at timestamptz not null default now()
 );
 ```
+
+```sql
+create table low_stock_notification_states (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  item_id uuid not null references items(id) on delete cascade,
+  notified_at timestamptz not null default now(),
+  primary key (user_id, item_id)
+);
+```
+
+`low_stock_notification_states`（#1055）は `(user_id, item_id)` を主キーとする低在庫通知済み状態。
+同一アイテムが低在庫である間の重複通知を止め、在庫が閾値を上回ったとき Edge Function が行を削除する。
+RLS は所有者の SELECT のみ許可し、状態の claim / reset は `send-low-stock-notifications` の service_role に限定する。
 
 ## push_subscriptions（v1.2）
 
@@ -657,10 +673,10 @@ create policy "item_images_owner_write"
   3. `quantity` を drop
      この順で安全に移行
 
-### 本番への適用（手動デプロイ手順）
+### 本番への適用
 
-- マイグレーションを本番へ適用する CI は **無い**。フロントエンドは Cloudflare Pages が
-  自動デプロイするが、DB は `bun run db:push`（= `supabase db push`）を人が実行する必要がある
+- 本番マイグレーションは、main の CI 成功後に GitHub Actions から適用する
+  （手順と安全条件は「本番マイグレーション配備（#1047）」を参照）
 - **フロントのデプロイより先に（または同時に）適用する**。逆順にすると、アプリが
   マイグレーションで追加された列を送るのに DB 側に無く、PostgREST が `PGRST204` で
   書き込みを拒否する（アイテムの保存が失敗する）
@@ -668,6 +684,9 @@ create policy "item_images_owner_write"
 - `db:status` はマイグレーション **履歴テーブル** の比較なので、履歴が誤った version で
   記録されている場合はドリフトを見逃す。実スキーマとの突き合わせは
   `bun run gen:types` 後の `src/types/supabase.ts` の差分で確認する
+- PR に migration の変更が含まれる場合、まだ本番DBに未適用のため、CI の hosted DB 型比較を
+  適用後まで保留する。アプリの TypeScript チェックは通常どおり実行し、配備後の型比較で
+  migration とコミット済み型の一致を確認する
 - アプリ側は「DB にアプリの期待する列/RPC が無い」エラー（`PGRST204` / `PGRST202` /
   `42703` / `42P01` / `42883`）を `isSchemaMismatchError`（`src/lib/supabaseErrors.ts`）で
   判別し、汎用の「エラーが発生しました」ではなく適用漏れを示すメッセージを表示する
@@ -691,3 +710,23 @@ create policy "item_images_owner_write"
   テスト依存で、アプリの実行時経路からは呼ばれない。`extensions` へ移しても
   `postgres` ロールの `search_path`（`"$user", public, extensions`）に含まれるため、
   テスト内の無修飾の `plan()` / `results_eq()` はそのまま解決される
+
+### 本番マイグレーション配備（#1047）
+
+- `.github/workflows/deploy-database-migrations.yml` は `main` の CI が成功した後に
+  Supabase CLI の `db push --linked --yes` を実行し、リポジトリにある未適用の
+  migration を本番へ反映する。配備前に `supabase db push --dry-run` で
+  「実際に適用される未適用migration」を全て列挙して検査する（最新コミットの差分ではない）。
+  過去の配備失敗で残った未適用migrationも同じ検査を受ける
+- GitHub Actions に `SUPABASE_PROJECT_ID` repository variable と
+  `SUPABASE_ACCESS_TOKEN` / `SUPABASE_DB_PASSWORD` secrets が必要。欠けている場合は
+  警告して配備をスキップする
+- 未適用 migration に `DROP ...` / `TRUNCATE` / `DELETE FROM` / `ALTER TABLE ... DROP|RENAME|TYPE` など既知の
+  破壊的SQLが含まれると自動配備を止める。内容をレビューしたうえで、`main` から
+  workflow_dispatch を実行し `allow_destructive` を有効にした場合のみ続行する
+- `production-migrations` GitHub Environment にRequired reviewersを設定すると、
+  SQLパターン検査を通過した配備にも人の承認を必須にできる
+- 配備後に `bun run gen:types` を実行する。生成結果がコミット済み型と異なる場合は
+  差分を Actions ログに出して失敗し、型ファイルの更新を促す
+- 配備失敗はGitHub Actionsの失敗として通知される。migrationはdown migrationで
+  自動ロールバックできる前提にせず、後続の修正migrationで前進させる

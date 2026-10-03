@@ -64,7 +64,7 @@ import {
   parseItemTypeTab,
 } from "@/lib/itemType";
 import { OfflineError } from "@/lib/requireOnline";
-import { toggleId, toggleSelectAll } from "@/lib/selection";
+import { pruneSelection, toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
 import {
   DEFAULT_LOW_STOCK_FORECAST_DAYS,
@@ -286,7 +286,7 @@ export const DashboardPage = () => {
 
   // 一括操作（#359）
   const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIdsRaw, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkMoveDialog, setBulkMoveDialog] = useState<"location" | "category" | null>(null);
   const [bulkConfirm, setBulkConfirm] = useState<"consume" | "delete" | null>(null);
   const bulkAction = useBulkItemAction();
@@ -386,6 +386,11 @@ export const DashboardPage = () => {
     daily_goods: expiryFiltered.filter((item) => itemTypeOf(item) === "daily_goods").length,
   };
   const filtered = typeFiltered.filter(matchesExpiryFilter);
+  // フィルタ変更で画面から消えた選択は無効にする（見えないアイテムへの一括操作を防ぐ、#1140）
+  const selectedIds = pruneSelection(
+    selectedIdsRaw,
+    filtered.map((i) => i.id),
+  );
 
   const filtersKey = `${search}|${categoryId}|${locationId}|${expiryFilter}|${itemTypeTab}|${hideEmpty}|${effectiveSort}`;
   const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
@@ -1041,7 +1046,7 @@ export const DashboardPage = () => {
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-            {items.length === 0 ? (
+            {allItems.length === 0 ? (
               <>
                 <p className="text-lg font-medium">{t("noItems")}</p>
                 <p className="mt-1 text-sm">{t("firstAddHint")}</p>

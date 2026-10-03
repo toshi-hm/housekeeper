@@ -21,6 +21,7 @@
   "ignorePatterns": [
     ".claude",
     ".agents",
+    "skills",
     "reports",
     "e2e",
     "supabase",

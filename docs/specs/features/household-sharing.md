@@ -201,7 +201,7 @@ RLS だけに委ねて無条件 select にするかは実装時に決定する�
 - 招待コードの連続誤入力（総当たり対策、#734）: `redeem_household_invite(p_code text)` は
   `returns table (household_id uuid, error_code text)` で、失敗時も例外を投げず
   `error_code` に `'HK006'`（無効・期限切れ）/ `'HK007'`（試行回数過多）/
-  `'HK008'`（個人世帯データを残すことの確認がない）のいずれかを返す。確認後は旧 household の行を変更・削除せず、新しい household_members 行だけを作る。呼び出し内で
+  `'HK008'`（個人世帯データを残すことの確認がない）/ `'HK009'`（他メンバーが残る世帯の最後のオーナーは離脱不可）のいずれかを返す。確認後は旧 household の行を変更・削除せず、新しい household_members 行だけを作る。呼び出し内で
   `check_household_invite_rate_limit()`（ユーザー単位、15分窓で5回、超過後は
   指数バックオフでロックアウト）を必ず経由し、コードの正誤に関わらず全呼び出しを
   カウントする。例外を投げる実装だと「同一トランザクション内で後から例外を投げると

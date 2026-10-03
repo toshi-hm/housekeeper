@@ -11,6 +11,8 @@ export interface NotificationPreferences {
   /** 週次食品ロスダイジェスト（send-waste-digest、月曜配信）の受信可否（#925）。
    *  配信曜日・時刻のユーザー設定UIはv1では作らず、notify_atを流用する。 */
   waste_digest_enabled: boolean;
+  /** 日用品の低在庫通知を受け取るか（send-low-stock-notifications）。 */
+  low_stock_enabled: boolean;
 }
 
 export type UpdatePrefs = Partial<Omit<NotificationPreferences, "user_id">>;

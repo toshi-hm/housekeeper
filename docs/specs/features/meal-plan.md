@@ -235,7 +235,7 @@ create trigger meal_plans_set_updated_at before update on meal_plans
   （`consumption-purchase.md` のレシピ実行時と同じベストエフォート方針）
 - 実行（消費）失敗: 既存 `useExecuteRecipe` の `onError` / `logInsertFailed` 扱いをそのまま
   継承する
-- `recipe-suggest` 呼び出し失敗・`RECIPE_API_KEY` 未設定: `expiry-alert.md` と同じく
+- `recipe-suggest` 呼び出し失敗・`RECIPE_API_KEY` / `RECIPE_ACCESS_KEY` 未設定: `expiry-alert.md` と同じく
   空配列で静かに degrade（レコメンド欄が非表示になるだけ）
 - オフライン時: 割当・実行・買い物リスト追加はいずれも `requireOnline()` でブロックし
   トースト表示（既存 hook 群と同じ方針）
