@@ -30,13 +30,41 @@ create index shopping_list_template_items_household_idx on public.shopping_list_
 create index recipes_household_idx on public.recipes(household_id, created_at desc);
 create index recipe_items_household_idx on public.recipe_items(household_id, recipe_id);
 
-alter table public.recipes drop constraint recipes_user_id_name_key;
-alter table public.recipes add constraint recipes_household_name_key unique (household_id, name);
-alter table public.shopping_list_templates drop constraint shopping_list_templates_user_id_name_key;
-alter table public.shopping_list_templates add constraint shopping_list_templates_household_name_key unique (household_id, name);
+-- Keep the existing per-creator name uniqueness. Households can contain rows
+-- created by different users with the same name; rejecting those duplicates
+-- would make backfill fail for data that was valid before sharing.
 
 create trigger shopping_list_items_assign_household before insert or update of household_id, user_id on public.shopping_list_items for each row execute function private.assign_current_household_id();
-create trigger shopping_list_archive_assign_household before insert or update of household_id, user_id on public.shopping_list_archive for each row execute function private.assign_current_household_id();
+create or replace function private.assign_shopping_archive_household_id()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_household_id uuid := private.current_household_id();
+begin
+  if v_household_id is null then
+    raise exception 'user does not belong to a household' using errcode = '42501';
+  end if;
+
+  if new.household_id is not null and new.household_id <> v_household_id then
+    raise exception 'row household does not match current membership' using errcode = '42501';
+  end if;
+
+  if tg_op = 'UPDATE' and new.user_id is distinct from old.user_id then
+    raise exception 'creator cannot be changed' using errcode = '42501';
+  end if;
+
+  new.household_id := v_household_id;
+  return new;
+end;
+$$;
+
+revoke all on function private.assign_shopping_archive_household_id() from public, anon;
+grant execute on function private.assign_shopping_archive_household_id() to authenticated;
+
+create trigger shopping_list_archive_assign_household before insert or update of household_id, user_id on public.shopping_list_archive for each row execute function private.assign_shopping_archive_household_id();
 create trigger shopping_list_templates_assign_household before insert or update of household_id, user_id on public.shopping_list_templates for each row execute function private.assign_current_household_id();
 create trigger shopping_list_template_items_assign_household before insert or update of household_id, user_id on public.shopping_list_template_items for each row execute function private.assign_current_household_id();
 create trigger recipes_assign_household before insert or update of household_id, user_id on public.recipes for each row execute function private.assign_current_household_id();
@@ -99,6 +127,7 @@ drop policy "shopping_list_archive_owner_all" on public.shopping_list_archive;
 create policy shopping_list_archive_household_all on public.shopping_list_archive for all to authenticated
   using (household_id = (select private.current_household_id()))
   with check (household_id = (select private.current_household_id()));
+revoke insert on public.shopping_list_archive from public, anon, authenticated;
 
 drop policy "shopping_list_templates_owner_all" on public.shopping_list_templates;
 create policy shopping_list_templates_household_all on public.shopping_list_templates for all to authenticated
@@ -137,15 +166,20 @@ create policy recipe_items_household_all on public.recipe_items for all to authe
 create or replace function public.archive_purchased_shopping_items()
 returns integer
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
   v_archived_count integer;
+  v_household_id uuid := private.current_household_id();
 begin
+  if auth.uid() is null or v_household_id is null then
+    raise exception 'user does not belong to a household' using errcode = '42501';
+  end if;
+
   with moved_rows as (
     delete from public.shopping_list_items
-    where household_id = (select private.current_household_id())
+    where household_id = v_household_id
       and status = 'purchased'
     returning user_id, household_id, name, desired_units, note
   )
@@ -157,6 +191,9 @@ begin
   return v_archived_count;
 end;
 $$;
+
+revoke all on function public.archive_purchased_shopping_items() from public, anon;
+grant execute on function public.archive_purchased_shopping_items() to authenticated;
 
 create or replace function public.save_shopping_list_template(p_id uuid, p_name text, p_items jsonb)
 returns uuid
