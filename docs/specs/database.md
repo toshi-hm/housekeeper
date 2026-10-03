@@ -65,7 +65,7 @@ create table items (
   expiry_date date,
   expiry_type text check (expiry_type is null or expiry_type in ('best_before', 'use_by')), -- 賞味期限/消費期限の区別。null = 区別なし（既存アイテム互換, #714）
   notes text,
-  image_path text,                       -- Storage 内のオブジェクトキー（"<user_id>/<item_id>.<ext>"）
+  image_path text,                       -- Storage 内のオブジェクトキー（新規: "<household_id>/<item_id>.<ext>"）
   minimum_stock int check (minimum_stock is null or minimum_stock >= 0), -- ダッシュボード警告用
   auto_reorder boolean not null default false,   -- 定期購入フラグ（#353）
   reorder_threshold int check (reorder_threshold is null or reorder_threshold >= 0), -- 自動追加のしきい値。NULL = 0以下
@@ -180,7 +180,7 @@ create table storage_locations (
   user_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
   icon text,
-  photo_path text,                       -- Storage バケット location-photos のオブジェクトキー（収納マップ, #574）
+  photo_path text,                       -- Storage バケット location-photos のオブジェクトキー（新規: "<household_id>/<location_id>.<ext>"）
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, name)
@@ -641,38 +641,56 @@ create trigger items_set_updated_at before update on items
 ### バケット `item-images`
 
 - 種別: **private**
-- パス規約: `<user_id>/<item_id>.<ext>`（`ext` は `webp` / `jpg` / `png`）
+- 新規パス規約: `<household_id>/<item_id>.<ext>`（`ext` は `webp` / `jpg` / `png`）
+- 既存パス: `<user_id>/<item_id>.<ext>`。段階移行中は本人と、そのオブジェクトを参照している同一 household のメンバーが読み取り可能。共有読み取りは `image_path` 一致だけで判断せず、変更不能な `items.user_id` と item ID に紐づく検証関数で認可する
 - アクセス: `supabase.storage.from('item-images').createSignedUrl(path, 3600)` を `useUploadItemImage` / `ItemImage` 経由で取得
 - アップロード上限: 5 MB（クライアント側で検証）
+- 新規 upload / upsert / delete は現在の household prefix 内に限定する。旧 user prefix への書き込みは許可しない
 
 ### Storage RLS ポリシー（概念）
 
 ```sql
-create policy "item_images_owner_read"
+create policy item_images_household_select
   on storage.objects for select
   using (
     bucket_id = 'item-images'
-    and (storage.foldername(name))[1] = auth.uid()::text
+    and (
+      (storage.foldername(name))[1] = private.current_household_id()::text
+      or (storage.foldername(name))[1] = auth.uid()::text
+      or private.household_legacy_storage_object_access(bucket_id, name, true)
+    )
   );
 
-create policy "item_images_owner_write"
+create policy item_images_household_insert
   on storage.objects for insert
   with check (
     bucket_id = 'item-images'
-    and (storage.foldername(name))[1] = auth.uid()::text
+    and (storage.foldername(name))[1] = private.current_household_id()::text
   );
 
--- update / delete も同様
+-- update / delete は世帯 prefix に加え、旧パスについては
+-- 作成者・entity ID・世帯の対応を検証する関数で移行中の削除を許可する。
 ```
+
+`items.image_path` と `storage_locations.photo_path` は、該当行の ID に一致する
+`<household_id>/<entity_id>.<ext>` または `<user_id>/<entity_id>.<ext>` のみを許可する。
+DB trigger で path spoofing と `user_id` の変更を拒否する。旧 prefix の参照については
+非公開 `private` schema に creator / household / entity の検証済み対応表を保持する。
+旧 object の削除時は、現在の household membership と保存した完全一致 path/entity を検証し、
+同じ creator/entity が別 household に再割当てされていないことも確認する。参照解除または
+行削除後も cleanup を認可でき、Storage API が object を削除した後に対応表を消す。
 
 ### バケット `location-photos`（#574）
 
 - 種別: **private**
-- パス規約: `<user_id>/<location_id>.<ext>`（`ext` は `webp` / `jpg` / `png`）
+- 新規パス規約: `<household_id>/<location_id>.<ext>`（`ext` は `webp` / `jpg` / `png`）
+- 既存パス: `<user_id>/<location_id>.<ext>`。段階移行中は本人と、そのオブジェクトを参照している同一 household のメンバーが読み取り可能。参照先 path は行 ID・作成者・世帯との対応を DB trigger で検証する
 - アクセス: `supabase.storage.from('location-photos').createSignedUrl(path, 3000)` を
   `useSignedLocationPhoto` 経由で取得
 - アップロード上限: 5 MB（クライアント側で検証、`item-images` と共通の `ImageUploader` を流用）
-- RLS ポリシーは `item-images` と同じ所有者チェックパターン（バケット名のみ置き換え）
+- 新規 upload / upsert / delete は現在の household prefix 内に限定する。旧 user prefix への書き込みは許可しない
+
+両バケットの既存オブジェクトは Storage API で新パスへ copy し、コピー先を検証してから、DB の参照先が移行対象の旧パスのままであることを条件に `image_path` / `photo_path` を更新する。参照更新後にのみ、他の参照がない旧オブジェクトを削除する。各段階は再実行可能とし、コピー欠損・検証失敗・DB更新失敗時は旧オブジェクトを残す。DB参照のないオブジェクトは推測で削除しない。
 
 ---
 

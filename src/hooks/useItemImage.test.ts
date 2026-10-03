@@ -25,6 +25,11 @@ const updateEqMock = mock(() => {
 });
 const updateMock = mock(() => ({ eq: updateEqMock }));
 const getUserMock = mock(() => Promise.resolve({ data: { user: { id: "user-1" } }, error: null }));
+const householdSelectMock = mock(() => ({
+  eq: () => ({
+    single: () => Promise.resolve({ data: { household_id: "household-1" }, error: null }),
+  }),
+}));
 
 mock.module("@/lib/supabase", () => ({
   supabase: {
@@ -36,7 +41,8 @@ mock.module("@/lib/supabase", () => ({
         remove: removeMock,
       }),
     },
-    from: () => ({ update: updateMock }),
+    from: (table: string) =>
+      table === "household_members" ? { select: householdSelectMock } : { update: updateMock },
   },
 }));
 
@@ -58,6 +64,7 @@ afterEach(() => {
   );
   removeMock.mockClear();
   getUserMock.mockClear();
+  householdSelectMock.mockClear();
   updateMock.mockClear();
   updateEqMock.mockReset();
   updateEqMock.mockImplementation(() => {
@@ -120,12 +127,12 @@ describe("uploadItemImage", () => {
       queryClient,
     });
 
-    expect(path).toBe("user-1/item-1.webp");
-    expect(uploadMock).toHaveBeenCalledWith("user-1/item-1.webp", file, {
+    expect(path).toBe("household-1/item-1.webp");
+    expect(uploadMock).toHaveBeenCalledWith("household-1/item-1.webp", file, {
       upsert: true,
       contentType: "image/webp",
     });
-    expect(updateMock).toHaveBeenCalledWith({ image_path: "user-1/item-1.webp" });
+    expect(updateMock).toHaveBeenCalledWith({ image_path: "household-1/item-1.webp" });
     expect(updateEqMock).toHaveBeenCalledWith("id", "item-1");
     expect(events).toEqual(["update", "remove:user-1/item-1.jpg"]);
   });
@@ -147,7 +154,7 @@ describe("uploadItemImage", () => {
       }),
     ).rejects.toThrow("db failed");
 
-    expect(events).toEqual(["update", "remove:user-1/item-1.webp"]);
+    expect(events).toEqual(["update", "remove:household-1/item-1.webp"]);
     expect(removeMock).not.toHaveBeenCalledWith(["user-1/item-1.jpg"]);
   });
 
@@ -163,7 +170,7 @@ describe("uploadItemImage", () => {
       uploadItemImage({
         itemId: "item-1",
         file,
-        oldImagePath: "user-1/item-1.webp",
+        oldImagePath: "household-1/item-1.webp",
         queryClient,
       }),
     ).rejects.toThrow("db failed");
@@ -180,7 +187,7 @@ describe("uploadItemImage", () => {
     getUserMock.mockClear();
     updateEqMock.mockClear();
 
-    const path = "user-1/item-1.jpg";
+    const path = "household-1/item-1.jpg";
     const queryClient = makeQueryClient();
 
     // 差し替え前の署名付きURLをキャッシュに事前投入しておく。
@@ -189,7 +196,10 @@ describe("uploadItemImage", () => {
       [path]: "https://signed.example/stale-batch",
     });
     // 無関係なキャッシュはそのまま残ることを確認するための対照群。
-    queryClient.setQueryData(["item-image", "user-1/other.jpg"], "https://signed.example/other");
+    queryClient.setQueryData(
+      ["item-image", "household-1/other.jpg"],
+      "https://signed.example/other",
+    );
 
     const file = new File(["dummy"], "photo.jpg", { type: "image/jpeg" });
     const returnedPath = await uploadItemImage({ itemId: "item-1", file, queryClient });
@@ -200,7 +210,7 @@ describe("uploadItemImage", () => {
 
     expect(queryClient.getQueryState(["item-image", path])?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(["item-images", [path]])?.isInvalidated).toBe(true);
-    expect(queryClient.getQueryState(["item-image", "user-1/other.jpg"])?.isInvalidated).toBe(
+    expect(queryClient.getQueryState(["item-image", "household-1/other.jpg"])?.isInvalidated).toBe(
       false,
     );
   });

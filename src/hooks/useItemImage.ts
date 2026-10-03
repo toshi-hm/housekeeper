@@ -1,5 +1,6 @@
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 
+import { getCurrentHouseholdId } from "@/lib/currentHousehold";
 import { compressImageForUpload } from "@/lib/imageCompress";
 import { requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
@@ -136,7 +137,8 @@ export const uploadItemImage = async ({
     ? uploadFile.name.split(".").pop()?.toLowerCase()
     : undefined;
   const ext = rawExt && rawExt.length <= 5 ? rawExt : "jpg";
-  const path = `${user.id}/${itemId}.${ext}`;
+  const householdId = await getCurrentHouseholdId(user.id);
+  const path = `${householdId}/${itemId}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
