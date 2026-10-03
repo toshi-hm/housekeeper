@@ -6,6 +6,7 @@ import type { ImportItemInput } from "@/lib/export";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
+import type { Json } from "@/types/supabase";
 
 /** 既存アイテムとバーコードが一致した場合の扱い（#657）。 */
 export type ImportDuplicateStrategy = "skip" | "overwrite" | "duplicate";
@@ -46,7 +47,7 @@ export const importItems = async ({
   requireOnline();
 
   const { data, error } = await supabase.rpc("import_items_batch", {
-    p_items: items,
+    p_items: items as unknown as Json,
     p_duplicate_strategy: duplicateStrategy,
   });
   if (error) throw new Error(error.message);

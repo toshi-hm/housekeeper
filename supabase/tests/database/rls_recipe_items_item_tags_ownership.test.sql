@@ -43,7 +43,7 @@ select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-
 select throws_ok(
   $$insert into recipe_items (recipe_id, item_id, amount) values ('bbbbbbbb-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 1)$$,
   '42501',
-  'new row violates row-level security policy for table "recipe_items"',
+  'item does not belong to current household',
   'other user cannot INSERT a recipe_item on their own recipe pointing at another user''s item'
 );
 

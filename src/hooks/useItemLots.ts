@@ -51,6 +51,7 @@ export const createLot = async (
       user_id: userId,
       item_id: itemId,
       units: lot.units,
+      purchased_units: lot.units,
       opened_remaining: lot.opened_remaining ?? null,
       unit_price: lot.unit_price ?? null,
       purchase_date: lot.purchase_date ?? null,
