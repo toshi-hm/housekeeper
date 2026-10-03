@@ -14,7 +14,7 @@ import { buildAddResultSpeech, upsertShoppingListItem } from "./yes-no.ts";
 // retry logic uses, so that logic can be exercised without a live database.
 
 interface FakeClientConfig {
-  /** Rows returned by successive `.select(...).eq(...).eq(...)` calls (the last entry repeats once exhausted). */
+  /** Rows returned by successive `.select(...).eq(...)` calls (the last entry repeats once exhausted). */
   selectResults: ShoppingPlannedRow[][];
   insertError?: { code: string; message: string } | null;
 }
@@ -31,14 +31,12 @@ const makeFakeClient = (
       assert.strictEqual(table, "shopping_list_items");
       return {
         select: () => ({
-          eq: () => ({
-            eq: () => {
-              const index = Math.min(selectCallCount, config.selectResults.length - 1);
-              const data = config.selectResults[index] ?? [];
-              selectCallCount += 1;
-              return Promise.resolve({ data, error: null });
-            },
-          }),
+          eq: () => {
+            const index = Math.min(selectCallCount, config.selectResults.length - 1);
+            const data = config.selectResults[index] ?? [];
+            selectCallCount += 1;
+            return Promise.resolve({ data, error: null });
+          },
         }),
         update: (values: { desired_units: number; linked_item_id: string | null }) => ({
           eq: (_col: string, id: string) => ({
