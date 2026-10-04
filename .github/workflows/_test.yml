@@ -56,8 +56,22 @@ jobs:
       - name: Start local Supabase stack
         run: bunx supabase start
 
+      # pg_prove イメージの pull がレート制限等で失敗した場合のみ再試行する（#1175）。
+      # pgTAP 自体の失敗（not ok）は再試行しても結果が変わらないので即失敗させる。
       - name: Run pgTAP RLS tests
-        run: bun run test:db
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if bun run test:db 2>&1 | tee test-db.log; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ] && grep -qE "toomanyrequests|error running container: exit 125|TLS handshake timeout" test-db.log; then
+              echo "::warning::pg_prove image pull failed (attempt $attempt/3). Retrying in $((attempt * 20))s..."
+              sleep $((attempt * 20))
+              continue
+            fi
+            exit 1
+          done
 
       - name: Stop local Supabase stack
         if: always()
