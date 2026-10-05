@@ -219,7 +219,11 @@ export const undoConsumeItem = async (undo: ConsumeItemUndo): Promise<void> => {
   if (error) throw error;
 
   if (undo.logId) {
-    await supabase.from("consumption_logs").delete().eq("id", undo.logId);
+    const { error: logDeleteError } = await supabase
+      .from("consumption_logs")
+      .delete()
+      .eq("id", undo.logId);
+    if (logDeleteError) throw logDeleteError;
   }
 };
 

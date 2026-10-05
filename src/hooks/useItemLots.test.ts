@@ -380,6 +380,25 @@ describe("useConsumeLot", () => {
 describe("restoreLotConsumption", () => {
   // 消費の取り消し（#478, #713）: consumeLot が行った更新を、消費前の値へ戻す。
 
+  test("consumption_logsの削除に失敗した場合はエラーを投げる (#1181)", async () => {
+    responseQueues.item_lots = [
+      { data: { id: "lot-1", units: 3, opened_remaining: null }, error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: { message: "delete failed" } }];
+
+    await expect(
+      restoreLotConsumption({
+        lotId: "lot-1",
+        itemId: "item-1",
+        unitsBefore: 3,
+        openedRemainingBefore: null,
+        unitsAfter: 0,
+        openedRemainingAfter: null,
+        logId: "log-1",
+      }),
+    ).rejects.toMatchObject({ message: "delete failed" });
+  });
+
   test("ロットのunits/opened_remainingを消費前の値に戻し、対応するconsumption_logsを削除する", async () => {
     responseQueues.item_lots = [
       { data: { id: "lot-1", units: 3, opened_remaining: null }, error: null }, // conditional update
