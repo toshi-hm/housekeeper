@@ -131,21 +131,22 @@ export const upsertShoppingItem = async (input: UpsertShoppingItemInput) => {
     linkedItemId = existing?.linked_item_id ?? null;
   }
 
-  const { data, error } = await supabase
-    .from("shopping_list_items")
-    .upsert(
-      {
-        id: input.id,
-        user_id: user.id,
-        name: input.name,
-        desired_units: input.desired_units ?? 1,
-        note: input.note ?? null,
-        linked_item_id: linkedItemId ?? null,
-      },
-      { onConflict: "id" },
-    )
-    .select()
-    .single();
+  const fields = {
+    name: input.name,
+    desired_units: input.desired_units ?? 1,
+    note: input.note ?? null,
+    linked_item_id: linkedItemId ?? null,
+  };
+  // #1177: 既存行の編集では user_id（作成者）を送らない。世帯メンバーが作成した行を
+  // upsert すると ON CONFLICT DO UPDATE の SET に user_id が含まれ、作成者変更を禁止する
+  // トリガー (42501) に弾かれるため、編集は素の UPDATE にする。
+  const { data, error } = input.id
+    ? await supabase.from("shopping_list_items").update(fields).eq("id", input.id).select().single()
+    : await supabase
+        .from("shopping_list_items")
+        .insert({ user_id: user.id, ...fields })
+        .select()
+        .single();
   if (error) {
     // #766: a concurrent request may have inserted/matched a same-name (or
     // same linked_item_id) planned row between our client-side check above
