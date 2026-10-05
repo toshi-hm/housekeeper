@@ -357,7 +357,11 @@ export const restoreLotConsumption = async ({
   if (!data) throw new ConcurrentUpdateError();
 
   if (logId) {
-    await supabase.from("consumption_logs").delete().eq("id", logId);
+    const { error: logDeleteError } = await supabase
+      .from("consumption_logs")
+      .delete()
+      .eq("id", logId);
+    if (logDeleteError) throw logDeleteError;
   }
 
   await syncItemAggregate(itemId);

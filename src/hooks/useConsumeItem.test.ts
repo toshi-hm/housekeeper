@@ -303,6 +303,21 @@ describe("undoConsumeItem", () => {
     expect(logEqCall?.args).toEqual(["id", "log-1"]);
   });
 
+  test("kind: 'direct' でconsumption_logsの削除に失敗した場合はエラーを投げる (#1181)", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+    responseQueues.consumption_logs = [{ data: null, error: { message: "delete failed" } }];
+
+    await expect(
+      undoConsumeItem({
+        kind: "direct",
+        itemId: "item-1",
+        unitsBefore: 3,
+        openedRemainingBefore: 0.4,
+        logId: "log-3",
+      }),
+    ).rejects.toMatchObject({ message: "delete failed" });
+  });
+
   test("kind: 'direct' の場合はitemsを直接更新し、logIdがあればconsumption_logsを削除する", async () => {
     responseQueues.items = [{ data: null, error: null }]; // items update
 
