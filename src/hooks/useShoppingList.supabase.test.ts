@@ -644,7 +644,7 @@ describe("upsertShoppingItem (#619: インライン編集での linked_item_id �
     await upsertShoppingItem({ id: "row-1", name: "牛乳", desired_units: 2, note: null });
 
     const upsertCall = callLog.find(
-      (c) => c.table === "shopping_list_items" && c.method === "upsert",
+      (c) => c.table === "shopping_list_items" && c.method === "update",
     );
     expect(upsertCall?.args[0]).toMatchObject({ linked_item_id: "item-9" });
   });
@@ -661,7 +661,7 @@ describe("upsertShoppingItem (#619: インライン編集での linked_item_id �
       callLog.filter((c) => c.table === "shopping_list_items" && c.method === "maybeSingle"),
     ).toHaveLength(0);
     const upsertCall = callLog.find(
-      (c) => c.table === "shopping_list_items" && c.method === "upsert",
+      (c) => c.table === "shopping_list_items" && c.method === "update",
     );
     expect(upsertCall?.args[0]).toMatchObject({ linked_item_id: "item-2" });
   });
@@ -674,7 +674,7 @@ describe("upsertShoppingItem (#619: インライン編集での linked_item_id �
     await upsertShoppingItem({ id: "row-1", name: "牛乳", linked_item_id: null });
 
     const upsertCall = callLog.find(
-      (c) => c.table === "shopping_list_items" && c.method === "upsert",
+      (c) => c.table === "shopping_list_items" && c.method === "update",
     );
     expect(upsertCall?.args[0]).toMatchObject({ linked_item_id: null });
   });
@@ -687,9 +687,25 @@ describe("upsertShoppingItem (#619: インライン編集での linked_item_id �
 
     await upsertShoppingItem({ name: "牛乳", linked_item_id: "item-5" });
 
-    const upsertCall = callLog.find(
-      (c) => c.table === "shopping_list_items" && c.method === "upsert",
+    const insertCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "insert",
     );
-    expect(upsertCall?.args[0]).toMatchObject({ linked_item_id: "item-5" });
+    expect(insertCall?.args[0]).toMatchObject({ user_id: "user-1", linked_item_id: "item-5" });
+  });
+
+  test("編集時（idあり）は user_id を送らず UPDATE する (#1177)", async () => {
+    responseQueues.shopping_list_items = [
+      { data: { id: "row-1", linked_item_id: null }, error: null },
+    ];
+
+    await upsertShoppingItem({ id: "row-1", name: "牛乳", linked_item_id: null });
+
+    const updateCall = callLog.find(
+      (c) => c.table === "shopping_list_items" && c.method === "update",
+    );
+    expect(updateCall?.args[0]).not.toHaveProperty("user_id");
+    expect(callLog.some((c) => c.table === "shopping_list_items" && c.method === "upsert")).toBe(
+      false,
+    );
   });
 });
