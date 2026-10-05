@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setSystemTime, test } from "bun:test";
 
 import {
   BACKUP_EXPORT_REMINDER_DAYS,
@@ -324,6 +324,27 @@ describe("getExpiryStatus", () => {
   test("beyond warning days => ok", () => {
     expect(getExpiryStatus(fmt(addDays(DEFAULT_EXPIRY_WARNING_DAYS + 1)))).toBe("ok");
     expect(getExpiryStatus("2099-12-31")).toBe("ok");
+  });
+
+  describe("DST 切替日 (#1180)", () => {
+    const originalTz = process.env.TZ;
+    afterEach(() => {
+      setSystemTime();
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    });
+
+    test("春の切替日（23h）でも昨日期限は expired", () => {
+      process.env.TZ = "America/New_York";
+      setSystemTime(new Date(2026, 2, 8, 12, 0, 0));
+      expect(getExpiryStatus("2026-03-07")).toBe("expired");
+    });
+
+    test("秋の切替日（25h）でも翌日は 1 日後として扱う", () => {
+      process.env.TZ = "America/New_York";
+      setSystemTime(new Date(2026, 10, 1, 12, 0, 0));
+      expect(getExpiryStatus("2026-11-02", 1)).toBe("expiring-soon");
+    });
   });
 
   test("custom warningDays", () => {
