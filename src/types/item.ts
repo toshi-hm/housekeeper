@@ -315,7 +315,8 @@ export const getExpiryStatus = (
   const [year, month, day] = expiryDate.split("-").map(Number) as [number, number, number];
   const expiry = new Date(year, month - 1, day);
   const diffMs = expiry.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  // DST 切替日は 23h/25h になるため ceil だと 1 日ずれる。暦日差なので round で丸める (#1180)
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
   if (diffDays < 0) return "expired";
   if (diffDays <= warningDays) return "expiring-soon";
   return "ok";
