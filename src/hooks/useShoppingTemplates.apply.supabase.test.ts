@@ -108,7 +108,7 @@ describe("applyShoppingTemplate (#852: テンプレート一括適用時の23505
 
     expect(result).toEqual({ added: 2, skipped: 0 });
     expect(
-      callLog.filter((c) => c.table === "shopping_list_items" && c.method === "upsert"),
+      callLog.filter((c) => c.table === "shopping_list_items" && c.method === "insert"),
     ).toHaveLength(2);
   });
 
@@ -165,7 +165,7 @@ describe("applyShoppingTemplate (#852: テンプレート一括適用時の23505
 
     expect(result).toEqual({ added: 0, skipped: 1 });
     expect(
-      callLog.filter((c) => c.table === "shopping_list_items" && c.method === "upsert"),
+      callLog.filter((c) => c.table === "shopping_list_items" && c.method === "insert"),
     ).toHaveLength(0);
   });
 });
