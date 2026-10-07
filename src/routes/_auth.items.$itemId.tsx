@@ -284,7 +284,7 @@ export const ItemDetailPage = () => {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -293,7 +293,7 @@ export const ItemDetailPage = () => {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"

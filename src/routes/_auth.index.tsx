@@ -546,7 +546,7 @@ export const DashboardPage = () => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">
@@ -558,7 +558,7 @@ export const DashboardPage = () => {
                 })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {selectionMode ? (
             <Button size="sm" variant="outline" onClick={exitSelectionMode}>
               <X className="mr-1 h-4 w-4" />
