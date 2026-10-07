@@ -29,9 +29,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    uses: ./.github/workflows/_changes.yml
+
   deploy-preview:
     name: Deploy preview Worker
-    if: ${{ vars.ENABLE_PR_PREVIEW == 'true' }}
+    needs: changes
+    # プレビューに反映される変更が無い PR（ドキュメントのみ等）ではデプロイしない
+    if: ${{ vars.ENABLE_PR_PREVIEW == 'true' && needs.changes.outputs.bundle == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check required secrets are configured

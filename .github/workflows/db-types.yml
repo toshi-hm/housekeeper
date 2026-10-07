@@ -7,14 +7,20 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  changes:
+    uses: ./.github/workflows/_changes.yml
+
   type-check:
     name: DB Type Freshness
+    needs: changes
     runs-on: ubuntu-latest
     # Skip if the project id is not configured (the access token is checked in
     # the first step below — `secrets` is not available in `if:` expressions).
-    if: vars.SUPABASE_PROJECT_ID != ''
+    # マイグレーション / 生成型 / 依存に関係しない変更ではスキップする。
+    if: vars.SUPABASE_PROJECT_ID != '' && needs.changes.outputs.db_types == 'true'
     steps:
       - uses: actions/checkout@v7
         with:

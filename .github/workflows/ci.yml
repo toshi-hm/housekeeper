@@ -8,18 +8,31 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  # 変更ファイルから実行すべきジョブを判定する (詳細は _changes.yml)。
+  # 各ジョブは `if` でスキップする（workflow 単位の paths フィルタは
+  # required check が pending のままになるため使わない）。
+  changes:
+    uses: ./.github/workflows/_changes.yml
+
+  # format:check が Markdown も対象にするため、quality は常に実行する。
   quality:
     uses: ./.github/workflows/_quality.yml
 
   test:
+    needs: changes
     uses: ./.github/workflows/_test.yml
+    with:
+      run_unit: ${{ needs.changes.outputs.app == 'true' }}
+      run_deno: ${{ needs.changes.outputs.functions == 'true' }}
+      run_pgtap: ${{ needs.changes.outputs.db == 'true' }}
 
   coverage:
     name: Test Coverage
-    needs: test
-    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    needs: [changes, test]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.app == 'true' && needs.test.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -64,12 +77,17 @@ jobs:
           message: ${{ steps.parse.outputs.comment }}
 
   audit:
+    needs: changes
+    if: ${{ needs.changes.outputs.deps == 'true' }}
     uses: ./.github/workflows/_audit.yml
 
+  # 秘匿情報とコミットメッセージは変更内容に関わらず常に検査する
   secret-scan:
     uses: ./.github/workflows/_secret-scan.yml
 
   knip:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
     uses: ./.github/workflows/_knip.yml
 
   commitlint:
@@ -78,8 +96,11 @@ jobs:
       base_sha: ${{ github.event.pull_request.base.sha }}
 
   lighthouse:
+    needs: changes
+    if: ${{ needs.changes.outputs.bundle == 'true' }}
     uses: ./.github/workflows/_lighthouse.yml
 
   a11y:
-    needs: quality
+    needs: [changes, quality]
+    if: ${{ needs.changes.outputs.storybook == 'true' }}
     uses: ./.github/workflows/_a11y.yml

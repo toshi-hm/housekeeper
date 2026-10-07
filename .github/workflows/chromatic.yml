@@ -10,10 +10,17 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  changes:
+    uses: ./.github/workflows/_changes.yml
+
   chromatic:
     name: Chromatic
+    needs: changes
+    # Story / UI に影響しない変更（ドキュメントのみ等）ではスキップ
+    if: ${{ needs.changes.outputs.storybook == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check token
