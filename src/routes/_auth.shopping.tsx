@@ -762,12 +762,12 @@ export const ShoppingPage = () => {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <ShoppingCart className="h-6 w-6" />
           <h1 className="text-2xl font-bold">{t("title")}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             variant={shoppingMode ? "default" : "outline"}
