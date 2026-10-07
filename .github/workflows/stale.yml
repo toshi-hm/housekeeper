@@ -40,3 +40,4 @@ jobs:
 
           exempt-issue-labels: "phase/backlog,pinned,security"
           exempt-pr-labels: "pinned"
+# ci filter verification
