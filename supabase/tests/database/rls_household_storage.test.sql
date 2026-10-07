@@ -1,7 +1,7 @@
 -- Household-prefixed Storage access and the legacy-object transition window.
 begin;
 
-select plan(29);
+select plan(31);
 
 insert into auth.users (id, email)
 values
@@ -261,6 +261,29 @@ select is(
   (select count(*)::int from storage.objects where bucket_id = 'item-images' and name = 'a6400000-0000-0000-0000-000000000001/a6400000-0000-0000-0000-000000000011.jpg'),
   0,
   'unrelated household cannot read a legacy object referenced by another household'
+);
+
+with removed as (
+  delete from storage.objects
+  where bucket_id = 'item-images'
+    and name = 'a6400000-0000-0000-0000-000000000003/a6400000-0000-0000-0000-000000000011.jpg'
+  returning 1
+)
+select is(
+  (select count(*)::int from removed),
+  0,
+  'user without a legacy mapping cannot delete an item image only by uid prefix'
+);
+with removed as (
+  delete from storage.objects
+  where bucket_id = 'location-photos'
+    and name = 'a6400000-0000-0000-0000-000000000003/a6400000-0000-0000-0000-000000000012.jpg'
+  returning 1
+)
+select is(
+  (select count(*)::int from removed),
+  0,
+  'user without a legacy mapping cannot delete a location photo only by uid prefix'
 );
 
 select * from finish();
