@@ -104,8 +104,10 @@ jobs:
 
           echo "Changed files:"; sed 's/^/  /' "$files"
 
-          # ワークフロー自身の変更は常に全 CI を走らせて検証する
-          WORKFLOW='^\.github/workflows/'
+          # ワークフロー変更は、そのCI自身に関係するファイルの変更に限って該当フラグを立てる
+          # （例: _a11y.yml の変更で pgTAP は走らせない）。ci.yml / _changes.yml 自体の変更は
+          # どのジョブも起動しない。
+          wfs() { echo "^\.github/workflows/($1)\.yml$"; }
 
           CONFIG='^(index\.html|package\.json|bun\.lock|bunfig\.toml|vite\.config\.ts|tsconfig[^/]*\.json)$'
           TOOLING='^(eslint\.config\.js|oxlint\.json|\.stylelintrc\.json|knip\.json|i18next-parser\.config\.ts|playwright\.config\.ts|wrangler\.jsonc|\.lighthouserc\.json)$'
@@ -123,15 +125,14 @@ jobs:
 
           flag() { if "$@"; then echo 1; else echo 0; fi; }
 
-          wf=$(flag matches "$WORKFLOW")
 
           echo "Result:"
-          result app "$(flag matches "$WORKFLOW|^(src|e2e|public|scripts|\.storybook|\.github/lighthouse)/|$CONFIG|$TOOLING|^deno\.json$")"
-          result bundle "$( [ "$wf" = 1 ] && echo 1 || flag matches_excluding "^(src|public)/|$CONFIG|^wrangler\.jsonc$" "$NON_BUNDLE")"
-          result e2e "$( [ "$wf" = 1 ] && echo 1 || flag matches_excluding "^(src|e2e|public)/|$CONFIG|^playwright\.config\.ts$" '\.test\.tsx?$|\.stories\.tsx$|^src/test/')"
-          result storybook "$( [ "$wf" = 1 ] && echo 1 || flag matches_excluding "^(src|public|\.storybook)/|$CONFIG" '\.test\.tsx?$|^src/(test|mocks)/')"
-          result functions "$(flag matches "$WORKFLOW|^supabase/functions/|^deno\.json$")"
-          result db "$(flag matches "$WORKFLOW|^supabase/(migrations|tests)/|^supabase/config\.toml$")"
-          result db_types "$(flag matches "$WORKFLOW|^supabase/migrations/|^src/types/supabase\.ts$|^scripts/fix-supabase-types\.mjs$|^package\.json$")"
-          result deps "$(flag matches "$WORKFLOW|^(package\.json|bun\.lock)$")"
-          result code "$(flag matches "$WORKFLOW|\.(ts|tsx|js|jsx|mjs|cjs)$|^(package\.json|bun\.lock)$")"
+          result app "$(flag matches "$(wfs '_test|_knip')|^(src|e2e|public|scripts|\.storybook|\.github/lighthouse)/|$CONFIG|$TOOLING|^deno\.json$")"
+          result bundle "$(flag matches_excluding "^(src|public)/|$(wfs 'bundle-size|_lighthouse|pr-preview')|$CONFIG|^wrangler\.jsonc$" "$NON_BUNDLE")"
+          result e2e "$(flag matches_excluding "^(src|e2e|public)/|$(wfs e2e)|$CONFIG|^playwright\.config\.ts$" '\.test\.tsx?$|\.stories\.tsx$|^src/test/')"
+          result storybook "$(flag matches_excluding "^(src|public|\.storybook)/|$(wfs '_a11y|chromatic')|$CONFIG" '\.test\.tsx?$|^src/(test|mocks)/')"
+          result functions "$(flag matches "$(wfs _test)|^supabase/functions/|^deno\.json$")"
+          result db "$(flag matches "$(wfs _test)|^supabase/(migrations|tests)/|^supabase/config\.toml$")"
+          result db_types "$(flag matches "$(wfs db-types)|^supabase/migrations/|^src/types/supabase\.ts$|^scripts/fix-supabase-types\.mjs$|^package\.json$")"
+          result deps "$(flag matches "$(wfs _audit)|^(package\.json|bun\.lock)$")"
+          result code "$(flag matches "$(wfs codeql)|\.(ts|tsx|js|jsx|mjs|cjs)$|^(package\.json|bun\.lock)$")"
