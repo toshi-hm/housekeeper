@@ -164,3 +164,4 @@ supabase/
   migrations/
     20240101000000_create_items.sql  # Database schema
 ```
+<!-- ci filter verification -->
