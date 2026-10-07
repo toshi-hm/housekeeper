@@ -2,6 +2,19 @@ name: Quality Checks
 
 on:
   workflow_call:
+    inputs:
+      run_code:
+        description: "Run lint / typecheck / build / i18n check (source or tooling changed)"
+        type: boolean
+        default: true
+      run_storybook:
+        description: "Build and upload Storybook (consumed by the a11y job)"
+        type: boolean
+        default: true
+      run_spec_drift:
+        description: "Run the (non-blocking) spec drift check"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -19,24 +32,29 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Lint
+        if: ${{ inputs.run_code }}
         run: bun run lint
 
       - name: Format check
         run: bun run format:check
 
       - name: Type check
+        if: ${{ inputs.run_code }}
         run: bun run typecheck
 
       - name: Build
+        if: ${{ inputs.run_code }}
         run: bun run build
 
       - name: Build Storybook
+        if: ${{ inputs.run_storybook }}
         run: bun run build-storybook
         env:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
 
       - name: Upload Storybook build
+        if: ${{ inputs.run_storybook }}
         uses: actions/upload-artifact@v7
         with:
           name: storybook-static
@@ -44,11 +62,13 @@ jobs:
           retention-days: 1
 
       - name: i18n key check
+        if: ${{ inputs.run_code }}
         run: |
           bunx i18next-parser --config i18next-parser.config.ts
           git diff --exit-code src/locales/
 
       - name: Spec drift check (non-blocking)
+        if: ${{ inputs.run_spec_drift }}
         # Heuristic docs/specs vs implementation diff (#464). Findings are
         # real today (see PR description) so this starts non-blocking;
         # flip scripts/check-spec-drift.mjs's `--strict` on once the docs

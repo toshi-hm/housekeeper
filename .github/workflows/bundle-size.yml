@@ -8,8 +8,14 @@ permissions:
   pull-requests: write
 
 jobs:
+  changes:
+    uses: ./.github/workflows/_changes.yml
+
   bundle:
     name: Bundle Size Check
+    needs: changes
+    # ドキュメント / テスト / Story のみの変更ではバンドルは変わらないのでスキップ
+    if: ${{ needs.changes.outputs.bundle == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

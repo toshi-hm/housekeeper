@@ -1,0 +1,143 @@
+name: Detect Changes
+
+# PR / ブランチ push に含まれる変更ファイルを分類し、各 CI が必要かどうかを出力する。
+# 呼び出し側は `needs: changes` + `if: needs.changes.outputs.<name> == 'true'` で
+# ジョブ単位にスキップする。
+#
+# ワークフロー単位の `paths:` / `paths-ignore:` を使わない理由:
+#   workflow ごと起動しないと、branch protection の required check が
+#   「Expected — Waiting for status」のまま永久に pending になりマージできなくなる。
+#   ジョブが `if` でスキップされた場合は "skipped" = 成功扱いになるため安全。
+#
+# main への push / workflow_dispatch / schedule など比較対象が無いイベントは、
+# 安全側に倒して全て true を返す（main では従来通り全 CI を実行する）。
+# 変更ファイルの取得に失敗した場合も全て true にフォールバックする。
+
+on:
+  workflow_call:
+    outputs:
+      app:
+        description: "アプリ本体 (src / e2e / 設定 / 依存) の変更。lint 以外の単体テスト・knip・lighthouse 等の対象"
+        value: ${{ jobs.changes.outputs.app }}
+      bundle:
+        description: "ビルド成果物に影響する変更 (テスト / Story / ドキュメントのみの変更を除く)"
+        value: ${{ jobs.changes.outputs.bundle }}
+      e2e:
+        description: "E2E テストに影響する変更"
+        value: ${{ jobs.changes.outputs.e2e }}
+      storybook:
+        description: "Storybook (a11y / VRT / Chromatic) に影響する変更"
+        value: ${{ jobs.changes.outputs.storybook }}
+      functions:
+        description: "Supabase Edge Functions (Deno) の変更"
+        value: ${{ jobs.changes.outputs.functions }}
+      db:
+        description: "DB マイグレーション / pgTAP テストの変更"
+        value: ${{ jobs.changes.outputs.db }}
+      db_types:
+        description: "DB スキーマ / 生成型の変更"
+        value: ${{ jobs.changes.outputs.db_types }}
+      deps:
+        description: "依存関係 (package.json / bun.lock) の変更"
+        value: ${{ jobs.changes.outputs.deps }}
+      code:
+        description: "CodeQL 対象のソースコード (ts / js) の変更"
+        value: ${{ jobs.changes.outputs.code }}
+      spec:
+        description: "docs/specs と実装の乖離チェック対象 (docs/specs / src) の変更"
+        value: ${{ jobs.changes.outputs.spec }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.detect.outputs.app }}
+      bundle: ${{ steps.detect.outputs.bundle }}
+      e2e: ${{ steps.detect.outputs.e2e }}
+      storybook: ${{ steps.detect.outputs.storybook }}
+      functions: ${{ steps.detect.outputs.functions }}
+      db: ${{ steps.detect.outputs.db }}
+      db_types: ${{ steps.detect.outputs.db_types }}
+      deps: ${{ steps.detect.outputs.deps }}
+      code: ${{ steps.detect.outputs.code }}
+      spec: ${{ steps.detect.outputs.spec }}
+    steps:
+      - name: Detect changed paths
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          # pipefail は使わない: `grep -q` の早期終了による SIGPIPE で誤判定するため
+          set -u
+
+          NAMES="app bundle e2e storybook functions db db_types deps code spec"
+
+          emit_all() {
+            for n in $NAMES; do echo "$n=true" >> "$GITHUB_OUTPUT"; done
+            echo "::notice::$1 — running all checks."
+            exit 0
+          }
+
+          files="$RUNNER_TEMP/changed-files.txt"
+
+          if [ "$EVENT" = "pull_request" ]; then
+            gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" --jq '.[].filename' > "$files" \
+              || emit_all "Could not list PR files"
+          elif [ "$EVENT" = "push" ] && [ "$REF_NAME" != "$DEFAULT_BRANCH" ]; then
+            # ブランチ push は default branch からの累積差分で判定する
+            gh api --paginate "repos/$REPO/compare/$DEFAULT_BRANCH...$HEAD_SHA" --jq '.files[].filename' > "$files" \
+              || emit_all "Could not compare with $DEFAULT_BRANCH"
+          else
+            emit_all "No diff base for event '$EVENT' on '$REF_NAME'"
+          fi
+
+          if [ ! -s "$files" ]; then
+            emit_all "Changed file list is empty"
+          fi
+
+          echo "Changed files:"; sed 's/^/  /' "$files"
+
+          # ワークフロー自身の変更は、修正が正しく動くか確認できるよう該当 CI を起動する。
+          #   - 各 CI は自分自身のワークフローファイルが変わったときだけ起動
+          #     （例: _a11y.yml の変更で pgTAP は走らせない）
+          #   - ci.yml / _changes.yml は全ジョブの起動可否を決めるため、変更時は全 CI を起動
+          wfs() { echo "^\.github/workflows/($1|ci|_changes)\.yml$"; }
+
+          CONFIG='^(index\.html|package\.json|bun\.lock|bunfig\.toml|vite\.config\.ts|tsconfig[^/]*\.json)$'
+          TOOLING='^(eslint\.config\.js|oxlint\.json|\.stylelintrc\.json|knip\.json|i18next-parser\.config\.ts|playwright\.config\.ts|wrangler\.jsonc|\.lighthouserc\.json)$'
+          # ビルド成果物に載らないファイル
+          NON_BUNDLE='(\.test\.tsx?|\.stories\.tsx)$|^src/(test|mocks)/'
+
+          # name:regex  (ファイル 1 つでも一致すれば true)
+          matches() { grep -Eq "$1" "$files"; }
+          matches_excluding() { grep -E "$1" "$files" | grep -Evq "$2"; }
+
+          result() {
+            if [ "$2" = "1" ]; then echo "$1=true" >> "$GITHUB_OUTPUT"; else echo "$1=false" >> "$GITHUB_OUTPUT"; fi
+            echo "  $1 = $([ "$2" = "1" ] && echo true || echo false)"
+          }
+
+          flag() { if "$@"; then echo 1; else echo 0; fi; }
+
+          echo "Result:"
+          result app "$(flag matches "$(wfs '_test|_knip|_quality')|^(src|e2e|public|scripts|\.storybook|\.github/lighthouse)/|$CONFIG|$TOOLING|^deno\.json$")"
+          result bundle "$(flag matches_excluding "$(wfs 'bundle-size|_lighthouse|pr-preview')|^(src|public)/|$CONFIG|^wrangler\.jsonc$" "$NON_BUNDLE")"
+          result e2e "$(flag matches_excluding "$(wfs e2e)|^(src|e2e|public)/|$CONFIG|^playwright\.config\.ts$" '\.test\.tsx?$|\.stories\.tsx$|^src/test/')"
+          result storybook "$(flag matches_excluding "$(wfs '_a11y|chromatic|_quality')|^(src|public|\.storybook)/|$CONFIG" '\.test\.tsx?$|^src/(test|mocks)/')"
+          result functions "$(flag matches "$(wfs _test)|^supabase/functions/|^deno\.json$")"
+          result db "$(flag matches "$(wfs _test)|^supabase/(migrations|tests)/|^supabase/config\.toml$")"
+          result db_types "$(flag matches "$(wfs db-types)|^supabase/migrations/|^src/types/supabase\.ts$|^scripts/fix-supabase-types\.mjs$|^package\.json$")"
+          result deps "$(flag matches "$(wfs _audit)|^(package\.json|bun\.lock)$")"
+          result code "$(flag matches "$(wfs codeql)|\.(ts|tsx|js|jsx|mjs|cjs)$|^(package\.json|bun\.lock)$")"
+          result spec "$(flag matches "$(wfs _quality)|^(docs/specs|src)/|^scripts/check-spec-drift\.mjs$")"

@@ -16,8 +16,14 @@ permissions:
   pull-requests: write
 
 jobs:
+  changes:
+    uses: ./.github/workflows/_changes.yml
+
   e2e:
     name: Playwright E2E
+    needs: changes
+    # ドキュメント / 単体テスト / Story のみの変更ではスキップ（main への push は常に実行）
+    if: ${{ needs.changes.outputs.e2e == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

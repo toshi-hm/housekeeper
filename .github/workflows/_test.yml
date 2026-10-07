@@ -2,6 +2,19 @@ name: Unit Tests
 
 on:
   workflow_call:
+    inputs:
+      run_unit:
+        description: "Run bun unit tests"
+        type: boolean
+        default: true
+      run_deno:
+        description: "Run Deno edge function tests"
+        type: boolean
+        default: true
+      run_pgtap:
+        description: "Run pgTAP RLS tests"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -9,6 +22,7 @@ permissions:
 jobs:
   test:
     name: Unit Tests
+    if: ${{ inputs.run_unit }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -29,6 +43,7 @@ jobs:
           retention-days: 1
 
   deno-test:
+    if: ${{ inputs.run_deno }}
     name: Deno Edge Function Tests
     runs-on: ubuntu-latest
     steps:
@@ -43,6 +58,7 @@ jobs:
           deno test --no-check --allow-env=CRON_SECRET --coverage=coverage/deno $(find supabase/functions -name '*.test.ts' | sort)
 
   pgtap:
+    if: ${{ inputs.run_pgtap }}
     name: RLS Policy Tests (pgTAP)
     runs-on: ubuntu-latest
     steps:
