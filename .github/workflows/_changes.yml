@@ -43,6 +43,9 @@ on:
       code:
         description: "CodeQL 対象のソースコード (ts / js) の変更"
         value: ${{ jobs.changes.outputs.code }}
+      spec:
+        description: "docs/specs と実装の乖離チェック対象 (docs/specs / src) の変更"
+        value: ${{ jobs.changes.outputs.spec }}
 
 permissions:
   contents: read
@@ -62,6 +65,7 @@ jobs:
       db_types: ${{ steps.detect.outputs.db_types }}
       deps: ${{ steps.detect.outputs.deps }}
       code: ${{ steps.detect.outputs.code }}
+      spec: ${{ steps.detect.outputs.spec }}
     steps:
       - name: Detect changed paths
         id: detect
@@ -77,7 +81,7 @@ jobs:
           # pipefail は使わない: `grep -q` の早期終了による SIGPIPE で誤判定するため
           set -u
 
-          NAMES="app bundle e2e storybook functions db db_types deps code"
+          NAMES="app bundle e2e storybook functions db db_types deps code spec"
 
           emit_all() {
             for n in $NAMES; do echo "$n=true" >> "$GITHUB_OUTPUT"; done
@@ -104,10 +108,8 @@ jobs:
 
           echo "Changed files:"; sed 's/^/  /' "$files"
 
-          # ワークフロー変更は、そのCI自身に関係するファイルの変更に限って該当フラグを立てる
-          # （例: _a11y.yml の変更で pgTAP は走らせない）。ci.yml / _changes.yml 自体の変更は
-          # どのジョブも起動しない。
-          wfs() { echo "^\.github/workflows/($1)\.yml$"; }
+          # .github/workflows/** のみの変更ではどの条件付きジョブも起動しない
+          # （CI 設定の変更で無関係なテスト等を走らせない）。
 
           CONFIG='^(index\.html|package\.json|bun\.lock|bunfig\.toml|vite\.config\.ts|tsconfig[^/]*\.json)$'
           TOOLING='^(eslint\.config\.js|oxlint\.json|\.stylelintrc\.json|knip\.json|i18next-parser\.config\.ts|playwright\.config\.ts|wrangler\.jsonc|\.lighthouserc\.json)$'
@@ -125,14 +127,14 @@ jobs:
 
           flag() { if "$@"; then echo 1; else echo 0; fi; }
 
-
           echo "Result:"
-          result app "$(flag matches "$(wfs '_test|_knip')|^(src|e2e|public|scripts|\.storybook|\.github/lighthouse)/|$CONFIG|$TOOLING|^deno\.json$")"
-          result bundle "$(flag matches_excluding "^(src|public)/|$(wfs 'bundle-size|_lighthouse|pr-preview')|$CONFIG|^wrangler\.jsonc$" "$NON_BUNDLE")"
-          result e2e "$(flag matches_excluding "^(src|e2e|public)/|$(wfs e2e)|$CONFIG|^playwright\.config\.ts$" '\.test\.tsx?$|\.stories\.tsx$|^src/test/')"
-          result storybook "$(flag matches_excluding "^(src|public|\.storybook)/|$(wfs '_a11y|chromatic')|$CONFIG" '\.test\.tsx?$|^src/(test|mocks)/')"
-          result functions "$(flag matches "$(wfs _test)|^supabase/functions/|^deno\.json$")"
-          result db "$(flag matches "$(wfs _test)|^supabase/(migrations|tests)/|^supabase/config\.toml$")"
-          result db_types "$(flag matches "$(wfs db-types)|^supabase/migrations/|^src/types/supabase\.ts$|^scripts/fix-supabase-types\.mjs$|^package\.json$")"
-          result deps "$(flag matches "$(wfs _audit)|^(package\.json|bun\.lock)$")"
-          result code "$(flag matches "$(wfs codeql)|\.(ts|tsx|js|jsx|mjs|cjs)$|^(package\.json|bun\.lock)$")"
+          result app "$(flag matches "^(src|e2e|public|scripts|\.storybook|\.github/lighthouse)/|$CONFIG|$TOOLING|^deno\.json$")"
+          result bundle "$(flag matches_excluding "^(src|public)/|$CONFIG|^wrangler\.jsonc$" "$NON_BUNDLE")"
+          result e2e "$(flag matches_excluding "^(src|e2e|public)/|$CONFIG|^playwright\.config\.ts$" '\.test\.tsx?$|\.stories\.tsx$|^src/test/')"
+          result storybook "$(flag matches_excluding "^(src|public|\.storybook)/|$CONFIG" '\.test\.tsx?$|^src/(test|mocks)/')"
+          result functions "$(flag matches "^supabase/functions/|^deno\.json$")"
+          result db "$(flag matches "^supabase/(migrations|tests)/|^supabase/config\.toml$")"
+          result db_types "$(flag matches "^supabase/migrations/|^src/types/supabase\.ts$|^scripts/fix-supabase-types\.mjs$|^package\.json$")"
+          result deps "$(flag matches "^(package\.json|bun\.lock)$")"
+          result code "$(flag matches "\.(ts|tsx|js|jsx|mjs|cjs)$|^(package\.json|bun\.lock)$")"
+          result spec "$(flag matches '^(docs/specs|src)/|^scripts/check-spec-drift\.mjs$')"

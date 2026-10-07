@@ -17,9 +17,15 @@ jobs:
   changes:
     uses: ./.github/workflows/_changes.yml
 
-  # format:check が Markdown も対象にするため、quality は常に実行する。
+  # format:check が Markdown も対象にするため、quality ジョブ自体は常に実行し、
+  # 重い処理 (lint / typecheck / build / Storybook build / i18n / spec drift) だけ条件付きにする。
   quality:
+    needs: changes
     uses: ./.github/workflows/_quality.yml
+    with:
+      run_code: ${{ needs.changes.outputs.app == 'true' }}
+      run_storybook: ${{ needs.changes.outputs.storybook == 'true' }}
+      run_spec_drift: ${{ needs.changes.outputs.spec == 'true' }}
 
   test:
     needs: changes
