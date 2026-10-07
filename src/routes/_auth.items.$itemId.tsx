@@ -293,7 +293,7 @@ export const ItemDetailPage = () => {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex flex-wrap gap-2">
+        <div className="ml-auto flex flex-wrap justify-end gap-2">
           <Button
             variant="outline"
             size="sm"

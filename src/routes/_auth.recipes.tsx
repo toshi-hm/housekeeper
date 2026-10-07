@@ -111,7 +111,7 @@ export const RecipesPage = () => {
           </div>
         </div>
         {editor.mode === "closed" && (
-          <Button size="sm" onClick={() => setEditor({ mode: "new" })}>
+          <Button className="ml-auto" size="sm" onClick={() => setEditor({ mode: "new" })}>
             <Plus className="mr-1 h-4 w-4" />
             {t("createRecipe")}
           </Button>
