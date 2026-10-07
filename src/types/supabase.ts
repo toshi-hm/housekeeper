@@ -436,18 +436,21 @@ export interface Database {
       };
       household_members: {
         Row: {
+          display_name: string | null;
           household_id: string;
           joined_at: string;
           role: Database["public"]["Enums"]["household_role"];
           user_id: string;
         };
         Insert: {
+          display_name?: string | null;
           household_id: string;
           joined_at?: string;
           role?: Database["public"]["Enums"]["household_role"];
           user_id: string;
         };
         Update: {
+          display_name?: string | null;
           household_id?: string;
           joined_at?: string;
           role?: Database["public"]["Enums"]["household_role"];
@@ -1548,6 +1551,7 @@ export interface Database {
         Returns: undefined;
       };
       rename_household: { Args: { p_name: string }; Returns: undefined };
+      set_household_member_display_name: { Args: { p_name: string }; Returns: undefined };
       save_recipe: {
         Args: { p_id: string | null; p_items: Json; p_name: string };
         Returns: string;
