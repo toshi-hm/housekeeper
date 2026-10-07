@@ -37,10 +37,10 @@ export class HouseholdInviteError extends Error {
   }
 }
 
-export type HouseholdManagementErrorCode = "HK010" | "HK011" | "HK012" | "HK013";
+export type HouseholdManagementErrorCode = "HK010" | "HK011" | "HK012" | "HK013" | "HK014";
 
 const isHouseholdManagementErrorCode = (code: unknown): code is HouseholdManagementErrorCode =>
-  code === "HK010" || code === "HK011" || code === "HK012" || code === "HK013";
+  code === "HK010" || code === "HK011" || code === "HK012" || code === "HK013" || code === "HK014";
 
 /** Owner-only management RPCs (rename / remove member) failed with a known reason. */
 export class HouseholdManagementError extends Error {
@@ -241,6 +241,23 @@ const removeHouseholdMember = async (userId: string): Promise<void> => {
   requireOnline();
   const { error } = await supabase.rpc("remove_household_member", { p_user_id: userId });
   if (error) throwManagementError(error);
+};
+
+const setMemberDisplayName = async (name: string): Promise<void> => {
+  requireOnline();
+  const { error } = await supabase.rpc("set_household_member_display_name", { p_name: name });
+  if (error) throwManagementError(error);
+};
+
+export const useSetMemberDisplayName = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: setMemberDisplayName,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: HOUSEHOLD_KEY });
+    },
+  });
 };
 
 export const useRenameHousehold = () => {

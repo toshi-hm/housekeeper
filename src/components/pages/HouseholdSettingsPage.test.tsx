@@ -41,12 +41,14 @@ const householdData = {
     {
       household_id: "household-1",
       user_id: "owner-1",
+      display_name: null,
       role: "owner",
       joined_at: "2026-10-01T00:00:00.000Z",
     },
     {
       household_id: "household-1",
       user_id: "member-1",
+      display_name: null,
       role: "member",
       joined_at: "2026-10-02T00:00:00.000Z",
     },
@@ -78,8 +80,17 @@ describe("HouseholdSettingsPage", () => {
   let removeSpy: ReturnType<typeof spyOn>;
   let renamedTo: string | null;
   let removedMemberId: string | null;
+  let displayNameSpy: ReturnType<typeof spyOn>;
+  let savedDisplayName: string | null;
 
   beforeEach(async () => {
+    savedDisplayName = null;
+    displayNameSpy = spyOn(HouseholdHooks, "useSetMemberDisplayName").mockReturnValue({
+      mutateAsync: mock(async (name: string) => {
+        savedDisplayName = name;
+      }),
+      isPending: false,
+    } as unknown as ReturnType<typeof HouseholdHooks.useSetMemberDisplayName>);
     await i18n.changeLanguage("en");
     createInviteCalled = false;
     redeemedCode = null;
@@ -127,6 +138,7 @@ describe("HouseholdSettingsPage", () => {
     redeemInviteSpy.mockRestore();
     renameSpy.mockRestore();
     removeSpy.mockRestore();
+    displayNameSpy.mockRestore();
     cleanup();
     void i18n.changeLanguage("ja");
   });
@@ -179,6 +191,39 @@ describe("HouseholdSettingsPage", () => {
     expect(queryByRole("button", { name: /^Remove member/ })).toBeNull();
   });
 
+  it("saves the entered display name for the current member", async () => {
+    const { getByLabelText, getByRole } = render(<HouseholdSettingsPage />, { wrapper: Wrapper });
+    const user = userEvent.setup();
+    const saveButton = getByRole("button", { name: "Save" });
+    expect(saveButton.hasAttribute("disabled")).toBe(true);
+
+    await user.type(getByLabelText("Your display name"), "Hanako");
+    await waitFor(() => expect(saveButton.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(savedDisplayName).toBe("Hanako"));
+  });
+
+  it("shows display names in the member list instead of the truncated id", () => {
+    householdSpy.mockReturnValue({
+      data: {
+        ...householdData,
+        members: [
+          { ...householdData.members[0], display_name: "Taro" },
+          { ...householdData.members[1], display_name: "Hanako" },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof HouseholdHooks.useHousehold>);
+
+    const { getByText, queryByText } = render(<HouseholdSettingsPage />, { wrapper: Wrapper });
+
+    expect(getByText("Taro")).toBeDefined();
+    expect(getByText("Hanako (You)")).toBeDefined();
+    expect(queryByText("owner-1…")).toBeNull();
+  });
+
   describe("as the owner", () => {
     beforeEach(() => {
       householdSpy.mockReturnValue({
@@ -222,6 +267,26 @@ describe("HouseholdSettingsPage", () => {
 
       await waitFor(() => expect(removedMemberId).toBe("member-1"));
       await waitFor(() => expect(queryByRole("alertdialog")).toBeNull());
+    });
+
+    it("includes the display name in the removal confirmation and aria label", () => {
+      householdSpy.mockReturnValue({
+        data: {
+          ...householdData,
+          currentUserId: "owner-1",
+          members: [
+            householdData.members[0],
+            { ...householdData.members[1], display_name: "Hanako" },
+          ],
+        },
+        isLoading: false,
+        isError: false,
+      } as ReturnType<typeof HouseholdHooks.useHousehold>);
+      const { getByRole, getByText } = render(<HouseholdSettingsPage />, { wrapper: Wrapper });
+
+      fireEvent.click(getByRole("button", { name: "Remove member Hanako from the household" }));
+
+      expect(getByText(/^Hanako: /)).toBeDefined();
     });
 
     it("does not remove anyone when the confirmation is cancelled", async () => {

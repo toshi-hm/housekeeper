@@ -25,6 +25,7 @@ const {
   resetCachesAfterHouseholdChange,
   useRemoveHouseholdMember,
   useRenameHousehold,
+  useSetMemberDisplayName,
 } = await import("@/hooks/useHousehold");
 const { persister } = await import("@/lib/queryClient");
 const { SUPABASE_REST_CACHE_NAME } = await import("@/lib/swCacheNames");
@@ -143,4 +144,32 @@ describe("useRemoveHouseholdMember", () => {
       expect((rejection as InstanceType<typeof HouseholdManagementError>).code).toBe(code);
     },
   );
+});
+
+describe("useSetMemberDisplayName", () => {
+  test("set_household_member_display_name RPC を呼び、世帯キャッシュを無効化する", async () => {
+    const { invalidate, wrapper } = makeClient();
+    const { result } = renderHook(() => useSetMemberDisplayName(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync("Hanako");
+    });
+
+    expect(rpcMock).toHaveBeenCalledWith("set_household_member_display_name", {
+      p_name: "Hanako",
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["household"] });
+  });
+
+  test("HK014 は HouseholdManagementError として投げる", async () => {
+    rpcMock.mockImplementation(() => Promise.resolve({ error: { code: "HK014" } }));
+    const { wrapper } = makeClient();
+    const { result } = renderHook(() => useSetMemberDisplayName(), { wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync("x".repeat(31))).rejects.toBeInstanceOf(
+        HouseholdManagementError,
+      );
+    });
+  });
 });
