@@ -1,7 +1,7 @@
 -- Household-prefixed Storage access and the legacy-object transition window.
 begin;
 
-select plan(31);
+select plan(34);
 
 insert into auth.users (id, email)
 values
@@ -284,6 +284,57 @@ select is(
   (select count(*)::int from removed),
   0,
   'user without a legacy mapping cannot delete a location photo only by uid prefix'
+);
+
+-- A former member (moved to another household) must lose write access to the
+-- old household's objects and to their own legacy uid-prefixed objects.
+reset role;
+select set_config('storage.allow_delete_query', 'true', true);
+update public.household_members member
+set household_id = other_member.household_id
+from public.household_members other_member
+where member.user_id = 'a6400000-0000-0000-0000-000000000001'
+  and other_member.user_id = 'a6400000-0000-0000-0000-000000000003';
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', 'a6400000-0000-0000-0000-000000000001', 'role', 'authenticated')::text,
+  true
+);
+set local role authenticated;
+
+with removed as (
+  delete from storage.objects
+  where bucket_id = 'item-images'
+    and name = 'a6400000-0000-0000-0000-000000000001/orphan.jpg'
+  returning 1
+)
+select is(
+  (select count(*)::int from removed),
+  0,
+  'former member cannot delete their own uid-prefixed object after leaving the household'
+);
+with updated as (
+  update storage.objects
+  set metadata = '{}'::jsonb
+  where bucket_id = 'item-images'
+    and name = 'a6400000-0000-0000-0000-000000000001/orphan.jpg'
+  returning 1
+)
+select is(
+  (select count(*)::int from updated),
+  0,
+  'former member cannot update their own uid-prefixed object after leaving the household'
+);
+with removed as (
+  delete from storage.objects
+  where bucket_id = 'item-images'
+    and name like (select household_id::text from public.household_members where user_id = 'a6400000-0000-0000-0000-000000000002') || '/%'
+  returning 1
+)
+select is(
+  (select count(*)::int from removed),
+  0,
+  'former member cannot delete objects under the old household prefix'
 );
 
 select * from finish();

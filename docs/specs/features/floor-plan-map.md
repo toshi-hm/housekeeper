@@ -134,4 +134,4 @@ atoms / molecules / organisms には対応する `.stories.tsx` とテストを�
 - ドア・窓・壁厚・寸法線。
 - GLB/OBJインポートと家具ライブラリ。
 - 間取りの複数revision履歴・差分表示。
-- Household Sharing対応後の共同編集・権限。
+- Household Sharing対応後の共同編集・権限（現状の間取りRLSは意図的にユーザー単位。世帯共有化は別Issueで仕様判断する）。
