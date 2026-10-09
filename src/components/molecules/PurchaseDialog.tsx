@@ -1,10 +1,14 @@
 import { X } from "lucide-react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { MultiTagSelect } from "@/components/molecules/MultiTagSelect";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { useItemLots } from "@/hooks/useItemLots";
+import { useCreateTag, useItemTagIds, useTags } from "@/hooks/useTags";
 import type { Item, ItemFormValues } from "@/types/item";
 
 interface PurchaseDialogProps {
@@ -18,15 +22,20 @@ interface PurchaseDialogProps {
    * バーコード一致による統合は購入完了時にしか判明しないため対象外。
    */
   existingItem?: Item | null;
-  onSubmit: (values: ItemFormValues) => void;
+  /**
+   * `tagIds` は `existingItem` 指定時のみ渡される（統合先アイテムに設定するタグ一式）。
+   */
+  onSubmit: (values: ItemFormValues, tagIds?: string[]) => void;
   onClose: () => void;
   isSubmitting?: boolean;
   onPendingFileChange?: (file: File | null) => void;
   onPendingImageUrlChange?: (url: string | null) => void;
 }
 
-export const PurchaseDialog = ({
-  open,
+export const PurchaseDialog = (props: PurchaseDialogProps) =>
+  props.open ? <PurchaseDialogContent {...props} /> : null;
+
+const PurchaseDialogContent = ({
   itemName,
   existingItem,
   onSubmit,
@@ -36,18 +45,31 @@ export const PurchaseDialog = ({
   onPendingImageUrlChange,
 }: PurchaseDialogProps) => {
   const { t } = useTranslation("shopping");
+  const { t: tItems } = useTranslation("items");
   const { t: tCommon } = useTranslation("common");
   const titleId = useId();
   const containerRef = useDialogA11y<HTMLDivElement>({
-    open,
+    open: true,
     onClose,
     disableClose: isSubmitting,
   });
-
-  if (!open) return null;
+  const { data: tags = [] } = useTags();
+  const createTag = useCreateTag();
+  const itemTagsQuery = useItemTagIds(existingItem?.id ?? "");
+  // 購入店は items ではなくロット単位の値なので、直近の購入店を初期値にする。
+  const lotsQuery = useItemLots(existingItem?.id ?? "");
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [tagsInitialized, setTagsInitialized] = useState(false);
+  // 統合先アイテムの既存タグを一度だけ初期値として取り込む（EditItemPage と同じ方式）。
+  if (existingItem && !tagsInitialized && itemTagsQuery.isSuccess) {
+    setTagsInitialized(true);
+    setSelectedTagIds(itemTagsQuery.data);
+  }
 
   // #830: 既存アイテムへ統合される場合、フォームの初期値をそのアイテムの現在値で
   // 埋める。空欄のまま保存すると入力済みの値が消えたように見えるのを防ぐ。
+  const lastStoreName =
+    [...(lotsQuery.data ?? [])].reverse().find((lot) => lot.store_name)?.store_name ?? null;
   const defaultValues: Partial<ItemFormValues> = existingItem
     ? {
         name: itemName ?? existingItem.name,
@@ -61,6 +83,11 @@ export const PurchaseDialog = ({
         // 統合先が日用品なら期限欄を出さない。渡し忘れると null 上書きで
         // 種別の個別指定が消える（#929 セルフレビュー）。
         item_type: existingItem.item_type ?? null,
+        // 内包量・単位・購入店も既存値を初期表示する。内包量はロット残量の基準なので
+        // 下の ItemForm 側で変更不可にする（NewItemPage の既存アイテム統合と同じ扱い）。
+        content_amount: existingItem.content_amount,
+        content_unit: existingItem.content_unit,
+        store_name: lastStoreName,
         image_path: existingItem.image_path ?? "",
         units: 1,
       }
@@ -100,8 +127,30 @@ export const PurchaseDialog = ({
           </p>
         )}
         <ItemForm
+          // 直近の購入店はロット取得後にしか判明しないため、取得完了時に初期値を反映し直す。
+          key={existingItem && !lotsQuery.isSuccess ? "loading-lots" : "ready"}
           defaultValues={defaultValues}
-          onSubmit={onSubmit}
+          onSubmit={(values) => onSubmit(values, existingItem ? selectedTagIds : undefined)}
+          disableContentAmount={!!existingItem}
+          extraFields={
+            existingItem ? (
+              <div className="space-y-2">
+                <Label>{tItems("tags")}</Label>
+                <MultiTagSelect
+                  tags={tags}
+                  selectedIds={selectedTagIds}
+                  onChange={setSelectedTagIds}
+                  onCreate={(name) => createTag.mutateAsync({ name })}
+                  labels={{
+                    placeholder: tItems("tagPlaceholder"),
+                    addLabel: tItems("addTag"),
+                    removeLabel: tCommon("delete"),
+                    empty: tItems("tagsEmpty"),
+                  }}
+                />
+              </div>
+            ) : undefined
+          }
           isSubmitting={isSubmitting}
           submitLabel={t("createItemFromPurchase")}
           onPendingFileChange={onPendingFileChange}

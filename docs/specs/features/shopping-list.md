@@ -35,6 +35,17 @@
 主要 organism: `ShoppingList`, `ShoppingForm`, `PurchaseDialog`
 主要 molecule: `ShoppingRow`, `PurchaseHistoryRow`
 
+### 購入ダイアログの既存アイテム統合時の初期値
+
+`linked_item_id` で統合先のアクティブなアイテムが分かる場合、`PurchaseDialog` は
+そのアイテムの現在値をフォームへ転記する: カテゴリ・保管場所・メモ・最低在庫・自動補充・
+期限種別・**種別（食料品/日用品）**・**内包量/単位**・**タグ**・**購入店**（直近ロットの値）。
+
+- 内包量はロット残量の基準のため変更不可（`disableContentAmount`）。items へは書き戻さない
+- 種別・タグは送信時に統合先アイテムへ反映する（種別は `mergeableItemFieldsFromForm`、
+  タグは `items_to_tags`）。購入店は新規ロットの `store_name` として保存される
+- オフラインキュー経由の購入ではタグ変更は反映されない（キューは購入入力のみを保持するため）
+
 ## データ
 
 `shopping_list_items` / `shopping_list_archive`（`docs/specs/database.md` 参照）

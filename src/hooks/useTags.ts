@@ -7,7 +7,7 @@ import { useToast } from "@/lib/toast-context";
 import type { Tag } from "@/types/item";
 
 const TAGS_KEY = ["item-tags"] as const;
-const ITEM_TAGS_KEY = ["item-tags-of-item"] as const;
+export const ITEM_TAGS_KEY = ["item-tags-of-item"] as const;
 const TAG_USAGE_COUNTS_KEY = ["items", "tag-usage-counts"] as const;
 
 const MAX_NAME_LENGTH = 40;

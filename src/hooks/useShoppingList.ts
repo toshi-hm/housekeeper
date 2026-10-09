@@ -252,6 +252,9 @@ const markShoppingItemPurchased = async (shoppingItemId: string, itemId: string)
  * 既存アイテムへ統合する購入パス（linked_item_id一致 / バーコード一致）で、
  * フォーム入力を items テーブルへ反映するためのフィールド抽出 (#830)。
  *
+ * `item_type`（種別）は含める。購入店（`store_name`）は `item_lots` の列で
+ * `lotValuesFromForm` が保存し、タグは items_to_tags なので呼び出し側（購入画面）が別途保存する。
+ *
  * `units`/`content_amount`/`content_unit`/`barcode` 等は含めない —
  * これらはロット（`lotValuesFromForm`）または `syncItemAggregate` が
  * 別途扱う値であり、購入フォームの `units`（今回購入した数量）を
@@ -268,6 +271,7 @@ const mergeableItemFieldsFromForm = (itemValues: ItemFormValues) =>
     auto_reorder: itemValues.auto_reorder,
     reorder_threshold: itemValues.reorder_threshold,
     expiry_type: itemValues.expiry_type,
+    item_type: itemValues.item_type,
     image_path: itemValues.image_path,
   });
 

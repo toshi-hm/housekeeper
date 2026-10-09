@@ -4,7 +4,9 @@ import { describe, expect, it, mock, spyOn } from "bun:test";
 import { type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
+import * as useItemLotsModule from "../../hooks/useItemLots";
 import * as useMasterDataModule from "../../hooks/useMasterData";
+import * as useTagsModule from "../../hooks/useTags";
 import i18n from "../../lib/i18n";
 import { ToastContext, type ToastContextValue } from "../../lib/toast-context";
 import type { Item } from "../../types/item";
@@ -262,6 +264,70 @@ describe("PurchaseDialog", () => {
 
       catSpy.mockRestore();
       locSpy.mockRestore();
+    });
+
+    it("内包量・単位・購入店・タグを既存値で初期表示し、内包量は変更不可にする", () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const catSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useCategories>);
+      const locSpy = spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+      const tagsSpy = spyOn(useTagsModule, "useTags").mockReturnValue({
+        data: [{ id: "tag-1", name: "常備品" }],
+      } as unknown as ReturnType<typeof useTagsModule.useTags>);
+      const itemTagsSpy = spyOn(useTagsModule, "useItemTagIds").mockReturnValue({
+        isSuccess: true,
+        data: ["tag-1"],
+      } as ReturnType<typeof useTagsModule.useItemTagIds>);
+      const lotsSpy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+        isSuccess: true,
+        data: [
+          { id: "l1", store_name: "古い店" },
+          { id: "l2", store_name: null },
+          { id: "l3", store_name: "近所のスーパー" },
+        ],
+      } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>);
+      const onSubmit = mock(() => {});
+
+      const { getByLabelText, getByText, container } = render(
+        <PurchaseDialog
+          open={true}
+          itemName="有機牛乳"
+          existingItem={existingItem}
+          onSubmit={onSubmit}
+          onClose={() => {}}
+        />,
+        { wrapper: makeWrapper(qc) },
+      );
+
+      const amount = getByLabelText(i18n.t("items:contentAmount")) as HTMLInputElement;
+      expect(amount.value).toBe("1000");
+      expect(amount.disabled).toBe(true);
+      expect((getByLabelText(i18n.t("items:storeName")) as HTMLInputElement).value).toBe(
+        "近所のスーパー",
+      );
+      expect(getByText("常備品")).toBeDefined();
+
+      fireEvent.submit(container.querySelector("form") as HTMLFormElement);
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      const [values, tagIds] = onSubmit.mock.calls[0] as unknown as [
+        { content_amount: number; content_unit: string; store_name: string | null },
+        string[],
+      ];
+      expect(values).toMatchObject({
+        content_amount: 1000,
+        content_unit: "mL",
+        store_name: "近所のスーパー",
+      });
+      expect(tagIds).toEqual(["tag-1"]);
+
+      catSpy.mockRestore();
+      locSpy.mockRestore();
+      tagsSpy.mockRestore();
+      itemTagsSpy.mockRestore();
+      lotsSpy.mockRestore();
     });
 
     it("existingItem が無い通常の購入では既存値バナーを表示しない", () => {
