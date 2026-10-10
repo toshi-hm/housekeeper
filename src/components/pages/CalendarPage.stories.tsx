@@ -119,3 +119,13 @@ export const Loading: Story = {
     isLoading: true,
   },
 };
+
+export const ErrorState: Story = {
+  parameters: { vrt: { disable: true } },
+  args: {
+    items: [],
+    isLoading: false,
+    isError: true,
+    onRetry: () => {},
+  },
+};

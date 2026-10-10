@@ -72,4 +72,5 @@ export const A11Y_BASELINE = new Set<string>([
   "components-organisms-expirycalendar--empty",
   "components-pages-calendarpage--default",
   "components-pages-calendarpage--empty",
+  "components-pages-calendarpage--error-state",
 ]);
