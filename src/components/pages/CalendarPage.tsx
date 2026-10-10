@@ -4,12 +4,15 @@ import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ExpiryCheckItem } from "@/components/molecules/ExpiryCheckItem";
 import { ExpiryCalendar } from "@/components/organisms/ExpiryCalendar";
+import { Button } from "@/components/ui/button";
 import { type Category, dropExpiryForDailyGoods, type Item } from "@/types/item";
 
 interface CalendarPageProps {
   items: Item[];
   categories: Category[];
   isLoading: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   warningDays?: number;
   onCheck: (item: Item) => Promise<void>;
   onUndo: (lotId: string) => Promise<void>;
@@ -20,12 +23,15 @@ export const CalendarPage = ({
   items: rawItems,
   categories,
   isLoading,
+  isError = false,
+  onRetry,
   warningDays,
   onCheck,
   onUndo,
   pendingRemovals,
 }: CalendarPageProps) => {
   const { t } = useTranslation("calendar");
+  const { t: tc } = useTranslation("common");
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
   const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
 
@@ -93,7 +99,20 @@ export const CalendarPage = ({
           </div>
         </div>
       )}
-      {items.length === 0 && (
+      {isError && (
+        <div
+          role="alert"
+          className="space-y-3 rounded-lg border border-destructive p-4 text-center text-destructive"
+        >
+          <p className="text-sm">{tc("unknownError")}</p>
+          {onRetry && (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              {tc("retry")}
+            </Button>
+          )}
+        </div>
+      )}
+      {!isError && items.length === 0 && (
         <div className="py-12 text-center text-muted-foreground">
           <CalendarDays className="mx-auto mb-3 h-12 w-12 opacity-30" />
           <p className="text-sm font-medium">{t("noItems")}</p>
