@@ -199,6 +199,42 @@ describe("EditItemPage - backing a lot-less item's units increase with a real lo
     expect(itemUpdatePayload).not.toHaveProperty("store_name");
   });
 
+  it("既存タグの取得が未完了のときは setItemTags を呼ばない（タグ全消し防止, #1201）", async () => {
+    itemTagIdsSpy.mockReturnValue({
+      data: undefined,
+      isSuccess: false,
+    } as unknown as ReturnType<typeof useTagsModule.useItemTagIds>);
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: baseItem,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+    lotsSpy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>);
+
+    const { getByTestId } = render(<EditItemPage itemId="item-1" />, { wrapper: Wrapper });
+    fireEvent.click(getByTestId("submit-form"));
+
+    await waitFor(() => expect(updateItemMutateAsync).toHaveBeenCalled());
+    await waitFor(() => expect(createLotMutateAsync).toHaveBeenCalled());
+    expect(setItemTagsSpy).not.toHaveBeenCalled();
+  });
+
+  it("既存タグの取得が完了していれば setItemTags を呼ぶ", async () => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: baseItem,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+    lotsSpy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>);
+
+    const { getByTestId } = render(<EditItemPage itemId="item-1" />, { wrapper: Wrapper });
+    fireEvent.click(getByTestId("submit-form"));
+
+    await waitFor(() => expect(setItemTagsSpy).toHaveBeenCalledWith("item-1", []));
+  });
+
   it("updates the existing lot (not creates a new one) when the item already has a lot", async () => {
     itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
       data: { ...baseItem, units: 2 },
