@@ -3,6 +3,7 @@ import { recordNotificationFailure } from "../_shared/notificationFailures.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { buildLowStockMessage, resolveLanguage } from "./content.ts";
 import { zonedNow } from "./date.ts";
+import { type StoredPushSubscription, toWebPushSubscription } from "./push.ts";
 import { type LowStockRow, selectLowStockDailyGoods } from "./selection.ts";
 
 const corsHeaders = {
@@ -18,13 +19,6 @@ interface NotificationPreference {
   email_address: string | null;
   notify_at: string | null;
   timezone: string | null;
-}
-
-interface PushSubscription {
-  id: string;
-  endpoint: string;
-  p256dh: string;
-  auth: string;
 }
 
 export const handler = async (req: Request): Promise<Response> => {
@@ -203,10 +197,10 @@ export const handler = async (req: Request): Promise<Response> => {
               );
             }
             let hadDeliveryFailure = false;
-            for (const subscription of availableSubscriptions as PushSubscription[]) {
+            for (const subscription of availableSubscriptions as StoredPushSubscription[]) {
               try {
                 await webpush.sendNotification(
-                  subscription,
+                  toWebPushSubscription(subscription),
                   JSON.stringify({
                     title: message.title,
                     body: message.body,
