@@ -2,7 +2,7 @@ import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tansta
 import { useTranslation } from "react-i18next";
 
 import { removeItemImageFile } from "@/hooks/useItemImage";
-import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { createLot, LOTS_KEY, reviveSoftDeletedItem, syncItemAggregate } from "@/hooks/useItemLots";
 import { maybeAutoReorder } from "@/lib/autoReorder";
 import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
@@ -326,16 +326,7 @@ const tryReviveItem = async (
   if (!data) return null;
 
   const item = data as Item;
-  const { data: revived, error } = await supabase
-    .from("items")
-    .update({
-      deleted_at: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", item.id)
-    .select()
-    .single();
-  if (error) throw error;
+  const revived = await reviveSoftDeletedItem(item.id);
 
   await createLot(userId, item.id, {
     units: values.units ?? 1,
@@ -347,7 +338,7 @@ const tryReviveItem = async (
   });
   await syncItemAggregate(item.id);
 
-  return revived as Item;
+  return revived;
 };
 
 interface CreateItemInput {

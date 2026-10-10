@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
-import { createLot, LOTS_KEY, syncItemAggregate } from "@/hooks/useItemLots";
+import { createLot, LOTS_KEY, reviveSoftDeletedItem, syncItemAggregate } from "@/hooks/useItemLots";
 import { normalizeCreateValues, normalizeUpdateValues } from "@/hooks/useItems";
 import { PURCHASE_HISTORY_KEY } from "@/hooks/usePurchaseHistory";
 import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
@@ -430,16 +430,7 @@ export const purchaseShoppingItem = async ({
       // このパスはフォームがプリフィルされない（#879セルフレビュー、
       // PurchaseInput.applyMergeFields のコメント参照）ため、items 側の
       // フィールドは復活(deleted_at解除)のみで、フォーム入力は反映しない。
-      const { data: revivedLinked, error: reviveLinkedError } = await supabase
-        .from("items")
-        .update({
-          deleted_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", linkedDeletedItem.id)
-        .select()
-        .single();
-      if (reviveLinkedError) throw reviveLinkedError;
+      const revivedLinked = await reviveSoftDeletedItem(linkedDeletedItem.id);
       await reserveAndCreateLot(
         shoppingItemId,
         user.id,
@@ -499,16 +490,7 @@ export const purchaseShoppingItem = async ({
       // バーコード一致による復活も購入完了時にしか対象が判明せずプリフィル
       // されない（#879セルフレビュー）ため、items 側は復活のみでフォーム
       // 入力は反映しない。
-      const { data: revived, error: reviveError } = await supabase
-        .from("items")
-        .update({
-          deleted_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", deletedItem.id)
-        .select()
-        .single();
-      if (reviveError) throw reviveError;
+      const revived = await reviveSoftDeletedItem(deletedItem.id);
       await reserveAndCreateLot(
         shoppingItemId,
         user.id,

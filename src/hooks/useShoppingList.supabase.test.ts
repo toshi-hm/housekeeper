@@ -29,6 +29,7 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
     limit: chainMethod("limit"),
     insert: chainMethod("insert"),
     update: chainMethod("update"),
+    delete: chainMethod("delete"),
     upsert: chainMethod("upsert"),
     single: () => {
       callLog.push({ table, method: "single", args: [] });
@@ -246,6 +247,7 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
       { data: null, error: null }, // syncItemAggregate update
     ];
     responseQueues.item_lots = [
+      { data: null, error: null }, // 復活時の旧ロット削除(#1208)
       { data: { id: "lot-1" }, error: null }, // createLot insert
       { data: [], error: null }, // syncItemAggregateのロット取得
     ];
@@ -257,6 +259,20 @@ describe("purchaseShoppingItem (#440: 未検査エラーによる重複作成の
 
     expect(result._revived).toBe(true);
     expect(result.image_path).toBe("existing.jpg");
+
+    // #1208: 旧ロットを新ロット作成より先に削除し、deletion_reason もクリアする
+    const methods = callLog
+      .filter((c) => c.table === "item_lots")
+      .map((c) => c.method)
+      .filter((m) => m === "delete" || m === "insert");
+    expect(methods).toEqual(["delete", "insert"]);
+    const reviveUpdate = callLog.find(
+      (c) =>
+        c.table === "items" &&
+        c.method === "update" &&
+        (c.args[0] as Record<string, unknown>).deleted_at === null,
+    );
+    expect(reviveUpdate?.args[0]).toMatchObject({ deleted_at: null, deletion_reason: null });
   });
 
   // #830: linked_item_id一致でアクティブアイテムへ統合するパスは、購入ダイアログが

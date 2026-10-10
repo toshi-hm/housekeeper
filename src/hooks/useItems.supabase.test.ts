@@ -363,6 +363,41 @@ describe("createItem", () => {
   });
 });
 
+describe("createItem — ソフトデリート済みアイテムの復活 (#1208)", () => {
+  test("復活時は旧ロットを新ロット作成より先に削除し、deletion_reason もクリアする", async () => {
+    responseQueues.items = [
+      { data: null, error: null }, // tryStackToActiveItem: no active match
+      { data: makeItem({ id: "item-old", deleted_at: "2026-01-01T00:00:00Z" }), error: null }, // tryReviveItem: soft-deleted match
+      { data: makeItem({ id: "item-old", deleted_at: null }), error: null }, // revive update
+      { data: { content_amount: 1 }, error: null }, // syncItemAggregate content_amount
+      { data: null, error: null }, // syncItemAggregate update
+    ];
+    responseQueues.item_lots = [
+      { data: null, error: null }, // 旧ロット削除
+      { data: { id: "lot-new" }, error: null }, // createLot insert
+      { data: [], error: null }, // syncItemAggregate lots
+    ];
+
+    const result = await createItem({
+      values: { name: "Test", units: 1, barcode: "123456" },
+    });
+
+    expect(result._revived).toBe(true);
+    const lotMethods = callLog
+      .filter((c) => c.table === "item_lots")
+      .map((c) => c.method)
+      .filter((m) => m === "delete" || m === "insert");
+    expect(lotMethods).toEqual(["delete", "insert"]);
+    const reviveUpdate = callLog.find(
+      (c) =>
+        c.table === "items" &&
+        c.method === "update" &&
+        (c.args[0] as Record<string, unknown>).deleted_at === null,
+    );
+    expect(reviveUpdate?.args[0]).toMatchObject({ deleted_at: null, deletion_reason: null });
+  });
+});
+
 describe("buildNameOrBarcodeSearchFilter", () => {
   test("通常の検索語はname/barcode両方のilikeパターンを生成する", () => {
     expect(buildNameOrBarcodeSearchFilter("milk")).toBe(
