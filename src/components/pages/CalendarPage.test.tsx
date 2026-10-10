@@ -1,5 +1,5 @@
-import { render } from "@testing-library/react";
-import { describe, expect, it } from "bun:test";
+import { fireEvent, render } from "@testing-library/react";
+import { describe, expect, it, mock } from "bun:test";
 import type { ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
@@ -109,5 +109,37 @@ describe("CalendarPage — 日用品切り替え後の残存期限を除外す�
     );
 
     expect(getByText("牛乳")).toBeTruthy();
+  });
+});
+
+describe("CalendarPage — 取得エラー表示 (#1200)", () => {
+  const renderPage = (props: { isError: boolean; onRetry?: () => void }) =>
+    render(
+      <CalendarPage
+        items={[]}
+        categories={[]}
+        isLoading={false}
+        isError={props.isError}
+        onRetry={props.onRetry}
+        onCheck={async () => {}}
+        onUndo={async () => {}}
+        pendingRemovals={[]}
+      />,
+      { wrapper },
+    );
+
+  it("エラー時は空状態ではなくエラーと再試行ボタンを表示し、押すと onRetry が呼ばれる", () => {
+    const onRetry = mock(() => {});
+    const { getByRole, queryByText } = renderPage({ isError: true, onRetry });
+    expect(getByRole("alert")).toBeTruthy();
+    expect(queryByText(i18n.t("calendar:noItems"))).toBeNull();
+    fireEvent.click(getByRole("button", { name: i18n.t("common:retry") }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("エラーでなく0件のときは従来どおり空状態を表示する", () => {
+    const { queryByRole, getByText } = renderPage({ isError: false });
+    expect(queryByRole("alert")).toBeNull();
+    expect(getByText(i18n.t("calendar:noItems"))).toBeTruthy();
   });
 });

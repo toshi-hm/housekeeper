@@ -9,7 +9,7 @@ import { useUserSettings } from "@/hooks/useUserSettings";
 export { computeCalendarDelta } from "@/types/calendar";
 
 const CalendarRoutePage = () => {
-  const { data: items = [], isLoading } = useItemsWithExpiry();
+  const { data: items = [], isLoading, isError, refetch } = useItemsWithExpiry();
   const { data: categories = [] } = useCategories();
   const { data: userSettings } = useUserSettings();
   const { check, undo, pendingRemovalList } = useCalendarConsume();
@@ -19,6 +19,8 @@ const CalendarRoutePage = () => {
       items={items}
       categories={categories}
       isLoading={isLoading}
+      isError={isError}
+      onRetry={() => void refetch()}
       warningDays={userSettings?.expiry_warning_days}
       onCheck={check}
       onUndo={undo}
