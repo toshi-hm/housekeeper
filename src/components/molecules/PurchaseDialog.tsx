@@ -23,7 +23,8 @@ interface PurchaseDialogProps {
    */
   existingItem?: Item | null;
   /**
-   * `tagIds` は `existingItem` 指定時のみ渡される（統合先アイテムに設定するタグ一式）。
+   * `tagIds` は `existingItem` 指定かつ既存タグの取得完了後のみ渡される
+   * （統合先アイテムに設定するタグ一式。未取得のまま空配列で上書きして全タグが外れるのを防ぐ）。
    */
   onSubmit: (values: ItemFormValues, tagIds?: string[]) => void;
   onClose: () => void;
@@ -130,7 +131,9 @@ const PurchaseDialogContent = ({
           // 直近の購入店はロット取得後にしか判明しないため、取得完了時に初期値を反映し直す。
           key={existingItem && !lotsQuery.isSuccess ? "loading-lots" : "ready"}
           defaultValues={defaultValues}
-          onSubmit={(values) => onSubmit(values, existingItem ? selectedTagIds : undefined)}
+          onSubmit={(values) =>
+            onSubmit(values, existingItem && tagsInitialized ? selectedTagIds : undefined)
+          }
           disableContentAmount={!!existingItem}
           extraFields={
             existingItem ? (

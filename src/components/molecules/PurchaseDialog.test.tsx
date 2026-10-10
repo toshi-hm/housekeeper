@@ -330,6 +330,50 @@ describe("PurchaseDialog", () => {
       lotsSpy.mockRestore();
     });
 
+    it("既存タグの取得が未完了のうちに送信してもタグ一式(空配列)を渡さない", () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const catSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useCategories>);
+      const locSpy = spyOn(useMasterDataModule, "useStorageLocations").mockReturnValue({
+        data: [],
+      } as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+      const tagsSpy = spyOn(useTagsModule, "useTags").mockReturnValue({
+        data: [],
+      } as unknown as ReturnType<typeof useTagsModule.useTags>);
+      const itemTagsSpy = spyOn(useTagsModule, "useItemTagIds").mockReturnValue({
+        isSuccess: false,
+        data: undefined,
+      } as unknown as ReturnType<typeof useTagsModule.useItemTagIds>);
+      const lotsSpy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+        isSuccess: true,
+        data: [],
+      } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>);
+      const onSubmit = mock(() => {});
+
+      const { container } = render(
+        <PurchaseDialog
+          open={true}
+          itemName="有機牛乳"
+          existingItem={existingItem}
+          onSubmit={onSubmit}
+          onClose={() => {}}
+        />,
+        { wrapper: makeWrapper(qc) },
+      );
+
+      fireEvent.submit(container.querySelector("form") as HTMLFormElement);
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      const [, tagIds] = onSubmit.mock.calls[0] as unknown as [unknown, string[] | undefined];
+      expect(tagIds).toBeUndefined();
+
+      catSpy.mockRestore();
+      locSpy.mockRestore();
+      tagsSpy.mockRestore();
+      itemTagsSpy.mockRestore();
+      lotsSpy.mockRestore();
+    });
+
     it("existingItem が無い通常の購入では既存値バナーを表示しない", () => {
       const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       const catSpy = spyOn(useMasterDataModule, "useCategories").mockReturnValue({
