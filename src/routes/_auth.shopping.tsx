@@ -50,6 +50,7 @@ import {
 } from "@/hooks/useShoppingTemplates";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { useForecastAlerts, useStorePriceComparisons } from "@/hooks/useStats";
+import { ITEM_TAGS_KEY, setItemTags } from "@/hooks/useTags";
 import { useUndoableAction } from "@/hooks/useUndoableAction";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { parseLocalDate } from "@/lib/dateUtils";
@@ -357,7 +358,11 @@ export const ShoppingPage = () => {
     pendingPurchaseImageUrlRef.current = null;
   };
 
-  const handlePurchase = async (values: ItemFormValues, applyMergeFields: boolean) => {
+  const handlePurchase = async (
+    values: ItemFormValues,
+    applyMergeFields: boolean,
+    tagIds?: string[],
+  ) => {
     if (!pendingPurchaseId) return;
     const id = pendingPurchaseId;
     const purchaseInput = { shoppingItemId: id, itemValues: values, applyMergeFields };
@@ -393,6 +398,20 @@ export const ShoppingPage = () => {
         return;
       }
       const newItem = outcome.result;
+
+      // 既存アイテムへ統合した場合のみ、ダイアログで編集されたタグを反映する。
+      // タグの保存失敗で購入自体を失敗扱いにしないよう、警告トーストに留める。
+      if (applyMergeFields && tagIds) {
+        try {
+          await setItemTags(newItem.id, tagIds);
+          await qc.invalidateQueries({ queryKey: ITEM_TAGS_KEY });
+        } catch (err) {
+          toast(
+            err instanceof OfflineError ? t("common:offlineError") : t("common:unknownError"),
+            err instanceof OfflineError ? "error" : "warning",
+          );
+        }
+      }
 
       // 購入で作成したアイテムに、ダイアログで選択された画像をアップロードする (#453)。
       // NewItemPage と同じく、アイテム作成後に itemId 指定で uploadItemImage する。
@@ -742,8 +761,8 @@ export const ShoppingPage = () => {
           open={!!pendingPurchaseId}
           itemName={pendingPurchaseShoppingItem?.name}
           existingItem={pendingPurchaseExistingItem}
-          onSubmit={(values) => {
-            void handlePurchase(values, !!pendingPurchaseExistingItem);
+          onSubmit={(values, tagIds) => {
+            void handlePurchase(values, !!pendingPurchaseExistingItem, tagIds);
           }}
           onClose={() => {
             if (!purchase.isPending) {
