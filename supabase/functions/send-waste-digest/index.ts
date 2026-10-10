@@ -1,3 +1,4 @@
+import { resolveHouseholdId } from "../_shared/household.ts";
 import { fetchAllPages } from "../_shared/pagination.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { recordNotificationFailure } from "../_shared/notificationFailures.ts";
@@ -98,6 +99,19 @@ export const handler = async (req: Request): Promise<Response> => {
         if (notifyHour !== zonedNowHour(timezone)) return;
       }
 
+      // #1210: items / consumption_logs は世帯単位で共有されるため、作成者(user_id)
+      // ではなく世帯で絞る。ストリーク(waste_streaks)等の通知状態は従来どおり user_id 単位。
+      const householdId = await resolveHouseholdId(
+        (userId) =>
+          supabase
+            .from("household_members")
+            .select("household_id")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        pref.user_id,
+      );
+      if (!householdId) return;
+
       // spec(waste-reduction-dashboard.md エラー処理節)の「直近の消費ログが無い
       // (新規ユーザー等)場合はダイジェスト送信をスキップする」は、消費ログ
       // (consumption_logs)そのものの有無を指す。廃棄アイテムが0件のユーザー
@@ -106,7 +120,7 @@ export const handler = async (req: Request): Promise<Response> => {
       const { data: consumptionLogRows, error: consumptionLogsError } = await supabase
         .from("consumption_logs")
         .select("id")
-        .eq("user_id", pref.user_id)
+        .eq("household_id", householdId)
         .limit(1);
       if (consumptionLogsError) {
         console.error(
@@ -127,7 +141,7 @@ export const handler = async (req: Request): Promise<Response> => {
           const { data, error } = await supabase
             .from("items")
             .select("name, deleted_at")
-            .eq("user_id", pref.user_id)
+            .eq("household_id", householdId)
             .eq("deletion_reason", "expired_waste")
             .not("deleted_at", "is", null)
             .order("id", { ascending: true })

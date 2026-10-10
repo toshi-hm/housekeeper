@@ -92,7 +92,8 @@ export const handler = async (req: Request): Promise<Response> => {
         .select(
           "name, units, expiry_date, opened_remaining, minimum_stock, item_type, categories(kind)",
         )
-        .eq("user_id", user.id)
+        // #1210: 呼び出しユーザーのJWTでRLS(世帯単位)が効くため user_id では絞らない。
+        // 絞ると他メンバーが登録した品目がウィジェットの集計から漏れる。
         .is("deleted_at", null)
         .order("id", { ascending: true })
         .range(from, to);
