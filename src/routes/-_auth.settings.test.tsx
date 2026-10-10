@@ -245,6 +245,95 @@ describe("SettingsPage - expiryWarningDays validation", () => {
   });
 });
 
+describe("SettingsPage - 数値入力のa11y・保存挙動 (#1203)", () => {
+  let settingsSpy: ReturnType<typeof spyOn>;
+  let updateSpy: ReturnType<typeof spyOn>;
+  let notifSpy: ReturnType<typeof spyOn>;
+  let updateNotifSpy: ReturnType<typeof spyOn>;
+  let mfaSpies: readonly ReturnType<typeof spyOn>[];
+  let testNotifSpy: ReturnType<typeof spyOn>;
+  const mutateAsync = mock(async () => {});
+
+  beforeAll(async () => {
+    await i18n.changeLanguage("ja");
+  });
+
+  afterAll(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  beforeEach(() => {
+    mutateAsync.mockClear();
+    settingsSpy = spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+      data: { expiry_warning_days: 3, language: "ja" },
+      isLoading: false,
+    } as ReturnType<typeof useUserSettingsModule.useUserSettings>);
+    updateSpy = spyOn(useUserSettingsModule, "useUpdateUserSettings").mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>);
+    notifSpy = spyOn(useNotifModule, "useNotificationPreferences").mockReturnValue({
+      data: null,
+      isLoading: false,
+    } as ReturnType<typeof useNotifModule.useNotificationPreferences>);
+    updateNotifSpy = spyOn(useNotifModule, "useUpdateNotificationPreferences").mockReturnValue({
+      mutateAsync: mock(async () => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useNotifModule.useUpdateNotificationPreferences>);
+    mfaSpies = mockMfaHooks();
+    testNotifSpy = spyOn(useNotifModule, "useTestNotification").mockReturnValue({
+      mutate: mock(() => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useNotifModule.useTestNotification>);
+  });
+
+  afterEach(() => {
+    settingsSpy.mockRestore();
+    updateSpy.mockRestore();
+    notifSpy.mockRestore();
+    updateNotifSpy.mockRestore();
+    mfaSpies.forEach((s) => s.mockRestore());
+    testNotifSpy.mockRestore();
+    cleanup();
+  });
+
+  it("期限警告日数の入力がラベルに関連付けられている", () => {
+    const { stub } = makeToastStub();
+    const { getAllByLabelText } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const input = document.getElementById("expiry_warning_days");
+    expect(input).not.toBeNull();
+    expect(getAllByLabelText("日前").some((el) => el === input)).toBe(true);
+  });
+
+  it("値を変えずにフォーカスを外しても保存しない", async () => {
+    const { stub, toastFn } = makeToastStub();
+    const { getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    fireEvent.blur(getAllByRole("spinbutton")[0]!, { target: { value: "3" } });
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(mutateAsync).not.toHaveBeenCalled();
+    expect(toastFn).not.toHaveBeenCalled();
+  });
+
+  it("範囲外の値は保存済みの値に戻り、インラインエラーと aria-invalid が出る", async () => {
+    const { stub } = makeToastStub();
+    const { getAllByRole, findByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const input = getAllByRole("spinbutton")[0]! as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "99" } });
+    fireEvent.blur(input);
+
+    const alert = await findByRole("alert");
+    expect(alert.textContent).toBe("警告日数は1〜30日の範囲で入力してください");
+    expect(input.value).toBe("3");
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(input.getAttribute("aria-describedby")).toBe("expiry_warning_days-error");
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+});
+
 describe("SettingsPage - default unit", () => {
   let settingsSpy: ReturnType<typeof spyOn>;
   let updateSpy: ReturnType<typeof spyOn>;

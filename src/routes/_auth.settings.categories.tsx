@@ -34,7 +34,7 @@ export const CategoriesPage = () => {
   const { t: tc } = useTranslation("common");
   const { t: ti } = useTranslation("items");
   const navigate = useNavigate();
-  const { data: categories = [], isLoading } = useCategories();
+  const { data: categories = [], isLoading, isError, refetch } = useCategories();
   /** #863: 一覧表示の時点で使用中件数を取得し、削除ボタンの事前ヒントに使う。
    *  あくまでUI表示用の目安で、実際の削除可否は handleDeleteClick 内の
    *  checkCategoryUsage（クリック時のレースコンディション対策込みチェック）
@@ -226,7 +226,7 @@ export const CategoriesPage = () => {
             onChange={(e) => setNewName(e.target.value)}
             placeholder={t("categoryName")}
             maxLength={40}
-            disabled={createCategory.isPending}
+            disabled={createCategory.isPending || isError}
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleCreate();
             }}
@@ -235,7 +235,7 @@ export const CategoriesPage = () => {
             onClick={() => {
               void handleCreate();
             }}
-            disabled={createCategory.isPending || !newName.trim()}
+            disabled={createCategory.isPending || isError || !newName.trim()}
             size="icon"
             aria-label={tc("add")}
           >
@@ -286,6 +286,16 @@ export const CategoriesPage = () => {
       {isLoading ? (
         <div className="flex justify-center py-8">
           <Spinner />
+        </div>
+      ) : isError ? (
+        <div
+          role="alert"
+          className="flex flex-col items-center gap-4 rounded-lg border border-destructive p-6 text-center text-destructive"
+        >
+          <p className="text-sm">{tc("unknownError")}</p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            {tc("retry")}
+          </Button>
         </div>
       ) : categories.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">{t("noCategories")}</p>
