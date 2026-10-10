@@ -23,7 +23,7 @@ export const TagsPage = () => {
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
-  const { data: tags = [], isLoading } = useTags();
+  const { data: tags = [], isLoading, isError, refetch } = useTags();
   /** #1040: 削除確認ダイアログに使用件数を出すためのヒント表示専用。
    *  タグ削除自体は items_to_tags が ON DELETE CASCADE のためブロックはしない。 */
   const { data: usageCounts = {} } = useTagUsageCounts();
@@ -112,7 +112,7 @@ export const TagsPage = () => {
             onChange={(e) => setNewName(e.target.value)}
             placeholder={t("tagName")}
             maxLength={40}
-            disabled={createTag.isPending}
+            disabled={createTag.isPending || isError}
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleCreate();
             }}
@@ -121,7 +121,7 @@ export const TagsPage = () => {
             onClick={() => {
               void handleCreate();
             }}
-            disabled={createTag.isPending || !newName.trim()}
+            disabled={createTag.isPending || isError || !newName.trim()}
             size="icon"
             aria-label={tc("add")}
           >
@@ -135,6 +135,16 @@ export const TagsPage = () => {
       {isLoading ? (
         <div className="flex justify-center py-8">
           <Spinner />
+        </div>
+      ) : isError ? (
+        <div
+          role="alert"
+          className="flex flex-col items-center gap-4 rounded-lg border border-destructive p-6 text-center text-destructive"
+        >
+          <p className="text-sm">{tc("unknownError")}</p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            {tc("retry")}
+          </Button>
         </div>
       ) : tags.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">{t("noTags")}</p>
