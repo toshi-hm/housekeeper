@@ -1,4 +1,5 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
+import { resolveHouseholdId } from "../_shared/household.ts";
 import { recordNotificationFailure } from "../_shared/notificationFailures.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { buildLowStockMessage, resolveLanguage } from "./content.ts";
@@ -75,6 +76,18 @@ export const handler = async (req: Request): Promise<Response> => {
         if (notifyHour !== local.hour) return;
       }
 
+      // #1210: items は世帯単位で共有されるため、作成者(user_id)ではなく世帯で絞る。
+      const householdId = await resolveHouseholdId(
+        (userId) =>
+          supabase
+            .from("household_members")
+            .select("household_id")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        pref.user_id,
+      );
+      if (!householdId) return;
+
       let rows: LowStockRow[];
       try {
         rows = await fetchAllPages(async (from, to) => {
@@ -83,7 +96,7 @@ export const handler = async (req: Request): Promise<Response> => {
             .select(
               "id, name, units, minimum_stock, opened_remaining, deleted_at, item_type, categories(kind)",
             )
-            .eq("user_id", pref.user_id)
+            .eq("household_id", householdId)
             .is("deleted_at", null)
             .not("minimum_stock", "is", null)
             .order("id", { ascending: true })
