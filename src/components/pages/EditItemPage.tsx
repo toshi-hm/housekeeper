@@ -89,7 +89,9 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
       const updatePayload: Partial<ItemFormValues> = itemLevelValues;
       await updateItem.mutateAsync(updatePayload);
       try {
-        await setItemTags(itemId, selectedTagIds);
+        // #1201: 既存タグの取得が完了するまで selectedTagIds は空配列のため、
+        // その状態で保存すると差分計算で既存タグが全て外れてしまう。
+        if (tagsInitialized) await setItemTags(itemId, selectedTagIds);
       } catch {
         // タグ保存失敗は非致命
       }
