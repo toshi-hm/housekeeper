@@ -10,6 +10,7 @@ import {
   computeConsumption,
   type ConsumeLotParams,
   getLotRemainingAmount,
+  type Item,
   type ItemLot,
   roundFloat,
 } from "@/types/item";
@@ -62,6 +63,35 @@ export const createLot = async (
     .single();
   if (error) throw error;
   return data as ItemLot;
+};
+
+/**
+ * ソフトデリート済みアイテムを復活させる（#1208）。
+ *
+ * ソフトデリートは `item_lots` を消さないため、旧ロットを残したまま新ロットを追加すると
+ * `syncItemAggregate` が旧ロット（廃棄済みの在庫・期限切れ日付）まで合算してしまう。
+ * そこで復活時は旧ロットを先に削除し、`deletion_reason` もクリアする。
+ * 旧ロット削除 → 復活の順にすることで、途中失敗後のリトライでも旧ロットが混ざらない。
+ */
+export const reviveSoftDeletedItem = async (itemId: string): Promise<Item> => {
+  const { error: deleteLotsError } = await supabase
+    .from("item_lots")
+    .delete()
+    .eq("item_id", itemId);
+  if (deleteLotsError) throw deleteLotsError;
+
+  const { data, error } = await supabase
+    .from("items")
+    .update({
+      deleted_at: null,
+      deletion_reason: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", itemId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Item;
 };
 
 const updateLot = async (
