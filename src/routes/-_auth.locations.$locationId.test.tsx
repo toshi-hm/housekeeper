@@ -348,4 +348,26 @@ describe("LocationMapPage — 3D WebGL auto-fallback (#919)", () => {
     expect(getByRole("tab", { name: tab3d }).getAttribute("aria-selected")).toBe("false");
     expect(toastMock).toHaveBeenCalled();
   });
+
+  it("間取りの取得に失敗したら、未作成の空状態ではなくエラーと再試行を表示する (#1223)", () => {
+    const refetch = mock(() => Promise.resolve());
+    floorPlanSpy.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useFloorPlansModule.useFloorPlan>);
+
+    const { getByRole, queryByText } = render(<LocationMapPage />, {
+      wrapper: FallbackWrapper as React.ComponentType,
+    });
+    fireEvent.click(getByRole("tab", { name: /^mapFloorPlan$|2D floor plan|2D間取り/ }));
+
+    expect(getByRole("alert")).toBeDefined();
+    expect(queryByText(/^mapNoSharedFloorPlan$|No shared 2D floor plan|共通の2D間取り/)).toBeNull();
+    expect(queryByText(/^mapCreateSharedFloorPlan$|Create shared|共通間取りを作成/)).toBeNull();
+
+    fireEvent.click(getByRole("button", { name: /^retry$|Retry|再試行/ }));
+    expect(refetch).toHaveBeenCalled();
+  });
 });
