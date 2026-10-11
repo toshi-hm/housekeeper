@@ -1,4 +1,4 @@
-import { act, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { describe, expect, mock, test } from "bun:test";
 import { StrictMode } from "react";
 import { I18nextProvider } from "react-i18next";
@@ -97,5 +97,24 @@ describe("ExpiryDateScanner", () => {
     expect(getByRole("button", { name: i18n.t("common:close") })).toBeDefined();
 
     videoInputDevices = [];
+  });
+
+  test("ダイアログとして公開され、Escapeキーで閉じられる（#1221）", async () => {
+    const onClose = mock(() => undefined);
+
+    const { getByRole } = await act(async () => {
+      return render(
+        <I18nextProvider i18n={i18n}>
+          <ExpiryDateScanner onConfirm={() => undefined} onClose={onClose} />
+        </I18nextProvider>,
+      );
+    });
+
+    const dialog = getByRole("dialog");
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(dialog.getAttribute("aria-labelledby")).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalled();
   });
 });
