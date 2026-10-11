@@ -55,6 +55,9 @@ export type ConsumeItemUndo =
       unitsBefore: number;
       openedRemainingBefore: number | null;
       openedAtBefore: string | null;
+      /** 消費直後の units / opened_remaining。undo 時に楽観的排他制御の照合に使う (#1216)。 */
+      unitsAfter: number;
+      openedRemainingAfter: number | null;
       logId: string | null;
     };
 
@@ -172,6 +175,8 @@ export const consumeItem = async ({
       unitsBefore: item.units,
       openedRemainingBefore: item.opened_remaining ?? null,
       openedAtBefore: item.opened_at ?? null,
+      unitsAfter: result.units_after,
+      openedRemainingAfter: result.opened_remaining_after,
       logId: (logData as { id: string } | null)?.id ?? null,
     };
 
@@ -207,7 +212,9 @@ export const undoConsumeItem = async (undo: ConsumeItemUndo): Promise<void> => {
   }
 
   requireOnline();
-  const { error } = await supabase
+  // #1216: 消費後に別の消費/更新が入っていた場合に古い値で上書きしないよう、
+  // 消費直後の units / opened_remaining が一致するときだけ戻す。
+  let restoreQuery = supabase
     .from("items")
     .update({
       units: undo.unitsBefore,
@@ -215,8 +222,15 @@ export const undoConsumeItem = async (undo: ConsumeItemUndo): Promise<void> => {
       opened_at: undo.openedAtBefore,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", undo.itemId);
+    .eq("id", undo.itemId)
+    .eq("units", undo.unitsAfter);
+  restoreQuery =
+    undo.openedRemainingAfter === null
+      ? restoreQuery.is("opened_remaining", null)
+      : restoreQuery.eq("opened_remaining", undo.openedRemainingAfter);
+  const { data: restored, error } = await restoreQuery.select().maybeSingle();
   if (error) throw error;
+  if (!restored) throw new ConcurrentUpdateError();
 
   if (undo.logId) {
     const { error: logDeleteError } = await supabase
