@@ -59,12 +59,35 @@ export const LocationMapPage = () => {
   } = useItems({ storageLocationId: locationId }, "created_at");
   const { data: photoUrl } = useSignedLocationPhoto(location?.photo_path);
   // 写真マップは既存導線を最短で表示し、2D/3Dを選択した時だけ間取りを取得する。
-  const { data: floorPlan, isLoading: isLoadingFloorPlan } = useFloorPlan(view !== "photo");
-  const { data: storageLocationMarkers = [], isLoading: isLoadingStorageLocationMarkers } =
-    useFloorPlanStorageLocationMarkers(floorPlan?.id ?? null);
-  const { data: placements = [], isLoading: isLoadingPlacements } = useFloorPlanPlacements(
-    floorPlan?.id ?? null,
-  );
+  const {
+    data: floorPlan,
+    isLoading: isLoadingFloorPlan,
+    isError: isFloorPlanError,
+    refetch: refetchFloorPlan,
+  } = useFloorPlan(view !== "photo");
+  const {
+    data: storageLocationMarkers = [],
+    isLoading: isLoadingStorageLocationMarkers,
+    isError: isMarkersError,
+    refetch: refetchMarkers,
+  } = useFloorPlanStorageLocationMarkers(floorPlan?.id ?? null);
+  const {
+    data: placements = [],
+    isLoading: isLoadingPlacements,
+    isError: isPlacementsError,
+    refetch: refetchPlacements,
+  } = useFloorPlanPlacements(floorPlan?.id ?? null);
+  // #1223: 取得エラーを「間取り未作成」の空状態と区別する（作成ボタンで既存間取りを
+  // 上書きする誤操作も防ぐ）。
+  const isFloorPlanLoadError =
+    view !== "photo" && (isFloorPlanError || isMarkersError || isPlacementsError);
+  const handleRetryFloorPlan = () => {
+    // 無効化されているクエリ(間取り未取得時のマーカー/配置)を refetch すると
+    // floorPlanId=null で問い合わせてしまうため、エラーになったものだけ再取得する。
+    if (isFloorPlanError) void refetchFloorPlan();
+    if (isMarkersError) void refetchMarkers();
+    if (isPlacementsError) void refetchPlacements();
+  };
   const upsertPlacement = useUpsertFloorPlanPlacement();
   const deletePlacement = useDeleteFloorPlanPlacement();
   const placedItemIds = new Set(placements.map((placement) => placement.item_id));
@@ -146,7 +169,7 @@ export const LocationMapPage = () => {
                     : t("map3d")}
               </Button>
             ))}
-            {view === "2d" && (
+            {view === "2d" && !isFloorPlanLoadError && (
               <Link to="/locations/$locationId/edit" params={{ locationId }}>
                 <Button type="button" size="sm" variant="secondary">
                   {floorPlan ? t("mapEditSharedFloorPlan") : t("mapCreateSharedFloorPlan")}
@@ -162,7 +185,19 @@ export const LocationMapPage = () => {
               onItemClick={(itemId) => void navigate({ to: "/items/$itemId", params: { itemId } })}
             />
           )}
+          {isFloorPlanLoadError && (
+            <div
+              role="alert"
+              className="space-y-3 rounded-lg border border-destructive p-4 text-center text-destructive"
+            >
+              <p className="font-medium">{ts("storageLocationMapLoadError")}</p>
+              <Button type="button" size="sm" variant="outline" onClick={handleRetryFloorPlan}>
+                {t("retry")}
+              </Button>
+            </div>
+          )}
           {view === "2d" &&
+            !isFloorPlanLoadError &&
             (floorPlan ? (
               <FloorPlanViewer
                 document={floorPlan.document}
@@ -198,6 +233,7 @@ export const LocationMapPage = () => {
               </p>
             ))}
           {view === "3d" &&
+            !isFloorPlanLoadError &&
             (floorPlan ? (
               <Suspense
                 fallback={
