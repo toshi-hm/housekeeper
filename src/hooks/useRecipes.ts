@@ -137,7 +137,11 @@ export const useDeleteRecipe = () => {
       if (error) throw new Error(error.message);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: RECIPES_KEY });
+      // meal_plans.recipe_id は on delete set null のため、献立側も再取得する (#1215)
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: RECIPES_KEY }),
+        qc.invalidateQueries({ queryKey: ["meal-plans"] }),
+      ]);
     },
     onError: (error) => {
       if (error instanceof OfflineError) toast(t("offlineError"), "error");
