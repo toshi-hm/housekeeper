@@ -121,7 +121,7 @@ describe("ReceiptLineItemRow quantity input (#1222)", () => {
 
   test("空欄にでき、続けて入力した値がそのまま反映される", async () => {
     const user = userEvent.setup();
-    const onChange = mock((_patch: Partial<ReceiptDraftItem>) => {});
+    const onChange = mock<(patch: Partial<ReceiptDraftItem>) => void>();
     const { getByLabelText } = renderQuantity(onChange);
     const input = getByLabelText(i18n.t("quantity", { ns: "receiptScan" })) as HTMLInputElement;
 
@@ -134,7 +134,7 @@ describe("ReceiptLineItemRow quantity input (#1222)", () => {
 
   test("空欄のまま blur すると 1 に確定する", async () => {
     const user = userEvent.setup();
-    const onChange = mock((_patch: Partial<ReceiptDraftItem>) => {});
+    const onChange = mock<(patch: Partial<ReceiptDraftItem>) => void>();
     const { getByLabelText } = renderQuantity(onChange);
     const input = getByLabelText(i18n.t("quantity", { ns: "receiptScan" })) as HTMLInputElement;
 
@@ -145,7 +145,7 @@ describe("ReceiptLineItemRow quantity input (#1222)", () => {
 
   test("小数は blur 時に整数へ丸める", async () => {
     const user = userEvent.setup();
-    const onChange = mock((_patch: Partial<ReceiptDraftItem>) => {});
+    const onChange = mock<(patch: Partial<ReceiptDraftItem>) => void>();
     const { getByLabelText } = renderQuantity(onChange);
     const input = getByLabelText(i18n.t("quantity", { ns: "receiptScan" })) as HTMLInputElement;
 
