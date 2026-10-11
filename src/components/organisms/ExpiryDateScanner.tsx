@@ -1,12 +1,13 @@
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { Camera, Check, Keyboard, Loader2, RotateCcw, SwitchCamera, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Worker as TesseractWorker } from "tesseract.js";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { parseExpiryDateFromOcrText } from "@/lib/expiryDateOcr";
 
 interface ExpiryDateScannerProps {
@@ -23,6 +24,8 @@ const OCR_CHAR_WHITELIST = "0123456789./-年月日";
 export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps) => {
   const { t } = useTranslation("items");
   const { t: tCommon } = useTranslation("common");
+  const titleId = useId();
+  const containerRef = useDialogA11y<HTMLDivElement>({ open: true, onClose });
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
@@ -170,12 +173,21 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black lg:items-center lg:justify-center lg:bg-black/70">
-      <div className="flex h-full flex-col bg-black lg:h-[620px] lg:w-[480px] lg:overflow-hidden lg:rounded-xl">
+      <div
+        ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="flex h-full flex-col bg-black lg:h-[620px] lg:w-[480px] lg:overflow-hidden lg:rounded-xl"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2 text-white">
             <Camera className="h-5 w-5" />
-            <span className="font-medium">{t("expiryScanTitle")}</span>
+            <span id={titleId} className="font-medium">
+              {t("expiryScanTitle")}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             {stage === "camera" && devices.length > 1 && (
