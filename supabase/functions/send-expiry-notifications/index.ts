@@ -1,4 +1,5 @@
 import { fetchAllPages } from "../_shared/pagination.ts";
+import { resolveHouseholdId } from "../_shared/household.ts";
 import { type ItemType, resolveItemType } from "../_shared/itemType.ts";
 import { isAuthorizedCronRequest } from "./auth.ts";
 import { buildMergedNotificationContent, type ExpiryType, isSupportedLanguage } from "./content.ts";
@@ -118,6 +119,18 @@ export const handler = async (req: Request): Promise<Response> => {
       // Calculate the threshold date (ユーザーのtimezone基準)
       const thresholdStr = zonedDateString(timezone, pref.threshold_days);
 
+      // #1210: items は世帯単位で共有されるため、作成者(user_id)ではなく世帯で絞る。
+      const householdId = await resolveHouseholdId(
+        (userId) =>
+          supabase
+            .from("household_members")
+            .select("household_id")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        pref.user_id,
+      );
+      if (!householdId) return;
+
       // Fetch expiring/expired items for this user.
       // 下限(gte today)は設けない — 既に期限切れの item も対象に含める（#445）。
       // opened_remaining = 0（開封済み・空）の item は対象外とする（#445）。
@@ -130,7 +143,7 @@ export const handler = async (req: Request): Promise<Response> => {
           const { data, error } = await supabase
             .from("items")
             .select("id, name, expiry_date, expiry_type, item_type, categories(kind)")
-            .eq("user_id", pref.user_id)
+            .eq("household_id", householdId)
             .not("expiry_date", "is", null)
             .lte("expiry_date", thresholdStr)
             .gt("units", 0)
@@ -166,7 +179,7 @@ export const handler = async (req: Request): Promise<Response> => {
             .select(
               "id, name, opened_at, days_use_after_opening, item_type, categories(kind, days_use_after_opening)",
             )
-            .eq("user_id", pref.user_id)
+            .eq("household_id", householdId)
             .not("opened_at", "is", null)
             .gt("units", 0)
             .or("opened_remaining.is.null,opened_remaining.neq.0")

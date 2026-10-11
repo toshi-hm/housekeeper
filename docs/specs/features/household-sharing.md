@@ -216,6 +216,21 @@ RLS だけに委ねて無条件 select にするかは実装時に決定する�
 
 ## 8. Alexa マルチユーザー対応（#159）
 
+### 通知・ウィジェット用 Edge Function の世帯スコープ（#1210）
+
+cron で動く通知系 Edge Function（`send-expiry-notifications` / `send-low-stock-notifications` /
+`send-waste-digest`）は `service_role` で RLS をバイパスするため、共有テーブルを
+`user_id`（作成者）で絞ってはならない。
+
+- 共有データ（`items` / `consumption_logs`）は、通知対象ユーザーの `household_members.household_id`
+  を解決して `household_id` で絞る（`supabase/functions/_shared/household.ts`）。
+  所属が解決できないユーザーはその回はスキップし、`user_id` へはフォールバックしない
+- 他メンバーが登録した品目も通知対象に含まれる。世帯の各メンバーは、自分の
+  `notification_preferences` に従って世帯全体の品目について通知を受け取る
+  （通知設定・送信ログ・ストリーク・低在庫通知状態は個人単位のまま `user_id` で管理）
+- `remove_household_member` で脱退したユーザーは別世帯に移るため、脱退前の世帯の品目名は通知されない
+- `widget-data` はユーザーの JWT で動き RLS（世帯単位）が効くため、`user_id` では絞らない
+
 household モデル導入後、Alexa 側の変更は #159 に記載の技術方針をそのまま採用できる
 （household 固有の追加実装は不要 — RLS が household 単位になっているため、
 JWTベースの認証さえ通せば自動的にスコープされる）。
