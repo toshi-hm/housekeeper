@@ -1,5 +1,5 @@
 import { AlertTriangle, Check, Loader2, Trash2, X } from "lucide-react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { PriceIncreaseBadge } from "@/components/atoms/PriceIncreaseBadge";
@@ -38,6 +38,8 @@ export const ReceiptLineItemRow = ({
   const { t: ti } = useTranslation("items");
   const isBusy = status === "registering" || status === "success";
   const idPrefix = useId();
+  // #1222: 入力中は文字列で保持し、空欄や途中の値を許容する。確定は blur 時に行う。
+  const [quantityText, setQuantityText] = useState<string | null>(null);
   const quantityFieldId = `${idPrefix}-quantity`;
   const unitPriceFieldId = `${idPrefix}-unit-price`;
   const categoryFieldId = `${idPrefix}-category`;
@@ -114,8 +116,17 @@ export const ReceiptLineItemRow = ({
             type="number"
             min={1}
             step={1}
-            value={draft.quantity}
-            onChange={(e) => onChange({ quantity: Math.max(1, Number(e.target.value) || 1) })}
+            value={quantityText ?? draft.quantity}
+            onChange={(e) => {
+              setQuantityText(e.target.value);
+              const n = Math.round(Number(e.target.value));
+              if (e.target.value !== "" && n >= 1) onChange({ quantity: n });
+            }}
+            onBlur={() => {
+              if (quantityText === null) return;
+              onChange({ quantity: Math.max(1, Math.round(Number(quantityText)) || 1) });
+              setQuantityText(null);
+            }}
             disabled={isBusy}
           />
         </div>
