@@ -79,6 +79,30 @@ describe("TagsPage — アイコンのみボタンのaria-label (#862)", () => {
     expect(getByRole("button", { name: /^back$|戻る|^Back$/i })).toBeDefined();
     expect(getByRole("button", { name: /^add$|追加|^Add$/i })).toBeDefined();
   });
+
+  it("取得エラー時は空状態ではなくエラーと再試行を表示し、追加フォームを無効化する (#1202)", () => {
+    const refetch = mock(() => {});
+    tagsSpy.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useTagsModule.useTags>);
+
+    const { getByRole, queryByText, getByPlaceholderText } = renderPage();
+
+    expect(getByRole("alert")).toBeDefined();
+    expect(queryByText(/noTags|タグがありません|まだ.*タグ|No tags/i)).toBeNull();
+    expect((getByRole("button", { name: /^add$|追加|^Add$/i }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect((getByPlaceholderText(/tagName|タグ名|Tag name/i) as HTMLInputElement).disabled).toBe(
+      true,
+    );
+
+    fireEvent.click(getByRole("button", { name: /再試行|retry/i }));
+    expect(refetch).toHaveBeenCalled();
+  });
 });
 
 // This test file renders without an I18nextProvider (see Wrapper above), so t()

@@ -48,6 +48,13 @@ import {
   DEFAULT_STOCKTAKE_ALERT_DAYS,
 } from "@/types/item";
 
+type NumericField =
+  | "warningDays"
+  | "forecastDays"
+  | "monthlyBudget"
+  | "autoArchiveDays"
+  | "stocktakeAlertDays";
+
 export const SettingsPage = () => {
   const { t } = useTranslation("settings");
   const navigate = useNavigate();
@@ -68,6 +75,10 @@ export const SettingsPage = () => {
   const deleteCustomUnit = useDeleteCustomUnit();
   const { toast } = useToast();
   const [warningDays, setWarningDays] = useState<string | null>(null);
+  // #1203: 数値入力の検証エラー（フィールド単位のインライン表示用）
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<NumericField, string>>>({});
+  const setFieldError = (field: NumericField, message: string | undefined) =>
+    setFieldErrors((prev) => ({ ...prev, [field]: message }));
   const [newUnitName, setNewUnitName] = useState("");
   const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
   const warningDaysValue =
@@ -124,6 +135,13 @@ export const SettingsPage = () => {
   const handleWarningDaysChange = async (days: number) => {
     if (isNaN(days) || days < 1 || days > 30) {
       toast(t("invalidWarningDays"), "error");
+      setFieldError("warningDays", t("invalidWarningDays"));
+      setWarningDays(null);
+      return;
+    }
+    setFieldError("warningDays", undefined);
+    if (days === settings?.expiry_warning_days) {
+      setWarningDays(null);
       return;
     }
     try {
@@ -156,6 +174,13 @@ export const SettingsPage = () => {
   const handleAutoArchiveDaysChange = async (days: number) => {
     if (isNaN(days) || days < 1 || days > 365) {
       toast(t("invalidAutoArchiveDays"), "error");
+      setFieldError("autoArchiveDays", t("invalidAutoArchiveDays"));
+      setAutoArchiveDays(null);
+      return;
+    }
+    setFieldError("autoArchiveDays", undefined);
+    if (days === settings?.auto_archive_after_days) {
+      setAutoArchiveDays(null);
       return;
     }
     try {
@@ -172,6 +197,13 @@ export const SettingsPage = () => {
   const handleForecastDaysChange = async (days: number) => {
     if (isNaN(days) || days < 0 || days > 90) {
       toast(t("invalidLowStockForecastDays"), "error");
+      setFieldError("forecastDays", t("invalidLowStockForecastDays"));
+      setForecastDays(null);
+      return;
+    }
+    setFieldError("forecastDays", undefined);
+    if (days === settings?.low_stock_forecast_days) {
+      setForecastDays(null);
       return;
     }
     try {
@@ -193,6 +225,13 @@ export const SettingsPage = () => {
     // 同一視されてBudgetBannerが表示されないため、無効値として弾く（#1046）。
     if (amount !== null && (isNaN(amount) || amount <= 0)) {
       toast(t("invalidMonthlyBudget"), "error");
+      setFieldError("monthlyBudget", t("invalidMonthlyBudget"));
+      setMonthlyBudget(null);
+      return;
+    }
+    setFieldError("monthlyBudget", undefined);
+    if (amount === (settings?.monthly_budget ?? null)) {
+      setMonthlyBudget(null);
       return;
     }
     try {
@@ -243,6 +282,13 @@ export const SettingsPage = () => {
   const handleStocktakeAlertDaysChange = async (days: number) => {
     if (isNaN(days) || days < 1 || days > 365) {
       toast(t("invalidStocktakeAlertDays"), "error");
+      setFieldError("stocktakeAlertDays", t("invalidStocktakeAlertDays"));
+      setStocktakeAlertDays(null);
+      return;
+    }
+    setFieldError("stocktakeAlertDays", undefined);
+    if (days === settings?.stocktake_alert_days) {
+      setStocktakeAlertDays(null);
       return;
     }
     try {
@@ -317,6 +363,9 @@ export const SettingsPage = () => {
             <p className="mb-2 text-xs text-muted-foreground">{t("expiryWarningDaysHelp")}</p>
             <div className="flex items-center gap-2">
               <Input
+                id="expiry_warning_days"
+                aria-invalid={!!fieldErrors.warningDays}
+                aria-describedby={fieldErrors.warningDays ? "expiry_warning_days-error" : undefined}
                 type="number"
                 min={1}
                 max={30}
@@ -327,8 +376,17 @@ export const SettingsPage = () => {
                   void handleWarningDaysChange(parseInt(e.target.value, 10));
                 }}
               />
-              <Label>{t("daysBefore")}</Label>
+              <Label htmlFor="expiry_warning_days">{t("daysBefore")}</Label>
             </div>
+            {fieldErrors.warningDays && (
+              <p
+                id="expiry_warning_days-error"
+                role="alert"
+                className="mt-1 text-sm text-destructive"
+              >
+                {fieldErrors.warningDays}
+              </p>
+            )}
           </section>
 
           {/* Low-stock forecast days (#68, #392) */}
@@ -339,6 +397,11 @@ export const SettingsPage = () => {
             <p className="mb-2 text-xs text-muted-foreground">{t("lowStockForecastDaysHelp")}</p>
             <div className="flex items-center gap-2">
               <Input
+                id="low_stock_forecast_days"
+                aria-invalid={!!fieldErrors.forecastDays}
+                aria-describedby={
+                  fieldErrors.forecastDays ? "low_stock_forecast_days-error" : undefined
+                }
                 type="number"
                 min={0}
                 max={90}
@@ -349,8 +412,17 @@ export const SettingsPage = () => {
                   void handleForecastDaysChange(parseInt(e.target.value, 10));
                 }}
               />
-              <Label>{t("daysBefore")}</Label>
+              <Label htmlFor="low_stock_forecast_days">{t("daysBefore")}</Label>
             </div>
+            {fieldErrors.forecastDays && (
+              <p
+                id="low_stock_forecast_days-error"
+                role="alert"
+                className="mt-1 text-sm text-destructive"
+              >
+                {fieldErrors.forecastDays}
+              </p>
+            )}
           </section>
 
           {/* Monthly budget (#991) */}
@@ -361,6 +433,9 @@ export const SettingsPage = () => {
             <p className="mb-2 text-xs text-muted-foreground">{t("monthlyBudgetHelp")}</p>
             <div className="flex items-center gap-2">
               <Input
+                id="monthly_budget"
+                aria-invalid={!!fieldErrors.monthlyBudget}
+                aria-describedby={fieldErrors.monthlyBudget ? "monthly_budget-error" : undefined}
                 type="number"
                 min={1}
                 value={monthlyBudgetValue}
@@ -370,8 +445,13 @@ export const SettingsPage = () => {
                   void handleMonthlyBudgetChange(e.target.value);
                 }}
               />
-              <Label>{t("monthlyBudgetUnit")}</Label>
+              <Label htmlFor="monthly_budget">{t("monthlyBudgetUnit")}</Label>
             </div>
+            {fieldErrors.monthlyBudget && (
+              <p id="monthly_budget-error" role="alert" className="mt-1 text-sm text-destructive">
+                {fieldErrors.monthlyBudget}
+              </p>
+            )}
           </section>
 
           {/* Default unit */}
@@ -487,20 +567,36 @@ export const SettingsPage = () => {
               {t("autoArchiveEnable")}
             </label>
             {autoArchiveEnabled && (
-              <div className="mt-2 flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={autoArchiveDaysValue}
-                  className="w-24"
-                  onChange={(e) => setAutoArchiveDays(e.target.value)}
-                  onBlur={(e) => {
-                    void handleAutoArchiveDaysChange(parseInt(e.target.value, 10));
-                  }}
-                />
-                <Label>{t("daysAfterExpiry")}</Label>
-              </div>
+              <>
+                <div className="mt-2 flex items-center gap-2">
+                  <Input
+                    id="auto_archive_days"
+                    aria-invalid={!!fieldErrors.autoArchiveDays}
+                    aria-describedby={
+                      fieldErrors.autoArchiveDays ? "auto_archive_days-error" : undefined
+                    }
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={autoArchiveDaysValue}
+                    className="w-24"
+                    onChange={(e) => setAutoArchiveDays(e.target.value)}
+                    onBlur={(e) => {
+                      void handleAutoArchiveDaysChange(parseInt(e.target.value, 10));
+                    }}
+                  />
+                  <Label htmlFor="auto_archive_days">{t("daysAfterExpiry")}</Label>
+                </div>
+                {fieldErrors.autoArchiveDays && (
+                  <p
+                    id="auto_archive_days-error"
+                    role="alert"
+                    className="mt-1 text-sm text-destructive"
+                  >
+                    {fieldErrors.autoArchiveDays}
+                  </p>
+                )}
+              </>
             )}
             <Link
               to="/settings/archived-items"
@@ -572,6 +668,10 @@ export const SettingsPage = () => {
                 <div className="flex items-center gap-2">
                   <Input
                     id="stocktake_alert_days"
+                    aria-invalid={!!fieldErrors.stocktakeAlertDays}
+                    aria-describedby={
+                      fieldErrors.stocktakeAlertDays ? "stocktake_alert_days-error" : undefined
+                    }
                     type="number"
                     min={1}
                     max={365}
@@ -582,8 +682,17 @@ export const SettingsPage = () => {
                       void handleStocktakeAlertDaysChange(parseInt(e.target.value, 10));
                     }}
                   />
-                  <Label>{t("daysUnit")}</Label>
+                  <Label htmlFor="stocktake_alert_days">{t("daysUnit")}</Label>
                 </div>
+                {fieldErrors.stocktakeAlertDays && (
+                  <p
+                    id="stocktake_alert_days-error"
+                    role="alert"
+                    className="mt-1 text-sm text-destructive"
+                  >
+                    {fieldErrors.stocktakeAlertDays}
+                  </p>
+                )}
               </div>
             </div>
           </section>
