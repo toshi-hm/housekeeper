@@ -1,4 +1,5 @@
 import { fireEvent, render } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, mock, test } from "bun:test";
 import { I18nextProvider } from "react-i18next";
 
@@ -100,5 +101,57 @@ describe("ReceiptLineItemRow price increase badge (#941)", () => {
       increasePercent: 24,
     });
     expect(getByText(/24/)).toBeTruthy();
+  });
+});
+
+// #1222: 数量欄は入力中に空欄を許容し、blur 時に1以上の整数へ確定する。
+describe("ReceiptLineItemRow quantity input (#1222)", () => {
+  const renderQuantity = (onChange: (patch: Partial<ReceiptDraftItem>) => void) =>
+    render(
+      <I18nextProvider i18n={i18n}>
+        <ReceiptLineItemRow
+          draft={draft}
+          categories={[]}
+          locations={[]}
+          onChange={onChange}
+          onRemove={() => {}}
+        />
+      </I18nextProvider>,
+    );
+
+  test("空欄にでき、続けて入力した値がそのまま反映される", async () => {
+    const user = userEvent.setup();
+    const onChange = mock<(patch: Partial<ReceiptDraftItem>) => void>();
+    const { getByLabelText } = renderQuantity(onChange);
+    const input = getByLabelText(i18n.t("quantity", { ns: "receiptScan" })) as HTMLInputElement;
+
+    await user.clear(input);
+    expect(input.value).toBe("");
+    await user.type(input, "5");
+    expect(input.value).toBe("5");
+    expect(onChange).toHaveBeenLastCalledWith({ quantity: 5 });
+  });
+
+  test("空欄のまま blur すると 1 に確定する", async () => {
+    const user = userEvent.setup();
+    const onChange = mock<(patch: Partial<ReceiptDraftItem>) => void>();
+    const { getByLabelText } = renderQuantity(onChange);
+    const input = getByLabelText(i18n.t("quantity", { ns: "receiptScan" })) as HTMLInputElement;
+
+    await user.clear(input);
+    await user.tab();
+    expect(onChange).toHaveBeenLastCalledWith({ quantity: 1 });
+  });
+
+  test("小数は blur 時に整数へ丸める", async () => {
+    const user = userEvent.setup();
+    const onChange = mock<(patch: Partial<ReceiptDraftItem>) => void>();
+    const { getByLabelText } = renderQuantity(onChange);
+    const input = getByLabelText(i18n.t("quantity", { ns: "receiptScan" })) as HTMLInputElement;
+
+    await user.clear(input);
+    await user.type(input, "2.4");
+    await user.tab();
+    expect(onChange).toHaveBeenLastCalledWith({ quantity: 2 });
   });
 });
