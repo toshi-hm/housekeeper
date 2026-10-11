@@ -65,7 +65,7 @@ mock.module("@/lib/supabase", () => ({
   supabase: { from: fromMock, auth: { getUser: getUserMock } },
 }));
 
-const { executeRecipe, useExecuteRecipe } = await import("@/hooks/useRecipes");
+const { executeRecipe, useDeleteRecipe, useExecuteRecipe } = await import("@/hooks/useRecipes");
 const { ToastContext } = await import("@/lib/toast-context");
 
 const makeWrapper = (qc: QueryClient) => {
@@ -404,5 +404,25 @@ describe("useExecuteRecipe", () => {
       (call) => (call[0] as { queryKey: unknown[] }).queryKey,
     );
     expect(invalidatedKeys).toContainEqual(["consumption-logs", "item-1"]);
+  });
+});
+
+describe("useDeleteRecipe", () => {
+  test("成功時に献立(meal-plans)キャッシュも無効化する (#1215)", async () => {
+    responseQueues.recipes = [{ data: null, error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useDeleteRecipe(), { wrapper: makeWrapper(qc) });
+    result.current.mutate("recipe-1");
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["meal-plans"]);
   });
 });
