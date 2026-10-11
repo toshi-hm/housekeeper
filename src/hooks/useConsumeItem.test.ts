@@ -304,7 +304,7 @@ describe("undoConsumeItem", () => {
   });
 
   test("kind: 'direct' でconsumption_logsの削除に失敗した場合はエラーを投げる (#1181)", async () => {
-    responseQueues.items = [{ data: null, error: null }];
+    responseQueues.items = [{ data: makeItem({ units: 3 }), error: null }];
     responseQueues.consumption_logs = [{ data: null, error: { message: "delete failed" } }];
 
     await expect(
@@ -313,19 +313,25 @@ describe("undoConsumeItem", () => {
         itemId: "item-1",
         unitsBefore: 3,
         openedRemainingBefore: 0.4,
+        openedAtBefore: null,
+        unitsAfter: 2,
+        openedRemainingAfter: 0.2,
         logId: "log-3",
       }),
     ).rejects.toMatchObject({ message: "delete failed" });
   });
 
   test("kind: 'direct' の場合はitemsを直接更新し、logIdがあればconsumption_logsを削除する", async () => {
-    responseQueues.items = [{ data: null, error: null }]; // items update
+    responseQueues.items = [{ data: makeItem({ units: 3 }), error: null }]; // items update
 
     await undoConsumeItem({
       kind: "direct",
       itemId: "item-1",
       unitsBefore: 3,
       openedRemainingBefore: 0.4,
+      openedAtBefore: null,
+      unitsAfter: 2,
+      openedRemainingAfter: 0.2,
       logId: "log-2",
     });
 
@@ -347,16 +353,77 @@ describe("undoConsumeItem", () => {
   });
 
   test("kind: 'direct' でlogIdがnullの場合はconsumption_logsのdeleteを呼ばない", async () => {
-    responseQueues.items = [{ data: null, error: null }];
+    responseQueues.items = [{ data: makeItem({ units: 1 }), error: null }];
 
     await undoConsumeItem({
       kind: "direct",
       itemId: "item-1",
       unitsBefore: 1,
       openedRemainingBefore: null,
+      openedAtBefore: null,
+      unitsAfter: 0,
+      openedRemainingAfter: null,
       logId: null,
     });
 
+    expect(callLog.some((c) => c.table === "consumption_logs")).toBe(false);
+  });
+
+  test("kind: 'direct' は消費直後の units / opened_remaining が一致する場合だけ戻す (#1216)", async () => {
+    responseQueues.items = [{ data: makeItem({ units: 3 }), error: null }];
+
+    await undoConsumeItem({
+      kind: "direct",
+      itemId: "item-1",
+      unitsBefore: 3,
+      openedRemainingBefore: 0.4,
+      openedAtBefore: null,
+      unitsAfter: 2,
+      openedRemainingAfter: 0.2,
+      logId: null,
+    });
+
+    const eqCalls = callLog.filter((c) => c.table === "items" && c.method === "eq");
+    expect(eqCalls.map((c) => c.args)).toEqual([
+      ["id", "item-1"],
+      ["units", 2],
+      ["opened_remaining", 0.2],
+    ]);
+  });
+
+  test("kind: 'direct' で opened_remaining が null の場合は is(null) で照合する (#1216)", async () => {
+    responseQueues.items = [{ data: makeItem({ units: 3 }), error: null }];
+
+    await undoConsumeItem({
+      kind: "direct",
+      itemId: "item-1",
+      unitsBefore: 3,
+      openedRemainingBefore: null,
+      openedAtBefore: null,
+      unitsAfter: 2,
+      openedRemainingAfter: null,
+      logId: null,
+    });
+
+    const isCall = callLog.find((c) => c.table === "items" && c.method === "is");
+    expect(isCall?.args).toEqual(["opened_remaining", null]);
+  });
+
+  test("kind: 'direct' で消費後に別の更新が入っていた場合は ConcurrentUpdateError を投げ、ログも消さない (#1216)", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    await expect(
+      undoConsumeItem({
+        kind: "direct",
+        itemId: "item-1",
+        unitsBefore: 5,
+        openedRemainingBefore: null,
+        openedAtBefore: null,
+        unitsAfter: 4,
+        openedRemainingAfter: null,
+        logId: "log-9",
+      }),
+    ).rejects.toBeInstanceOf(ConcurrentUpdateError);
     expect(callLog.some((c) => c.table === "consumption_logs")).toBe(false);
   });
 });
