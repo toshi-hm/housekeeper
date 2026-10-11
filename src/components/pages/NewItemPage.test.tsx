@@ -632,6 +632,8 @@ describe("NewItemPage - quick consume sheet on barcode match (#924)", () => {
             unitsBefore: 1,
             openedRemainingBefore: null,
             openedAtBefore: null,
+            unitsAfter: 0,
+            openedRemainingAfter: null,
             logId: null,
           },
         }) as never,
