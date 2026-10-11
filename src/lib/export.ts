@@ -424,6 +424,8 @@ export interface ExportItemLookup {
   category_id?: string | null;
   notes?: string | null;
   content_unit?: string;
+  /** 1点あたりの内容量。購入行の数量を content_unit 換算にするために使う (#1217)。 */
+  content_amount?: number;
 }
 
 const resolveCategoryName = (
@@ -469,7 +471,8 @@ export const buildPurchaseHistoryRows = (
         date: lot.purchase_date.slice(0, 10),
         itemName: item?.name ?? "",
         categoryName: resolveCategoryName(item, categoryMap),
-        amount: lot.purchased_units,
+        // #1217: 消費行は content_unit 単位の量なので、購入行も「点数 × 内容量」に揃える。
+        amount: Math.round(lot.purchased_units * (item?.content_amount ?? 1) * 1e6) / 1e6,
         unit: item?.content_unit ?? "",
         notes: item?.notes ?? "",
         storeName: lot.store_name ?? "",
