@@ -659,6 +659,7 @@ interface ItemLookupForExport {
   category_id: string | null;
   notes: string | null;
   content_unit: string;
+  content_amount: number;
 }
 
 const fetchItemsForExport = async (): Promise<ItemLookupForExport[]> => {
@@ -669,7 +670,7 @@ const fetchItemsForExport = async (): Promise<ItemLookupForExport[]> => {
   return fetchAllPages(async (from, to) => {
     const { data, error } = await supabase
       .from("items")
-      .select("id, name, category_id, notes, content_unit")
+      .select("id, name, category_id, notes, content_unit, content_amount")
       .order("id", { ascending: true })
       .range(from, to);
     if (error) throw error;

@@ -627,7 +627,9 @@ describe("buildPurchaseHistoryRows", () => {
           store_name: "○○スーパー",
         },
       ],
-      new Map([["item-1", { name: "卵", category_id: "cat-2", content_unit: "個" }]]),
+      new Map([
+        ["item-1", { name: "卵", category_id: "cat-2", content_unit: "個", content_amount: 1 }],
+      ]),
       new Map([["cat-2", "食品"]]),
     );
     expect(rows).toEqual([
@@ -642,6 +644,24 @@ describe("buildPurchaseHistoryRows", () => {
         storeName: "○○スーパー",
       },
     ]);
+  });
+
+  test("購入点数を内容量(content_unit)換算した数量にする (#1217)", () => {
+    const rows = buildPurchaseHistoryRows(
+      [{ item_id: "item-1", purchased_units: 2, purchase_date: "2026-07-05", store_name: null }],
+      new Map([["item-1", { name: "牛乳", content_unit: "mL", content_amount: 500 }]]),
+      new Map(),
+    );
+    expect(rows[0]).toMatchObject({ amount: 1000, unit: "mL" });
+  });
+
+  test("小数の内容量でも浮動小数点誤差が出ない (#1217)", () => {
+    const rows = buildPurchaseHistoryRows(
+      [{ item_id: "item-1", purchased_units: 3, purchase_date: "2026-07-05", store_name: null }],
+      new Map([["item-1", { name: "油", content_unit: "L", content_amount: 0.1 }]]),
+      new Map(),
+    );
+    expect(rows[0]?.amount).toBe(0.3);
   });
 
   test("store_name が null のとき空文字にする", () => {
