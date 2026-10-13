@@ -516,6 +516,10 @@ export const useDeleteStorageLocation = () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: LOCATIONS_KEY }),
         qc.invalidateQueries({ queryKey: ["items"] }),
+        // 間取りのマーカー/配置は保管場所削除でDB側が cascade 削除される。
+        // キャッシュを残すと削除済み保管場所のマーカーが最大 staleTime の間残る (#1227)
+        qc.invalidateQueries({ queryKey: ["floor-plan-storage-location-markers"] }),
+        qc.invalidateQueries({ queryKey: ["floor-plan-placements"] }),
       ]);
     },
     onError: (error) => {
