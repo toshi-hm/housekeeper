@@ -1,4 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { createElement, type ReactNode } from "react";
 
 interface SupabaseResponse {
   data: unknown;
@@ -73,7 +76,9 @@ const {
   InvalidNameLengthError,
   CategoryInUseError,
   LocationInUseError,
+  useDeleteStorageLocation,
 } = await import("@/hooks/useMasterData");
+const { ToastContext } = await import("@/lib/toast-context");
 
 beforeEach(() => {
   callLog = [];
@@ -220,5 +225,31 @@ describe("deleteStorageLocation (#491)", () => {
       { data: null, error: { code: "HK002", message: "storage location is in use" } },
     ];
     await expect(deleteStorageLocation("loc-1")).rejects.toBeInstanceOf(LocationInUseError);
+  });
+});
+
+describe("useDeleteStorageLocation", () => {
+  test("成功時に間取りのマーカー・配置キャッシュも無効化する (#1227)", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+    const stubToast = { toasts: [], toast: () => {}, dismiss: () => {} };
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(
+        QueryClientProvider,
+        { client: qc },
+        createElement(ToastContext, { value: stubToast }, children),
+      );
+
+    const { result } = renderHook(() => useDeleteStorageLocation(), { wrapper });
+    result.current.mutate("loc-1");
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["floor-plan-storage-location-markers"]);
+    expect(invalidatedKeys).toContainEqual(["floor-plan-placements"]);
   });
 });
