@@ -28,10 +28,16 @@ interface EditItemPageProps {
 
 export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   const { t } = useTranslation("items");
+  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: item, isLoading } = useItem(itemId);
-  const { data: lots = [] } = useItemLots(itemId);
+  const {
+    data: lots = [],
+    isLoading: lotsLoading,
+    isError: lotsError,
+    refetch: refetchLots,
+  } = useItemLots(itemId);
   const updateItem = useUpdateItem(itemId);
   const updateLot = useUpdateLot();
   const createLot = useCreateLot();
@@ -180,7 +186,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || lotsLoading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center">
         <Spinner />
@@ -204,6 +210,21 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           <p className="text-sm text-muted-foreground">{t("itemNotFoundDescription")}</p>
           <Button variant="outline" onClick={() => void navigate({ to: "/" })}>
             {t("backToItems")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // #1229: ロット取得に失敗した状態を「ロットなし」とみなすと、保存時に既存ロットとは
+  // 別のロットを新規作成して在庫が重複するため、フォームを出さずに再試行を促す。
+  if (lotsError) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <div role="alert" className="space-y-3 rounded-lg border border-destructive p-4">
+          <p className="text-sm text-destructive">{t("loadError")}</p>
+          <Button variant="outline" onClick={() => void refetchLots()}>
+            {tc("retry")}
           </Button>
         </div>
       </div>
