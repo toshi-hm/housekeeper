@@ -127,6 +127,7 @@
   "forecastAlertBannerDetails": "対象の商品を表示",
   "forecastAlertItemLine": "{{name}}（約{{days}}日で在庫切れ予測）",
   "hideEmpty": "使い切り在庫を隠す",
+  "historyLoadError": "消費履歴の読み込みに失敗しました。",
   "historyNoteIndicator": "メモあり",
   "image": "画像",
   "imageCapture": "カメラで撮影",

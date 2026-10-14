@@ -138,6 +138,7 @@
   "forecastAlertBannerDetails": "Show affected items",
   "forecastAlertItemLine": "{{name}} (projected to run out in about {{days}} days)",
   "hideEmpty": "Hide empty items",
+  "historyLoadError": "Failed to load consumption history.",
   "historyNoteIndicator": "Has note",
   "image": "Image",
   "imageCapture": "Take Photo",
