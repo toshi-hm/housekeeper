@@ -127,6 +127,7 @@
   "forecastAlertBannerDetails": "対象の商品を表示",
   "forecastAlertItemLine": "{{name}}（約{{days}}日で在庫切れ予測）",
   "hideEmpty": "使い切り在庫を隠す",
+  "historyLoadError": "消費履歴の読み込みに失敗しました。",
   "historyNoteIndicator": "メモあり",
   "image": "画像",
   "imageCapture": "カメラで撮影",
@@ -281,6 +282,5 @@
   "verifySuccess": "在庫確認を記録しました",
   "viewModeGrid": "グリッド表示",
   "viewModeList": "リスト表示",
-  "viewModeToggleLabel": "表示切り替え",
-  "historyLoadError": "消費履歴の読み込みに失敗しました。"
+  "viewModeToggleLabel": "表示切り替え"
 }
