@@ -190,4 +190,21 @@ describe("SecuritySettings", () => {
 
     await waitFor(() => expect(unenrollMutateAsync).toHaveBeenCalledWith("factor-1"));
   });
+
+  it("2FA状態の取得に失敗したときは無効表示・有効化ボタンを出さず、再試行できる (#1233)", () => {
+    const refetch = mock(() => Promise.resolve());
+    factorsSpy.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useMfaModule.useMfaFactors>);
+
+    const { getByRole, queryByRole } = render(<SecuritySettings />, { wrapper });
+
+    expect(getByRole("alert")).toBeTruthy();
+    expect(queryByRole("button", { name: i18n.t("mfa:enableButton") })).toBeNull();
+    fireEvent.click(getByRole("button", { name: i18n.t("common:retry") }));
+    expect(refetch).toHaveBeenCalled();
+  });
 });
