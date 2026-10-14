@@ -234,7 +234,7 @@ describe("EditItemPage - backing a lot-less item's units increase with a real lo
 
     expect(queryByTestId("submit-form")).toBeNull();
     expect(getByRole("alert")).toBeTruthy();
-    fireEvent.click(getByRole("button", { name: "retry" }));
+    fireEvent.click(getByRole("button", { name: /^retry$|再試行|^Retry$/ }));
     expect(refetch).toHaveBeenCalled();
   });
 
