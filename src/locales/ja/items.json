@@ -281,5 +281,6 @@
   "verifySuccess": "在庫確認を記録しました",
   "viewModeGrid": "グリッド表示",
   "viewModeList": "リスト表示",
-  "viewModeToggleLabel": "表示切り替え"
+  "viewModeToggleLabel": "表示切り替え",
+  "historyLoadError": "消費履歴の読み込みに失敗しました。"
 }

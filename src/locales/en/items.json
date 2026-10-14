@@ -300,5 +300,6 @@
   "verifySuccess": "Stock verified",
   "viewModeGrid": "Grid view",
   "viewModeList": "List view",
-  "viewModeToggleLabel": "Switch view"
+  "viewModeToggleLabel": "Switch view",
+  "historyLoadError": "Failed to load consumption history."
 }

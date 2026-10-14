@@ -84,14 +84,14 @@ export const ItemDetailPage = () => {
       m.routeId === "/_auth/items/$itemId/consume" || m.routeId === "/_auth/items/$itemId/edit",
   );
   const { data: item, isLoading, error } = useItem(itemId);
-  const { data: lots = [] } = useItemLots(itemId);
+  const { data: lots = [], isError: lotsError, refetch: refetchLots } = useItemLots(itemId);
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
   const { data: userSettings } = useUserSettings();
   const deleteItem = useSoftDeleteItem();
   const verifyItem = useVerifyItem();
   const upsertShopping = useUpsertShoppingItem();
-  const { data: logs = [] } = useConsumptionLogs(itemId);
+  const { data: logs = [], isError: logsError, refetch: refetchLogs } = useConsumptionLogs(itemId);
   const { data: signedImageUrl } = useSignedItemImage(item?.image_path);
   const { toast } = useToast();
   const consumptionPace = useMemo(() => {
@@ -428,6 +428,19 @@ export const ItemDetailPage = () => {
             )}
           </div>
 
+          {/* #1231: ロット取得失敗を「ロットなし」と誤認させないよう明示する */}
+          {lotsError && (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-2 rounded-lg border border-destructive p-3 text-sm text-destructive"
+            >
+              <span>{t("lotsLoadError")}</span>
+              <Button type="button" size="sm" variant="outline" onClick={() => void refetchLots()}>
+                {tc("retry")}
+              </Button>
+            </div>
+          )}
+
           {/* Tab navigation */}
           <div className="flex rounded-lg border p-1" role="tablist" {...detailTablistProps}>
             <button
@@ -660,7 +673,19 @@ export const ItemDetailPage = () => {
               tabIndex={0}
               className="space-y-2"
             >
-              {logs.length === 0 ? (
+              {logsError ? (
+                <div role="alert" className="space-y-3 py-6 text-center">
+                  <p className="text-sm text-destructive">{t("historyLoadError")}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void refetchLogs()}
+                  >
+                    {tc("retry")}
+                  </Button>
+                </div>
+              ) : logs.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">{t("noHistory")}</p>
               ) : (
                 <>
