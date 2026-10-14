@@ -199,6 +199,45 @@ describe("EditItemPage - backing a lot-less item's units increase with a real lo
     expect(itemUpdatePayload).not.toHaveProperty("store_name");
   });
 
+  it("ロット取得中は編集フォームを表示せず、保存による重複ロット作成を防ぐ (#1229)", () => {
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: baseItem,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+    lotsSpy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>);
+
+    const { queryByTestId } = render(<EditItemPage itemId="item-1" />, { wrapper: Wrapper });
+
+    expect(queryByTestId("submit-form")).toBeNull();
+    expect(createLotMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("ロット取得に失敗したときはフォームを出さずエラーと再試行を表示する (#1229)", () => {
+    const refetch = mock(() => Promise.resolve());
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: baseItem,
+      isLoading: false,
+    } as ReturnType<typeof useItemsModule.useItem>);
+    lotsSpy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>);
+
+    const { getByRole, queryByTestId } = render(<EditItemPage itemId="item-1" />, {
+      wrapper: Wrapper,
+    });
+
+    expect(queryByTestId("submit-form")).toBeNull();
+    expect(getByRole("alert")).toBeTruthy();
+    fireEvent.click(getByRole("button", { name: "retry" }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
   it("既存タグの取得が未完了のときは setItemTags を呼ばない（タグ全消し防止, #1201）", async () => {
     itemTagIdsSpy.mockReturnValue({
       data: undefined,
