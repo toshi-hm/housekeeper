@@ -25,6 +25,8 @@
   "defaultUnit": "Default unit",
   "deleteCategory": "Delete Category",
   "deleteCategoryConfirm": "Delete this category?",
+  "deleteCustomUnit": "Delete custom unit",
+  "deleteCustomUnitConfirm": "Delete \"{{name}}\"?",
   "deleteLocation": "Delete Location",
   "deleteLocationConfirm": "Delete this location?",
   "deleteTag": "Delete Tag",

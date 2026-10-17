@@ -23,6 +23,8 @@
   "defaultUnit": "デフォルト単位",
   "deleteCategory": "カテゴリを削除",
   "deleteCategoryConfirm": "このカテゴリを削除しますか？",
+  "deleteCustomUnit": "カスタム単位を削除",
+  "deleteCustomUnitConfirm": "「{{name}}」を削除しますか？",
   "deleteLocation": "保管場所を削除",
   "deleteLocationConfirm": "この保管場所を削除しますか？",
   "deleteTag": "タグを削除",
