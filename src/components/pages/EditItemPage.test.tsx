@@ -215,6 +215,28 @@ describe("EditItemPage - backing a lot-less item's units increase with a real lo
     expect(createLotMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("アイテム取得に失敗したときは「見つかりません」ではなくエラーと再試行を表示する (#1243)", () => {
+    const refetch = mock(() => Promise.resolve());
+    itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useItemsModule.useItem>);
+    lotsSpy = spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>);
+
+    const { getByRole, queryByText } = render(<EditItemPage itemId="item-1" />, {
+      wrapper: Wrapper,
+    });
+
+    expect(getByRole("alert")).toBeTruthy();
+    expect(queryByText(/^itemNotFound$|^アイテムが見つかりません$|^Item not found$/)).toBeNull();
+    fireEvent.click(getByRole("button", { name: /^retry$|再試行|^Retry$/ }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
   it("ロット取得に失敗したときはフォームを出さずエラーと再試行を表示する (#1229)", () => {
     const refetch = mock(() => Promise.resolve());
     itemSpy = spyOn(useItemsModule, "useItem").mockReturnValue({

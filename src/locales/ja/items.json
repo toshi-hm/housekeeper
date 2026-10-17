@@ -143,6 +143,7 @@
   "itemCountLabel_other": "{{count}}件",
   "itemCountLabelFiltered": "{{filtered}} / {{total}}件",
   "itemDetail": "在庫詳細",
+  "itemLoadError": "アイテムの読み込みに失敗しました。時間をおいて再試行してください。",
   "itemNotFound": "アイテムが見つかりません",
   "itemNotFoundDescription": "削除されたか、URLが無効な可能性があります。",
   "itemType": "種別",
