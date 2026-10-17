@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, within } from "@testing-library/react";
 import {
   afterAll,
   afterEach,
@@ -14,6 +14,7 @@ import {
 import React from "react";
 import { I18nextProvider } from "react-i18next";
 
+import * as useCustomUnitsModule from "@/hooks/useCustomUnits";
 import * as useMfaModule from "@/hooks/useMfa";
 import * as useNotifModule from "@/hooks/useNotificationPreferences";
 import * as useUserSettingsModule from "@/hooks/useUserSettings";
@@ -577,5 +578,84 @@ describe("SettingsPage - monthlyBudget validation (#991)", () => {
 
     expect(mutateAsync).toHaveBeenCalledWith({ monthly_budget: null });
     expect(toastFn).toHaveBeenCalledWith("設定を保存しました", "success");
+  });
+});
+
+describe("SettingsPage - カスタム単位の削除確認 (#1244)", () => {
+  let spies: readonly ReturnType<typeof spyOn>[];
+  let deleteMutateAsync: ReturnType<typeof mock>;
+
+  beforeAll(async () => {
+    await i18n.changeLanguage("ja");
+  });
+
+  afterAll(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  beforeEach(() => {
+    deleteMutateAsync = mock(async () => {});
+    spies = [
+      spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+        data: { expiry_warning_days: 3, language: "ja" },
+        isLoading: false,
+      } as ReturnType<typeof useUserSettingsModule.useUserSettings>),
+      spyOn(useUserSettingsModule, "useUpdateUserSettings").mockReturnValue({
+        mutateAsync: mock(async () => {}),
+        isPending: false,
+      } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>),
+      spyOn(useNotifModule, "useNotificationPreferences").mockReturnValue({
+        data: null,
+        isLoading: false,
+      } as ReturnType<typeof useNotifModule.useNotificationPreferences>),
+      spyOn(useNotifModule, "useUpdateNotificationPreferences").mockReturnValue({
+        mutateAsync: mock(async () => {}),
+        isPending: false,
+      } as unknown as ReturnType<typeof useNotifModule.useUpdateNotificationPreferences>),
+      spyOn(useNotifModule, "useTestNotification").mockReturnValue({
+        mutate: mock(() => {}),
+        isPending: false,
+      } as unknown as ReturnType<typeof useNotifModule.useTestNotification>),
+      spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+        data: [{ id: "unit-1", name: "缶" }],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>),
+      spyOn(useCustomUnitsModule, "useDeleteCustomUnit").mockReturnValue({
+        mutateAsync: deleteMutateAsync,
+        isPending: false,
+      } as unknown as ReturnType<typeof useCustomUnitsModule.useDeleteCustomUnit>),
+      ...mockMfaHooks(),
+    ];
+  });
+
+  afterEach(() => {
+    spies.forEach((s) => s.mockRestore());
+    cleanup();
+  });
+
+  it("削除ボタンを押しただけでは削除せず、確認後に削除する", async () => {
+    const { stub } = makeToastStub();
+    const { getByRole, getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    // 一覧のチップ内の削除ボタン(aria-label=削除)
+    fireEvent.click(getAllByRole("button", { name: "削除" })[0]!);
+    expect(deleteMutateAsync).not.toHaveBeenCalled();
+
+    const dialog = getByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "削除" }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(deleteMutateAsync).toHaveBeenCalledWith("unit-1");
+  });
+
+  it("確認ダイアログをキャンセルすると削除しない", async () => {
+    const { stub } = makeToastStub();
+    const { getByRole, getAllByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    fireEvent.click(getAllByRole("button", { name: "削除" })[0]!);
+    fireEvent.click(within(getByRole("alertdialog")).getByRole("button", { name: /キャンセル/ }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(deleteMutateAsync).not.toHaveBeenCalled();
   });
 });
