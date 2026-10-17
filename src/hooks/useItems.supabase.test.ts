@@ -95,6 +95,7 @@ const {
   useItemsWithExpiry,
   countRecentExpiredWaste,
   deleteItemPermanently,
+  restoreItem,
   useDeleteItemPermanently,
 } = await import("@/hooks/useItems");
 const { ToastContext } = await import("@/lib/toast-context");
@@ -580,5 +581,16 @@ describe("useDeleteItemPermanently (#1099)", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("restoreItem (#1252)", () => {
+  test("復元時は deleted_at と一緒に deletion_reason もクリアする", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    await restoreItem("item-1");
+
+    const update = callLog.find((c) => c.table === "items" && c.method === "update");
+    expect(update?.args[0]).toMatchObject({ deleted_at: null, deletion_reason: null });
   });
 });
