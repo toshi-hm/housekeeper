@@ -804,6 +804,12 @@ export const useDeleteItemPermanently = () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" }),
         qc.invalidateQueries({ queryKey: DELETED_ITEMS_KEY, refetchType: "all" }),
+        // items 削除でDB側が cascade 削除する関連データのキャッシュも破棄する (#1251)
+        qc.invalidateQueries({ queryKey: ["recipes"] }),
+        qc.invalidateQueries({ queryKey: ["floor-plan-placements"] }),
+        qc.invalidateQueries({ queryKey: ["item-lots"] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs"] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
       ]);
       toast(t("settings:purgeItemSuccess"), "success");
     },
