@@ -177,6 +177,21 @@ describe("ItemConsumePage", () => {
     expect(queryByRole("spinbutton")).toBeNull();
   });
 
+  it("アイテム取得に失敗したときは「見つかりません」ではなくエラーと再試行を表示する (#1243)", () => {
+    const refetch = mock(() => Promise.resolve());
+    itemspy.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useItemsModule.useItem>);
+    const { getByRole, queryByText } = renderPage();
+    expect(getByRole("alert")).toBeDefined();
+    expect(queryByText(/^itemNotFound$|^Item not found$|^アイテムが見つかりません$/)).toBeNull();
+    fireEvent.click(getByRole("button", { name: /^retry$|再試行|^Retry$/ }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
   it("shows item not found when item is null and not loading", () => {
     itemspy.mockReturnValue({ data: undefined, isLoading: false } as ReturnType<
       typeof useItemsModule.useItem

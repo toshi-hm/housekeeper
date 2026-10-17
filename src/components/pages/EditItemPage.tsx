@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { ItemLoadError } from "@/components/molecules/ItemLoadError";
 import { MultiTagSelect } from "@/components/molecules/MultiTagSelect";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { data: item, isLoading } = useItem(itemId);
+  const { data: item, isLoading, isError, refetch: refetchItem } = useItem(itemId);
   const {
     data: lots = [],
     isLoading: lotsLoading,
@@ -193,6 +194,12 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
       <div className="flex min-h-[200px] items-center justify-center">
         <Spinner />
       </div>
+    );
+  }
+
+  if (isError && !item) {
+    return (
+      <ItemLoadError onRetry={() => void refetchItem()} onBack={() => void navigate({ to: "/" })} />
     );
   }
 

@@ -32,6 +32,7 @@ import { TagBadge } from "@/components/atoms/TagBadge";
 import { DeletionReasonDialog } from "@/components/molecules/DeletionReasonDialog";
 import { ImageLightbox } from "@/components/molecules/ImageLightbox";
 import { ItemConsumptionMiniChart } from "@/components/molecules/ItemConsumptionMiniChart";
+import { ItemLoadError } from "@/components/molecules/ItemLoadError";
 import { QRCodeDialog } from "@/components/molecules/QRCodeDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,7 +84,7 @@ export const ItemDetailPage = () => {
     (m) =>
       m.routeId === "/_auth/items/$itemId/consume" || m.routeId === "/_auth/items/$itemId/edit",
   );
-  const { data: item, isLoading, error } = useItem(itemId);
+  const { data: item, isLoading, isError, refetch: refetchItem } = useItem(itemId);
   const { data: lots = [], isError: lotsError, refetch: refetchLots } = useItemLots(itemId);
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useStorageLocations();
@@ -210,7 +211,13 @@ export const ItemDetailPage = () => {
     );
   }
 
-  if (error || !item) {
+  if (isError && !item) {
+    return (
+      <ItemLoadError onRetry={() => void refetchItem()} onBack={() => void navigate({ to: "/" })} />
+    );
+  }
+
+  if (!item) {
     return (
       <div className="space-y-4">
         <Button
