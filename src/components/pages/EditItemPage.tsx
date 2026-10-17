@@ -17,7 +17,7 @@ import {
 } from "@/hooks/useItemImage";
 import { useCreateLot, useItemLots, useUpdateLot } from "@/hooks/useItemLots";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
-import { setItemTags, useCreateTag, useItemTagIds, useTags } from "@/hooks/useTags";
+import { ITEM_TAGS_KEY, setItemTags, useCreateTag, useItemTagIds, useTags } from "@/hooks/useTags";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
@@ -101,6 +101,8 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
       } catch {
         // タグ保存失敗は非致命
       }
+      // #1250: タグのキャッシュキーは ["items"] の配下ではないため個別に無効化する
+      await qc.invalidateQueries({ queryKey: ITEM_TAGS_KEY });
       if (selectedLot) {
         try {
           await updateLot.mutateAsync({
