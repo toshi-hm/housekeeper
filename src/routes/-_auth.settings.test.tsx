@@ -659,3 +659,81 @@ describe("SettingsPage - カスタム単位の削除確認 (#1244)", () => {
     expect(deleteMutateAsync).not.toHaveBeenCalled();
   });
 });
+
+describe("SettingsPage 取得エラー表示 (#1259)", () => {
+  let spies: readonly ReturnType<typeof spyOn>[];
+  let refetchSettings: ReturnType<typeof mock>;
+  let refetchUnits: ReturnType<typeof mock>;
+
+  beforeAll(async () => {
+    await i18n.changeLanguage("ja");
+  });
+
+  afterAll(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  const setup = (opts: { settingsError: boolean; unitsError: boolean }) => {
+    refetchSettings = mock(async () => {});
+    refetchUnits = mock(async () => {});
+    spies = [
+      spyOn(useUserSettingsModule, "useUserSettings").mockReturnValue({
+        data: opts.settingsError ? undefined : { expiry_warning_days: 3, language: "ja" },
+        isLoading: false,
+        isError: opts.settingsError,
+        refetch: refetchSettings,
+      } as unknown as ReturnType<typeof useUserSettingsModule.useUserSettings>),
+      spyOn(useUserSettingsModule, "useUpdateUserSettings").mockReturnValue({
+        mutateAsync: mock(async () => {}),
+        isPending: false,
+      } as unknown as ReturnType<typeof useUserSettingsModule.useUpdateUserSettings>),
+      spyOn(useNotifModule, "useNotificationPreferences").mockReturnValue({
+        data: null,
+        isLoading: false,
+      } as ReturnType<typeof useNotifModule.useNotificationPreferences>),
+      spyOn(useNotifModule, "useUpdateNotificationPreferences").mockReturnValue({
+        mutateAsync: mock(async () => {}),
+        isPending: false,
+      } as unknown as ReturnType<typeof useNotifModule.useUpdateNotificationPreferences>),
+      spyOn(useNotifModule, "useTestNotification").mockReturnValue({
+        mutate: mock(() => {}),
+        isPending: false,
+      } as unknown as ReturnType<typeof useNotifModule.useTestNotification>),
+      spyOn(useCustomUnitsModule, "useCustomUnits").mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        isError: opts.unitsError,
+        refetch: refetchUnits,
+      } as unknown as ReturnType<typeof useCustomUnitsModule.useCustomUnits>),
+      ...mockMfaHooks(),
+    ];
+  };
+
+  afterEach(() => {
+    spies.forEach((s) => s.mockRestore());
+    cleanup();
+  });
+
+  it("設定の取得に失敗したらエラーと再試行ボタンを表示する", () => {
+    setup({ settingsError: true, unitsError: false });
+    const { stub } = makeToastStub();
+    const { getByRole } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const alert = getByRole("alert");
+    expect(alert.textContent).toContain("設定の読み込みに失敗しました");
+    fireEvent.click(within(alert).getByRole("button", { name: "再試行" }));
+    expect(refetchSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it("カスタム単位の取得に失敗したら「カスタム単位がありません」ではなくエラーを表示する", () => {
+    setup({ settingsError: false, unitsError: true });
+    const { stub } = makeToastStub();
+    const { getByRole, queryByText } = render(<SettingsPage />, { wrapper: Wrapper(stub) });
+
+    const alert = getByRole("alert");
+    expect(alert.textContent).toContain("カスタム単位の読み込みに失敗しました");
+    expect(queryByText("カスタム単位がありません")).toBeNull();
+    fireEvent.click(within(alert).getByRole("button", { name: "再試行" }));
+    expect(refetchUnits).toHaveBeenCalledTimes(1);
+  });
+});
