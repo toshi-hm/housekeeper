@@ -69,9 +69,19 @@ export const SettingsPage = () => {
       m.routeId === "/_auth/settings/purchase-history" ||
       m.routeId === "/_auth/settings/household",
   );
-  const { data: settings, isLoading } = useUserSettings();
+  const {
+    data: settings,
+    isLoading,
+    isError: isSettingsError,
+    refetch: refetchSettings,
+  } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
-  const { data: customUnits = [], isLoading: isLoadingCustomUnits } = useCustomUnits();
+  const {
+    data: customUnits = [],
+    isLoading: isLoadingCustomUnits,
+    isError: isCustomUnitsError,
+    refetch: refetchCustomUnits,
+  } = useCustomUnits();
   const createCustomUnit = useCreateCustomUnit();
   const deleteCustomUnit = useDeleteCustomUnit();
   const { toast } = useToast();
@@ -347,6 +357,16 @@ export const SettingsPage = () => {
             </div>
           ))}
         </div>
+      ) : isSettingsError ? (
+        <div
+          role="alert"
+          className="space-y-3 rounded-lg border border-destructive p-4 text-destructive"
+        >
+          <p className="font-medium">{t("loadError")}</p>
+          <Button variant="outline" onClick={() => void refetchSettings()}>
+            {t("common:retry")}
+          </Button>
+        </div>
       ) : (
         <div className="space-y-6">
           {/* Language */}
@@ -524,6 +544,16 @@ export const SettingsPage = () => {
               </div>
               {isLoadingCustomUnits ? (
                 <Skeleton className="h-8 w-full rounded-md" />
+              ) : isCustomUnitsError ? (
+                <div
+                  role="alert"
+                  className="space-y-2 rounded-lg border border-destructive p-3 text-sm text-destructive"
+                >
+                  <p>{t("customUnitsLoadError")}</p>
+                  <Button variant="outline" size="sm" onClick={() => void refetchCustomUnits()}>
+                    {t("common:retry")}
+                  </Button>
+                </div>
               ) : customUnits.length === 0 ? (
                 <p className="text-xs text-muted-foreground">{t("noCustomUnits")}</p>
               ) : (
