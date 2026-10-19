@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 import { isJsonObject } from "../_shared/json.ts";
 import { checkReceiptScanRateLimit } from "../_shared/rate-limit.ts";
 import { queryGeminiReceiptScan } from "./gemini.ts";
@@ -18,7 +16,7 @@ const json = (body: unknown, status = 200, extraHeaders: Record<string, string> 
     headers: { ...corsHeaders, ...extraHeaders, "Content-Type": "application/json" },
   });
 
-Deno.serve(async (req: Request): Promise<Response> => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -31,6 +29,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "Unauthorized" }, 401);
   }
 
+  // Lazy dynamic import (not a static top-level import) so importing this
+  // module in tests doesn't require network access to esm.sh.
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -40,13 +41,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   } = await supabase.auth.getUser();
   if (authError || !user) {
     return json({ error: "Unauthorized" }, 401);
-  }
-
-  const rateLimit = await checkReceiptScanRateLimit(supabase);
-  if (!rateLimit.allowed) {
-    return json({ error: "rate_limited" }, 429, {
-      "Retry-After": String(rateLimit.retryAfterSeconds),
-    });
   }
 
   let parsed: ReceiptScanRequest;
@@ -67,6 +61,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "image_too_large" }, 413);
   }
 
+  // Consume quota only for well-formed requests so invalid bodies are free.
+  const rateLimit = await checkReceiptScanRateLimit(supabase);
+  if (!rateLimit.allowed) {
+    return json({ error: "rate_limited" }, 429, {
+      "Retry-After": String(rateLimit.retryAfterSeconds),
+    });
+  }
+
   const result = await queryGeminiReceiptScan(parsed.image, parsed.mimeType);
   if (result.kind === "timeout") {
     return json({ error: "timeout" }, 504);
@@ -77,4 +79,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const response: ReceiptScanResponse = result.data;
   return json(response);
-});
+};
+
+if (import.meta.main) Deno.serve(handler);

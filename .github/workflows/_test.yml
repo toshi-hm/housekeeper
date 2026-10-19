@@ -59,7 +59,7 @@ jobs:
 
       - name: Test Edge Functions
         run: |
-          deno test --no-check --allow-env=CRON_SECRET --coverage=coverage/deno $(find supabase/functions -name '*.test.ts' | sort)
+          deno test --no-check --allow-env=CRON_SECRET,SUPABASE_URL,SUPABASE_ANON_KEY --coverage=coverage/deno $(find supabase/functions -name '*.test.ts' | sort)
 
   pgtap:
     if: ${{ inputs.run_pgtap }}

@@ -63,7 +63,7 @@ const buildMatchedItems = (
   return result;
 };
 
-Deno.serve(async (req: Request): Promise<Response> => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -74,13 +74,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const supabase = getUserScopedClient(req.headers.get("Authorization"));
   if (!supabase) {
     return json({ error: "Unauthorized" }, 401);
-  }
-
-  const rateLimit = await checkChatRateLimit(supabase);
-  if (!rateLimit.allowed) {
-    return json({ error: "rate_limited" }, 429, {
-      "Retry-After": String(rateLimit.retryAfterSeconds),
-    });
   }
 
   let parsed: ChatRequest;
@@ -104,6 +97,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const history = sanitizeHistory(parsed.history);
   const language = parseChatLanguage(parsed.language);
 
+  // Consume quota only for well-formed requests so invalid bodies are free.
+  const rateLimit = await checkChatRateLimit(supabase);
+  if (!rateLimit.allowed) {
+    return json({ error: "rate_limited" }, 429, {
+      "Retry-After": String(rateLimit.retryAfterSeconds),
+    });
+  }
+
   const [items, recentlyConsumed] = await Promise.all([
     fetchAllItems(supabase),
     fetchRecentlyConsumedItems(supabase),
@@ -125,4 +126,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     items: buildMatchedItems(result.data.items, items),
   };
   return json(response);
-});
+};
+
+if (import.meta.main) Deno.serve(handler);
