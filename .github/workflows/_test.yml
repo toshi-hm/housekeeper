@@ -53,6 +53,19 @@ jobs:
         with:
           deno-version: v2.x
 
+      # #1258: 既存の型エラー(deno check)・lint 違反を解消するまでは警告のみ
+      # (continue-on-error)。解消後に continue-on-error を外して必須化する。
+      # no-import-prefix は URL / jsr: 直 import を前提とする現行構成のため除外。
+      - name: Type check Edge Functions (non-blocking)
+        continue-on-error: true
+        run: |
+          deno check $(find supabase/functions -name 'index.ts' | sort)
+
+      - name: Lint Edge Functions (non-blocking)
+        continue-on-error: true
+        run: |
+          deno lint --rules-exclude=no-import-prefix supabase/functions
+
       - name: Test Edge Functions
         run: |
           deno test --no-check --allow-env=CRON_SECRET --coverage=coverage/deno $(find supabase/functions -name '*.test.ts' | sort)
