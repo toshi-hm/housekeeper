@@ -1,3 +1,4 @@
+import { isJsonObject } from "../_shared/json.ts";
 import { checkShelfScanRateLimit } from "../_shared/rate-limit.ts";
 import { queryGeminiShelfScan } from "./gemini.ts";
 import type { ShelfScanRequest, ShelfScanResponse } from "./types.ts";
@@ -45,10 +46,10 @@ export const handler = async (req: Request): Promise<Response> => {
   let parsed: ShelfScanRequest;
   try {
     const body: unknown = await req.json();
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
+    if (!isJsonObject(body)) {
       return json({ error: "Invalid JSON body" }, 400);
     }
-    parsed = body as ShelfScanRequest;
+    parsed = body as unknown as ShelfScanRequest;
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }

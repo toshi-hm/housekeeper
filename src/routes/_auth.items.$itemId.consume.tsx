@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/atoms/Spinner";
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
+import { ItemLoadError } from "@/components/molecules/ItemLoadError";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,7 +67,12 @@ export const ItemConsumePage = () => {
   const { itemId } = Route.useParams();
   const { lotId: preselectedLotId } = Route.useSearch();
   const navigate = useNavigate();
-  const { data: item, isLoading: itemLoading } = useItem(itemId);
+  const {
+    data: item,
+    isLoading: itemLoading,
+    isError: itemError,
+    refetch: refetchItem,
+  } = useItem(itemId);
   const { data: lots = [], isLoading: lotsLoading, isError: lotsError } = useItemLots(itemId);
   const consumeLot = useConsumeLot();
   const { toast } = useToast();
@@ -302,6 +308,12 @@ export const ItemConsumePage = () => {
           </Button>
         </div>
       </div>
+    );
+  }
+
+  if (itemError && !item) {
+    return (
+      <ItemLoadError onRetry={() => void refetchItem()} onBack={() => void navigate({ to: "/" })} />
     );
   }
 

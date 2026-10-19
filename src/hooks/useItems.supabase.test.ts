@@ -95,6 +95,7 @@ const {
   useItemsWithExpiry,
   countRecentExpiredWaste,
   deleteItemPermanently,
+  restoreItem,
   useDeleteItemPermanently,
 } = await import("@/hooks/useItems");
 const { ToastContext } = await import("@/lib/toast-context");
@@ -545,6 +546,28 @@ describe("useDeleteItemPermanently (#1099)", () => {
     expect(invalidatedKeys).toContainEqual(["items", "deleted"]);
   });
 
+  test("cascade 削除される関連データ(レシピ・間取り配置・ロット・消費ログ)のキャッシュも無効化する (#1251)", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = mock(() => Promise.resolve());
+    qc.invalidateQueries = invalidateSpy as unknown as typeof qc.invalidateQueries;
+
+    const { result } = renderHook(() => useDeleteItemPermanently(), { wrapper: makeWrapper(qc) });
+    result.current.mutate({ id: "item-1", imagePath: null });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(invalidatedKeys).toContainEqual(["recipes"]);
+    expect(invalidatedKeys).toContainEqual(["floor-plan-placements"]);
+    expect(invalidatedKeys).toContainEqual(["item-lots"]);
+    expect(invalidatedKeys).toContainEqual(["consumption-logs"]);
+    expect(invalidatedKeys).toContainEqual(["consumption-logs-all"]);
+  });
+
   test("失敗時はキャッシュを無効化しない", async () => {
     responseQueues.items = [{ data: null, error: { message: "boom" } }];
 
@@ -558,5 +581,16 @@ describe("useDeleteItemPermanently (#1099)", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("restoreItem (#1252)", () => {
+  test("復元時は deleted_at と一緒に deletion_reason もクリアする", async () => {
+    responseQueues.items = [{ data: null, error: null }];
+
+    await restoreItem("item-1");
+
+    const update = callLog.find((c) => c.table === "items" && c.method === "update");
+    expect(update?.args[0]).toMatchObject({ deleted_at: null, deletion_reason: null });
   });
 });

@@ -1,3 +1,4 @@
+import { isJsonObject } from "../_shared/json.ts";
 import { checkChatRateLimit } from "../_shared/rate-limit.ts";
 import { queryGeminiChat } from "./gemini.ts";
 import { fetchAllItems, fetchRecentlyConsumedItems, getUserScopedClient } from "./inventory.ts";
@@ -78,10 +79,10 @@ export const handler = async (req: Request): Promise<Response> => {
   let parsed: ChatRequest;
   try {
     const body: unknown = await req.json();
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
+    if (!isJsonObject(body)) {
       return json({ error: "Invalid JSON body" }, 400);
     }
-    parsed = body as ChatRequest;
+    parsed = body as unknown as ChatRequest;
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }

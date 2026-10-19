@@ -1,6 +1,7 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useState } from "react";
 
+import { barcodeVariants } from "@/lib/barcode";
 import { supabase } from "@/lib/supabase";
 import type { BarcodeLookupResult, ProductInfo } from "@/types/barcode";
 
@@ -66,7 +67,7 @@ export const useBarcodeLookup = () => {
         .select(
           "id, name, image_path, category_id, item_type, content_amount, content_unit, expiry_type, notes, minimum_stock, days_use_after_opening, unit_price, store_name, auto_reorder, reorder_threshold, reorder_lead_days",
         )
-        .eq("barcode", barcode)
+        .in("barcode", barcodeVariants(barcode))
         .is("deleted_at", null)
         .order("updated_at", { ascending: false })
         .limit(1)

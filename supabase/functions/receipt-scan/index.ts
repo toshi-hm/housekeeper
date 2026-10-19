@@ -1,3 +1,4 @@
+import { isJsonObject } from "../_shared/json.ts";
 import { checkReceiptScanRateLimit } from "../_shared/rate-limit.ts";
 import { queryGeminiReceiptScan } from "./gemini.ts";
 import type { ReceiptScanRequest, ReceiptScanResponse } from "./types.ts";
@@ -45,10 +46,10 @@ export const handler = async (req: Request): Promise<Response> => {
   let parsed: ReceiptScanRequest;
   try {
     const body: unknown = await req.json();
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
+    if (!isJsonObject(body)) {
       return json({ error: "Invalid JSON body" }, 400);
     }
-    parsed = body as ReceiptScanRequest;
+    parsed = body as unknown as ReceiptScanRequest;
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }

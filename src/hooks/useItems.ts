@@ -441,7 +441,7 @@ export const restoreItem = async (id: string): Promise<void> => {
   requireOnline();
   const { error } = await supabase
     .from("items")
-    .update({ deleted_at: null, updated_at: new Date().toISOString() })
+    .update({ deleted_at: null, deletion_reason: null, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
 };
@@ -804,6 +804,12 @@ export const useDeleteItemPermanently = () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ITEMS_KEY, refetchType: "all" }),
         qc.invalidateQueries({ queryKey: DELETED_ITEMS_KEY, refetchType: "all" }),
+        // items 削除でDB側が cascade 削除する関連データのキャッシュも破棄する (#1251)
+        qc.invalidateQueries({ queryKey: ["recipes"] }),
+        qc.invalidateQueries({ queryKey: ["floor-plan-placements"] }),
+        qc.invalidateQueries({ queryKey: ["item-lots"] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs"] }),
+        qc.invalidateQueries({ queryKey: ["consumption-logs-all"] }),
       ]);
       toast(t("settings:purgeItemSuccess"), "success");
     },
