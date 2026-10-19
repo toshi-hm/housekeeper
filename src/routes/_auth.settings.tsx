@@ -29,6 +29,7 @@ import { LanguageToggle } from "@/components/atoms/LanguageToggle";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { Spinner } from "@/components/atoms/Spinner";
 import { ThemeToggle } from "@/components/atoms/ThemeToggle";
+import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { DataExportPanel } from "@/components/organisms/DataExportPanel";
 import { DataImportPanel } from "@/components/organisms/DataImportPanel";
 import { NotificationSettings } from "@/components/organisms/NotificationSettings";
@@ -68,9 +69,19 @@ export const SettingsPage = () => {
       m.routeId === "/_auth/settings/purchase-history" ||
       m.routeId === "/_auth/settings/household",
   );
-  const { data: settings, isLoading } = useUserSettings();
+  const {
+    data: settings,
+    isLoading,
+    isError: isSettingsError,
+    refetch: refetchSettings,
+  } = useUserSettings();
   const updateSettings = useUpdateUserSettings();
-  const { data: customUnits = [], isLoading: isLoadingCustomUnits } = useCustomUnits();
+  const {
+    data: customUnits = [],
+    isLoading: isLoadingCustomUnits,
+    isError: isCustomUnitsError,
+    refetch: refetchCustomUnits,
+  } = useCustomUnits();
   const createCustomUnit = useCreateCustomUnit();
   const deleteCustomUnit = useDeleteCustomUnit();
   const { toast } = useToast();
@@ -81,6 +92,7 @@ export const SettingsPage = () => {
     setFieldErrors((prev) => ({ ...prev, [field]: message }));
   const [newUnitName, setNewUnitName] = useState("");
   const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
+  const [unitToDelete, setUnitToDelete] = useState<{ id: string; name: string } | null>(null);
   const warningDaysValue =
     warningDays ??
     (settings?.expiry_warning_days !== undefined ? String(settings.expiry_warning_days) : "");
@@ -308,6 +320,21 @@ export const SettingsPage = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <ConfirmDialog
+        open={!!unitToDelete}
+        title={t("deleteCustomUnit")}
+        message={t("deleteCustomUnitConfirm", { name: unitToDelete?.name ?? "" })}
+        confirmLabel={t("common:delete")}
+        isConfirming={deletingUnitId !== null}
+        onConfirm={() => {
+          if (!unitToDelete) return;
+          const { id } = unitToDelete;
+          setUnitToDelete(null);
+          void handleDeleteCustomUnit(id);
+        }}
+        onCancel={() => setUnitToDelete(null)}
+      />
+
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
@@ -329,6 +356,16 @@ export const SettingsPage = () => {
               <Skeleton className="h-10 w-full rounded-md" />
             </div>
           ))}
+        </div>
+      ) : isSettingsError ? (
+        <div
+          role="alert"
+          className="space-y-3 rounded-lg border border-destructive p-4 text-destructive"
+        >
+          <p className="font-medium">{t("loadError")}</p>
+          <Button variant="outline" onClick={() => void refetchSettings()}>
+            {t("common:retry")}
+          </Button>
         </div>
       ) : (
         <div className="space-y-6">
@@ -507,6 +544,16 @@ export const SettingsPage = () => {
               </div>
               {isLoadingCustomUnits ? (
                 <Skeleton className="h-8 w-full rounded-md" />
+              ) : isCustomUnitsError ? (
+                <div
+                  role="alert"
+                  className="space-y-2 rounded-lg border border-destructive p-3 text-sm text-destructive"
+                >
+                  <p>{t("customUnitsLoadError")}</p>
+                  <Button variant="outline" size="sm" onClick={() => void refetchCustomUnits()}>
+                    {t("common:retry")}
+                  </Button>
+                </div>
               ) : customUnits.length === 0 ? (
                 <p className="text-xs text-muted-foreground">{t("noCustomUnits")}</p>
               ) : (
@@ -520,11 +567,9 @@ export const SettingsPage = () => {
                       <button
                         type="button"
                         aria-label={t("common:delete")}
-                        className="text-muted-foreground hover:text-destructive disabled:opacity-40"
+                        className="-my-3 -mr-3 flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-destructive disabled:opacity-40"
                         disabled={deletingUnitId === unit.id}
-                        onClick={() => {
-                          void handleDeleteCustomUnit(unit.id);
-                        }}
+                        onClick={() => setUnitToDelete({ id: unit.id, name: unit.name })}
                       >
                         {deletingUnitId === unit.id ? (
                           <Spinner className="h-3 w-3" />

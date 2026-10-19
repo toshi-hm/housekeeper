@@ -1,3 +1,4 @@
+import { isJsonObject } from "../_shared/json.ts";
 import { checkChatRateLimit } from "../_shared/rate-limit.ts";
 import { queryGeminiChat } from "./gemini.ts";
 import { fetchAllItems, fetchRecentlyConsumedItems, getUserScopedClient } from "./inventory.ts";
@@ -84,7 +85,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   let parsed: ChatRequest;
   try {
-    parsed = (await req.json()) as ChatRequest;
+    const body: unknown = await req.json();
+    if (!isJsonObject(body)) {
+      return json({ error: "Invalid JSON body" }, 400);
+    }
+    parsed = body as unknown as ChatRequest;
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }

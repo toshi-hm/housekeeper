@@ -21,7 +21,7 @@ import { useToast } from "@/lib/toast-context";
 export const SecuritySettings = () => {
   const { t } = useTranslation("mfa");
   const { toast } = useToast();
-  const { data: factors, isLoading } = useMfaFactors();
+  const { data: factors, isLoading, isError, refetch } = useMfaFactors();
   const enrollTotp = useEnrollTotp();
   const verifyEnrollment = useVerifyTotpEnrollment();
   const unenrollTotp = useUnenrollTotp();
@@ -105,25 +105,37 @@ export const SecuritySettings = () => {
               <ShieldCheck className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{t("title")}</span>
             </div>
-            <Button
-              variant={enabled ? "outline" : "default"}
-              size="sm"
-              disabled={isLoading || enrollTotp.isPending}
-              onClick={() => {
-                if (enabled) {
-                  setConfirmOpen(true);
-                } else {
-                  void handleEnable();
-                }
-              }}
-            >
-              {enrollTotp.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {enabled ? t("disableButton") : t("enableButton")}
-            </Button>
+            {/* #1233: 取得失敗を「2FA無効」と誤表示しないよう、状態不明のときは操作を出さない */}
+            {!isError && (
+              <Button
+                variant={enabled ? "outline" : "default"}
+                size="sm"
+                disabled={isLoading || enrollTotp.isPending}
+                onClick={() => {
+                  if (enabled) {
+                    setConfirmOpen(true);
+                  } else {
+                    void handleEnable();
+                  }
+                }}
+              >
+                {enrollTotp.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {enabled ? t("disableButton") : t("enableButton")}
+              </Button>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {enabled ? t("enabledHelp") : t("disabledHelp")}
-          </p>
+          {isError ? (
+            <div role="alert" className="space-y-2">
+              <p className="text-sm text-destructive">{t("common:unknownError")}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+                {t("common:retry")}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {enabled ? t("enabledHelp") : t("disabledHelp")}
+            </p>
+          )}
         </div>
       ) : (
         enrollment && (

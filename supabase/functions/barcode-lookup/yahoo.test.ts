@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { fetchYahooShoppingProduct } from "./yahoo.ts";
+import { fetchYahooShoppingProduct, normalizeJanCode } from "./yahoo.ts";
 
 // --- fetchYahooShoppingProduct ---
 
@@ -138,4 +138,81 @@ Deno.test("fetchYahooShoppingProduct - actually aborts fetchImpl once timeoutMs 
   });
 
   assert.deepStrictEqual(result, { kind: "timeout" });
+});
+
+// --- normalizeJanCode ---
+
+Deno.test("normalizeJanCode - pads UPC-A to 13 digits and strips GTIN-14 leading zero", () => {
+  assert.strictEqual(normalizeJanCode("4901234567894"), "4901234567894");
+  assert.strictEqual(normalizeJanCode("012345678905"), "0012345678905");
+  assert.strictEqual(normalizeJanCode("04901234567894"), "4901234567894");
+  assert.strictEqual(normalizeJanCode("49012345"), "49012345");
+});
+
+// --- keyword fallback ---
+
+Deno.test("fetchYahooShoppingProduct - falls back to query search when jan_code returns no hits", async () => {
+  const calls: string[] = [];
+  const fetchImpl = ((input: string | URL | Request) => {
+    const url = new URL(input instanceof Request ? input.url : input);
+    calls.push(url.searchParams.has("jan_code") ? "jan_code" : "query");
+    if (url.searchParams.has("jan_code")) {
+      return Promise.resolve(new Response(JSON.stringify({ hits: [] }), { status: 200 }));
+    }
+    assert.strictEqual(url.searchParams.get("query"), "4901234567894");
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          hits: [
+            { name: "別商品", janCode: "4900000000000" },
+            { name: "牛乳", janCode: "4901234567894", brand: { name: "メーカー" } },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+  }) as typeof fetch;
+
+  const result = await fetchYahooShoppingProduct({
+    appId: "test-app-id",
+    barcode: "4901234567894",
+    fetchImpl,
+  });
+
+  assert.deepStrictEqual(calls, ["jan_code", "query"]);
+  assert.deepStrictEqual(result, {
+    kind: "ok",
+    product: { name: "牛乳", description: null, image_url: null, brand: "メーカー" },
+  });
+});
+
+Deno.test("fetchYahooShoppingProduct - fallback ignores hits whose janCode does not match", async () => {
+  const fetchImpl = ((input: string | URL | Request) => {
+    const url = new URL(input instanceof Request ? input.url : input);
+    const hits = url.searchParams.has("jan_code")
+      ? []
+      : [{ name: "無関係", janCode: "4900000000000" }];
+    return Promise.resolve(new Response(JSON.stringify({ hits }), { status: 200 }));
+  }) as typeof fetch;
+
+  const result = await fetchYahooShoppingProduct({
+    appId: "test-app-id",
+    barcode: "4901234567894",
+    fetchImpl,
+  });
+
+  assert.deepStrictEqual(result, { kind: "ok", product: null });
+});
+
+Deno.test("fetchYahooShoppingProduct - searches UPC-A as normalized 13-digit JAN", async () => {
+  let janParam: string | null = null;
+  const fetchImpl = ((input: string | URL | Request) => {
+    const url = new URL(input instanceof Request ? input.url : input);
+    janParam ??= url.searchParams.get("jan_code");
+    return Promise.resolve(new Response(JSON.stringify({ hits: [] }), { status: 200 }));
+  }) as typeof fetch;
+
+  await fetchYahooShoppingProduct({ appId: "test-app-id", barcode: "012345678905", fetchImpl });
+
+  assert.strictEqual(janParam, "0012345678905");
 });

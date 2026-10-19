@@ -172,3 +172,34 @@ describe("ArchivedItemsPage — 完全削除（パージ）(#1099)", () => {
     expect(purgeButtons[1]?.hasAttribute("disabled")).toBe(false);
   });
 });
+
+describe("ArchivedItemsPage — 取得エラー表示 (#1230)", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("取得に失敗したときは空状態ではなくエラーと再試行を表示する", () => {
+    const refetch = mock(() => Promise.resolve());
+    spyOn(useItemsModule, "useDeletedItems").mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useItemsModule.useDeletedItems>);
+    spyOn(useItemsModule, "useRestoreItem").mockReturnValue({
+      mutate: mock(() => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useRestoreItem>);
+    spyOn(useItemsModule, "useDeleteItemPermanently").mockReturnValue({
+      mutate: mock(() => {}),
+      isPending: false,
+    } as unknown as ReturnType<typeof useItemsModule.useDeleteItemPermanently>);
+
+    const { getByRole, queryByText } = render(<ArchivedItemsPage />, { wrapper: Wrapper });
+
+    expect(getByRole("alert")).toBeTruthy();
+    expect(queryByText(i18n.t("settings:noArchivedItems"))).toBeNull();
+    fireEvent.click(getByRole("button", { name: i18n.t("common:retry") }));
+    expect(refetch).toHaveBeenCalled();
+  });
+});
