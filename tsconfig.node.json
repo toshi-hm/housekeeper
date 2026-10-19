@@ -12,6 +12,7 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
+    "paths": { "@/*": ["./src/*"] },
     "noEmit": true,
 
     /* Linting */
@@ -20,5 +21,6 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "scripts/**/*.ts"],
+  "exclude": ["scripts/**/*.test.ts"]
 }

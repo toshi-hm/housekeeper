@@ -79,7 +79,7 @@ const removeIfUnreferenced = async (
   const { count, error } = await supabase
     .from(table)
     .select("id", { count: "exact", head: true })
-    .eq(column, oldPath);
+    .filter(column, "eq", oldPath);
   if (error)
     throw new Error(`Could not check references for ${bucket}/${oldPath}: ${error.message}`);
   if ((count ?? 0) > 0) {
