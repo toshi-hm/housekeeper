@@ -3,7 +3,7 @@
 -- table/bucket added later cannot silently skip the aal2 requirement.
 begin;
 
-select plan(7);
+select plan(14);
 
 -- Structural guard: any public table with RLS and at least one policy for
 -- authenticated clients must carry mfa_aal_required. Service-role-only tables
@@ -91,6 +91,14 @@ select set_config(
 select is((select count(*)::int from public.recipes), 0, 'aal1 session cannot read recipes of an MFA-enabled user');
 select is((select count(*)::int from public.custom_units), 0, 'aal1 session cannot read custom_units of an MFA-enabled user');
 
+-- #1247: security definer RPCs bypass RLS, so they must check aal themselves.
+select throws_ok($$select public.create_household('mfa')$$, '42501', 'mfa verification required', 'aal1 cannot call create_household');
+select throws_ok($$select * from public.redeem_household_invite('mfa', false)$$, '42501', 'mfa verification required', 'aal1 cannot call redeem_household_invite');
+select throws_ok($$select public.rename_household('mfa')$$, '42501', 'mfa verification required', 'aal1 cannot call rename_household');
+select throws_ok($$select public.remove_household_member('a9000000-0000-0000-0000-000000000002')$$, '42501', 'mfa verification required', 'aal1 cannot call remove_household_member');
+select throws_ok($$select public.set_household_member_display_name('mfa')$$, '42501', 'mfa verification required', 'aal1 cannot call set_household_member_display_name');
+select throws_ok($$select public.archive_purchased_shopping_items()$$, '42501', 'mfa verification required', 'aal1 cannot call archive_purchased_shopping_items');
+
 select set_config(
   'request.jwt.claims',
   json_build_object('sub', 'a9000000-0000-0000-0000-000000000001', 'role', 'authenticated', 'aal', 'aal2')::text,
@@ -98,6 +106,7 @@ select set_config(
 );
 select is((select count(*)::int from public.recipes), 1, 'aal2 session can read recipes');
 select is((select count(*)::int from public.custom_units), 1, 'aal2 session can read custom_units');
+select lives_ok($$select public.set_household_member_display_name('mfa')$$, 'aal2 session can call definer RPCs');
 
 select * from finish();
 rollback;
