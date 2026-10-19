@@ -12,8 +12,9 @@ import type { Item } from "@/types/item";
 export const ArchivedItemsPage = () => {
   const { t } = useTranslation("settings");
   const { t: ti } = useTranslation("items");
+  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
-  const { data: items = [], isLoading } = useDeletedItems();
+  const { data: items = [], isLoading, isError, refetch } = useDeletedItems();
   const restoreItem = useRestoreItem();
   const deleteItemPermanently = useDeleteItemPermanently();
   /** #1099: 完全削除の確認ダイアログ対象アイテム。確認メッセージに名前を埋め込むため
@@ -57,6 +58,13 @@ export const ArchivedItemsPage = () => {
       {isLoading ? (
         <div className="flex justify-center py-8">
           <Spinner />
+        </div>
+      ) : isError ? (
+        <div role="alert" className="space-y-3 py-8 text-center">
+          <p className="text-sm text-destructive">{ti("loadError")}</p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            {tc("retry")}
+          </Button>
         </div>
       ) : items.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">{t("noArchivedItems")}</p>

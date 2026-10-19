@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { isJsonObject } from "../_shared/json.ts";
 import { checkShelfScanRateLimit } from "../_shared/rate-limit.ts";
 import { queryGeminiShelfScan } from "./gemini.ts";
 import type { ShelfScanRequest, ShelfScanResponse } from "./types.ts";
@@ -50,7 +51,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   let parsed: ShelfScanRequest;
   try {
-    parsed = (await req.json()) as ShelfScanRequest;
+    const body: unknown = await req.json();
+    if (!isJsonObject(body)) {
+      return json({ error: "Invalid JSON body" }, 400);
+    }
+    parsed = body as unknown as ShelfScanRequest;
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }

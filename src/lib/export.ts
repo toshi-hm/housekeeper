@@ -24,7 +24,7 @@ import {
 const CSV_BOM = "﻿";
 
 /** スプレッドシートソフトが数式として評価しうる先頭文字（CSVインジェクション対策、#677）。 */
-const FORMULA_TRIGGER_CHARS = /^[=+\-@]/;
+const FORMULA_TRIGGER_CHARS = /^[=+\-@\t\r]/;
 
 const escapeCsvField = (value: string): string => {
   // 外部API由来の値（バーコード検索結果の商品名等）がそのままセルに入り得るため、
@@ -547,7 +547,11 @@ export const historyRowsToCSV = (
 
 /** RFC5545 TEXT値のエスケープ（バックスラッシュ→カンマ→セミコロン→改行の順で処理する必要がある）。 */
 const escapeIcsText = (value: string): string =>
-  value.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
+  value
+    .replace(/\\/g, "\\\\")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;")
+    .replace(/\r\n|\r|\n/g, "\\n");
 
 /** `YYYY-MM-DD` → `YYYYMMDD`（VALUE=DATE 形式）。 */
 const toIcsDate = (isoDate: string): string => isoDate.replace(/-/g, "");
@@ -661,6 +665,8 @@ export const buildExportFilename = (
   return `${base}-${stamp}.${extension}`;
 };
 
+const REVOKE_DELAY_MS = 10_000;
+
 /** `Blob` + `URL.createObjectURL` でファイルダウンロードを発火する。DOM 依存のためテスト対象外。 */
 export const downloadTextFile = (content: string, filename: string, mimeType: string): void => {
   const blob = new Blob([content], { type: mimeType });
@@ -673,6 +679,7 @@ export const downloadTextFile = (content: string, filename: string, mimeType: st
     anchor.click();
     document.body.removeChild(anchor);
   } finally {
-    URL.revokeObjectURL(url);
+    // ダウンロード開始は非同期のため、即時 revoke すると Safari 等で失敗しうる（#1241）。
+    setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
   }
 };

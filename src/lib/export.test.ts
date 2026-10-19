@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, jest, test } from "bun:test";
 
 import type { Item } from "@/types/item";
 
@@ -8,6 +8,7 @@ import {
   buildPurchaseHistoryRows,
   DEFAULT_HISTORY_CSV_HEADER,
   DEFAULT_ITEMS_CSV_HEADER,
+  downloadTextFile,
   filterHistoryRowsByPeriod,
   getPeriodStartDate,
   type HistoryExportRow,
@@ -94,6 +95,12 @@ describe("itemsToCSV", () => {
     expect(dataLine).toContain("'=HYPERLINK(evil.example)");
     expect(dataLine).toContain("'+CMD|'/c calc'!A1");
     expect(dataLine).not.toContain(",=HYPERLINK");
+  });
+
+  test("neutralizes leading tab and carriage return (#1240)", () => {
+    const csv = itemsToCSV([makeItem({ name: "\t=cmd", notes: "\r=cmd" })], [], []);
+    expect(csv).toContain("'\t=cmd");
+    expect(csv).toContain('"\'\r=cmd"');
   });
 
   test("also neutralizes '-' and '@' leading characters", () => {
@@ -916,5 +923,45 @@ describe("itemsToICS", () => {
     // reconstruct the original, unescaped-boundary content exactly.
     const unfolded = ics.replace(/\r\n /g, "");
     expect(unfolded).toContain(`SUMMARY:${longName}`);
+  });
+});
+
+describe("itemsToICS control characters (#1240)", () => {
+  test("escapes CR and CRLF in SUMMARY as \\n", () => {
+    const item = makeItem({ name: "a\r\nb\rc", expiry_date: "2026-07-15" });
+    const ics = itemsToICS([item], [], () => new Date(2026, 6, 9));
+    expect(ics).toContain("SUMMARY:a\\nb\\nc");
+  });
+});
+
+describe("downloadTextFile (#1241)", () => {
+  const originalCreate = URL.createObjectURL;
+  const originalRevoke = URL.revokeObjectURL;
+  afterEach(() => {
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+    jest.useRealTimers();
+  });
+
+  test("revokes the object URL only after a delay", () => {
+    jest.useFakeTimers();
+    const revoke = jest.fn();
+    URL.createObjectURL = () => "blob:test";
+    URL.revokeObjectURL = revoke;
+    const anchor = { click: jest.fn(), href: "", download: "" };
+    const doc = globalThis.document;
+    globalThis.document = {
+      createElement: () => anchor,
+      body: { appendChild: jest.fn(), removeChild: jest.fn() },
+    } as unknown as Document;
+    try {
+      downloadTextFile("x", "a.csv", "text/csv");
+      expect(anchor.click).toHaveBeenCalled();
+      expect(revoke).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(10_000);
+      expect(revoke).toHaveBeenCalledWith("blob:test");
+    } finally {
+      globalThis.document = doc;
+    }
   });
 });

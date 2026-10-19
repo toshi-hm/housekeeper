@@ -10,6 +10,7 @@ const noLocalMatchBuilder: Record<string, unknown> = {};
 Object.assign(noLocalMatchBuilder, {
   select: () => noLocalMatchBuilder,
   eq: () => noLocalMatchBuilder,
+  in: () => noLocalMatchBuilder,
   is: () => noLocalMatchBuilder,
   order: () => noLocalMatchBuilder,
   limit: () => noLocalMatchBuilder,
@@ -72,6 +73,7 @@ describe("useBarcodeLookup (#655)", () => {
     Object.assign(itemBuilder, {
       select: () => itemBuilder,
       eq: () => itemBuilder,
+      in: () => itemBuilder,
       is: () => itemBuilder,
       order: () => itemBuilder,
       limit: () => itemBuilder,

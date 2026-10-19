@@ -17,6 +17,7 @@ import { useStorageLocations } from "@/hooks/useMasterData";
 
 export const MapPage = () => {
   const { t } = useTranslation("common");
+  const { t: ts } = useTranslation("settings");
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const {
@@ -30,19 +31,46 @@ export const MapPage = () => {
   // filtered list there made every non-matching placement render as
   // "Unknown item" as soon as the user typed anything.
   const { data: allItems = [] } = useItems({}, "created_at");
-  const { data: locations = [], isLoading: locationsLoading } = useStorageLocations();
-  const { data: floorPlan, isLoading: floorPlanLoading } = useFloorPlan();
-  const { data: storageLocationMarkers = [], isLoading: markersLoading } =
-    useFloorPlanStorageLocationMarkers(floorPlan?.id ?? null);
-  const { data: placements = [], isLoading: placementsLoading } = useFloorPlanPlacements(
-    floorPlan?.id ?? null,
-  );
+  const {
+    data: locations = [],
+    isLoading: locationsLoading,
+    isError: locationsError,
+    refetch: refetchLocations,
+  } = useStorageLocations();
+  const {
+    data: floorPlan,
+    isLoading: floorPlanLoading,
+    isError: floorPlanError,
+    refetch: refetchFloorPlan,
+  } = useFloorPlan();
+  const {
+    data: storageLocationMarkers = [],
+    isLoading: markersLoading,
+    isError: markersError,
+    refetch: refetchMarkers,
+  } = useFloorPlanStorageLocationMarkers(floorPlan?.id ?? null);
+  const {
+    data: placements = [],
+    isLoading: placementsLoading,
+    isError: placementsError,
+    refetch: refetchPlacements,
+  } = useFloorPlanPlacements(floorPlan?.id ?? null);
   const locationNames = useMemo(
     () => new Map(locations.map((location) => [location.id, location.name])),
     [locations],
   );
   const isLoading =
     itemsLoading || locationsLoading || floorPlanLoading || markersLoading || placementsLoading;
+
+  // #1232: 取得失敗を「保管場所なし」「間取り未登録」の空状態と区別する。
+  const isMapLoadError = locationsError || floorPlanError || markersError || placementsError;
+  const handleRetryMap = () => {
+    // 間取り未取得時は無効化されているクエリ(マーカー/配置)を refetch しない。
+    if (locationsError) void refetchLocations();
+    if (floorPlanError) void refetchFloorPlan();
+    if (markersError) void refetchMarkers();
+    if (placementsError) void refetchPlacements();
+  };
 
   return (
     <div className="space-y-4">
@@ -60,7 +88,17 @@ export const MapPage = () => {
           className="pl-9"
         />
       </label>
-      {!locationsLoading && locations.length === 0 ? (
+      {isMapLoadError ? (
+        <div
+          role="alert"
+          className="space-y-3 rounded-lg border border-destructive p-4 text-center text-destructive"
+        >
+          <p className="font-medium">{ts("storageLocationMapLoadError")}</p>
+          <Button type="button" size="sm" variant="outline" onClick={handleRetryMap}>
+            {t("retry")}
+          </Button>
+        </div>
+      ) : !locationsLoading && locations.length === 0 ? (
         // #916: without a storage location there is no `$locationId` to
         // reach `/locations/$locationId/edit` through, so there was
         // previously no way to even start a floor plan from this tab. Guide

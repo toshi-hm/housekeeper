@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { ItemLoadError } from "@/components/molecules/ItemLoadError";
 import { MultiTagSelect } from "@/components/molecules/MultiTagSelect";
 import { ItemForm } from "@/components/organisms/ItemForm";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import {
 } from "@/hooks/useItemImage";
 import { useCreateLot, useItemLots, useUpdateLot } from "@/hooks/useItemLots";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
-import { setItemTags, useCreateTag, useItemTagIds, useTags } from "@/hooks/useTags";
+import { ITEM_TAGS_KEY, setItemTags, useCreateTag, useItemTagIds, useTags } from "@/hooks/useTags";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import type { ItemFormValues } from "@/types/item";
@@ -28,10 +29,16 @@ interface EditItemPageProps {
 
 export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   const { t } = useTranslation("items");
+  const { t: tc } = useTranslation("common");
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { data: item, isLoading } = useItem(itemId);
-  const { data: lots = [] } = useItemLots(itemId);
+  const { data: item, isLoading, isError, refetch: refetchItem } = useItem(itemId);
+  const {
+    data: lots = [],
+    isLoading: lotsLoading,
+    isError: lotsError,
+    refetch: refetchLots,
+  } = useItemLots(itemId);
   const updateItem = useUpdateItem(itemId);
   const updateLot = useUpdateLot();
   const createLot = useCreateLot();
@@ -95,6 +102,8 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
       } catch {
         // タグ保存失敗は非致命
       }
+      // #1250: タグのキャッシュキーは ["items"] の配下ではないため個別に無効化する
+      await qc.invalidateQueries({ queryKey: ITEM_TAGS_KEY });
       if (selectedLot) {
         try {
           await updateLot.mutateAsync({
@@ -180,11 +189,17 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || lotsLoading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center">
         <Spinner />
       </div>
+    );
+  }
+
+  if (isError && !item) {
+    return (
+      <ItemLoadError onRetry={() => void refetchItem()} onBack={() => void navigate({ to: "/" })} />
     );
   }
 
@@ -204,6 +219,21 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           <p className="text-sm text-muted-foreground">{t("itemNotFoundDescription")}</p>
           <Button variant="outline" onClick={() => void navigate({ to: "/" })}>
             {t("backToItems")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // #1229: ロット取得に失敗した状態を「ロットなし」とみなすと、保存時に既存ロットとは
+  // 別のロットを新規作成して在庫が重複するため、フォームを出さずに再試行を促す。
+  if (lotsError) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <div role="alert" className="space-y-3 rounded-lg border border-destructive p-4">
+          <p className="text-sm text-destructive">{t("loadError")}</p>
+          <Button variant="outline" onClick={() => void refetchLots()}>
+            {tc("retry")}
           </Button>
         </div>
       </div>

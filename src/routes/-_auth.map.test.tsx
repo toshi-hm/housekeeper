@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Store } from "@tanstack/store";
-import { cleanup, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { cleanup, fireEvent, render } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import * as useFloorPlansModule from "@/hooks/useFloorPlans";
 import * as useItemsModule from "@/hooks/useItems";
@@ -193,6 +193,45 @@ describe("MapPage", () => {
       ),
     ).toBeNull();
     expect(getAllByRole("status").length).toBeGreaterThan(0);
+  });
+
+  it("間取りの取得に失敗したときは「未登録」ではなくエラーと再試行を表示する(#1232)", () => {
+    const refetch = mock(() => Promise.resolve());
+    floorPlanSpy.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useFloorPlansModule.useFloorPlan>);
+
+    const { getByRole, queryByText } = renderPage();
+
+    expect(getByRole("alert")).toBeDefined();
+    expect(
+      queryByText(
+        /mapNoSharedFloorPlan|共通の2D間取りがまだありません|No shared 2D floor plan yet/,
+      ),
+    ).toBeNull();
+    fireEvent.click(getByRole("button", { name: /retry|再試行|Retry/ }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it("保管場所の取得に失敗したときは「保管場所を作成」を誘導せずエラーを表示する(#1232)", () => {
+    locationsSpy.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: mock(() => Promise.resolve()),
+    } as unknown as ReturnType<typeof useMasterDataModule.useStorageLocations>);
+
+    const { getByRole, queryByRole } = renderPage();
+
+    expect(getByRole("alert")).toBeDefined();
+    expect(
+      queryByRole("button", {
+        name: /mapCreateLocationCta|保管場所を作成する|Create a storage location/,
+      }),
+    ).toBeNull();
   });
 
   it("保管場所IDが解決できないとき、アイテム名はそのまま表示しつつ保管場所名だけ「不明な保管場所」にする(#999)", () => {
