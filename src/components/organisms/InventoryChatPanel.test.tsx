@@ -7,7 +7,9 @@ import { I18nextProvider } from "react-i18next";
 
 import i18n from "@/lib/i18n";
 
-const invokeMock = mock(() => Promise.resolve({ data: { reply: "ok", items: [] }, error: null }));
+const invokeMock = mock<(...args: unknown[]) => Promise<{ data: unknown; error: null }>>(() =>
+  Promise.resolve({ data: { reply: "ok", items: [] }, error: null }),
+);
 
 mock.module("@/lib/supabase", () => ({
   supabase: {
@@ -92,5 +94,42 @@ describe("InventoryChatPanel", () => {
     const retryCallArgs = invokeMock.mock.calls[1]?.[1] as { body: { message: string } };
     expect(retryCallArgs.body.message).toBe("牛乳ある？");
     await waitFor(() => expect(getByText("牛乳は2本あります")).toBeTruthy());
+  });
+  test("献立タブでは meal-plan-chat を呼び、会話は在庫タブと分離される", async () => {
+    const user = userEvent.setup();
+    invokeMock
+      .mockImplementationOnce(() =>
+        Promise.resolve({ data: { reply: "牛乳は2本あります", items: [] }, error: null }),
+      )
+      .mockImplementationOnce(() =>
+        Promise.resolve({ data: { reply: "肉じゃがはどう？", items: [] }, error: null }),
+      );
+
+    const { getByLabelText, getByText, getByRole, queryByText } = render(
+      <InventoryChatPanel open onClose={() => {}} />,
+      { wrapper },
+    );
+
+    await user.type(getByLabelText(i18n.t("chat:inputLabel")), "牛乳ある？");
+    await user.click(getByLabelText(i18n.t("chat:send")));
+    await waitFor(() => expect(getByText("牛乳は2本あります")).toBeTruthy());
+    expect(invokeMock.mock.calls[0]?.[0]).toBe("inventory-chat");
+
+    await user.click(getByRole("button", { name: i18n.t("chat:agentMeal") }));
+    // 在庫タブの会話は引き継がれず、献立タブ固有の案内が出る
+    expect(queryByText("牛乳は2本あります")).toBeNull();
+    expect(getByText(i18n.t("chat:mealEmptyHint"))).toBeTruthy();
+
+    await user.type(getByLabelText(i18n.t("chat:inputLabel")), "今日の晩ごはんは？");
+    await user.click(getByLabelText(i18n.t("chat:send")));
+    await waitFor(() => expect(getByText("肉じゃがはどう？")).toBeTruthy());
+    expect(invokeMock.mock.calls[1]?.[0]).toBe("meal-plan-chat");
+    // 在庫タブの履歴は献立リクエストに混ざらない
+    const mealCallArgs = invokeMock.mock.calls[1]?.[1] as { body: { history: unknown[] } };
+    expect(mealCallArgs.body.history).toEqual([]);
+
+    // 在庫タブへ戻ると元の会話が残っている
+    await user.click(getByRole("button", { name: i18n.t("chat:agentInventory") }));
+    expect(getByText("牛乳は2本あります")).toBeTruthy();
   });
 });

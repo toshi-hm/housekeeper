@@ -4,7 +4,7 @@ import { describe, expect, mock, test } from "bun:test";
 import { createElement, type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 
-const invokeMock = mock((): Promise<{ data: unknown; error: null }> =>
+const invokeMock = mock<(...args: unknown[]) => Promise<{ data: unknown; error: null }>>(() =>
   Promise.resolve({ data: { reply: "ok", items: [] }, error: null }),
 );
 
@@ -58,5 +58,19 @@ describe("useInventoryChat", () => {
     // src/test/setup.ts preloads once and shares the `i18n` singleton across
     // the whole process (see #772).
     await i18n.changeLanguage("en");
+  });
+
+  test("agent を指定すると対応する Edge Function を呼ぶ", async () => {
+    invokeMock.mockClear();
+    const { result, unmount } = renderHook(() => useInventoryChat("meal"), {
+      wrapper: makeWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.ask({ message: "晩ごはん", history: [] });
+    });
+
+    expect(invokeMock.mock.calls[0]?.[0]).toBe("meal-plan-chat");
+    unmount();
   });
 });

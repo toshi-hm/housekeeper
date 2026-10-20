@@ -627,6 +627,8 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [x] チャット UI（`ChatBubble` / `ChatComposer` / `InventoryChatPanel` + Story） <!-- issue:#427 -->
 - [x] レイアウト統合（AI ボタン）+ i18n `chat` 名前空間 <!-- issue:#428 -->
 - [x] テスト / CI 整備と PR CI グリーン化 <!-- issue:#429 -->
+- [x] 献立考案エージェント: Edge Function `meal-plan-chat` + パネルの「在庫確認 / 献立」切替
+      （設計: `inventory-chat.md` §9）
 
 ### v1.6 — 購入先（店舗）記録と店舗別価格比較
 

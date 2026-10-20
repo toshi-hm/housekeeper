@@ -124,9 +124,11 @@ describe("InventoryChatPanel - focus management (#556)", () => {
     const suggestion2 = getByText(i18n.t("chat:suggestion2"));
     const suggestion3 = getByText(i18n.t("chat:suggestion3"));
     const textarea = getByLabelText(i18n.t("chat:inputLabel"));
+    const agentInventory = getByText(i18n.t("chat:agentInventory"));
+    const agentMeal = getByText(i18n.t("chat:agentMeal"));
 
     // Focusable order in this empty-conversation state: close button, the
-    // three suggestion buttons, then the composer textarea (last, since the
+    // two agent tabs, the three suggestion buttons, then the composer textarea (last, since the
     // send button is disabled while the textarea is empty).
     expect(document.activeElement).toBe(textarea);
 
@@ -140,6 +142,10 @@ describe("InventoryChatPanel - focus management (#556)", () => {
     await user.tab({ shift: true });
     expect(document.activeElement).toBe(suggestion1);
     await user.tab({ shift: true });
+    expect(document.activeElement).toBe(agentMeal);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(agentInventory);
+    await user.tab({ shift: true });
     expect(document.activeElement).toBe(closeButton);
     await user.tab({ shift: true });
     expect(document.activeElement).toBe(textarea);
@@ -148,7 +154,7 @@ describe("InventoryChatPanel - focus management (#556)", () => {
     await user.tab();
     expect(document.activeElement).toBe(closeButton);
     await user.tab();
-    expect(document.activeElement).toBe(suggestion1);
+    expect(document.activeElement).toBe(agentInventory);
   });
 
   it("pulls focus back into the panel on the next Tab if it ends up outside via a non-Tab route", async () => {
