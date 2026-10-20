@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ChatRateLimitError, useInventoryChat } from "@/hooks/useInventoryChat";
 import { type ChatErrorKind, classifyChatError } from "@/lib/chatErrors";
 import { markMessageFailed, toHistory } from "@/lib/chatHistory";
-import type { ChatMessage } from "@/types/chat";
+import { cn } from "@/lib/utils";
+import type { ChatAgent, ChatMessage } from "@/types/chat";
 
 // Which i18n key to show for each classified error kind. Keyed off the
 // `ChatErrorKind` union (see src/lib/chatErrors.ts) rather than switching on
@@ -19,6 +20,37 @@ const chatErrorMessageKey = {
   unauthorized: "errorUnauthorized",
   temporary: "error",
 } as const satisfies Record<ChatErrorKind, string>;
+
+// Per-agent copy, keyed off the `ChatAgent` union rather than built by string
+// concatenation, per the i18n dynamic-key rule in CLAUDE.md. These keys are
+// not extractable by i18next-parser, so they are maintained by hand in
+// src/locales/*/chat.json.
+const AGENTS = ["inventory", "meal"] as const satisfies readonly ChatAgent[];
+
+const agentTabKey = {
+  inventory: "agentInventory",
+  meal: "agentMeal",
+} as const satisfies Record<ChatAgent, string>;
+
+const agentTitleKey = {
+  inventory: "title",
+  meal: "mealTitle",
+} as const satisfies Record<ChatAgent, string>;
+
+const agentEmptyHintKey = {
+  inventory: "emptyHint",
+  meal: "mealEmptyHint",
+} as const satisfies Record<ChatAgent, string>;
+
+const agentPlaceholderKey = {
+  inventory: "placeholder",
+  meal: "mealPlaceholder",
+} as const satisfies Record<ChatAgent, string>;
+
+const agentSuggestionKeys = {
+  inventory: ["suggestion1", "suggestion2", "suggestion3"],
+  meal: ["mealSuggestion1", "mealSuggestion2", "mealSuggestion3"],
+} as const satisfies Record<ChatAgent, readonly string[]>;
 
 interface InventoryChatPanelProps {
   open: boolean;
@@ -36,8 +68,14 @@ const createId = () =>
 
 export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) => {
   const { t } = useTranslation("chat");
-  const { ask, isLoading } = useInventoryChat();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [agent, setAgent] = useState<ChatAgent>("inventory");
+  const { ask, isLoading } = useInventoryChat(agent);
+  // Each agent keeps its own conversation; switching tabs doesn't mix history.
+  const [conversations, setConversations] = useState<Record<ChatAgent, ChatMessage[]>>({
+    inventory: [],
+    meal: [],
+  });
+  const messages = conversations[agent];
   const scrollRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -118,6 +156,11 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
   }, [messages, isLoading]);
 
   const handleSend = async (text: string) => {
+    // Pin the agent: the tabs are disabled while a request is in flight, but
+    // the reply must land in the conversation that asked regardless.
+    const target = agent;
+    const setMessages = (update: (prev: ChatMessage[]) => ChatMessage[]) =>
+      setConversations((prev) => ({ ...prev, [target]: update(prev[target]) }));
     const history = toHistory(messages);
     const userMessage: ChatMessage = { id: createId(), role: "user", text };
     setMessages((prev) => [...prev, userMessage]);
@@ -141,7 +184,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
 
   if (!open) return null;
 
-  const suggestions = [t("suggestion1"), t("suggestion2"), t("suggestion3")];
+  const suggestions = agentSuggestionKeys[agent].map((key) => t(key));
 
   return (
     <div ref={overlayRef} className="fixed inset-0 z-50 flex justify-center sm:items-center sm:p-4">
@@ -150,20 +193,20 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label={t("title")}
+        aria-label={t(agentTitleKey[agent])}
         className="relative flex h-full w-full flex-col bg-background shadow-xl sm:h-[80vh] sm:max-w-md sm:rounded-xl"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-2 font-semibold">
             <Bot className="h-5 w-5 text-primary" />
-            {t("title")}
+            {t(agentTitleKey[agent])}
           </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setMessages([])}
+              onClick={() => setConversations((prev) => ({ ...prev, [agent]: [] }))}
               disabled={messages.length === 0 || isLoading}
               aria-label={t("clear")}
               title={t("clear")}
@@ -182,6 +225,28 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
           </div>
         </div>
 
+        {/* Agent switcher */}
+        <div
+          role="group"
+          aria-label={t("agentSwitchLabel")}
+          className="flex gap-1 border-b px-4 py-2"
+        >
+          {AGENTS.map((a) => (
+            <Button
+              key={a}
+              type="button"
+              size="sm"
+              variant={a === agent ? "default" : "ghost"}
+              aria-pressed={a === agent}
+              disabled={isLoading}
+              onClick={() => setAgent(a)}
+              className={cn("flex-1", a !== agent && "text-muted-foreground")}
+            >
+              {t(agentTabKey[a])}
+            </Button>
+          ))}
+        </div>
+
         {/* Messages */}
         <div
           ref={scrollRef}
@@ -192,7 +257,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-4 text-center text-muted-foreground">
               <Bot className="h-10 w-10 text-primary/60" />
-              <p className="text-sm">{t("emptyHint")}</p>
+              <p className="text-sm">{t(agentEmptyHintKey[agent])}</p>
               <div className="flex flex-col gap-2">
                 {suggestions.map((s) => (
                   <Button
@@ -250,6 +315,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
 
         <ChatComposer
           ref={textareaRef}
+          placeholder={t(agentPlaceholderKey[agent])}
           onSend={(msg) => void handleSend(msg)}
           isLoading={isLoading}
         />

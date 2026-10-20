@@ -11,6 +11,8 @@ import { CHAT_MAX_MESSAGE_LENGTH } from "@/types/chat";
 interface ChatComposerProps {
   onSend: (message: string) => void;
   isLoading?: boolean;
+  // Defaults to the inventory-agent placeholder.
+  placeholder?: string;
   // 呼び出し側（InventoryChatPanel）がパネルオープン時に明示的に
   // フォーカスを移すための ref（React 19 では ref を通常の prop として渡せる）
   ref?: Ref<HTMLTextAreaElement>;
@@ -18,7 +20,12 @@ interface ChatComposerProps {
 
 // Input area with a send button. Enter submits, Shift+Enter inserts a newline.
 // IME composition is respected so confirming Japanese input does not submit.
-export const ChatComposer = ({ onSend, isLoading = false, ref }: ChatComposerProps) => {
+export const ChatComposer = ({
+  onSend,
+  isLoading = false,
+  placeholder,
+  ref,
+}: ChatComposerProps) => {
   const { t } = useTranslation("chat");
   const [value, setValue] = useState("");
   const isComposing = useRef(false);
@@ -56,7 +63,7 @@ export const ChatComposer = ({ onSend, isLoading = false, ref }: ChatComposerPro
           onKeyDown={handleKeyDown}
           onCompositionStart={() => (isComposing.current = true)}
           onCompositionEnd={() => (isComposing.current = false)}
-          placeholder={t("placeholder")}
+          placeholder={placeholder ?? t("placeholder")}
           rows={1}
           maxLength={CHAT_MAX_MESSAGE_LENGTH}
           disabled={isLoading}

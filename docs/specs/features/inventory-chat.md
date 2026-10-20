@@ -176,3 +176,32 @@ Gemini 無料枠を無制限に消費してしまうのを防ぐため、ユー�
   正常終了する（クラッシュしない）
 - 異常検知時はワークフロー実行自体を失敗させる（Issue自動起票はスコープ外。単一ユーザー
   プロジェクトのため、失敗したscheduled runそのものが十分な可視化シグナルと判断）
+
+## 9. 献立考案エージェント（meal-plan-chat）
+
+在庫確認エージェントに加え、同じチャットパネルから **「今ある食材で何を作るか」を相談できる
+献立エージェント** を提供する。
+
+- パネルのヘッダ下に「在庫確認 / 献立」の切替タブを置く。会話はエージェントごとに独立して保持し
+  （`useState`、永続化なし）、切替で履歴が混ざらない。リクエスト送信中は切替を無効化する。
+- Edge Function `meal-plan-chat` を新設（`inventory-chat` と同じく Gemini `gemini-2.5-flash`、
+  JWT + RLS、Zod 相当の入力検証）。リクエスト `{ message, history, language }` /
+  レスポンス `{ reply, items }` は `inventory-chat` と同形で、クライアントは
+  `chatResponseSchema` を共用する。`items` は提案献立で使う在庫食材（チップ表示用）。
+- コンテキストは **在庫あり・食品タイプの食材のみ**（日用品・使い切り済みは除外）を、賞味期限が
+  近い順に並べた JSON（`today` と `days_until_expiry` 付き）で渡す。期限切れ食材は使わせない。
+  `today` は日本時間基準（UI の期限表示と揃える）。
+- モデルが返した `items` の id は自前データと突き合わせ、存在しない id は捨てる。
+- `temperature: 0.7`（献立は多様性を優先）、`thinkingBudget: 1024`、タイムアウト 20s、会話履歴は
+  直近 8 件。
+- レート制限は `inventory-chat` と **同じ `check_chat_rate_limit()` を共用**（同じ Gemini 無料枠を
+  消費するため、合算で 1 分 20 リクエストに収める）。専用テーブル・migration は追加しない。
+- 範囲外: 提案献立を `meal_plans` へ登録する操作（`docs/specs/features/meal-plan.md` の週間
+  プランナーは別機能）。チャットは提案までで、DB への書き込みは行わない。
+
+| 区分     | ファイル                                           |
+| -------- | -------------------------------------------------- |
+| function | `supabase/functions/meal-plan-chat/`               |
+| hook     | `useInventoryChat(agent)`（呼び出し先を切替）      |
+| organism | `InventoryChatPanel`（エージェント切替タブ追加）   |
+| i18n     | `chat.json` の `agent*` / `meal*` キー（手動管理） |

@@ -21,6 +21,11 @@ export const chatResponseSchema = z.object({
 type ChatMatchedItem = z.infer<typeof chatMatchedItemSchema>;
 export type ChatResponse = z.infer<typeof chatResponseSchema>;
 
+// Which AI agent a chat conversation is with. Each maps to its own Edge
+// Function (see CHAT_AGENT_FUNCTION in src/hooks/useInventoryChat.ts) but
+// shares the request/response shape.
+export type ChatAgent = "inventory" | "meal";
+
 export type ChatRole = "user" | "assistant";
 
 // A message rendered in the chat panel.
