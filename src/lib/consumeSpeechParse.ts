@@ -50,6 +50,22 @@ const UNIT_PHONETIC_ALIASES: Readonly<Record<string, readonly string[]>> = {
   kg: ["キログラム", "キロ"],
 };
 
+/**
+ * 発話中の最初の漢数字列（一〜九・十）を数値に変換する。「十二」「二十」「二十五」
+ * のように「十」を含む 2 桁（10〜99）に対応する。「十」を含まない場合は先頭の 1 文字のみ
+ * を採用する。見つからなければ null。
+ */
+const parseKanjiNumber = (input: string): number | null => {
+  const run = input.match(/[一二三四五六七八九十]+/)?.[0];
+  if (!run) return null;
+  const tenIndex = run.indexOf("十");
+  if (tenIndex === -1) return KANJI_DIGITS[run[0] as string] ?? null;
+  const tens = tenIndex === 0 ? 1 : (KANJI_DIGITS[run[tenIndex - 1] as string] ?? 1);
+  const onesChar = run[tenIndex + 1];
+  const ones = onesChar && onesChar !== "十" ? (KANJI_DIGITS[onesChar] ?? 0) : 0;
+  return tens * 10 + ones;
+};
+
 export interface ParsedConsumeSpeech {
   /** 抽出できた数量。見つからない場合は null。 */
   amount: number | null;
@@ -74,12 +90,7 @@ export const parseConsumeSpeech = (
   let amount: number | null = arabicMatch ? parseFloat(arabicMatch[0]) : null;
 
   if (amount === null) {
-    for (const [kanji, value] of Object.entries(KANJI_DIGITS)) {
-      if (normalized.includes(kanji)) {
-        amount = value;
-        break;
-      }
-    }
+    amount = parseKanjiNumber(normalized);
   }
 
   const aliasPairs = candidateUnits

@@ -31,6 +31,13 @@ describe("parseConsumeSpeech", () => {
     });
   });
 
+  it("「十」を含む 2 桁の漢数字を解釈する（十二 → 12、二十 → 20、二十五 → 25、十 → 10）", () => {
+    expect(parseConsumeSpeech("卵を十二個使った", ["個"])).toEqual({ amount: 12, unit: "個" });
+    expect(parseConsumeSpeech("牛乳を二十本", ["本"])).toEqual({ amount: 20, unit: "本" });
+    expect(parseConsumeSpeech("二十五個", ["個"])).toEqual({ amount: 25, unit: "個" });
+    expect(parseConsumeSpeech("十個", ["個"])).toEqual({ amount: 10, unit: "個" });
+  });
+
   it("読み仮名が部分文字列を共有する単位同士でも長い方を優先する（g vs kg の混同防止）", () => {
     expect(parseConsumeSpeech("1キログラム使った", ["g", "kg"])).toEqual({
       amount: 1,
