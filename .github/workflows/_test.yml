@@ -26,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
 
@@ -38,6 +40,12 @@ jobs:
       # bunfig.toml の root = "./src" により scripts/ 配下のテストは上記で実行されないため別途実行する
       - name: Test (scripts)
         run: bun test ./scripts
+
+      # #1265: PR の変更行カバレッジを算出する（警告のみ。bun の lcov が対象で Deno は未対応）
+      - name: Diff coverage (non-blocking)
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        run: bun run scripts/diffCoverage.ts coverage/lcov.info "origin/${{ github.base_ref }}"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
