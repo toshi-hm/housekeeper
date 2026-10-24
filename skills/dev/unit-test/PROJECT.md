@@ -113,5 +113,5 @@ templates / pages / `src/components/ui/`（shadcn 生成物）はテスト対象
 ## 完了前チェック
 
 ```bash
-bun test && npx oxfmt . && bun run check
+bun test && bun fmt && bun run check
 ```

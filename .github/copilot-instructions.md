@@ -11,7 +11,7 @@ Single user, no public traffic. CRUD-focused.
 - No backend server — Supabase client-side only (RLS handles auth)
 - No `any` in TypeScript
 - New libraries: always install latest version
-- Lint: oxlint / Format: oxfmt
+- Lint: oxlint / Format: bun fmt
 
 ## Routing convention (TanStack Router, file-based)
 

@@ -16,7 +16,7 @@ docs/specs/features/auth.md.
 - Supabase (client-side only, RLS + Auth)
 - Tailwind CSS v4 + shadcn/ui
 - Zod (validation)
-- oxlint / oxfmt (lint/format)
+- oxlint / bun fmt (lint/format)
 - Package manager: bun (always use bun, never npm/yarn)
 - Component Design: Atomic Design
 - Component Documentation: Storybook 10
@@ -114,8 +114,8 @@ Read the relevant spec file before implementing any feature.
 - Build: `bun run build`
 - Lint: `bun run lint` (oxlint + eslint)
 - Typecheck: `bun run typecheck` (tsc --noEmit)
-- Format check: `bun run format:check` (oxfmt --check)
-- Format (fix): `bun run format` (oxfmt .)
+- Format check: `bun run format:check` (bun fmt --check)
+- Format (fix): `bun run format` (bun fmt)
 - **全チェック（コミット前に必ず実行）**: `bun run format:check && bun run check`
   - `bun run check` は lint + typecheck をまとめて実行する
 
@@ -124,10 +124,10 @@ Read the relevant spec file before implementing any feature.
 **毎回セッションの最後に必ず実行すること:**
 
 ```bash
-npx oxfmt . && bun run check
+bun fmt && bun run check
 ```
 
-- `npx oxfmt .` — フォーマット自動修正（`bun run format` が使えない場合の代替）
+- `bun fmt` — フォーマット自動修正
 - `bun run check` — lint + typecheck
 - フォーマット差分や型エラーが出たら修正してからコミット・プッシュする
 

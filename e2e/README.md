@@ -120,7 +120,7 @@ you add a new spec:
   happen to swallow query strings too.
 - **The mock has no schema/constraint awareness**, so a column the real
   Postgres schema defaults (e.g. `shopping_list_items.status default
-'planned'`) comes back `undefined` on a row inserted without that column
+  'planned'`) comes back `undefined` on a row inserted without that column
   explicitly set, silently breaking any later `.eq(...)` filter that assumes
   it. Add missing defaults to `ROW_DEFAULTS` in `fixtures/supabaseMock.ts`
   rather than changing the app to always pass the column explicitly.

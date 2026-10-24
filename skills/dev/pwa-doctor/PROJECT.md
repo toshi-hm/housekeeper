@@ -41,5 +41,5 @@ bun run build && bun run preview
 ## 完了前チェック
 
 ```bash
-npx oxfmt . && bun run check
+bun fmt && bun run check
 ```

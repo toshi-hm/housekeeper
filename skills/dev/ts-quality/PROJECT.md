@@ -86,5 +86,5 @@ return (data ?? []) as Item[];
 ## チェックコマンド
 
 ```bash
-npx oxfmt . && bun run check && bun test
+bun fmt && bun run check && bun test
 ```

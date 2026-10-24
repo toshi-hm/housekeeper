@@ -239,7 +239,7 @@ Issue 本文の指紋コメントが、実行をまたいだ**唯一の永続的
 ## 5. 検証コマンド（PR を出す前に必ず全通し）
 
 ```bash
-npx oxfmt .          # フォーマット自動修正
+bun fmt          # フォーマット自動修正
 bun run check        # lint（oxlint + eslint + stylelint）+ typecheck
 bun test             # 単体テスト
 ```
@@ -343,7 +343,7 @@ housekeeper（toshi-hm/housekeeper）の本番エラーを定期トリアージ�
   異常なので high として扱う（PROJECT.md §2.1）
 - シークレット未設定由来の500（missing_api_config / VAPID / ALEXA_SKILL_ID など）は
   コードで直さない。必要な設定を明記した Issue の起票のみ（PROJECT.md §2.2）
-- PR を出す前に `npx oxfmt . && bun run check && bun test` を通す
+- PR を出す前に `bun fmt && bun run check && bun test` を通す
 
 ## 報告
 
