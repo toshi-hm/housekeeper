@@ -722,6 +722,18 @@ DB trigger で path spoofing と `user_id` の変更を拒否する。旧 prefix
   `42703` / `42P01` / `42883`）を `isSchemaMismatchError`（`src/lib/supabaseErrors.ts`）で
   判別し、汎用の「エラーが発生しました」ではなく適用漏れを示すメッセージを表示する
 
+### Data API ロールへの GRANT（必須）
+
+- `supabase/config.toml` の `api.auto_expose_new_tables` は廃止済み（2026-10-30）。
+  public スキーマの新規オブジェクトには anon / authenticated / service_role への権限が **自動付与されない**
+- 新しいテーブルを作るマイグレーションでは、RLS 有効化・policy と併せて **必要なロールへの GRANT を明記する**
+  （例: `grant select, insert, update, delete on table public.xxx to authenticated;`
+  `grant all on table public.xxx to service_role;`）。anon には原則付与しない
+- 内部用テーブル（rate limit 等）は `revoke all ... from anon, authenticated` のうえ service_role のみ付与する
+- sequence / view / 関数も同様に明示する（関数は `revoke ... from public` + `grant execute`）
+- 既存テーブルの権限は `20261024000001_explicit_data_api_grants.sql` で本番の実効権限に揃えてある
+- anon の public テーブル権限は `20261024000002_revoke_anon_table_privileges.sql` で全て剥がしてある
+
 ### 拡張（extension）の置き場所
 
 - 拡張は **`public` ではなく `extensions` スキーマ**に入れる
