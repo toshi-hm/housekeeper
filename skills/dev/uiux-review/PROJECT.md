@@ -28,7 +28,7 @@
 `react-component` / `ts-quality` スキルの PROJECT.md の規約に従って実装し、
 
 ```bash
-npx oxfmt . && bun run check
+bun fmt && bun run check
 ```
 
 を通すこと。

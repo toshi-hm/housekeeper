@@ -43,6 +43,8 @@ jobs:
       - name: Setup bun
         if: steps.guard.outputs.enabled == 'true'
         uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
 
       - name: Install dependencies
         if: steps.guard.outputs.enabled == 'true'

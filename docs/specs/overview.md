@@ -11,7 +11,7 @@ Create a new web application called "housekeeper" — a home inventory managemen
 - **Routing**: TanStack Router (file-based routing)
 - **DB/Auth**: Supabase (Postgres + RLS + Supabase Auth)
 - **UI Kit**: Tailwind CSS v4 + shadcn/ui
-- **Lint / format**: oxlint / oxfmt
+- **Lint / format**: oxlint / bun fmt
 - **Validation**: Zod
 - **Server State**: TanStack Query v5
 - **Hosting Target**: Cloudflare Pages (static export)

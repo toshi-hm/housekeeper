@@ -70,5 +70,5 @@ export const StockBadge = ({ units, className }: StockBadgeProps) => {
 ## チェックコマンド
 
 ```bash
-npx oxfmt . && bun run check && bun test src/components/<layer>/<ComponentName>.test.tsx
+bun fmt && bun run check && bun test src/components/<layer>/<ComponentName>.test.tsx
 ```

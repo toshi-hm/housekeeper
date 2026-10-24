@@ -13,7 +13,7 @@ a personal home inventory web app.
 4. No backend server. Supabase is accessed client-side only.
 5. Never write `any` in TypeScript. Use `unknown` + Zod.
 6. Before marking any task complete, run all three checks and fix every error/warning:
-   - `bun run format:check` — format check (oxfmt)
+   - `bun run format:check` — format check (bun fmt)
    - `bun run lint` — lint (oxlint + eslint)
    - `bun run typecheck` — type check (tsc --noEmit)
    - Combined shorthand: `bun run format:check && bun run check`
