@@ -16,6 +16,11 @@ interface LookupResult {
   } | null;
 }
 
+interface LotPriceRow {
+  unit_price: number | null;
+  store_name: string | null;
+}
+
 interface ItemLookupRow {
   id: string;
   name: string;
@@ -28,8 +33,6 @@ interface ItemLookupRow {
   notes: string | null;
   minimum_stock: number | null;
   days_use_after_opening: number | null;
-  unit_price: number | null;
-  store_name: string | null;
   auto_reorder: boolean;
   reorder_threshold: number | null;
   reorder_lead_days: number | null;
@@ -65,7 +68,7 @@ export const useBarcodeLookup = () => {
       const { data: localData, error: localError } = await supabase
         .from("items")
         .select(
-          "id, name, image_path, category_id, item_type, content_amount, content_unit, expiry_type, notes, minimum_stock, days_use_after_opening, unit_price, store_name, auto_reorder, reorder_threshold, reorder_lead_days",
+          "id, name, image_path, category_id, item_type, content_amount, content_unit, expiry_type, notes, minimum_stock, days_use_after_opening, auto_reorder, reorder_threshold, reorder_lead_days",
         )
         .in("barcode", barcodeVariants(barcode))
         .is("deleted_at", null)
@@ -73,7 +76,16 @@ export const useBarcodeLookup = () => {
         .limit(1)
         .maybeSingle<ItemLookupRow>();
 
+      // unit_price / store_name は items ではなく item_lots の列。items に対して
+      // select するとクエリ全体が失敗し「該当なし」扱いになってしまう。
       if (!localError && localData?.name) {
+        const { data: latestLot } = await supabase
+          .from("item_lots")
+          .select("unit_price, store_name")
+          .eq("item_id", localData.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle<LotPriceRow>();
         const { data: itemTags } = await supabase
           .from("items_to_tags")
           .select("tag_id")
@@ -97,8 +109,8 @@ export const useBarcodeLookup = () => {
             notes: localData.notes ?? "",
             minimum_stock: localData.minimum_stock,
             days_use_after_opening: localData.days_use_after_opening,
-            unit_price: localData.unit_price,
-            store_name: localData.store_name,
+            unit_price: latestLot?.unit_price ?? null,
+            store_name: latestLot?.store_name ?? null,
             auto_reorder: localData.auto_reorder,
             reorder_threshold: localData.reorder_threshold,
             reorder_lead_days: localData.reorder_lead_days,

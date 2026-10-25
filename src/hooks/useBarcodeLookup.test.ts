@@ -64,8 +64,6 @@ describe("useBarcodeLookup (#655)", () => {
       notes: "低脂肪",
       minimum_stock: 2,
       days_use_after_opening: 5,
-      unit_price: 198,
-      store_name: "スーパー",
       auto_reorder: true,
       reorder_threshold: 1,
       reorder_lead_days: 3,
@@ -84,7 +82,22 @@ describe("useBarcodeLookup (#655)", () => {
       select: () => tagsBuilder,
       eq: () => Promise.resolve({ data: [{ tag_id: "tag-1" }], error: null }),
     });
-    fromMock.mockImplementation((table: string) => (table === "items" ? itemBuilder : tagsBuilder));
+    const lotBuilder: Record<string, unknown> = {};
+    Object.assign(lotBuilder, {
+      select: () => lotBuilder,
+      eq: () => lotBuilder,
+      order: () => lotBuilder,
+      limit: () => lotBuilder,
+      maybeSingle: () =>
+        Promise.resolve({ data: { unit_price: 198, store_name: "スーパー" }, error: null }),
+    });
+    const itemSelectMock = mock((columns: string) => (columns ? itemBuilder : itemBuilder));
+    itemBuilder.select = itemSelectMock;
+    fromMock.mockImplementation((table: string) => {
+      if (table === "items") return itemBuilder;
+      if (table === "item_lots") return lotBuilder;
+      return tagsBuilder;
+    });
 
     const { result } = renderHook(() => useBarcodeLookup());
     const lookupResult = await result.current.lookup("4901234567894");
@@ -98,7 +111,11 @@ describe("useBarcodeLookup (#655)", () => {
       expiry_type: "use_by",
       minimum_stock: 2,
       auto_reorder: true,
+      unit_price: 198,
+      store_name: "スーパー",
     });
+    // items に存在しない列を select すると PostgREST がエラーになり「該当なし」になる
+    expect(itemSelectMock.mock.calls[0][0]).not.toMatch(/unit_price|store_name/);
     expect(lookupResult.tagIds).toEqual(["tag-1"]);
     expect(invokeMock).not.toHaveBeenCalled();
   });

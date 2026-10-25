@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { removeItemImageFile } from "@/hooks/useItemImage";
 import { createLot, LOTS_KEY, reviveSoftDeletedItem, syncItemAggregate } from "@/hooks/useItemLots";
 import { maybeAutoReorder } from "@/lib/autoReorder";
+import { barcodeVariants } from "@/lib/barcode";
 import { upsertItemInListCache } from "@/lib/itemCache";
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
@@ -279,7 +280,7 @@ export const tryStackToActiveItem = async (
   const { data, error: findError } = await supabase
     .from("items")
     .select("*")
-    .eq("barcode", barcode)
+    .in("barcode", barcodeVariants(barcode))
     .is("deleted_at", null)
     .limit(1)
     .maybeSingle();
@@ -318,7 +319,7 @@ const tryReviveItem = async (
   const { data, error: findError } = await supabase
     .from("items")
     .select("*")
-    .eq("barcode", barcode)
+    .in("barcode", barcodeVariants(barcode))
     .not("deleted_at", "is", null)
     .limit(1)
     .maybeSingle();
@@ -451,7 +452,7 @@ export const findActiveItemByBarcode = async (barcode: string): Promise<Item | n
   const { data, error } = await supabase
     .from("items")
     .select("*")
-    .eq("barcode", barcode)
+    .in("barcode", barcodeVariants(barcode))
     .is("deleted_at", null)
     .limit(1)
     .maybeSingle();
