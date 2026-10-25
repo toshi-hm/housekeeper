@@ -36,7 +36,8 @@ begin
     end if;
 
     -- First line consisting only of BEGIN is the plpgsql body start.
-    v_patched := regexp_replace(v_def, E'\\nbegin[ \\t]*\\n', E'\n' || v_guard, 'i');
+    -- 本番では CRLF で保存された関数本体があるため、CR も許容する。
+    v_patched := regexp_replace(v_def, E'\\nbegin[ \\t\\r]*\\r?\\n', E'\n' || v_guard, 'i');
     if v_patched = v_def then
       raise exception 'could not patch %', v_signature;
     end if;
