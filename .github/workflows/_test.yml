@@ -101,11 +101,14 @@ jobs:
       # #1275: 起動失敗（イメージ取得失敗などのインフラ起因）で CI 全体が赤になり DB マイグレーションの
       # 自動デプロイが止まり続けていた。失敗ログを残しつつ最大3回まで再試行する。
       # マイグレーション SQL のエラーは再試行しても変わらないため、3回失敗したら失敗扱いにする。
+      # 失敗原因は public.ecr.aws の "Data limit exceeded"（イメージ pull の転送量上限）だったため、
+      # pgTAP に不要なサービス（studio / logflare / edge-runtime 等）を -x で除外して pull 量を減らす。
+      # postgres / gotrue(auth スキーマ) / storage-api(storage スキーマ) / postgrest / kong は RLS テストで使うため残す。
       - name: Start local Supabase stack
         run: |
           set -o pipefail
           for attempt in 1 2 3; do
-            if bunx supabase start 2>&1 | tee supabase-start.log; then
+            if bunx supabase start -x studio,imgproxy,mailpit,edge-runtime,realtime,postgres-meta,logflare,vector 2>&1 | tee supabase-start.log; then
               exit 0
             fi
             echo "::warning::supabase start failed (attempt $attempt/3). Retrying in $((attempt * 20))s..."
