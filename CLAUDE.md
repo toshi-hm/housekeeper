@@ -62,6 +62,7 @@ Read the relevant spec file before implementing any feature.
 - Shelf scan (photo-based inventory reconciliation, planned): docs/specs/features/shelf-scan.md
 - Similar item name suggestion (planned): docs/specs/features/similar-item-suggestion.md
 - Monthly budget alert (planned): docs/specs/features/budget-alert.md
+- Touch interactions (pull-to-refresh / swipe / autocomplete / skeleton): docs/specs/features/touch-interactions.md
 
 ## TODO / Progress
 

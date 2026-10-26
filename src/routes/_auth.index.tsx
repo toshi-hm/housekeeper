@@ -18,7 +18,6 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
-import { Skeleton } from "@/components/atoms/Skeleton";
 import { ViewModeToggle } from "@/components/atoms/ViewModeToggle";
 import { BulkActionBar } from "@/components/molecules/BulkActionBar";
 import { BulkMoveDialog } from "@/components/molecules/BulkMoveDialog";
@@ -27,7 +26,9 @@ import { DeletionReasonDialog } from "@/components/molecules/DeletionReasonDialo
 import { ExpiryRecipeSuggestions } from "@/components/molecules/ExpiryRecipeSuggestions";
 import { ItemCard } from "@/components/molecules/ItemCard";
 import { ItemListRow } from "@/components/molecules/ItemListRow";
+import { ItemListSkeleton } from "@/components/molecules/ItemListSkeleton";
 import { ItemTypeTabs } from "@/components/molecules/ItemTypeTabs";
+import { PullToRefresh } from "@/components/molecules/PullToRefresh";
 import { QuickMemoSheet } from "@/components/molecules/QuickMemoSheet";
 import { BudgetBanner } from "@/components/organisms/BudgetBanner";
 import {
@@ -544,7 +545,11 @@ export const DashboardPage = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <PullToRefresh
+      className="space-y-4"
+      disabled={selectionMode}
+      onRefresh={() => qc.invalidateQueries({ queryKey: ["items"], refetchType: "all" })}
+    >
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -1023,23 +1028,7 @@ export const DashboardPage = () => {
 
         {/* Loading / Error / Content */}
         {isLoading ? (
-          viewMode === "grid" ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="space-y-2 rounded-lg border p-3">
-                  <Skeleton className="aspect-square w-full rounded-md" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-11 w-full rounded-lg" />
-              ))}
-            </div>
-          )
+          <ItemListSkeleton variant={viewMode} />
         ) : error ? (
           <div className="rounded-lg border border-destructive p-4 text-sm text-destructive">
             {t("loadError")}
@@ -1102,6 +1091,12 @@ export const DashboardPage = () => {
                       item,
                       item.category_id ? categoryById[item.category_id] : null,
                     )}
+                    isQuickConsuming={quickConsumingId === item.id}
+                    quickConsumeDisabled={quickConsumingId !== null && quickConsumingId !== item.id}
+                    onQuickConsume={(i) => {
+                      void handleQuickConsume(i);
+                    }}
+                    onQuickMemo={(i) => setMemoItem(i)}
                     selectionMode={selectionMode}
                     isSelected={selectedIds.has(item.id)}
                     onToggleSelect={(i) => setSelectedIds(toggleId(selectedIds, i.id))}
@@ -1187,7 +1182,7 @@ export const DashboardPage = () => {
         onSave={handleSaveMemo}
         onClose={() => setMemoItem(null)}
       />
-    </div>
+    </PullToRefresh>
   );
 };
 

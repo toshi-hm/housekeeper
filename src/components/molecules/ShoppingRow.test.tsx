@@ -507,4 +507,68 @@ describe("ShoppingRow", () => {
     fireEvent.click(getByRole("button", { name: /キャンセル|Cancel/i }));
     expect(onEditCancel).toHaveBeenCalledTimes(1);
   });
+
+  describe("swipe actions", () => {
+    const touch = (x: number, y = 0) => ({ touches: [{ clientX: x, clientY: y }] });
+    const swipe = (el: HTMLElement, from: number, to: number) => {
+      fireEvent.touchStart(el, touch(from));
+      fireEvent.touchMove(el, touch((from + to) / 2, 1));
+      fireEvent.touchMove(el, touch(to, 2));
+      fireEvent.touchEnd(el);
+    };
+    const gestureTarget = (container: HTMLElement) =>
+      container.querySelector<HTMLElement>(".touch-pan-y") as HTMLElement;
+
+    it("swipes right to purchase and left to delete when enabled", () => {
+      const onPurchase = mock(() => {});
+      const onDelete = mock(() => {});
+      const { container } = render(
+        <ShoppingRow
+          id="1"
+          name="牛乳"
+          desiredUnits={1}
+          swipeEnabled
+          onPurchase={onPurchase}
+          onDelete={onDelete}
+        />,
+        { wrapper },
+      );
+      swipe(gestureTarget(container), 100, 220);
+      expect(onPurchase).toHaveBeenCalledWith("1");
+      swipe(gestureTarget(container), 220, 100);
+      expect(onDelete).toHaveBeenCalledWith("1");
+    });
+
+    it("does not allow swipe-to-purchase on a purchased row", () => {
+      const onPurchase = mock(() => {});
+      const { container } = render(
+        <ShoppingRow
+          id="1"
+          name="牛乳"
+          desiredUnits={1}
+          isPurchased
+          swipeEnabled
+          onPurchase={onPurchase}
+          onDelete={() => {}}
+        />,
+        { wrapper },
+      );
+      swipe(gestureTarget(container), 100, 220);
+      expect(onPurchase).not.toHaveBeenCalled();
+    });
+
+    it("has no swipe behaviour unless swipeEnabled", () => {
+      const { container } = render(
+        <ShoppingRow
+          id="1"
+          name="牛乳"
+          desiredUnits={1}
+          onPurchase={() => {}}
+          onDelete={() => {}}
+        />,
+        { wrapper },
+      );
+      expect(container.querySelector(".touch-pan-y")).toBeNull();
+    });
+  });
 });

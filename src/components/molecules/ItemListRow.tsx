@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { Check, Minus, NotebookPen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { OpenedAlertBadge } from "@/components/atoms/OpenedAlertBadge";
+import { SwipeableRow } from "@/components/molecules/SwipeableRow";
 import { cn } from "@/lib/utils";
 import { formatRemaining, getExpiryStatus, type Item } from "@/types/item";
 
@@ -17,6 +18,13 @@ interface ItemListRowProps {
   selectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (item: Item) => void;
+  /** 左スワイプで1個消費する（ItemCard のクイック消費と同じ操作）。未指定ならスワイプ無効。 */
+  onQuickConsume?: (item: Item) => void;
+  /** 他アイテムのクイック消費が処理中の間、スワイプ消費を無効化する（#571）。 */
+  quickConsumeDisabled?: boolean;
+  isQuickConsuming?: boolean;
+  /** 右スワイプでクイックメモ（#380）を開く。未指定ならこの方向のスワイプは無効。 */
+  onQuickMemo?: (item: Item) => void;
 }
 
 /**
@@ -30,6 +38,10 @@ export const ItemListRow = ({
   selectionMode = false,
   isSelected = false,
   onToggleSelect,
+  onQuickConsume,
+  quickConsumeDisabled = false,
+  isQuickConsuming = false,
+  onQuickMemo,
 }: ItemListRowProps) => {
   const { t } = useTranslation("items");
   const expiryStatus = getExpiryStatus(item.expiry_date, warningDays);
@@ -100,9 +112,41 @@ export const ItemListRow = ({
     );
   }
 
+  // スワイプはタッチ操作の近道。キーボード・スクリーンリーダー利用者は
+  // 行を開いた詳細画面から同じ消費・メモ操作を行える。
+  const canConsume = !!onQuickConsume && !isEmpty && !isQuickConsuming && !quickConsumeDisabled;
+
   return (
-    <Link to="/items/$itemId" params={{ itemId: item.id }} aria-label={item.name} className="block">
-      {rowInner}
-    </Link>
+    <SwipeableRow
+      leftAction={
+        canConsume
+          ? {
+              label: t("quickConsume"),
+              icon: <Minus className="h-4 w-4" aria-hidden="true" />,
+              className: "bg-primary",
+              onTrigger: () => onQuickConsume(item),
+            }
+          : undefined
+      }
+      rightAction={
+        onQuickMemo
+          ? {
+              label: t("quickMemo"),
+              icon: <NotebookPen className="h-4 w-4" aria-hidden="true" />,
+              className: "bg-sky-600",
+              onTrigger: () => onQuickMemo(item),
+            }
+          : undefined
+      }
+    >
+      <Link
+        to="/items/$itemId"
+        params={{ itemId: item.id }}
+        aria-label={item.name}
+        className="block"
+      >
+        {rowInner}
+      </Link>
+    </SwipeableRow>
   );
 };

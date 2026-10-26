@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ExpiryTypeSelect } from "@/components/atoms/ExpiryTypeSelect";
 import { ItemTypeSelect } from "@/components/atoms/ItemTypeSelect";
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
+import { AutocompleteInput } from "@/components/molecules/AutocompleteInput";
 import { ImageUploader } from "@/components/molecules/ImageUploader";
 import { LocationPinPicker } from "@/components/molecules/LocationPinPicker";
 import { ProductLookupResult } from "@/components/molecules/ProductLookupResult";
@@ -32,6 +33,7 @@ import {
   useDeleteStorageLocation,
   useStorageLocations,
 } from "@/hooks/useMasterData";
+import { useNameSuggestions } from "@/hooks/useNameSuggestions";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { useSuggestedLocation } from "@/hooks/useSuggestedLocation";
 import { clearItemFormDraft, loadItemFormDraft, saveItemFormDraft } from "@/lib/itemFormDraft";
@@ -237,6 +239,8 @@ export const ItemForm = ({
   const { data: itemsForSimilarityCheck } = useItems(undefined, undefined, {
     enabled: enableSimilarItemSuggestion,
   });
+  // 新規登録時のみ、登録済みの名前を候補に出して表記を揃えやすくする。
+  const nameSuggestions = useNameSuggestions({ enabled: enableSimilarItemSuggestion });
   const similarItemMatch =
     enableSimilarItemSuggestion && similarItemQueryName
       ? findSimilarItem(itemsForSimilarityCheck ?? [], similarItemQueryName)
@@ -591,10 +595,11 @@ export const ItemForm = ({
               </div>
             )}
             <div className="flex flex-1 min-w-0 gap-2">
-              <Input
+              <AutocompleteInput
                 id="name"
                 value={values.name}
-                onChange={(e) => set("name", e.target.value)}
+                onValueChange={(name) => set("name", name)}
+                suggestions={nameSuggestions}
                 onBlur={(e) => {
                   const trimmed = e.target.value.trim();
                   if (trimmed) {

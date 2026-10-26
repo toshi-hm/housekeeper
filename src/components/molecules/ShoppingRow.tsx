@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Spinner } from "@/components/atoms/Spinner";
+import { SwipeableRow } from "@/components/molecules/SwipeableRow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,9 @@ interface ShoppingRowProps {
   isSaving?: boolean;
   /** 片手・濡れた手での操作を想定するタップターゲット44px規約に揃える（買い物中モード、#980）。 */
   touchTarget?: boolean;
+  /** タッチで行を横スワイプして操作できるようにする。右: 在庫に追加（onPurchase）、
+   *  左: 削除（onDelete）。ボタンでも同じ操作ができるため補助的な近道。 */
+  swipeEnabled?: boolean;
   /** 「カートに入れた」の軽量チェックオフ状態（#983）。買い物中モード専用で、
    *  onToggleCartCheck が指定されたときだけチェックボックスを表示する。 */
   isCartChecked?: boolean;
@@ -52,6 +56,7 @@ export const ShoppingRow = ({
   isEditing,
   isSaving,
   touchTarget,
+  swipeEnabled = false,
   isCartChecked,
   onPurchase,
   onDelete,
@@ -165,7 +170,7 @@ export const ShoppingRow = ({
     );
   }
 
-  return (
+  const row = (
     <div
       className={`flex items-center gap-3 rounded-lg border p-3 ${isPurchased ? "opacity-60" : ""}`}
     >
@@ -253,5 +258,34 @@ export const ShoppingRow = ({
         )}
       </div>
     </div>
+  );
+
+  if (!swipeEnabled) return row;
+
+  return (
+    <SwipeableRow
+      rightAction={
+        !isPurchased && onPurchase
+          ? {
+              label: t("markPurchased"),
+              icon: <ShoppingCart className="h-4 w-4" aria-hidden="true" />,
+              className: "bg-green-600",
+              onTrigger: () => onPurchase(id),
+            }
+          : undefined
+      }
+      leftAction={
+        onDelete
+          ? {
+              label: t("common:delete"),
+              icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
+              className: "bg-destructive",
+              onTrigger: () => onDelete(id),
+            }
+          : undefined
+      }
+    >
+      {row}
+    </SwipeableRow>
   );
 };

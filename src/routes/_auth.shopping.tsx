@@ -6,13 +6,15 @@ import { useTranslation } from "react-i18next";
 
 import { ExpiryBadge } from "@/components/atoms/ExpiryBadge";
 import { ShareButton } from "@/components/atoms/ShareButton";
-import { Skeleton } from "@/components/atoms/Skeleton";
 import { VoiceInputButton } from "@/components/atoms/VoiceInputButton";
+import { AutocompleteInput } from "@/components/molecules/AutocompleteInput";
 import { ConfirmDialog } from "@/components/molecules/ConfirmDialog";
 import { CooccurrenceSuggestion } from "@/components/molecules/CooccurrenceSuggestion";
 import { OfflineQueuePanel } from "@/components/molecules/OfflineQueuePanel";
+import { PullToRefresh } from "@/components/molecules/PullToRefresh";
 import { ScanToShoppingDialog } from "@/components/molecules/ScanToShoppingDialog";
 import { ShoppingGroupHeader } from "@/components/molecules/ShoppingGroupHeader";
+import { ShoppingListSkeleton } from "@/components/molecules/ShoppingListSkeleton";
 import { ShoppingRow } from "@/components/molecules/ShoppingRow";
 import { BarcodeScanner } from "@/components/organisms/BarcodeScanner";
 import {
@@ -30,6 +32,7 @@ import { fetchCurrentHouseholdId, useCurrentHouseholdId } from "@/hooks/useHouse
 import { downloadExternalImageAsFile, uploadItemImage } from "@/hooks/useItemImage";
 import { findActiveItemByBarcode, useItems } from "@/hooks/useItems";
 import { useCategories } from "@/hooks/useMasterData";
+import { useNameSuggestions } from "@/hooks/useNameSuggestions";
 import { useOfflineActionQueue } from "@/hooks/useOfflineActionQueue";
 import { usePurchaseHistory } from "@/hooks/usePurchaseHistory";
 import { useRovingTabs } from "@/hooks/useRovingTabs";
@@ -191,6 +194,10 @@ export const ShoppingPage = () => {
     void refetchInventoryItems();
     void refetchCategories();
   };
+  const refreshShopping = () =>
+    shoppingMode
+      ? Promise.all([refetchPlannedItems(), refetchInventoryItems(), refetchCategories()])
+      : Promise.all([refetchShoppingList(), refetchInventoryItems(), refetchCategories()]);
   const retryShoppingMode = () => {
     void refetchPlannedItems();
     void refetchInventoryItems();
@@ -198,6 +205,7 @@ export const ShoppingPage = () => {
   };
   const { data: userSettings } = useUserSettings();
   const upsert = useUpsertShoppingItem();
+  const nameSuggestions = useNameSuggestions({ enabled: showAdd });
   const deleteItem = useDeleteShoppingItem();
   const purchase = usePurchaseShoppingItem();
   const { data: currentHouseholdId } = useCurrentHouseholdId();
@@ -704,6 +712,7 @@ export const ShoppingPage = () => {
       cheapestStore={resolveCheapestStore(item)}
       isEditing={editId === item.id}
       isSaving={savingId === item.id}
+      swipeEnabled
       onPurchase={
         tab === "planned"
           ? (id) => {
@@ -722,7 +731,7 @@ export const ShoppingPage = () => {
   );
 
   return (
-    <div className="space-y-4">
+    <PullToRefresh className="space-y-4" onRefresh={refreshShopping}>
       <ConfirmDialog
         open={!!deleteId}
         title={t("common:confirmDeleteTitle")}
@@ -888,10 +897,11 @@ export const ShoppingPage = () => {
           <div className="space-y-1">
             <Label htmlFor="add-name">{t("itemName")}</Label>
             <div className="flex gap-2">
-              <Input
+              <AutocompleteInput
                 id="add-name"
                 value={addName}
-                onChange={(e) => setAddName(e.target.value)}
+                onValueChange={setAddName}
+                suggestions={nameSuggestions}
                 placeholder={t("itemNamePlaceholder")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void handleAdd();
@@ -1055,15 +1065,7 @@ export const ShoppingPage = () => {
 
             {/* List */}
             {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
-                    <Skeleton className="h-5 w-5 rounded" />
-                    <Skeleton className="h-4 flex-1" />
-                    <Skeleton className="h-8 w-16 rounded-md" />
-                  </div>
-                ))}
-              </div>
+              <ShoppingListSkeleton />
             ) : shoppingTabIsError ? (
               <div className="flex flex-col items-center gap-4 rounded-lg border border-destructive p-6 text-center text-destructive">
                 <p className="text-sm">{tc("unknownError")}</p>
@@ -1095,7 +1097,7 @@ export const ShoppingPage = () => {
           </div>
         </>
       )}
-    </div>
+    </PullToRefresh>
   );
 };
 
