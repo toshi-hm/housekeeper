@@ -1,7 +1,10 @@
-import { type ReactNode, type TouchEvent, useRef, useState } from "react";
+import { type ReactNode, type TouchEvent, useEffect, useRef, useState } from "react";
 
 import { clampSwipe, detectAxis, resolveSwipe, SWIPE_TAP_SLOP } from "@/lib/gesture";
 import { cn } from "@/lib/utils";
+
+/** 元の位置へ戻る transition（200ms）が終わるまでの待ち時間 */
+const SETTLE_MS = 220;
 
 interface SwipeAction {
   /** スワイプ中に背景へ表示するラベル（アイコンと併記） */
@@ -36,9 +39,15 @@ export const SwipeableRow = ({
 }: SwipeableRowProps) => {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  // 背景とクリップは「元の位置へ戻るアニメーション」が終わるまで残す（途中で背景が消えない）。
+  // 通常時は overflow-hidden にしない（行内リンク/ボタンのフォーカスリングが切れるため）。
+  const [side, setSide] = useState<"left" | "right" | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const start = useRef<{ x: number; y: number } | null>(null);
   const axis = useRef<"x" | "y" | undefined>(undefined);
   const swiped = useRef(false);
+
+  useEffect(() => () => clearTimeout(settleTimer.current), []);
 
   const enabled = { left: !!leftAction, right: !!rightAction };
   const active = !disabled && (enabled.left || enabled.right);
@@ -50,11 +59,14 @@ export const SwipeableRow = ({
     axis.current = undefined;
     setDragging(false);
     setOffset(0);
+    clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => setSide(null), SETTLE_MS);
   };
 
   const onTouchStart = (e: TouchEvent) => {
     const touch = e.touches[0];
     if (!touch || e.touches.length !== 1) return;
+    clearTimeout(settleTimer.current);
     start.current = { x: touch.clientX, y: touch.clientY };
     axis.current = undefined;
     swiped.current = false;
@@ -67,8 +79,10 @@ export const SwipeableRow = ({
     const dy = touch.clientY - start.current.y;
     axis.current ??= detectAxis(dx, dy);
     if (axis.current !== "x") return;
+    const next = clampSwipe(dx, enabled);
     setDragging(true);
-    setOffset(clampSwipe(dx, enabled));
+    setOffset(next);
+    if (next !== 0) setSide(next > 0 ? "right" : "left");
   };
 
   const onTouchEnd = () => {
@@ -80,17 +94,20 @@ export const SwipeableRow = ({
     if (direction === "right") rightAction?.onTrigger();
   };
 
-  const shown = offset > 0 ? rightAction : offset < 0 ? leftAction : undefined;
+  const shown = side === "right" ? rightAction : side === "left" ? leftAction : undefined;
 
   return (
-    <div className={cn("relative overflow-hidden rounded-lg", className)} data-swipeable="true">
+    <div
+      className={cn("relative rounded-lg", side && "overflow-hidden", className)}
+      data-swipeable="true"
+    >
       {shown && (
         <div
           aria-hidden="true"
           data-testid="swipe-action-background"
           className={cn(
             "absolute inset-0 flex items-center gap-2 px-4 text-sm font-medium text-white",
-            offset > 0 ? "justify-start" : "justify-end",
+            side === "right" ? "justify-start" : "justify-end",
             shown.className ?? "bg-primary",
           )}
         >

@@ -74,14 +74,30 @@ describe("SwipeableRow", () => {
     expect(el.style.transform).toBe("translateX(0px)");
   });
 
-  it("shows the action background while dragging and resets afterwards", () => {
+  it("shows the action background while dragging and resets afterwards", async () => {
     const { el, view } = setup();
     fireEvent.touchStart(el, touch(200));
     fireEvent.touchMove(el, touch(150, 1));
     fireEvent.touchMove(el, touch(120, 2));
     expect(view.getByTestId("swipe-action-background").textContent).toContain("削除");
     fireEvent.touchEnd(el);
+    // 戻るアニメーション中は背景を残し、終わってから消す
+    expect(view.queryByTestId("swipe-action-background")).not.toBeNull();
+    await new Promise((r) => setTimeout(r, 300));
     expect(view.queryByTestId("swipe-action-background")).toBeNull();
+  });
+
+  it("only clips overflow while swiping so focus rings are not cut off", async () => {
+    const { el } = setup();
+    const root = el.parentElement as HTMLElement;
+    expect(root.className).not.toContain("overflow-hidden");
+    fireEvent.touchStart(el, touch(200));
+    fireEvent.touchMove(el, touch(150, 1));
+    fireEvent.touchMove(el, touch(120, 2));
+    expect(root.className).toContain("overflow-hidden");
+    fireEvent.touchEnd(el);
+    await new Promise((r) => setTimeout(r, 300));
+    expect(root.className).not.toContain("overflow-hidden");
   });
 
   it("swallows the click that follows a swipe but not a plain tap", () => {
