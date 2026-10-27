@@ -142,3 +142,21 @@ export const SelectionModeSelected: Story = {
     onToggleSelect: () => {},
   },
 };
+
+export const Swipeable: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      name: "牛乳",
+      category_id: null,
+      barcode: null,
+      storage_location_id: null,
+      expiry_date: "2099-12-31",
+      purchase_date: "2024-01-01",
+      notes: null,
+      image_path: null,
+    },
+    onQuickConsume: () => {},
+    onQuickMemo: () => {},
+  },
+};

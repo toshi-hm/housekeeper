@@ -151,3 +151,15 @@ export const CartCheckOffChecked: Story = {
     isCartChecked: true,
   },
 };
+
+export const Swipeable: Story = {
+  args: {
+    id: "swipe",
+    name: "牛乳",
+    desiredUnits: 1,
+    swipeEnabled: true,
+    onPurchase: () => {},
+    onDelete: () => {},
+    onEdit: () => {},
+  },
+};
