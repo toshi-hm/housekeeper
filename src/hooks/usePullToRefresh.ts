@@ -102,15 +102,23 @@ export const usePullToRefresh = ({
         });
     };
 
+    // システムジェスチャ等による中断は「指を離して確定」ではないため、更新せず元に戻す
+    const onTouchCancel = () => {
+      startX = null;
+      startY = null;
+      axis = undefined;
+      setPull(0);
+    };
+
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
     el.addEventListener("touchend", onTouchEnd);
-    el.addEventListener("touchcancel", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchCancel);
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
-      el.removeEventListener("touchcancel", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchCancel);
     };
   }, [disabled]);
 

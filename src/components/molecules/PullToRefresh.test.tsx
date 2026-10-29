@@ -55,6 +55,15 @@ describe("PullToRefresh", () => {
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
+  it("does not call onRefresh when the touch is cancelled", async () => {
+    const { onRefresh, el } = setup();
+    pull(el, 200);
+    await act(async () => {
+      fireEvent.touchCancel(el);
+    });
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
   it("shows the release hint once pulled far enough", () => {
     const { view, el } = setup();
     pull(el, 40);
