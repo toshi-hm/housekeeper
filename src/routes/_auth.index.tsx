@@ -65,6 +65,7 @@ import {
   parseItemTypeTab,
 } from "@/lib/itemType";
 import { OfflineError } from "@/lib/requireOnline";
+import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
 import { pruneSelection, toggleId, toggleSelectAll } from "@/lib/selection";
 import { useToast } from "@/lib/toast-context";
 import {
@@ -236,9 +237,10 @@ export const DashboardPage = () => {
   const setExpiryFilter = (v: string) =>
     void navigate({ to: "/", search: (prev) => ({ ...prev, expiry: v }), replace: true });
 
-  const [sort, setSort] = useState<ItemSortKey>(
-    () => (localStorage.getItem("dashboard.sort") as ItemSortKey) ?? "created_at",
-  );
+  const [sort, setSort] = useState<ItemSortKey>(() => {
+    const saved = safeGetItem("dashboard.sort");
+    return isItemSortKey(saved) ? saved : "created_at";
+  });
   // 日用品タブでは dropExpiryForDailyGoods により expiry_date/expiry_type が
   // 常にnull扱いになるため、期限順ソートは意味を持たない (#998)。保存された
   // `sort` 自体は書き換えず（食料品タブへ戻したときの利用者の選択を保つ）、
@@ -263,7 +265,7 @@ export const DashboardPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const { viewMode, setViewMode } = useViewMode();
   const [hideEmpty, setHideEmpty] = useState(() => {
-    const saved = localStorage.getItem("dashboard.hideEmpty");
+    const saved = safeGetItem("dashboard.hideEmpty");
     return saved !== null ? saved === "true" : true;
   });
   const [quickConsumingId, setQuickConsumingId] = useState<string | null>(null);
@@ -999,7 +1001,7 @@ export const DashboardPage = () => {
                   onChange={(e) => {
                     const v = e.target.value as ItemSortKey;
                     setSort(v);
-                    localStorage.setItem("dashboard.sort", v);
+                    safeSetItem("dashboard.sort", v);
                   }}
                 >
                   <option value="created_at">{t("sortByCreatedAt")}</option>
@@ -1017,7 +1019,7 @@ export const DashboardPage = () => {
                 checked={hideEmpty}
                 onChange={(e) => {
                   setHideEmpty(e.target.checked);
-                  localStorage.setItem("dashboard.hideEmpty", String(e.target.checked));
+                  safeSetItem("dashboard.hideEmpty", String(e.target.checked));
                 }}
                 className="rounded"
               />
@@ -1185,6 +1187,9 @@ export const DashboardPage = () => {
     </PullToRefresh>
   );
 };
+
+const isItemSortKey = (value: string | null): value is ItemSortKey =>
+  value === "expiry_date" || value === "purchase_date" || value === "created_at";
 
 export const Route = createFileRoute("/_auth/")({
   validateSearch: dashboardSearchSchema,

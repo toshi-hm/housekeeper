@@ -60,6 +60,7 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import type { OfflineQueuedAction } from "@/lib/offlineActionQueue";
 import { takePendingPurchaseImage } from "@/lib/offlinePendingPurchaseImage";
 import { OfflineError } from "@/lib/requireOnline";
+import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
 import { buildCooccurrenceSuggestions } from "@/lib/shoppingCooccurrence";
 import {
   type CategoryResolver,
@@ -143,13 +144,13 @@ export const ShoppingPage = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null);
   const [sort, setSort] = useState<ShoppingSortKey>(() => {
-    const saved = localStorage.getItem(SORT_STORAGE_KEY);
+    const saved = safeGetItem(SORT_STORAGE_KEY);
     return saved && isShoppingSortKey(saved) ? saved : "added";
   });
   // 買い物中モード（#926）: 買い物リスト・低在庫・期限間近を1画面に統合表示する。
   // トグル状態は端末に記憶しておき、次回訪問時も同じ表示で開く。
   const [shoppingMode, setShoppingMode] = useState(
-    () => localStorage.getItem(SHOPPING_MODE_STORAGE_KEY) === "1",
+    () => safeGetItem(SHOPPING_MODE_STORAGE_KEY) === "1",
   );
   const [addingAlertId, setAddingAlertId] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
@@ -492,13 +493,13 @@ export const ShoppingPage = () => {
 
   const handleSortChange = (value: ShoppingSortKey) => {
     setSort(value);
-    localStorage.setItem(SORT_STORAGE_KEY, value);
+    safeSetItem(SORT_STORAGE_KEY, value);
   };
 
   const handleToggleShoppingMode = () => {
     const next = !shoppingMode;
     setShoppingMode(next);
-    localStorage.setItem(SHOPPING_MODE_STORAGE_KEY, next ? "1" : "0");
+    safeSetItem(SHOPPING_MODE_STORAGE_KEY, next ? "1" : "0");
   };
 
   const handleAddAlertToList = async (entry: ShoppingModeAlertEntry) => {

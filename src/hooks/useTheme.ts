@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
+
 export type Theme = "light" | "dark" | "system";
 
 const STORAGE_KEY = "theme";
+
+const isTheme = (value: string | null): value is Theme =>
+  value === "light" || value === "dark" || value === "system";
 
 const applyTheme = (theme: Theme) => {
   const root = document.documentElement;
@@ -12,9 +17,10 @@ const applyTheme = (theme: Theme) => {
 };
 
 export const useTheme = () => {
-  const [theme, setThemeState] = useState<Theme>(
-    () => (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "system",
-  );
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const stored = safeGetItem(STORAGE_KEY);
+    return isTheme(stored) ? stored : "system";
+  });
 
   useEffect(() => {
     applyTheme(theme);
@@ -29,7 +35,7 @@ export const useTheme = () => {
   }, [theme]);
 
   const setTheme = useCallback((next: Theme) => {
-    localStorage.setItem(STORAGE_KEY, next);
+    safeSetItem(STORAGE_KEY, next);
     setThemeState(next);
   }, []);
 
