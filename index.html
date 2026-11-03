@@ -16,7 +16,10 @@
     <title>housekeeper</title>
     <script>
       (function () {
-        var t = localStorage.getItem("theme");
+        var t = null;
+        try {
+          t = localStorage.getItem("theme");
+        } catch (e) {}
         var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         if (t === "dark" || (!t && prefersDark) || (t === "system" && prefersDark)) {
           document.documentElement.classList.add("dark");

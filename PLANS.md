@@ -820,7 +820,7 @@ created_item_id uuid null references items(id) on delete set null  -- 購入完�
 - [x] `docs/specs/features/auth.md` の「単一ユーザー」記述を更新
 - [x] テスト / CI 整備と PR CI グリーン化
 
-- [ ] ダークモード <!-- issue:#65 -->
+- [x] ダークモード <!-- issue:#65 -->
 - [x] CSV / JSON エクスポート <!-- issue:#66 -->
 - [x] Sentry など観測 <!-- issue:#67 -->
 - [x] 定期購入予測 / 在庫推移グラフ（消費ペース予測・消費速度ランキングとして実装。#392 と統合） <!-- issue:#68 -->

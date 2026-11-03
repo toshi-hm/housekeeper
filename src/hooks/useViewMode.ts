@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 
+import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
+
 export type ViewMode = "grid" | "list";
 
 const STORAGE_KEY = "dashboard.viewMode";
@@ -9,8 +11,7 @@ const isViewMode = (value: string | null): value is ViewMode =>
   value === "grid" || value === "list";
 
 const readStoredViewMode = (): ViewMode => {
-  if (typeof window === "undefined") return DEFAULT_VIEW_MODE;
-  const stored = window.localStorage.getItem(STORAGE_KEY);
+  const stored = safeGetItem(STORAGE_KEY);
   return isViewMode(stored) ? stored : DEFAULT_VIEW_MODE;
 };
 
@@ -23,7 +24,7 @@ export const useViewMode = () => {
 
   const setViewMode = useCallback((next: ViewMode) => {
     setViewModeState(next);
-    window.localStorage.setItem(STORAGE_KEY, next);
+    safeSetItem(STORAGE_KEY, next);
   }, []);
 
   return { viewMode, setViewMode };
