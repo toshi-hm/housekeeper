@@ -1551,7 +1551,6 @@ export interface Database {
         Returns: undefined;
       };
       rename_household: { Args: { p_name: string }; Returns: undefined };
-      set_household_member_display_name: { Args: { p_name: string }; Returns: undefined };
       save_recipe: {
         Args: { p_id: string | null; p_items: Json; p_name: string };
         Returns: string;
@@ -1559,6 +1558,10 @@ export interface Database {
       save_shopping_list_template: {
         Args: { p_id: string | null; p_items: Json; p_name: string };
         Returns: string;
+      };
+      set_household_member_display_name: {
+        Args: { p_name: string };
+        Returns: undefined;
       };
       undo_auto_archive: {
         Args: { p_archived_at: string; p_item_ids: string[] };
