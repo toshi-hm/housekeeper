@@ -137,12 +137,12 @@ export const MealSlot = ({
 
   return (
     <div
-      className={`space-y-2 rounded-lg border p-3 ${isToday ? "border-primary ring-1 ring-primary" : ""}`}
+      className={`space-y-2 rounded-lg border p-4 ${isToday ? "border-primary ring-1 ring-primary" : ""}`}
     >
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">{dateLabel}</p>
         {plan?.executed_at && (
-          <Badge variant="secondary" className="gap-1">
+          <Badge variant="secondary" className="gap-2">
             <Check className="h-3 w-3" />
             {t("executedAt")}
           </Badge>
@@ -175,7 +175,7 @@ export const MealSlot = ({
             disabled={isExecuting || !!plan.executed_at}
             onClick={onExecute}
           >
-            <Play className="mr-1.5 h-3.5 w-3.5" />
+            <Play className="mr-2 h-3.5 w-3.5" />
             {isExecuting ? t("executing") : t("execute")}
           </Button>
         </div>

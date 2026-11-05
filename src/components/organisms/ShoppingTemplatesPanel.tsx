@@ -82,7 +82,7 @@ export const ShoppingTemplatesPanel = ({
   };
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="space-y-4 rounded-lg border p-4">
       <ConfirmDialog
         open={deleteTargetId !== null}
         title={t("common:confirmDeleteTitle")}
@@ -99,7 +99,7 @@ export const ShoppingTemplatesPanel = ({
         <h2 className="text-sm font-semibold">{t("templatesTitle")}</h2>
         {editor.mode === "closed" && (
           <Button size="sm" variant="outline" onClick={openNew}>
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             {t("templateCreate")}
           </Button>
         )}
@@ -121,13 +121,13 @@ export const ShoppingTemplatesPanel = ({
                     {t("templateItemCount", { count: template.items.length })}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 items-center gap-2">
                   <Button
                     size="sm"
                     onClick={() => onApply(template)}
                     disabled={applyingId === template.id || template.items.length === 0}
                   >
-                    <ListPlus className="mr-1 h-4 w-4" />
+                    <ListPlus className="mr-2 h-4 w-4" />
                     {t("templateApply")}
                   </Button>
                   <Button
@@ -153,8 +153,8 @@ export const ShoppingTemplatesPanel = ({
           </ul>
         )
       ) : (
-        <div className="space-y-3">
-          <div className="space-y-1">
+        <div className="space-y-4">
+          <div className="space-y-2">
             <Label htmlFor="template-name">{t("templateName")}</Label>
             <Input
               id="template-name"
@@ -201,7 +201,7 @@ export const ShoppingTemplatesPanel = ({
               variant="ghost"
               onClick={() => setRows((prev) => [...prev, emptyRow()])}
             >
-              <Plus className="mr-1 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" />
               {t("templateAddRow")}
             </Button>
           </div>

@@ -21,7 +21,7 @@ const PasswordStrength = ({ password }: PasswordStrengthProps) => {
   ).length;
 
   return (
-    <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+    <ul className="mt-2 space-y-0 text-xs text-muted-foreground">
       <li className={checks.length ? "text-green-600" : "text-destructive"}>
         {checks.length ? "✓" : "✗"} {t("passwordMinLength")}
       </li>

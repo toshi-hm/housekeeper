@@ -134,7 +134,7 @@ export const ReceiptReviewPanel = ({
   // レシート全体から抽出した店舗名（品目ごとではない）を確認・編集するヘッダー欄。
   // #697 の店舗名入力欄（ItemForm）と同じサジェストパターンを流用する。
   const storeNameField = (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <Label htmlFor="receipt-store-name">{ti("storeName")}</Label>
       <Input
         id="receipt-store-name"
@@ -161,7 +161,7 @@ export const ReceiptReviewPanel = ({
         <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
           <p className="text-lg font-medium">{t("reviewEmpty")}</p>
           <Button size="sm" variant="outline" className="mt-4" onClick={addBlankRow}>
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             {t("addRow")}
           </Button>
         </div>
@@ -193,11 +193,11 @@ export const ReceiptReviewPanel = ({
       </div>
 
       <Button variant="outline" size="sm" onClick={addBlankRow} disabled={isSubmitting}>
-        <Plus className="mr-1 h-4 w-4" />
+        <Plus className="mr-2 h-4 w-4" />
         {t("addRow")}
       </Button>
 
-      <div className="fixed inset-x-0 bottom-16 z-40 border-t bg-background p-3 lg:bottom-0 lg:left-64 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <div className="fixed inset-x-0 bottom-16 z-40 border-t bg-background p-4 lg:bottom-0 lg:left-64 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="mx-auto max-w-2xl">
           <Button
             className="w-full"

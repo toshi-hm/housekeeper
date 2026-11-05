@@ -57,7 +57,7 @@ export const AlreadyInStockBanner = ({
   return (
     <div
       role="status"
-      className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30"
+      className="space-y-4 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30"
     >
       <div className="flex items-start gap-2">
         <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" />

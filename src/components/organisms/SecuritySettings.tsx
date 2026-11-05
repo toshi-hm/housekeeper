@@ -97,9 +97,9 @@ export const SecuritySettings = () => {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {step === "idle" ? (
-        <div className="space-y-3 rounded-lg border p-4">
+        <div className="space-y-4 rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-muted-foreground" />
@@ -142,19 +142,19 @@ export const SecuritySettings = () => {
           <div className="space-y-4 rounded-lg border p-4">
             <div>
               <h3 className="font-medium">{t("setupTitle")}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">{t("setupInstructions")}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{t("setupInstructions")}</p>
             </div>
 
             <TotpQrCode uri={enrollment.qrCodeUri} label={t("qrCodeAlt")} />
 
-            <div className="space-y-1 text-center">
+            <div className="space-y-2 text-center">
               <p className="text-xs text-muted-foreground">{t("manualEntryLabel")}</p>
-              <p className="break-all rounded-md bg-muted/50 px-3 py-2 font-mono text-xs">
+              <p className="break-all rounded-md bg-muted/50 px-4 py-2 font-mono text-xs">
                 {enrollment.secret}
               </p>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="mfaEnrollCode">{t("codeLabel")}</Label>
               <TotpCodeInput
                 id="mfaEnrollCode"

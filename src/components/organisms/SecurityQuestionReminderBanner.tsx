@@ -25,7 +25,7 @@ export const SecurityQuestionReminderBanner = () => {
   return (
     <div
       role="status"
-      className="mb-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/30"
+      className="mb-4 flex items-start gap-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950/30"
     >
       <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" />
       <div className="min-w-0 flex-1">

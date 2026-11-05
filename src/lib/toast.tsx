@@ -134,7 +134,7 @@ const ToastContainer = ({
         <div
           key={t.id}
           role={t.variant === "error" ? "alert" : "status"}
-          className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm shadow-lg ${variantClasses[t.variant]}`}
+          className={`flex items-center gap-4 rounded-lg px-4 py-2 text-sm shadow-lg ${variantClasses[t.variant]}`}
           onMouseEnter={() => onPause(t.id)}
           onMouseLeave={() => onResume(t.id)}
           onFocus={() => onPause(t.id)}
@@ -146,7 +146,7 @@ const ToastContainer = ({
               onClick={() => {
                 t.action?.onClick();
               }}
-              className="shrink-0 rounded-md border border-current/40 px-2 py-1 text-xs font-semibold whitespace-nowrap hover:bg-white/10"
+              className="shrink-0 rounded-md border border-current/40 px-2 py-2 text-xs font-semibold whitespace-nowrap hover:bg-white/10"
             >
               {t.action.label}
             </button>

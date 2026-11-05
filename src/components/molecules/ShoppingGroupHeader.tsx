@@ -15,9 +15,9 @@ export const ShoppingGroupHeader = ({
   count,
   otherLabel,
 }: ShoppingGroupHeaderProps) => (
-  <div className="flex items-center gap-2 pt-2 pb-1">
+  <div className="flex items-center gap-2 pt-2 pb-2">
     <ColorDot color={name === null ? "#9ca3af" : color} className="h-3 w-3" />
     <h3 className="text-sm font-semibold text-foreground">{name ?? otherLabel}</h3>
-    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{count}</span>
+    <span className="rounded-full bg-muted px-2 py-0 text-xs text-muted-foreground">{count}</span>
   </div>
 );

@@ -121,7 +121,7 @@ export const LocationMapPage = () => {
         }}
         onCancel={() => setRemoveTargetId(null)}
       />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -142,7 +142,7 @@ export const LocationMapPage = () => {
           <Spinner />
         </div>
       ) : isLocationsError || isItemsError ? (
-        <div className="space-y-3 rounded-lg border border-destructive p-4 text-center text-destructive">
+        <div className="space-y-4 rounded-lg border border-destructive p-4 text-center text-destructive">
           <p className="font-medium">{ts("storageLocationMapLoadError")}</p>
         </div>
       ) : (
@@ -188,7 +188,7 @@ export const LocationMapPage = () => {
           {isFloorPlanLoadError && (
             <div
               role="alert"
-              className="space-y-3 rounded-lg border border-destructive p-4 text-center text-destructive"
+              className="space-y-4 rounded-lg border border-destructive p-4 text-center text-destructive"
             >
               <p className="font-medium">{ts("storageLocationMapLoadError")}</p>
               <Button type="button" size="sm" variant="outline" onClick={handleRetryFloorPlan}>

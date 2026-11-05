@@ -167,7 +167,7 @@ export const LocationsPage = () => {
         onCancel={() => setDeleteId(null)}
       />
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -225,10 +225,10 @@ export const LocationsPage = () => {
       ) : (
         <ul className="divide-y rounded-lg border">
           {locations.map((l) => (
-            <li key={l.id} className="space-y-2 p-3">
+            <li key={l.id} className="space-y-2 p-4">
               {editId === l.id ? (
                 <>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <Input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
@@ -257,7 +257,7 @@ export const LocationsPage = () => {
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <MasterDataIcon icon={l.icon} />
                     <span className="flex-1">{l.name}</span>
                     <UsageCountBadge count={usageCounts[l.id] ?? 0} />
@@ -300,7 +300,7 @@ export const LocationsPage = () => {
                     </Button>
                   </div>
                   {photoOpenId === l.id && (
-                    <div className="space-y-2 pl-7">
+                    <div className="space-y-2 pl-8">
                       <LocationPhotoSection location={l} />
                       {l.photo_path && (
                         <Button
@@ -313,7 +313,7 @@ export const LocationsPage = () => {
                             })
                           }
                         >
-                          <Map className="mr-1 h-4 w-4" />
+                          <Map className="mr-2 h-4 w-4" />
                           {t("viewMap")}
                         </Button>
                       )}

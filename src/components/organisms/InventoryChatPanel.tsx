@@ -197,12 +197,12 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         className="relative flex h-full w-full flex-col bg-background shadow-xl sm:h-[80vh] sm:max-w-md sm:rounded-xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center justify-between border-b px-4 py-4">
           <div className="flex items-center gap-2 font-semibold">
             <Bot className="h-5 w-5 text-primary" />
             {t(agentTitleKey[agent])}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
@@ -229,7 +229,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         <div
           role="group"
           aria-label={t("agentSwitchLabel")}
-          className="flex gap-1 border-b px-4 py-2"
+          className="flex gap-2 border-b px-4 py-2"
         >
           {AGENTS.map((a) => (
             <Button
@@ -250,7 +250,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="flex-1 space-y-3 overflow-y-auto p-4"
+          className="flex-1 space-y-4 overflow-y-auto p-4"
           aria-live="polite"
           aria-atomic="false"
         >
@@ -275,7 +275,7 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
             </div>
           ) : (
             messages.map((m) => (
-              <div key={m.id} className="space-y-1.5">
+              <div key={m.id} className="space-y-2">
                 <ChatBubble
                   role={m.role}
                   text={m.text}
@@ -290,11 +290,11 @@ export const InventoryChatPanel = ({ open, onClose }: InventoryChatPanelProps) =
                   }
                 />
                 {m.items && m.items.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pl-1">
+                  <div className="flex flex-wrap gap-2 pl-2">
                     {m.items.map((item) => (
                       <span
                         key={item.id}
-                        className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs text-accent-foreground"
+                        className="inline-flex items-center gap-2 rounded-full bg-accent px-2 py-2 text-xs text-accent-foreground"
                       >
                         {item.name}
                         {item.total_remaining ? ` · ${item.total_remaining}` : ""}

@@ -122,7 +122,7 @@ export const TodayMealPlanCard = () => {
     return (
       <div
         role="alert"
-        className="rounded-lg border border-destructive p-3 text-sm text-destructive"
+        className="rounded-lg border border-destructive p-4 text-sm text-destructive"
       >
         {t("loadError")}
       </div>
@@ -130,9 +130,9 @@ export const TodayMealPlanCard = () => {
   }
 
   return (
-    <div className="space-y-2 rounded-lg border p-3">
+    <div className="space-y-2 rounded-lg border p-4">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-sm font-medium">
+        <div className="flex items-center gap-2 text-sm font-medium">
           <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
           {t("todayCardTitle")}
         </div>
@@ -149,7 +149,7 @@ export const TodayMealPlanCard = () => {
           <div className="flex items-center justify-between gap-2">
             <p className="min-w-0 truncate font-medium">{recipe.name}</p>
             {plan?.executed_at && (
-              <Badge variant="secondary" className="shrink-0 gap-1">
+              <Badge variant="secondary" className="shrink-0 gap-2">
                 <Check className="h-3 w-3" />
                 {t("executedAt")}
               </Badge>
@@ -168,7 +168,7 @@ export const TodayMealPlanCard = () => {
             disabled={isExecuting || !!plan?.executed_at}
             onClick={() => void runExecute(false)}
           >
-            <Play className="mr-1.5 h-3.5 w-3.5" />
+            <Play className="mr-2 h-3.5 w-3.5" />
             {isExecuting ? t("executing") : t("execute")}
           </Button>
         </div>

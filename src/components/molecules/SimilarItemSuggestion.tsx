@@ -21,7 +21,7 @@ export const SimilarItemSuggestion = ({ matchName, onViewMatch }: SimilarItemSug
   return (
     <div
       role="status"
-      className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-800 dark:bg-blue-950/30"
+      className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm dark:border-blue-800 dark:bg-blue-950/30"
     >
       <Info
         className="mt-0.5 h-4 w-4 shrink-0 text-blue-700 dark:text-blue-300"

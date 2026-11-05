@@ -83,7 +83,7 @@ export const DeletionReasonDialog = ({
           {message}
         </p>
         <fieldset className="mt-4 space-y-2">
-          <legend className="mb-1 text-xs font-medium text-muted-foreground">
+          <legend className="mb-2 text-xs font-medium text-muted-foreground">
             {t("deletionReasonLabel")}
           </legend>
           {ITEM_DELETION_REASONS.map((value) => (
@@ -104,7 +104,7 @@ export const DeletionReasonDialog = ({
             </label>
           ))}
         </fieldset>
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex justify-end gap-4">
           <Button variant="outline" size="sm" onClick={onCancel} disabled={isConfirming}>
             {cancelLabel ?? tc("cancel")}
           </Button>

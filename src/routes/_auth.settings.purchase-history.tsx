@@ -43,7 +43,7 @@ export const PurchaseHistoryPage = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -62,7 +62,7 @@ export const PurchaseHistoryPage = () => {
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+            <div key={i} className="flex items-center gap-4 rounded-lg border p-4">
               <Skeleton className="h-4 flex-1" />
               <Skeleton className="h-8 w-16 rounded-md" />
             </div>

@@ -30,9 +30,9 @@ export const ShoppingModeAlertRow = ({
   const { t } = useTranslation("shopping");
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border p-4">
+    <div className="flex items-center gap-4 rounded-lg border p-4">
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
           <p className="font-medium">{name}</p>
           {badge}
         </div>

@@ -22,7 +22,7 @@ export const MealPlanStockWarning = ({
 
   if (shortages.length === 0) {
     return (
-      <p className="flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
+      <p className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
         <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
         {t("stockOk")}
       </p>
@@ -30,7 +30,7 @@ export const MealPlanStockWarning = ({
   }
 
   return (
-    <div className="space-y-1.5 rounded-md border border-orange-300 bg-orange-50 p-2 text-orange-800 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-200">
+    <div className="space-y-2 rounded-md border border-orange-300 bg-orange-50 p-2 text-orange-800 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-200">
       <p className="text-xs font-medium">{t("stockShortageTitle")}</p>
       <p className="text-xs">{t("stockShortageMessage")}</p>
       <ul className="list-inside list-disc text-xs">
@@ -52,7 +52,7 @@ export const MealPlanStockWarning = ({
         disabled={isAdding}
         onClick={onAddMissingToShoppingList}
       >
-        <ShoppingCart className="mr-1.5 h-3.5 w-3.5" />
+        <ShoppingCart className="mr-2 h-3.5 w-3.5" />
         {t("addMissingToShoppingList")}
       </Button>
     </div>

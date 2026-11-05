@@ -44,19 +44,19 @@ export const ConsumptionSpeedRanking = ({ ranking, limit = 8 }: ConsumptionSpeed
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
-            <th className="py-1.5 pr-2 font-medium">{t("itemNameLabel")}</th>
-            <th className="py-1.5 pr-2 font-medium">{t("dailyRateLabel")}</th>
-            <th className="py-1.5 font-medium">{t("trendLabel")}</th>
+            <th className="py-2 pr-2 font-medium">{t("itemNameLabel")}</th>
+            <th className="py-2 pr-2 font-medium">{t("dailyRateLabel")}</th>
+            <th className="py-2 font-medium">{t("trendLabel")}</th>
           </tr>
         </thead>
         <tbody>
           {visible.map((entry) => (
             <tr key={entry.itemId} className="border-b last:border-0">
-              <td className="py-1.5 pr-2">{entry.name}</td>
-              <td className="py-1.5 pr-2 tabular-nums">
+              <td className="py-2 pr-2">{entry.name}</td>
+              <td className="py-2 pr-2 tabular-nums">
                 {entry.dailyRate} {entry.unit}
               </td>
-              <td className="py-1.5">
+              <td className="py-2">
                 <Badge variant={trendVariant[entry.trend]}>{t(trendLabelKey[entry.trend])}</Badge>
               </td>
             </tr>

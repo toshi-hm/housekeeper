@@ -123,14 +123,14 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
   const selectedItems = selectedDateKey ? (itemsByDate.get(selectedDateKey) ?? []) : [];
 
   return (
-    <div className="rounded-lg border bg-background p-3">
+    <div className="rounded-lg border bg-background p-4">
       {/* Header */}
-      <div className="relative mb-3 flex items-center justify-between">
+      <div className="relative mb-4 flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={prevMonth} aria-label={t("prevMonth")}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <button
-          className="rounded px-2 py-1 text-sm font-semibold hover:bg-muted"
+          className="rounded px-2 py-2 text-sm font-semibold hover:bg-muted"
           onClick={openPicker}
           aria-label={t("selectYearMonth")}
         >
@@ -157,10 +157,10 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
               aria-modal="true"
               aria-label={t("selectYearMonth")}
               tabIndex={-1}
-              className="absolute left-1/2 top-full z-20 mt-1 w-64 -translate-x-1/2 rounded-lg border bg-background p-3 shadow-lg"
+              className="absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded-lg border bg-background p-4 shadow-lg"
             >
               {/* Year selector */}
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -186,11 +186,11 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
                 </Button>
               </div>
               {/* Month grid */}
-              <div className="grid grid-cols-4 gap-1">
+              <div className="grid grid-cols-4 gap-2">
                 {monthLabels.map((label, i) => (
                   <button
                     key={label}
-                    className={`rounded py-1.5 text-xs font-medium transition-colors ${
+                    className={`rounded py-2 text-xs font-medium transition-colors ${
                       pickerYear === year && i === month
                         ? "bg-primary text-primary-foreground"
                         : "hover:bg-muted"
@@ -207,7 +207,7 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
       </div>
 
       {/* Day labels */}
-      <div className="mb-1 grid grid-cols-7 text-center">
+      <div className="mb-2 grid grid-cols-7 text-center">
         {dayLabels.map((d, i) => (
           <div
             key={i}
@@ -239,7 +239,7 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
               key={day}
               type="button"
               onClick={() => setSelectedDateKey(dateKey)}
-              className={`flex min-h-[56px] flex-col items-center border-t-2 pt-1 text-left transition-colors hover:bg-muted/50 ${statusBorderClass[status]} ${isToday ? "bg-primary/5" : ""}`}
+              className={`flex min-h-[56px] flex-col items-center border-t-2 pt-2 text-left transition-colors hover:bg-muted/50 ${statusBorderClass[status]} ${isToday ? "bg-primary/5" : ""}`}
             >
               <span
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${
@@ -256,7 +256,7 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
               </span>
               {/* Category color dots — max 3 */}
               {dayItems.length > 0 && (
-                <div className="mt-0.5 flex flex-wrap justify-center gap-0.5">
+                <div className="mt-0.5 flex flex-wrap justify-center gap-0">
                   {dayItems.slice(0, 3).map((item) => {
                     const cat = item.category_id ? categoryMap.get(item.category_id) : null;
                     return <ColorDot key={item.id} color={cat?.color} className="h-2 w-2" />;
@@ -272,23 +272,23 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
       </div>
 
       {/* Expiry status legend */}
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+        <span className="flex items-center gap-2">
           <span className="inline-block h-2 w-3 rounded-sm bg-red-400" />
           {labels.legendExpired}
         </span>
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-2">
           <span className="inline-block h-2 w-3 rounded-sm bg-yellow-400" />
           {labels.legendSoon}
         </span>
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-2">
           <span className="inline-block h-2 w-3 rounded-sm bg-green-400" />
           {labels.legendOk}
         </span>
       </div>
 
       {selectedDateKey && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <button
             type="button"
             className="absolute inset-0"
@@ -303,7 +303,7 @@ export const ExpiryCalendar = ({ items, categories, warningDays, labels }: Expir
             tabIndex={-1}
             className="relative z-10 max-h-[70vh] w-full max-w-md overflow-y-auto rounded-xl bg-background p-4 shadow-xl"
           >
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between">
               <h3 id="expiry-calendar-date-popup-title" className="text-sm font-semibold">
                 {labels.expiryItemsOnDate(selectedDateKey)}
               </h3>

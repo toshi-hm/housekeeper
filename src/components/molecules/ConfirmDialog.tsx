@@ -58,7 +58,7 @@ export const ConfirmDialog = ({
         <p id="confirm-dialog-desc" className="mt-2 text-sm text-muted-foreground">
           {message}
         </p>
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex justify-end gap-4">
           <Button variant="outline" size="sm" onClick={onCancel} disabled={isConfirming}>
             {cancelLabel ?? t("cancel")}
           </Button>

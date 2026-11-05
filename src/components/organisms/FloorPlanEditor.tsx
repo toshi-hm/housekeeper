@@ -400,7 +400,7 @@ export const FloorPlanEditor = ({
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex flex-wrap gap-2" role="toolbar" aria-label={t("mapEditorToolbar")}>
         {(["select", "wall", "rectangle", "circle", "label"] as const).map((value) => (
           <Button
@@ -445,11 +445,11 @@ export const FloorPlanEditor = ({
         </Button>
       </div>
       {storageLocations.length > 0 && onSelectStorageLocation && (
-        <div className="flex flex-wrap items-end gap-2 rounded-lg border p-3">
-          <label className="grid gap-1 text-sm">
+        <div className="flex flex-wrap items-end gap-2 rounded-lg border p-4">
+          <label className="grid gap-2 text-sm">
             <span className="font-medium">{t("mapStorageLocationMarkerTarget")}</span>
             <select
-              className="min-h-11 rounded-md border bg-background px-3 py-2"
+              className="min-h-11 rounded-md border bg-background px-4 py-2"
               value={selectedStorageLocationId ?? ""}
               onChange={(event) => onSelectStorageLocation(event.target.value)}
               aria-label={t("mapStorageLocationMarkerTarget")}

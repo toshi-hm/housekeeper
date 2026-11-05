@@ -83,30 +83,30 @@ export const ItemCard = ({
         className="aspect-square rounded-t-lg"
         signedUrl={imageUrl}
       />
-      <CardContent className="p-3">
+      <CardContent className="p-4">
         <h3 className="line-clamp-2 font-semibold leading-tight">{item.name}</h3>
-        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+        <div className="mt-2 space-y-2 text-xs text-muted-foreground">
           {categoryName && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Tag className="h-3 w-3" />
               <span>{categoryName}</span>
             </div>
           )}
           {locationName && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <MapPin className="h-3 w-3" />
               <span>{locationName}</span>
             </div>
           )}
           {item.expiry_date && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Calendar className="h-3 w-3" />
               <span>{parseLocalDate(item.expiry_date).toLocaleDateString(i18n.language)}</span>
             </div>
           )}
         </div>
       </CardContent>
-      <CardFooter className="relative z-10 flex items-center justify-between p-3 pt-0">
+      <CardFooter className="relative z-10 flex items-center justify-between p-4 pt-0">
         <span className="text-sm font-medium">
           {isEmpty ? (
             <span className="text-muted-foreground">{t("emptyStock")}</span>
@@ -114,7 +114,7 @@ export const ItemCard = ({
             <span>
               {t("unitsDisplay", { units: item.units })}
               {item.opened_remaining !== null && item.opened_remaining !== undefined && (
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
                   {t("remainingDisplay", {
                     amount: formatRemaining(item.units, item.content_amount, item.opened_remaining),
                     unit: item.content_unit,
@@ -124,7 +124,7 @@ export const ItemCard = ({
             </span>
           )}
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {!selectionMode && onQuickMemo && (
             <Button
               variant="outline"

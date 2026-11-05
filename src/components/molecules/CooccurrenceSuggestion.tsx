@@ -27,12 +27,12 @@ export const CooccurrenceSuggestion = ({
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-3 text-sm"
+      className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-4 text-sm"
     >
       <span className="text-muted-foreground">{t("cooccurrenceSuggestionLabel")}</span>
       {suggestions.map((name) => (
         <Button key={name} type="button" variant="outline" size="sm" onClick={() => onAdd(name)}>
-          <Plus className="mr-1 h-3.5 w-3.5" />
+          <Plus className="mr-2 h-3.5 w-3.5" />
           {name}
         </Button>
       ))}

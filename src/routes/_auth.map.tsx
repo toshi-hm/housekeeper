@@ -80,18 +80,18 @@ export const MapPage = () => {
       </div>
       <label className="relative block">
         <span className="sr-only">{t("mapSearchResults")}</span>
-        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={t("mapSearchPlaceholder")}
-          className="pl-9"
+          className="pl-10"
         />
       </label>
       {isMapLoadError ? (
         <div
           role="alert"
-          className="space-y-3 rounded-lg border border-destructive p-4 text-center text-destructive"
+          className="space-y-4 rounded-lg border border-destructive p-4 text-center text-destructive"
         >
           <p className="font-medium">{ts("storageLocationMapLoadError")}</p>
           <Button type="button" size="sm" variant="outline" onClick={handleRetryMap}>
@@ -104,14 +104,14 @@ export const MapPage = () => {
         // previously no way to even start a floor plan from this tab. Guide
         // the user to create one first instead of silently omitting the
         // floor-plan section.
-        <div className="space-y-3 rounded-lg border border-dashed p-6 text-center">
+        <div className="space-y-4 rounded-lg border border-dashed p-6 text-center">
           <MapPin className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
           <div>
             <p className="font-medium">{t("mapNoLocationsTitle")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("mapNoLocationsHelp")}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("mapNoLocationsHelp")}</p>
           </div>
           <Button onClick={() => void navigate({ to: "/settings/locations" })}>
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             {t("mapCreateLocationCta")}
           </Button>
         </div>
@@ -179,18 +179,18 @@ export const MapPage = () => {
                   <Link
                     to="/locations/$locationId"
                     params={{ locationId: item.storage_location_id }}
-                    className="block p-3 hover:bg-muted/50"
+                    className="block p-4 hover:bg-muted/50"
                   >
                     <span className="font-medium">{item.name}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
+                    <span className="mt-2 block text-xs text-muted-foreground">
                       {locationNames.get(item.storage_location_id) ??
                         t("mapUnknownStorageLocation")}
                     </span>
                   </Link>
                 ) : (
-                  <div className="p-3">
+                  <div className="p-4">
                     <span className="font-medium">{item.name}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">—</span>
+                    <span className="mt-2 block text-xs text-muted-foreground">—</span>
                   </div>
                 )}
               </li>

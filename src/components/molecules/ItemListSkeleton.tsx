@@ -16,9 +16,9 @@ export const ItemListSkeleton = ({ variant, count = 8 }: ItemListSkeletonProps) 
   return (
     <div role="status" aria-busy="true" aria-label={t("loading")}>
       {variant === "grid" ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {rows.map((i) => (
-            <div key={i} className="space-y-2 rounded-lg border p-3">
+            <div key={i} className="space-y-2 rounded-lg border p-4">
               <Skeleton className="aspect-square w-full rounded-md" />
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-1/2" />

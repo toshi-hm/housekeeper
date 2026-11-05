@@ -149,7 +149,7 @@ export const ImageUploader = ({
             onClick={() => inputRef.current?.click()}
             aria-describedby={error ? errorId : undefined}
           >
-            <Camera className="mr-1 h-4 w-4" />
+            <Camera className="mr-2 h-4 w-4" />
             {t("imageCapture")}
           </Button>
         </div>

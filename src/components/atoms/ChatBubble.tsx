@@ -53,7 +53,7 @@ export const ChatBubble = ({
           <button
             type="button"
             onClick={onRetry}
-            className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium underline underline-offset-2 hover:no-underline"
+            className="mt-2 inline-flex items-center gap-2 text-xs font-medium underline underline-offset-2 hover:no-underline"
           >
             <RotateCcw className="h-3 w-3" aria-hidden="true" />
             {retryLabel}

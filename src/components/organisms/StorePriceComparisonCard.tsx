@@ -19,19 +19,19 @@ export const StorePriceComparisonCard = ({ comparisons }: StorePriceComparisonCa
     <div className="space-y-4">
       {comparisons.map((comparison) => (
         <div key={comparison.itemId}>
-          <p className="mb-1 text-sm font-medium">{comparison.itemName}</p>
+          <p className="mb-2 text-sm font-medium">{comparison.itemName}</p>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
-                <th className="py-1.5 pr-2 font-medium">{t("storeNameLabel")}</th>
-                <th className="py-1.5 font-medium">{t("storePriceUnitLabel")}</th>
+                <th className="py-2 pr-2 font-medium">{t("storeNameLabel")}</th>
+                <th className="py-2 font-medium">{t("storePriceUnitLabel")}</th>
               </tr>
             </thead>
             <tbody>
               {comparison.stores.map((store, index) => (
                 <tr key={store.storeName} className="border-b last:border-0">
-                  <td className="py-1.5 pr-2">{store.storeName}</td>
-                  <td className="py-1.5 tabular-nums">
+                  <td className="py-2 pr-2">{store.storeName}</td>
+                  <td className="py-2 tabular-nums">
                     ¥{store.unitPrice.toLocaleString()}
                     {index === 0 && (
                       <Badge variant="secondary" className="ml-2">

@@ -77,7 +77,7 @@ export const DataImportPanel = () => {
   };
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="space-y-4 rounded-lg border p-4">
       <div>
         <p className="font-medium">{t("importDataSection")}</p>
         <p className="text-xs text-muted-foreground">{t("importDescription")}</p>
@@ -100,14 +100,14 @@ export const DataImportPanel = () => {
         onClick={() => inputRef.current?.click()}
         disabled={importItems.isPending}
       >
-        <Upload className="mr-1.5 h-4 w-4" />
+        <Upload className="mr-2 h-4 w-4" />
         {t("importSelectFile")}
       </Button>
 
       {parsedItems && (
-        <div className="space-y-3 rounded-md border bg-muted/40 p-3">
+        <div className="space-y-4 rounded-md border bg-muted/40 p-4">
           <p className="text-sm">{t("importPreviewCount", { count: parsedItems.length })}</p>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor="import-duplicate-strategy">{t("importDuplicateStrategy")}</Label>
             <Select
               id="import-duplicate-strategy"

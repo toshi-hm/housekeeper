@@ -70,7 +70,7 @@ export const SecurityQuestionSettings = () => {
   };
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="space-y-4 rounded-lg border p-4">
       <div className="flex items-center gap-2">
         <KeyRound className="h-4 w-4 text-muted-foreground" />
         <span className="font-medium">{t("securityQuestionSettingsTitle")}</span>
@@ -103,8 +103,8 @@ export const SecurityQuestionSettings = () => {
           </Button>
         </>
       ) : (
-        <div className="space-y-3">
-          <div className="space-y-1">
+        <div className="space-y-4">
+          <div className="space-y-2">
             <Label htmlFor="settingsSecurityQuestion">{t("securityQuestion")}</Label>
             <Select
               id="settingsSecurityQuestion"
@@ -130,7 +130,7 @@ export const SecurityQuestionSettings = () => {
             )}
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor="settingsSecurityAnswer">{t("securityAnswer")}</Label>
             <Input
               id="settingsSecurityAnswer"

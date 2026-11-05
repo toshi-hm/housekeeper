@@ -335,7 +335,7 @@ export const SettingsPage = () => {
         onCancel={() => setUnitToDelete(null)}
       />
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -360,7 +360,7 @@ export const SettingsPage = () => {
       ) : isSettingsError ? (
         <div
           role="alert"
-          className="space-y-3 rounded-lg border border-destructive p-4 text-destructive"
+          className="space-y-4 rounded-lg border border-destructive p-4 text-destructive"
         >
           <p className="font-medium">{t("loadError")}</p>
           <Button variant="outline" onClick={() => void refetchSettings()}>
@@ -371,7 +371,7 @@ export const SettingsPage = () => {
         <div className="space-y-6">
           {/* Language */}
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Globe className="h-4 w-4" />
               {t("language")}
             </h2>
@@ -385,7 +385,7 @@ export const SettingsPage = () => {
 
           {/* Theme */}
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Moon className="h-4 w-4" />
               {t("theme")}
             </h2>
@@ -394,7 +394,7 @@ export const SettingsPage = () => {
 
           {/* Expiry warning days */}
           <section>
-            <h2 className="mb-1 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
               {t("expiryWarningDays")}
             </h2>
             <p className="mb-2 text-xs text-muted-foreground">{t("expiryWarningDaysHelp")}</p>
@@ -419,7 +419,7 @@ export const SettingsPage = () => {
               <p
                 id="expiry_warning_days-error"
                 role="alert"
-                className="mt-1 text-sm text-destructive"
+                className="mt-2 text-sm text-destructive"
               >
                 {fieldErrors.warningDays}
               </p>
@@ -428,7 +428,7 @@ export const SettingsPage = () => {
 
           {/* Low-stock forecast days (#68, #392) */}
           <section>
-            <h2 className="mb-1 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
               {t("lowStockForecastDays")}
             </h2>
             <p className="mb-2 text-xs text-muted-foreground">{t("lowStockForecastDaysHelp")}</p>
@@ -455,7 +455,7 @@ export const SettingsPage = () => {
               <p
                 id="low_stock_forecast_days-error"
                 role="alert"
-                className="mt-1 text-sm text-destructive"
+                className="mt-2 text-sm text-destructive"
               >
                 {fieldErrors.forecastDays}
               </p>
@@ -464,7 +464,7 @@ export const SettingsPage = () => {
 
           {/* Monthly budget (#991) */}
           <section>
-            <h2 className="mb-1 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
               {t("monthlyBudget")}
             </h2>
             <p className="mb-2 text-xs text-muted-foreground">{t("monthlyBudgetHelp")}</p>
@@ -485,7 +485,7 @@ export const SettingsPage = () => {
               <Label htmlFor="monthly_budget">{t("monthlyBudgetUnit")}</Label>
             </div>
             {fieldErrors.monthlyBudget && (
-              <p id="monthly_budget-error" role="alert" className="mt-1 text-sm text-destructive">
+              <p id="monthly_budget-error" role="alert" className="mt-2 text-sm text-destructive">
                 {fieldErrors.monthlyBudget}
               </p>
             )}
@@ -493,7 +493,7 @@ export const SettingsPage = () => {
 
           {/* Default unit */}
           <section>
-            <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Ruler className="h-4 w-4" />
               {t("defaultUnit")}
             </h2>
@@ -514,7 +514,7 @@ export const SettingsPage = () => {
 
           {/* Custom units */}
           <section>
-            <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <ListPlus className="h-4 w-4" />
               {t("customUnits")}
             </h2>
@@ -547,7 +547,7 @@ export const SettingsPage = () => {
               ) : isCustomUnitsError ? (
                 <div
                   role="alert"
-                  className="space-y-2 rounded-lg border border-destructive p-3 text-sm text-destructive"
+                  className="space-y-2 rounded-lg border border-destructive p-4 text-sm text-destructive"
                 >
                   <p>{t("customUnitsLoadError")}</p>
                   <Button variant="outline" size="sm" onClick={() => void refetchCustomUnits()}>
@@ -561,13 +561,13 @@ export const SettingsPage = () => {
                   {customUnits.map((unit) => (
                     <li
                       key={unit.id}
-                      className="flex items-center gap-1 rounded-full border bg-muted/50 px-3 py-1 text-sm"
+                      className="flex items-center gap-2 rounded-full border bg-muted/50 px-4 py-2 text-sm"
                     >
                       {unit.name}
                       <button
                         type="button"
                         aria-label={t("common:delete")}
-                        className="-my-3 -mr-3 flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-destructive disabled:opacity-40"
+                        className="-my-4 -mr-4 flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-destructive disabled:opacity-40"
                         disabled={deletingUnitId === unit.id}
                         onClick={() => setUnitToDelete({ id: unit.id, name: unit.name })}
                       >
@@ -586,7 +586,7 @@ export const SettingsPage = () => {
 
           {/* Notification Settings */}
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Bell className="h-4 w-4" />
               {t("notifications")}
             </h2>
@@ -595,7 +595,7 @@ export const SettingsPage = () => {
 
           {/* Auto-archive expired items (#419) */}
           <section>
-            <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Archive className="h-4 w-4" />
               {t("autoArchive")}
             </h2>
@@ -636,7 +636,7 @@ export const SettingsPage = () => {
                   <p
                     id="auto_archive_days-error"
                     role="alert"
-                    className="mt-1 text-sm text-destructive"
+                    className="mt-2 text-sm text-destructive"
                   >
                     {fieldErrors.autoArchiveDays}
                   </p>
@@ -645,9 +645,9 @@ export const SettingsPage = () => {
             )}
             <Link
               to="/settings/archived-items"
-              className="mt-3 flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+              className="mt-4 flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <ArchiveRestore className="h-5 w-5 text-muted-foreground" />
                 <span>{t("archivedItems")}</span>
               </div>
@@ -657,7 +657,7 @@ export const SettingsPage = () => {
 
           {/* Data export */}
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Download className="h-4 w-4" />
               {t("exportDataSection")}
             </h2>
@@ -666,7 +666,7 @@ export const SettingsPage = () => {
 
           {/* Data import (restore) */}
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Upload className="h-4 w-4" />
               {t("importDataSection")}
             </h2>
@@ -675,7 +675,7 @@ export const SettingsPage = () => {
 
           {/* Security question (password recovery, #850) */}
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <KeyRound className="h-4 w-4" />
               {t("auth:securityQuestion")}
             </h2>
@@ -684,7 +684,7 @@ export const SettingsPage = () => {
 
           {/* Security (MFA) */}
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Shield className="h-4 w-4" />
               {t("security")}
             </h2>
@@ -693,11 +693,11 @@ export const SettingsPage = () => {
 
           {/* Stocktake (棚卸し) settings (#375) */}
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <ClipboardCheck className="h-4 w-4" />
               {t("stocktake")}
             </h2>
-            <div className="space-y-3 rounded-lg border p-4">
+            <div className="space-y-4 rounded-lg border p-4">
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -733,7 +733,7 @@ export const SettingsPage = () => {
                   <p
                     id="stocktake_alert_days-error"
                     role="alert"
-                    className="mt-1 text-sm text-destructive"
+                    className="mt-2 text-sm text-destructive"
                   >
                     {fieldErrors.stocktakeAlertDays}
                   </p>
@@ -744,13 +744,13 @@ export const SettingsPage = () => {
 
           {/* Master data links */}
           <section>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{t("masterData")}</h2>
+            <h2 className="mb-4 text-sm font-semibold text-muted-foreground">{t("masterData")}</h2>
             <div className="divide-y rounded-lg border">
               <Link
                 to="/settings/categories"
                 className="flex items-center justify-between p-4 hover:bg-muted/50"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <Tag className="h-5 w-5 text-muted-foreground" />
                   <span>{t("categories")}</span>
                 </div>
@@ -760,7 +760,7 @@ export const SettingsPage = () => {
                 to="/settings/locations"
                 className="flex items-center justify-between p-4 hover:bg-muted/50"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <MapPin className="h-5 w-5 text-muted-foreground" />
                   <span>{t("storageLocations")}</span>
                 </div>
@@ -770,7 +770,7 @@ export const SettingsPage = () => {
                 to="/settings/tags"
                 className="flex items-center justify-between p-4 hover:bg-muted/50"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <Tags className="h-5 w-5 text-muted-foreground" />
                   <span>{t("tags")}</span>
                 </div>
@@ -786,7 +786,7 @@ export const SettingsPage = () => {
                 to="/settings/purchase-history"
                 className="flex items-center justify-between p-4 hover:bg-muted/50"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <History className="h-5 w-5 text-muted-foreground" />
                   <span>{t("purchaseHistory")}</span>
                 </div>
@@ -801,7 +801,7 @@ export const SettingsPage = () => {
                 to="/settings/household"
                 className="flex items-center justify-between p-4 hover:bg-muted/50"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <Users className="h-5 w-5 text-muted-foreground" />
                   <span>{t("householdTitle")}</span>
                 </div>

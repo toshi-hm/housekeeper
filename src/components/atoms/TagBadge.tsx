@@ -12,7 +12,7 @@ const DEFAULT_COLOR = "#6b7280";
 
 export const TagBadge = ({ name, color, onRemove, removeLabel }: TagBadgeProps) => (
   <span
-    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium"
+    className="inline-flex items-center gap-2 rounded-full border px-2 py-0 text-xs font-medium"
     style={{
       borderColor: (color ?? DEFAULT_COLOR) + "66",
       backgroundColor: (color ?? DEFAULT_COLOR) + "1a",
@@ -29,7 +29,7 @@ export const TagBadge = ({ name, color, onRemove, removeLabel }: TagBadgeProps) 
         type="button"
         onClick={onRemove}
         aria-label={removeLabel ?? `remove ${name}`}
-        className="relative ml-0.5 rounded-full p-1 after:absolute after:-inset-2 after:content-[''] hover:bg-black/10"
+        className="relative ml-0 rounded-full p-2 after:absolute after:-inset-2 after:content-[''] hover:bg-black/10"
       >
         <X className="h-3 w-3" />
       </button>

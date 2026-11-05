@@ -204,7 +204,7 @@ export const CategoriesPage = () => {
         onCancel={() => setDeleteId(null)}
       />
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -218,7 +218,7 @@ export const CategoriesPage = () => {
       </div>
 
       {/* Add form */}
-      <div className="space-y-2 rounded-lg border p-3">
+      <div className="space-y-2 rounded-lg border p-4">
         <div className="flex gap-2">
           <ColorDot color={newColor ?? DEFAULT_COLOR} className="mt-2 h-5 w-5 shrink-0" />
           <Input
@@ -244,7 +244,7 @@ export const CategoriesPage = () => {
         </div>
         <ColorPicker value={newColor} onChange={setNewColor} />
         <IconPicker value={newIcon} onChange={setNewIcon} />
-        <div className="space-y-1">
+        <div className="space-y-2">
           <span className="text-xs text-muted-foreground">{t("categoryKind")}</span>
           <p id="new-category-kind-help" className="text-xs text-muted-foreground">
             {t("categoryKindHelp")}
@@ -255,7 +255,7 @@ export const CategoriesPage = () => {
             onChange={setNewKind}
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2">
           <label htmlFor="new-category-days" className="text-xs text-muted-foreground">
             {t("items:daysUseAfterOpening")}
           </label>
@@ -302,10 +302,10 @@ export const CategoriesPage = () => {
       ) : (
         <ul className="divide-y rounded-lg border">
           {categories.map((c, index) => (
-            <li key={c.id} className="space-y-2 p-3">
+            <li key={c.id} className="space-y-2 p-4">
               {editId === c.id ? (
                 <>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <ColorDot color={editColor ?? DEFAULT_COLOR} className="h-5 w-5 shrink-0" />
                     <Input
                       value={editName}
@@ -340,7 +340,7 @@ export const CategoriesPage = () => {
                   </div>
                   <ColorPicker value={editColor} onChange={setEditColor} />
                   <IconPicker value={editIcon} onChange={setEditIcon} />
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <span className="text-xs text-muted-foreground">{t("categoryKind")}</span>
                     <ItemTypeSelect
                       value={editKind}
@@ -376,7 +376,7 @@ export const CategoriesPage = () => {
                         )
                       ))}
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <label
                       htmlFor={`edit-category-days-${c.id}`}
                       className="text-xs text-muted-foreground"
@@ -411,18 +411,18 @@ export const CategoriesPage = () => {
                   </div>
                 </>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <ColorDot color={c.color ?? DEFAULT_COLOR} className="h-5 w-5 shrink-0" />
                   <MasterDataIcon icon={c.icon} />
                   <span className="flex-1">{c.name}</span>
                   {/* 既定（食料品）側にはバッジを出さず、日用品カテゴリだけ目印を付ける */}
                   {(c.kind ?? DEFAULT_ITEM_TYPE) === "daily_goods" && (
-                    <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+                    <span className="rounded-full border px-2 py-0 text-xs text-muted-foreground">
                       {ti(itemTypeLabelKey.daily_goods)}
                     </span>
                   )}
                   <UsageCountBadge count={usageCounts[c.id] ?? 0} />
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-2">
                     <Button
                       size="icon"
                       variant="ghost"

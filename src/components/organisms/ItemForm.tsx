@@ -502,7 +502,7 @@ export const ItemForm = ({
       {pendingDraft && (
         <div
           role="status"
-          className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+          className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
         >
           <span>{t("draftRestorePrompt")}</span>
           <div className="flex shrink-0 gap-2">
@@ -757,7 +757,7 @@ export const ItemForm = ({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="content_amount">{t("contentAmount")}</Label>
             <Input
@@ -816,7 +816,7 @@ export const ItemForm = ({
         {/* Purchase / Expiry dates.
             日用品（isDailyGoods）は期限を持たないため期限側の欄自体を出さない。
             購入日は日用品でも意味があるので残す（docs/specs/features/item-type.md）。 */}
-        <div className={isDailyGoods ? "space-y-2" : "grid grid-cols-2 gap-3"}>
+        <div className={isDailyGoods ? "space-y-2" : "grid grid-cols-2 gap-4"}>
           <div className="space-y-2">
             <Label htmlFor="purchase_date">{t("purchaseDate")}</Label>
             <Input
@@ -1019,7 +1019,7 @@ export const ItemForm = ({
         </div>
 
         {/* Auto reorder */}
-        <div className="space-y-2 rounded-lg border p-3">
+        <div className="space-y-2 rounded-lg border p-4">
           <label className="flex items-center gap-2 text-sm font-medium">
             <input
               type="checkbox"
@@ -1034,7 +1034,7 @@ export const ItemForm = ({
           </label>
           <p className="text-xs text-muted-foreground">{t("autoReorderHelp")}</p>
           {values.auto_reorder && (
-            <div className="space-y-1 pl-6">
+            <div className="space-y-2 pl-6">
               <Label htmlFor="reorder_threshold">{t("reorderThreshold")}</Label>
               <p id="reorder-threshold-help" className="text-xs text-muted-foreground">
                 {t("reorderThresholdHelp")}

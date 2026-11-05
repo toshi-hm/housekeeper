@@ -791,7 +791,7 @@ export const ShoppingPage = () => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <ShoppingCart className="h-6 w-6" />
           <h1 className="text-2xl font-bold">{t("title")}</h1>
@@ -803,7 +803,7 @@ export const ShoppingPage = () => {
             onClick={handleToggleShoppingMode}
             aria-pressed={shoppingMode}
           >
-            <Footprints className="mr-1 h-4 w-4" />
+            <Footprints className="mr-2 h-4 w-4" />
             {t("shoppingMode")}
           </Button>
           {plannedItems.length > 0 && (
@@ -826,7 +826,7 @@ export const ShoppingPage = () => {
             aria-expanded={showTemplates}
             aria-controls="shopping-templates-panel"
           >
-            <LayoutList className="mr-1 h-4 w-4" />
+            <LayoutList className="mr-2 h-4 w-4" />
             {t("templates")}
           </Button>
           <Button
@@ -835,7 +835,7 @@ export const ShoppingPage = () => {
             onClick={() => setShowScanner(true)}
             aria-label={t("scanAdd")}
           >
-            <ScanLine className="mr-1 h-4 w-4" />
+            <ScanLine className="mr-2 h-4 w-4" />
             {t("scanAdd")}
           </Button>
           <Button
@@ -844,7 +844,7 @@ export const ShoppingPage = () => {
             aria-expanded={showAdd}
             aria-controls="shopping-add-form"
           >
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             {t("addItem")}
           </Button>
         </div>
@@ -894,8 +894,8 @@ export const ShoppingPage = () => {
 
       {/* Add form */}
       {showAdd && (
-        <div id="shopping-add-form" className="space-y-3 rounded-lg border p-4">
-          <div className="space-y-1">
+        <div id="shopping-add-form" className="space-y-4 rounded-lg border p-4">
+          <div className="space-y-2">
             <Label htmlFor="add-name">{t("itemName")}</Label>
             <div className="flex gap-2">
               <AutocompleteInput
@@ -918,7 +918,7 @@ export const ShoppingPage = () => {
               />
             </div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor="add-note">{t("note")}</Label>
             <Input
               id="add-note"
@@ -995,7 +995,7 @@ export const ShoppingPage = () => {
       ) : (
         <>
           {/* Tabs */}
-          <div className="flex rounded-lg border p-1" role="tablist" {...shoppingTablistProps}>
+          <div className="flex rounded-lg border p-2" role="tablist" {...shoppingTablistProps}>
             {SHOPPING_TABS.map((s) => (
               <button
                 key={s}
@@ -1004,7 +1004,7 @@ export const ShoppingPage = () => {
                 aria-selected={tab === s}
                 aria-controls={`${shoppingTabIds[s]}-panel`}
                 {...getShoppingTabProps(s)}
-                className={`flex-1 rounded py-1.5 text-sm font-medium transition-colors ${
+                className={`flex-1 rounded py-2 text-sm font-medium transition-colors ${
                   tab === s
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -1079,7 +1079,7 @@ export const ShoppingPage = () => {
                 {tab === "planned" ? t("noItems") : t("noPurchased")}
               </p>
             ) : groups ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {groups.map((group) => (
                   <div key={group.categoryId ?? "__other__"} className="space-y-2">
                     <ShoppingGroupHeader

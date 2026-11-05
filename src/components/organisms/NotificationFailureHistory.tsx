@@ -26,7 +26,7 @@ export const NotificationFailureHistory = ({
 
   return (
     <section
-      className="rounded-lg border p-4 space-y-3"
+      className="rounded-lg border p-4 space-y-4"
       aria-labelledby="notification-failures-title"
     >
       <div className="flex items-center gap-2">
@@ -41,7 +41,7 @@ export const NotificationFailureHistory = ({
           {t("failureHistory.loading")}
         </p>
       ) : hasError ? (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-destructive" role="alert">
             {t("failureHistory.loadError")}
           </p>
@@ -59,7 +59,7 @@ export const NotificationFailureHistory = ({
           {failures.map((failure) => (
             <li
               key={failure.id}
-              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0"
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4 first:pt-0 last:pb-0"
             >
               <span className="text-sm">
                 {t(`failureHistory.types.${failure.notification_type}`)} ·{" "}
