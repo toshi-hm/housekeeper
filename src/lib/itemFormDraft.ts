@@ -42,15 +42,19 @@ const draftEnvelopeSchema = z.object({
 
 export const saveItemFormDraft = (draftKey: string, payload: ItemFormDraftPayload): void => {
   const envelope: ItemFormDraft = { savedAt: new Date().toISOString(), payload };
-  localStorage.setItem(STORAGE_KEY_PREFIX + draftKey, JSON.stringify(envelope));
+  try {
+    localStorage.setItem(STORAGE_KEY_PREFIX + draftKey, JSON.stringify(envelope));
+  } catch {
+    // 非致命: ストレージ不可・容量超過でも、フォーム入力自体は継続させる (#1290)
+  }
 };
 
 /** 保存済みの下書きを読み込む。存在しない・壊れている（他バージョンの形式等）場合は null。 */
 export const loadItemFormDraft = (draftKey: string): ItemFormDraft | null => {
-  const raw = localStorage.getItem(STORAGE_KEY_PREFIX + draftKey);
-  if (!raw) return null;
   let parsed: unknown;
   try {
+    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + draftKey);
+    if (!raw) return null;
     parsed = JSON.parse(raw);
   } catch {
     return null;
@@ -60,7 +64,11 @@ export const loadItemFormDraft = (draftKey: string): ItemFormDraft | null => {
 };
 
 export const clearItemFormDraft = (draftKey: string): void => {
-  localStorage.removeItem(STORAGE_KEY_PREFIX + draftKey);
+  try {
+    localStorage.removeItem(STORAGE_KEY_PREFIX + draftKey);
+  } catch {
+    // 非致命: ストレージ不可でも「破棄」操作自体は継続させる (#1290)
+  }
 };
 
 /**

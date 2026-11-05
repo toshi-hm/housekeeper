@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 
 import {
   clearAllItemFormDrafts,
@@ -120,6 +120,46 @@ describe("itemFormDraft (#672)", () => {
 
     test("下書きが無い状態で呼んでも例外を投げない", () => {
       expect(() => clearAllItemFormDrafts()).not.toThrow();
+    });
+  });
+
+  // #1290: ストレージ不可/容量超過でもフォームを壊さない
+  describe("localStorage が例外を投げる環境", () => {
+    afterEach(() => {
+      localStorage.clear();
+    });
+
+    test("load は null を返す", () => {
+      const spy = spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new DOMException("blocked", "SecurityError");
+      });
+      try {
+        expect(loadItemFormDraft("new")).toBeNull();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    test("save は例外を投げない", () => {
+      const spy = spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new DOMException("full", "QuotaExceededError");
+      });
+      try {
+        expect(() => saveItemFormDraft("new", makePayload())).not.toThrow();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    test("clear は例外を投げない", () => {
+      const spy = spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+        throw new DOMException("blocked", "SecurityError");
+      });
+      try {
+        expect(() => clearItemFormDraft("new")).not.toThrow();
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 });
