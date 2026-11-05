@@ -35,18 +35,18 @@ export const MealPlanExpiryRecommendation = ({
 
   if (internalCandidates.length > 0) {
     return (
-      <div className="space-y-1.5 rounded-md border border-emerald-200 bg-emerald-50 p-2 dark:border-emerald-800 dark:bg-emerald-950/30">
+      <div className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50 p-2 dark:border-emerald-800 dark:bg-emerald-950/30">
         <p className="text-xs font-medium text-emerald-900 dark:text-emerald-100">
           {t("recommendationTitle")}
         </p>
-        <ul className="flex flex-wrap gap-1.5">
+        <ul className="flex flex-wrap gap-2">
           {internalCandidates.map(({ recipe }) => (
             <li key={recipe.id}>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-auto border-emerald-300 bg-white px-2 py-1 text-xs text-emerald-900 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-100"
+                className="h-auto border-emerald-300 bg-white px-2 py-2 text-xs text-emerald-900 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-100"
                 onClick={() => onAssignRecipe(recipe.id)}
               >
                 {recipe.name}
@@ -59,7 +59,7 @@ export const MealPlanExpiryRecommendation = ({
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <p className="text-xs font-medium text-emerald-900 dark:text-emerald-100">
         {t("recommendationIdeasTitle")}
       </p>

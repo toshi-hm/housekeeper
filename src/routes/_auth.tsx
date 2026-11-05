@@ -36,7 +36,7 @@ const NAV_ROUTES = [
 // モバイル下部ナビの各リンクに最低44×44pxのタップ領域を確保する共通クラス。
 // 7箇所で同一の文字列を複製すると将来の変更で一部だけ更新漏れになりやすいため定数化する。
 const BOTTOM_NAV_LINK_CLASS =
-  "flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-xs text-muted-foreground [&.active]:text-primary";
+  "flex min-h-11 min-w-11 flex-col items-center justify-center gap-2 text-xs text-muted-foreground [&.active]:text-primary";
 
 const AuthLayout = () => {
   const router = useRouter();
@@ -67,7 +67,7 @@ const AuthLayout = () => {
         <div className="px-4 pt-4">
           <Button
             variant="secondary"
-            className="w-full justify-start gap-3"
+            className="w-full justify-start gap-4"
             onClick={() => setChatOpen(true)}
           >
             <Bot className="h-5 w-5 shrink-0" />
@@ -75,12 +75,12 @@ const AuthLayout = () => {
           </Button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-4">
+        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto p-4">
           {NAV_ROUTES.map(({ to, icon: Icon, labelKey }) => (
             <Link
               key={to}
               to={to}
-              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&.active]:bg-accent [&.active]:text-primary"
+              className="flex items-center gap-4 rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&.active]:bg-accent [&.active]:text-primary"
             >
               <Icon className="h-5 w-5 shrink-0" />
               {t(labelKey)}
@@ -91,7 +91,7 @@ const AuthLayout = () => {
         <div className="border-t p-4">
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground"
+            className="w-full justify-start gap-4 text-muted-foreground"
             onClick={() => {
               void handleSignOut();
             }}
@@ -104,12 +104,12 @@ const AuthLayout = () => {
 
       {/* Mobile header */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:hidden">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
           <Link to="/" className="flex items-center gap-2 font-bold text-primary">
             <Package className="h-5 w-5" />
             Housekeeper
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
@@ -153,7 +153,7 @@ const AuthLayout = () => {
 
       {/* Mobile bottom navigation — Map is the third item from the left. */}
       <nav className="sticky bottom-0 border-t bg-background lg:hidden">
-        <div className="mx-auto flex max-w-2xl items-center justify-around gap-1 px-2 py-2">
+        <div className="mx-auto flex max-w-2xl items-center justify-around gap-2 px-2 py-2">
           <Link to="/" className={BOTTOM_NAV_LINK_CLASS}>
             <Home className="h-5 w-5" />
             <span>{t("navHome")}</span>
@@ -167,7 +167,7 @@ const AuthLayout = () => {
             <span>{t("navMap")}</span>
           </Link>
           <Link to="/items/new" className={BOTTOM_NAV_LINK_CLASS}>
-            <div className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg">
+            <div className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg">
               <Plus className="h-6 w-6 text-primary-foreground" />
             </div>
             <span>{t("navAddItem")}</span>

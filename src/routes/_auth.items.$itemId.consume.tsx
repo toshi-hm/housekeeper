@@ -298,7 +298,7 @@ export const ItemConsumePage = () => {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="space-y-3 rounded-lg border border-destructive p-4 text-destructive">
+        <div className="space-y-4 rounded-lg border border-destructive p-4 text-destructive">
           <p className="font-medium">{t("lotsLoadError")}</p>
           <Button
             variant="outline"
@@ -328,7 +328,7 @@ export const ItemConsumePage = () => {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="space-y-3 rounded-lg border border-destructive p-4 text-destructive">
+        <div className="space-y-4 rounded-lg border border-destructive p-4 text-destructive">
           <p className="font-medium">{t("itemNotFound")}</p>
           <p className="text-sm text-muted-foreground">{t("itemNotFoundDescription")}</p>
           <Button variant="outline" onClick={() => void navigate({ to: "/" })}>
@@ -373,7 +373,7 @@ export const ItemConsumePage = () => {
           onCancel={() => setShowConsumeAll(false)}
         />
       )}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -389,7 +389,7 @@ export const ItemConsumePage = () => {
       <div className="rounded-lg bg-muted p-4">
         <p className="font-semibold">{item.name}</p>
         {currentDisplay && (
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             {t("currentStock")}: {currentDisplay}
           </p>
         )}
@@ -424,7 +424,7 @@ export const ItemConsumePage = () => {
                     setDelta("");
                     setValidationError("");
                   }}
-                  className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                  className={`w-full rounded-lg border p-4 text-left transition-colors ${
                     selectedLotId === lot.id
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
@@ -518,7 +518,7 @@ export const ItemConsumePage = () => {
           {preview && !preview.error && (
             <div className="rounded-lg border p-4 text-sm">
               <p className="font-medium text-muted-foreground">{t("consumePreviewTitle")}</p>
-              <p className="mt-1">
+              <p className="mt-2">
                 {t("consumeUnitsDisplay", { units: preview.units_after })}
                 {preview.opened_remaining_after !== null &&
                 preview.opened_remaining_after !== undefined
@@ -549,7 +549,7 @@ export const ItemConsumePage = () => {
                   type="button"
                   aria-pressed={selectedReason === reason}
                   onClick={() => setSelectedReason((prev) => (prev === reason ? null : reason))}
-                  className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                  className={`rounded-full border px-4 py-2 text-sm transition-colors ${
                     selectedReason === reason
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-muted-foreground hover:border-primary/50"

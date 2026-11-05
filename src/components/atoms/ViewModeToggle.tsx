@@ -22,7 +22,7 @@ export const ViewModeToggle = ({ value, onChange }: ViewModeToggleProps) => {
     <div
       role="group"
       aria-label={t("viewModeToggleLabel")}
-      className="inline-flex items-center gap-0.5 rounded-md border p-0.5"
+      className="inline-flex items-center gap-0 rounded-md border p-0"
     >
       <button
         type="button"

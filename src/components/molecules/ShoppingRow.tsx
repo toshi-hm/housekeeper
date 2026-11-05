@@ -111,7 +111,7 @@ export const ShoppingRow = ({
 
   if (isEditing) {
     return (
-      <div className="space-y-2 rounded-lg border p-3">
+      <div className="space-y-2 rounded-lg border p-4">
         <Input
           value={editName}
           onChange={(e) => {
@@ -172,7 +172,7 @@ export const ShoppingRow = ({
 
   const row = (
     <div
-      className={`flex items-center gap-3 rounded-lg border p-3 ${isPurchased ? "opacity-60" : ""}`}
+      className={`flex items-center gap-4 rounded-lg border p-4 ${isPurchased ? "opacity-60" : ""}`}
     >
       {onToggleCartCheck && (
         // #980の44pxタップターゲット規約: チェックボックス自体を44x44まで
@@ -200,11 +200,11 @@ export const ShoppingRow = ({
       )}
       <div className="min-w-0 flex-1">
         <p
-          className={`flex items-center gap-1.5 font-medium ${isPurchased || isCartChecked ? "line-through" : ""}`}
+          className={`flex items-center gap-2 font-medium ${isPurchased || isCartChecked ? "line-through" : ""}`}
         >
           {name}
           {isAutoAdded && (
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
+            <span className="rounded-full bg-muted px-2 py-0 text-xs font-normal text-muted-foreground">
               {t("autoAddedBadge")}
             </span>
           )}
@@ -222,7 +222,7 @@ export const ShoppingRow = ({
           </p>
         )}
       </div>
-      <div className="flex shrink-0 gap-1">
+      <div className="flex shrink-0 gap-2">
         {!isPurchased && onPurchase && (
           <Button variant="outline" size={touchTarget ? "lg" : "sm"} onClick={() => onPurchase(id)}>
             {t("markPurchased")}

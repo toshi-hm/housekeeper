@@ -52,7 +52,7 @@ export const OfflineQueuePanel = ({
     <div className="rounded-lg border bg-muted/40">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 p-3 text-left text-sm font-medium"
+        className="flex w-full items-center justify-between gap-2 p-4 text-left text-sm font-medium"
         onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
         aria-controls="offline-queue-panel-list"
@@ -76,7 +76,7 @@ export const OfflineQueuePanel = ({
               )}
             </p>
           )}
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {actions.map((action) => (
               <li
                 key={action.id}

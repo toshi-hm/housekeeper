@@ -44,7 +44,7 @@ export const BudgetBannerView = ({ status }: BudgetBannerViewProps) => {
   return (
     <div
       role="status"
-      className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${tierContainerClass[status.tier]}`}
+      className={`flex items-start gap-4 rounded-lg border p-4 text-sm ${tierContainerClass[status.tier]}`}
     >
       <Wallet className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="min-w-0 flex-1">
@@ -81,7 +81,7 @@ export const BudgetBanner = () => {
     return (
       <div
         role="alert"
-        className="flex items-center justify-between gap-3 rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive"
+        className="flex items-center justify-between gap-4 rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-sm text-destructive"
       >
         <p>{tc("unknownError")}</p>
         <Button variant="outline" size="sm" onClick={() => void refetch()}>

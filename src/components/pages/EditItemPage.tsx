@@ -214,7 +214,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="space-y-3 rounded-lg border border-destructive p-4 text-destructive">
+        <div className="space-y-4 rounded-lg border border-destructive p-4 text-destructive">
           <p className="font-medium">{t("itemNotFound")}</p>
           <p className="text-sm text-muted-foreground">{t("itemNotFoundDescription")}</p>
           <Button variant="outline" onClick={() => void navigate({ to: "/" })}>
@@ -230,7 +230,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
   if (lotsError) {
     return (
       <div className="mx-auto max-w-2xl space-y-4">
-        <div role="alert" className="space-y-3 rounded-lg border border-destructive p-4">
+        <div role="alert" className="space-y-4 rounded-lg border border-destructive p-4">
           <p className="text-sm text-destructive">{t("loadError")}</p>
           <Button variant="outline" onClick={() => void refetchLots()}>
             {tc("retry")}
@@ -242,7 +242,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -254,7 +254,7 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
         <h1 className="text-xl font-bold">{t("editItem")}</h1>
       </div>
       {lots.length > 1 && (
-        <div className="space-y-2 rounded-lg border p-3">
+        <div className="space-y-2 rounded-lg border p-4">
           <Label htmlFor="lot-select">{t("editLot")}</Label>
           <Select
             id="lot-select"

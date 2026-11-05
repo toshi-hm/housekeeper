@@ -102,7 +102,7 @@ export const RecipesPage = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <ChefHat className="h-6 w-6" />
           <div>
@@ -112,7 +112,7 @@ export const RecipesPage = () => {
         </div>
         {editor.mode === "closed" && (
           <Button size="sm" onClick={() => setEditor({ mode: "new" })}>
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             {t("createRecipe")}
           </Button>
         )}
@@ -148,10 +148,10 @@ export const RecipesPage = () => {
       />
 
       {pendingExecution && (
-        <div className="space-y-3 rounded-lg border border-orange-300 bg-orange-50 p-4 text-orange-800">
+        <div className="space-y-4 rounded-lg border border-orange-300 bg-orange-50 p-4 text-orange-800">
           <p className="font-medium">{t("stockWarningTitle")}</p>
           <p className="text-sm">{t("stockWarningMessage")}</p>
-          <ul className="list-inside list-disc space-y-1 text-sm">
+          <ul className="list-inside list-disc space-y-2 text-sm">
             {pendingExecution.shortages.map((shortage) => (
               <li key={shortage.item_id}>
                 {shortage.item_name} —{" "}
@@ -193,14 +193,14 @@ export const RecipesPage = () => {
       ) : recipes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
           <p className="text-lg font-medium">{t("empty")}</p>
-          <p className="mt-1 text-sm">{t("emptyHint")}</p>
+          <p className="mt-2 text-sm">{t("emptyHint")}</p>
         </div>
       ) : (
         <ul className="space-y-2">
           {recipes.map((recipe) => (
             <li
               key={recipe.id}
-              className="flex items-center justify-between gap-2 rounded-lg border p-3"
+              className="flex items-center justify-between gap-2 rounded-lg border p-4"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{recipe.name}</p>
@@ -208,7 +208,7 @@ export const RecipesPage = () => {
                   {t("itemCount", { count: recipe.items.length })}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex shrink-0 items-center gap-2">
                 <Button
                   size="sm"
                   disabled={executingId === recipe.id || recipe.items.length === 0}
@@ -218,7 +218,7 @@ export const RecipesPage = () => {
                   }
                   onClick={() => void runExecute(recipe, false)}
                 >
-                  <Play className="mr-1 h-4 w-4" />
+                  <Play className="mr-2 h-4 w-4" />
                   {executingId === recipe.id ? t("executing") : t("execute")}
                 </Button>
                 {recipe.items.length === 0 && (

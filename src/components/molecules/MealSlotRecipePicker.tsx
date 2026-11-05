@@ -57,7 +57,7 @@ export const MealSlotRecipePicker = ({
 
   return (
     <div className="space-y-2 rounded-md border p-2">
-      <div className="flex gap-1">
+      <div className="flex gap-2">
         <Button
           type="button"
           size="sm"

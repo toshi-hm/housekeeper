@@ -109,7 +109,7 @@ export const FloorPlanViewer = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="overflow-auto rounded-lg border bg-muted/20 p-2">
         <svg
           ref={svgRef}
@@ -315,7 +315,7 @@ export const FloorPlanViewer = ({
               <li key={marker.id}>
                 <button
                   type="button"
-                  className="w-full p-3 text-left text-sm hover:bg-muted/50"
+                  className="w-full p-4 text-left text-sm hover:bg-muted/50"
                   onClick={
                     onStorageLocationClick
                       ? () => onStorageLocationClick(marker.storage_location_id)
@@ -330,7 +330,7 @@ export const FloorPlanViewer = ({
         </ul>
       )}
       {onSelectItemForPlacement && unplacedItems.length > 0 && (
-        <div className="space-y-2 rounded-lg border p-3">
+        <div className="space-y-2 rounded-lg border p-4">
           <p className="text-sm font-medium">{t("mapChooseItemToPlace")}</p>
           <p className="text-xs text-muted-foreground">{t("mapChooseItemToPlaceHelp")}</p>
           <div className="flex flex-wrap gap-2">
@@ -338,7 +338,7 @@ export const FloorPlanViewer = ({
               <button
                 key={item.id}
                 type="button"
-                className={`min-h-11 rounded-md border px-3 py-2 text-sm ${pendingItemId === item.id ? "border-primary bg-primary/10" : "hover:bg-muted/50"}`}
+                className={`min-h-11 rounded-md border px-4 py-2 text-sm ${pendingItemId === item.id ? "border-primary bg-primary/10" : "hover:bg-muted/50"}`}
                 aria-pressed={pendingItemId === item.id}
                 onClick={() => onSelectItemForPlacement(item.id)}
               >
@@ -357,7 +357,7 @@ export const FloorPlanViewer = ({
               <li key={placement.id} className="flex items-center">
                 <button
                   type="button"
-                  className="flex-1 p-3 text-left text-sm hover:bg-muted/50"
+                  className="flex-1 p-4 text-left text-sm hover:bg-muted/50"
                   onClick={onItemClick ? () => onItemClick(placement.item_id) : undefined}
                 >
                   {itemName}

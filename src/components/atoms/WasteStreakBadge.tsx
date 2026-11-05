@@ -15,7 +15,7 @@ export const WasteStreakBadge = ({ currentStreakWeeks }: WasteStreakBadgeProps) 
   const { t } = useTranslation("stats");
   if (currentStreakWeeks <= 0) return null;
   return (
-    <Badge variant="secondary" className="gap-1 font-normal">
+    <Badge variant="secondary" className="gap-2 font-normal">
       <Flame className="h-3 w-3" />
       {t("wasteStreak", { count: currentStreakWeeks })}
     </Badge>

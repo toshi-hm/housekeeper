@@ -20,7 +20,7 @@ export const ItemLoadError = ({ onRetry, onBack }: ItemLoadErrorProps) => {
       </Button>
       <div
         role="alert"
-        className="space-y-3 rounded-lg border border-destructive p-4 text-destructive"
+        className="space-y-4 rounded-lg border border-destructive p-4 text-destructive"
       >
         <p className="font-medium">{t("itemLoadError")}</p>
         <Button variant="outline" onClick={onRetry}>

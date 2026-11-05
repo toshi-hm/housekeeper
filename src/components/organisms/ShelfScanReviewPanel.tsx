@@ -75,7 +75,7 @@ export const ShelfScanReviewPanel = ({
 
   return (
     <div className="space-y-6">
-      <section className="space-y-3">
+      <section className="space-y-4">
         <div>
           <h2 className="text-base font-semibold">{t("possiblyConsumedTitle")}</h2>
           <p className="text-sm text-muted-foreground">{t("possiblyConsumedHint")}</p>
@@ -98,8 +98,8 @@ export const ShelfScanReviewPanel = ({
             </label>
             <ul className="space-y-2">
               {visibleConsumedCandidates.map((item) => (
-                <li key={item.id} className="flex items-center gap-3 rounded-lg border p-3">
-                  <label className="flex flex-1 items-center gap-3">
+                <li key={item.id} className="flex items-center gap-4 rounded-lg border p-4">
+                  <label className="flex flex-1 items-center gap-4">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(item.id)}
@@ -134,7 +134,7 @@ export const ShelfScanReviewPanel = ({
         onCancel={() => setIsConfirmOpen(false)}
       />
 
-      <section className="space-y-3">
+      <section className="space-y-4">
         <div>
           <h2 className="text-base font-semibold">{t("possiblyUnregisteredTitle")}</h2>
           <p className="text-sm text-muted-foreground">{t("possiblyUnregisteredHint")}</p>
@@ -149,7 +149,7 @@ export const ShelfScanReviewPanel = ({
             {possiblyUnregistered.map((name, index) => (
               <li
                 key={`${name}-${index}`}
-                className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                className="flex items-center justify-between gap-4 rounded-lg border p-4"
               >
                 <span className="text-sm">{name}</span>
                 <Link to="/items/new" search={{ prefillName: name }}>

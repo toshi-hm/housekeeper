@@ -61,7 +61,7 @@ export const MultiTagSelect = ({
   return (
     <div className="space-y-2">
       {selectedTags.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {selectedTags.map((tag) => (
             <TagBadge
               key={tag.id}
@@ -77,7 +77,7 @@ export const MultiTagSelect = ({
       )}
 
       {availableTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {availableTags.map((tag) => (
             <button
               key={tag.id}

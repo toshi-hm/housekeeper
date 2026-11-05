@@ -117,11 +117,11 @@ const Step1 = ({ onNext }: Step1Props) => {
           className="space-y-4"
         >
           {error && (
-            <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
               {error}
             </div>
           )}
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor="email">{t("email")}</Label>
             <Input
               id="email"
@@ -225,19 +225,19 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
           className="space-y-4"
         >
           {error && (
-            <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
               {error}
             </div>
           )}
 
           {/* Secret question (read-only) */}
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label>{t("securityQuestion")}</Label>
-            <p className="rounded-md border bg-muted/50 px-3 py-2 text-sm">{question}</p>
+            <p className="rounded-md border bg-muted/50 px-4 py-2 text-sm">{question}</p>
           </div>
 
           {/* Answer */}
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor="answer">{t("answerLabel")}</Label>
             <Input
               id="answer"
@@ -258,7 +258,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
           </div>
 
           {/* New password */}
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor="newPassword">{t("newPassword")}</Label>
             <div className="relative">
               <Input
@@ -290,7 +290,7 @@ const Step2 = ({ email, question, onBack }: Step2Props) => {
           </div>
 
           {/* Confirm new password */}
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor="confirmPassword">{t("newPasswordConfirm")}</Label>
             <div className="relative">
               <Input

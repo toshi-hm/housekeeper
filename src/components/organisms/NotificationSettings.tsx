@@ -206,9 +206,9 @@ export const NotificationSettings = () => {
   // key forces re-mount when prefs load, re-initializing both the
   // uncontrolled timezone select and the draft state above from prefs
   return (
-    <div className="space-y-5" key={prefs?.user_id ?? "loading"}>
+    <div className="space-y-6" key={prefs?.user_id ?? "loading"}>
       {/* Push */}
-      <div className="rounded-lg border p-4 space-y-3">
+      <div className="rounded-lg border p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="h-4 w-4 text-muted-foreground" />
@@ -229,7 +229,7 @@ export const NotificationSettings = () => {
       </div>
 
       {/* Email */}
-      <div className="rounded-lg border p-4 space-y-3">
+      <div className="rounded-lg border p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-muted-foreground" />
@@ -244,7 +244,7 @@ export const NotificationSettings = () => {
           </Button>
         </div>
         {prefs?.email_enabled && (
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor="email_address">{t("emailAddress")}</Label>
             <Input
               id="email_address"
@@ -288,10 +288,10 @@ export const NotificationSettings = () => {
       )}
 
       {/* Threshold & time */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
           <Label htmlFor="threshold_days">{t("thresholdDays")}</Label>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Input
               id="threshold_days"
               type="number"
@@ -312,7 +312,7 @@ export const NotificationSettings = () => {
             </p>
           )}
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2">
           <Label htmlFor="notify_at">{t("notifyAt")}</Label>
           <Input
             id="notify_at"
@@ -334,7 +334,7 @@ export const NotificationSettings = () => {
             </p>
           )}
         </div>
-        <div className="col-span-2 space-y-1">
+        <div className="col-span-2 space-y-2">
           <Label htmlFor="timezone">{t("timezone")}</Label>
           <Select
             id="timezone"
@@ -352,7 +352,7 @@ export const NotificationSettings = () => {
       </div>
 
       {/* Weekly waste digest (#925) */}
-      <div className="rounded-lg border p-4 space-y-3">
+      <div className="rounded-lg border p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Recycle className="h-4 w-4 text-muted-foreground" />
@@ -370,7 +370,7 @@ export const NotificationSettings = () => {
       </div>
 
       {/* Daily goods low stock alerts (#1055) */}
-      <div className="rounded-lg border p-4 space-y-3">
+      <div className="rounded-lg border p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="h-4 w-4 text-muted-foreground" />

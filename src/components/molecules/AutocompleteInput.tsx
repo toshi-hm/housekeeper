@@ -113,7 +113,7 @@ export const AutocompleteInput = ({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover py-1 text-popover-foreground shadow-md"
+          className="absolute z-20 mt-2 max-h-60 w-full overflow-auto rounded-md border bg-popover py-2 text-popover-foreground shadow-md"
         >
           {matches.map((candidate, index) => (
             <li
@@ -122,7 +122,7 @@ export const AutocompleteInput = ({
               role="option"
               aria-selected={index === activeIndex}
               className={cn(
-                "flex min-h-11 cursor-pointer items-center px-3 text-sm",
+                "flex min-h-11 cursor-pointer items-center px-4 text-sm",
                 index === activeIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
               )}
               // blur でリストが閉じる前に選択できるよう、フォーカス移動を止める

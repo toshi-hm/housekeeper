@@ -88,7 +88,7 @@ export const ShelfScanCapturePage = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -105,7 +105,7 @@ export const ShelfScanCapturePage = () => {
 
       {step.kind === "selecting" && (
         <div className="space-y-4">
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor={categoryFieldId}>{ti("category")}</Label>
             <Select
               id={categoryFieldId}
@@ -120,7 +120,7 @@ export const ShelfScanCapturePage = () => {
               ))}
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor={locationFieldId}>{ti("storageLocation")}</Label>
             <Select
               id={locationFieldId}
@@ -141,7 +141,7 @@ export const ShelfScanCapturePage = () => {
             disabled={!canStartCapture}
             onClick={() => setStep({ kind: "camera" })}
           >
-            <Camera className="mr-1 h-4 w-4" />
+            <Camera className="mr-2 h-4 w-4" />
             {t("startCapture")}
           </Button>
         </div>
@@ -155,7 +155,7 @@ export const ShelfScanCapturePage = () => {
       )}
 
       {step.kind === "scanning" && (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center gap-4 py-16 text-muted-foreground">
           <Spinner className="h-8 w-8" />
           <p>{t("scanning")}</p>
           <Button variant="outline" size="sm" onClick={handleCancelScan}>

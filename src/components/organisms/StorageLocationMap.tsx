@@ -34,7 +34,7 @@ export const StorageLocationMap = ({
   const { t } = useTranslation("settings");
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {photoUrl ? (
         <div className="relative w-full overflow-hidden rounded-lg border">
           <img src={photoUrl} alt="" className="block w-full" />
@@ -53,7 +53,7 @@ export const StorageLocationMap = ({
       )}
 
       {unpinnedItems.length > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p className="text-xs text-muted-foreground">{t("locationMapUnpinnedItems")}</p>
           <ul className="divide-y rounded-lg border">
             {unpinnedItems.map((item) => (

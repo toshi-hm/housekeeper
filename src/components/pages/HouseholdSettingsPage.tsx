@@ -150,7 +150,7 @@ export const HouseholdSettingsPage = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -250,7 +250,7 @@ export const HouseholdSettingsPage = () => {
               {data.members.map((member) => (
                 <li
                   key={member.user_id}
-                  className="flex items-center justify-between gap-3 p-3 text-sm"
+                  className="flex items-center justify-between gap-4 p-4 text-sm"
                 >
                   <span className="break-all font-mono text-xs" title={member.user_id}>
                     {member.user_id === data.currentUserId
@@ -270,7 +270,7 @@ export const HouseholdSettingsPage = () => {
                         })}
                         onClick={() => setMemberToRemove(member.user_id)}
                       >
-                        <UserMinus className="mr-1 h-4 w-4" />
+                        <UserMinus className="mr-2 h-4 w-4" />
                         {t("householdRemoveMember")}
                       </Button>
                     )}
@@ -280,10 +280,10 @@ export const HouseholdSettingsPage = () => {
             </ul>
           </section>
 
-          <section className="space-y-3 rounded-lg border p-4">
+          <section className="space-y-4 rounded-lg border p-4">
             <div>
               <h2 className="font-semibold">{t("householdInvites")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("householdInviteHelp")}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t("householdInviteHelp")}</p>
             </div>
             <Button onClick={() => void handleCreateInvite()} disabled={createInvite.isPending}>
               {createInvite.isPending ? (
@@ -302,7 +302,7 @@ export const HouseholdSettingsPage = () => {
                   return (
                     <li
                       key={invite.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+                      className="flex flex-wrap items-center justify-between gap-4 rounded-md border p-4"
                     >
                       <div>
                         <code className="text-lg font-semibold tracking-widest">{invite.code}</code>
@@ -334,10 +334,10 @@ export const HouseholdSettingsPage = () => {
             )}
           </section>
 
-          <section className="space-y-3 rounded-lg border p-4">
+          <section className="space-y-4 rounded-lg border p-4">
             <div>
               <h2 className="font-semibold">{t("householdJoin")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("householdJoinHelp")}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t("householdJoinHelp")}</p>
             </div>
             <label className="sr-only" htmlFor="household-invite-code">
               {t("householdInviteCode")}
@@ -354,7 +354,7 @@ export const HouseholdSettingsPage = () => {
             <label className="flex items-start gap-2 text-sm">
               <input
                 type="checkbox"
-                className="mt-1 rounded"
+                className="mt-2 rounded"
                 checked={confirmPrivateData}
                 onChange={(event) => setConfirmPrivateData(event.target.checked)}
               />

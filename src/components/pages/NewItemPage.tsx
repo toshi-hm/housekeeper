@@ -338,7 +338,7 @@ export const NewItemPage = ({ cloneFrom, prefillName }: NewItemPageProps) => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -440,14 +440,14 @@ export const NewItemPage = ({ cloneFrom, prefillName }: NewItemPageProps) => {
             aria-modal="true"
             aria-labelledby={stackDialogTitleId}
             tabIndex={-1}
-            className="w-full max-w-sm space-y-4 rounded-xl bg-background p-5 shadow-lg"
+            className="w-full max-w-sm space-y-4 rounded-xl bg-background p-6 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <div>
               <h2 id={stackDialogTitleId} className="text-base font-semibold">
                 {t("stackDialogTitle")}
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-2 text-sm text-muted-foreground">
                 {t("stackDialogBody", { name: existingItem.name, units: existingItem.units })}
               </p>
             </div>

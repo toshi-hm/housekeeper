@@ -243,7 +243,7 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
               <div>
                 <p className="text-lg font-medium">{t("scannerError")}</p>
                 <p className="mt-2 text-sm text-white/70">{error}</p>
-                <div className="mt-4 flex justify-center gap-3">
+                <div className="mt-4 flex justify-center gap-4">
                   <Button onClick={handleRetry} variant="outline">
                     {t("scannerRetry")}
                   </Button>
@@ -282,7 +282,7 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
               )}
 
               {stage === "processing" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70 text-white">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/70 text-white">
                   <Loader2 className="h-8 w-8 animate-spin" />
                   <span>{t("expiryScanProcessing")}</span>
                 </div>
@@ -306,13 +306,13 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
                       autoFocus
                     />
                   </div>
-                  <div className="flex flex-wrap justify-center gap-3">
+                  <div className="flex flex-wrap justify-center gap-4">
                     <Button type="button" onClick={handleRetake} variant="outline">
-                      <RotateCcw className="mr-1 h-4 w-4" />
+                      <RotateCcw className="mr-2 h-4 w-4" />
                       {t("expiryScanRetake")}
                     </Button>
                     <Button type="button" onClick={handleConfirm} disabled={!candidateDate}>
-                      <Check className="mr-1 h-4 w-4" />
+                      <Check className="mr-2 h-4 w-4" />
                       {t("expiryScanConfirm")}
                     </Button>
                   </div>
@@ -344,7 +344,7 @@ export const ExpiryDateScanner = ({ onConfirm, onClose }: ExpiryDateScannerProps
         {stage === "camera" && !showManual && !error && (
           <div className="p-4 text-center text-sm text-white/70">
             <p>{t("expiryScanHint")}</p>
-            <Button type="button" onClick={() => void handleCapture()} className="mt-3 w-full">
+            <Button type="button" onClick={() => void handleCapture()} className="mt-4 w-full">
               <Camera className="mr-2 h-4 w-4" />
               {t("expiryScanCapture")}
             </Button>

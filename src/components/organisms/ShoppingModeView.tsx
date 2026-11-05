@@ -87,7 +87,7 @@ export const ShoppingModeView = ({
     return (
       <div className="space-y-2">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+          <div key={i} className="flex items-center gap-4 rounded-lg border p-4">
             <Skeleton className="h-5 w-5 rounded" />
             <Skeleton className="h-4 flex-1" />
             <Skeleton className="h-11 w-16 rounded-md" />

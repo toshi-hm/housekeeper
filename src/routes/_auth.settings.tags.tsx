@@ -91,7 +91,7 @@ export const TagsPage = () => {
         onCancel={() => setDeleteId(null)}
       />
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -105,7 +105,7 @@ export const TagsPage = () => {
       </div>
 
       {/* Add form */}
-      <div className="space-y-2 rounded-lg border p-3">
+      <div className="space-y-2 rounded-lg border p-4">
         <div className="flex gap-2">
           <Input
             value={newName}
@@ -151,10 +151,10 @@ export const TagsPage = () => {
       ) : (
         <ul className="divide-y rounded-lg border">
           {tags.map((tag) => (
-            <li key={tag.id} className="space-y-2 p-3">
+            <li key={tag.id} className="space-y-2 p-4">
               {editId === tag.id ? (
                 <>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <Input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
@@ -182,7 +182,7 @@ export const TagsPage = () => {
                   <ColorPicker value={editColor} onChange={setEditColor} />
                 </>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <div className="flex flex-1 items-center gap-2">
                     <TagBadge name={tag.name} color={tag.color} />
                     <UsageCountBadge count={usageCounts[tag.id] ?? 0} />

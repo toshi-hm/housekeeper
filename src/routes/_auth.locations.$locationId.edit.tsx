@@ -72,7 +72,7 @@ export const FloorPlanEditorPage = () => {
         }}
         onCancel={() => setMarkerToDelete(null)}
       />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"

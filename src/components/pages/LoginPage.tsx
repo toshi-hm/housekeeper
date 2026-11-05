@@ -284,7 +284,7 @@ export const LoginPage = ({ returnTo }: { returnTo?: string }) => {
             className="space-y-4"
           >
             {globalError && (
-              <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
                 {globalError}
               </div>
             )}
@@ -295,7 +295,7 @@ export const LoginPage = ({ returnTo }: { returnTo?: string }) => {
                 <div className="flex justify-center text-primary">
                   <ShieldCheck className="h-10 w-10" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label htmlFor="mfaCode">{tm("codeLabel")}</Label>
                   <TotpCodeInput
                     id="mfaCode"
@@ -331,7 +331,7 @@ export const LoginPage = ({ returnTo }: { returnTo?: string }) => {
             ) : (
               <>
                 {/* Email */}
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label htmlFor="email">{t("email")}</Label>
                   <Input
                     id="email"
@@ -352,7 +352,7 @@ export const LoginPage = ({ returnTo }: { returnTo?: string }) => {
                 </div>
 
                 {/* Password */}
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label htmlFor="password">{t("password")}</Label>
                   <div className="relative">
                     <Input
@@ -388,7 +388,7 @@ export const LoginPage = ({ returnTo }: { returnTo?: string }) => {
                 {isSignupMode && (
                   <>
                     {/* Confirm password */}
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
                       <div className="relative">
                         <Input
@@ -433,7 +433,7 @@ export const LoginPage = ({ returnTo }: { returnTo?: string }) => {
                     </div>
 
                     {/* Secret question */}
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <Label htmlFor="securityQuestion">{t("securityQuestion")}</Label>
                       <Select
                         id="securityQuestion"
@@ -460,7 +460,7 @@ export const LoginPage = ({ returnTo }: { returnTo?: string }) => {
                     </div>
 
                     {/* Secret answer */}
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <Label htmlFor="securityAnswer">{t("securityAnswer")}</Label>
                       <Input
                         id="securityAnswer"
@@ -503,7 +503,7 @@ export const LoginPage = ({ returnTo }: { returnTo?: string }) => {
                     {isSignupMode ? t("switchToSignIn") : t("switchToSignUp")}
                   </Button>
                 ) : (
-                  <div className="rounded-md border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
+                  <div className="rounded-md border border-border bg-muted/50 p-4 text-xs text-muted-foreground">
                     {t("signUpDisabled")}
                   </div>
                 )}

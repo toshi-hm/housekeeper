@@ -94,7 +94,7 @@ export const ScanToShoppingDialog = ({
             {errorType ? (
               <ProductLookupResult isLoading={false} product={null} errorType={errorType} />
             ) : (
-              <div className="flex items-center gap-2 rounded-md bg-muted/60 p-3 text-sm">
+              <div className="flex items-center gap-2 rounded-md bg-muted/60 p-4 text-sm">
                 {matchedExisting ? (
                   <>
                     <PackageCheck className="h-5 w-5 shrink-0 text-primary" />
@@ -108,7 +108,7 @@ export const ScanToShoppingDialog = ({
                 )}
               </div>
             )}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="scan-name">{t("itemName")}</Label>
               <Input
                 id="scan-name"

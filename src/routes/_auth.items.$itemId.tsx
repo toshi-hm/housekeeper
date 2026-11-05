@@ -60,7 +60,7 @@ import {
 import { computeConsumptionPaceForecast, computeItemConsumptionPace } from "@/types/stats";
 
 const DetailRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
-  <div className="flex items-start gap-3">
+  <div className="flex items-start gap-4">
     <span className="mt-0.5 text-muted-foreground">{icon}</span>
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
@@ -189,14 +189,14 @@ export const ItemDetailPage = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Skeleton className="h-9 w-9 rounded-md" />
           <Skeleton className="h-6 w-48" />
         </div>
         <Skeleton className="aspect-video w-full rounded-lg" />
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex justify-between py-1">
+            <div key={i} className="flex justify-between py-2">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-4 w-32" />
             </div>
@@ -228,7 +228,7 @@ export const ItemDetailPage = () => {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="space-y-3 rounded-lg border border-destructive p-4 text-destructive">
+        <div className="space-y-4 rounded-lg border border-destructive p-4 text-destructive">
           <p className="font-medium">{t("itemNotFound")}</p>
           <p className="text-sm text-muted-foreground">{t("itemNotFoundDescription")}</p>
           <Button variant="outline" onClick={() => void navigate({ to: "/" })}>
@@ -363,7 +363,7 @@ export const ItemDetailPage = () => {
 
       {/* 棚卸し（在庫確認） (#375) */}
       <Card>
-        <CardContent className="flex items-center justify-between gap-3 p-4">
+        <CardContent className="flex items-center justify-between gap-4 p-4">
           <div>
             <p className="text-xs text-muted-foreground">{t("lastVerifiedAt")}</p>
             <p className="text-sm font-medium">
@@ -403,7 +403,7 @@ export const ItemDetailPage = () => {
           {/* Name + badges */}
           <div>
             <h1 className="text-2xl font-bold">{item.name}</h1>
-            <div className="mt-1 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               {category && <Badge variant="secondary">{category.name}</Badge>}
               {isEmpty && (
                 <Badge variant="outline" className="text-muted-foreground">
@@ -411,7 +411,7 @@ export const ItemDetailPage = () => {
                 </Badge>
               )}
               {hasMultipleLots && (
-                <Badge variant="outline" className="gap-1">
+                <Badge variant="outline" className="gap-2">
                   <Layers className="h-3 w-3" />
                   {t("lotCount", { count: lots.length })}
                 </Badge>
@@ -427,7 +427,7 @@ export const ItemDetailPage = () => {
               />
             </div>
             {itemTags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {itemTags.map((tag) => (
                   <TagBadge key={tag.id} name={tag.name} color={tag.color} />
                 ))}
@@ -439,7 +439,7 @@ export const ItemDetailPage = () => {
           {lotsError && (
             <div
               role="alert"
-              className="flex items-center justify-between gap-2 rounded-lg border border-destructive p-3 text-sm text-destructive"
+              className="flex items-center justify-between gap-2 rounded-lg border border-destructive p-4 text-sm text-destructive"
             >
               <span>{t("lotsLoadError")}</span>
               <Button type="button" size="sm" variant="outline" onClick={() => void refetchLots()}>
@@ -449,14 +449,14 @@ export const ItemDetailPage = () => {
           )}
 
           {/* Tab navigation */}
-          <div className="flex rounded-lg border p-1" role="tablist" {...detailTablistProps}>
+          <div className="flex rounded-lg border p-2" role="tablist" {...detailTablistProps}>
             <button
               id={infoTabId}
               role="tab"
               aria-selected={detailTab === "info"}
               aria-controls={`${infoTabId}-panel`}
               {...getDetailTabProps("info")}
-              className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "info" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={`flex flex-1 items-center justify-center gap-2 rounded py-2 text-sm font-medium transition-colors ${detailTab === "info" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => setDetailTab("info")}
             >
               <Package className="h-4 w-4" />
@@ -469,13 +469,13 @@ export const ItemDetailPage = () => {
                 aria-selected={detailTab === "lots"}
                 aria-controls={`${lotsTabId}-panel`}
                 {...getDetailTabProps("lots")}
-                className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "lots" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                className={`flex flex-1 items-center justify-center gap-2 rounded py-2 text-sm font-medium transition-colors ${detailTab === "lots" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                 onClick={() => setDetailTab("lots")}
               >
                 <Layers className="h-4 w-4" />
                 {t("lots")}
                 {hasMultipleLots && (
-                  <span className="ml-1 rounded-full bg-primary/20 px-1.5 text-xs">
+                  <span className="ml-2 rounded-full bg-primary/20 px-2 text-xs">
                     {lots.length}
                   </span>
                 )}
@@ -487,15 +487,13 @@ export const ItemDetailPage = () => {
               aria-selected={detailTab === "history"}
               aria-controls={`${historyTabId}-panel`}
               {...getDetailTabProps("history")}
-              className={`flex flex-1 items-center justify-center gap-1 rounded py-1.5 text-sm font-medium transition-colors ${detailTab === "history" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={`flex flex-1 items-center justify-center gap-2 rounded py-2 text-sm font-medium transition-colors ${detailTab === "history" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => setDetailTab("history")}
             >
               <History className="h-4 w-4" />
               {t("consumeHistory")}
               {logs.length > 0 && (
-                <span className="ml-1 rounded-full bg-primary/20 px-1.5 text-xs">
-                  {logs.length}
-                </span>
+                <span className="ml-2 rounded-full bg-primary/20 px-2 text-xs">{logs.length}</span>
               )}
             </button>
           </div>
@@ -507,7 +505,7 @@ export const ItemDetailPage = () => {
               aria-labelledby={infoTabId}
               tabIndex={0}
             >
-              <CardContent className="space-y-3 p-4">
+              <CardContent className="space-y-4 p-4">
                 <DetailRow
                   icon={<Package className="h-4 w-4" />}
                   label={t("units")}
@@ -545,7 +543,7 @@ export const ItemDetailPage = () => {
                   />
                 )}
                 {location && (
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-4">
                     <DetailRow
                       icon={<MapPin className="h-4 w-4" />}
                       label={t("storageLocation")}
@@ -562,7 +560,7 @@ export const ItemDetailPage = () => {
                           })
                         }
                       >
-                        <Map className="mr-1 h-4 w-4" />
+                        <Map className="mr-2 h-4 w-4" />
                         {t("settings:viewMap")}
                       </Button>
                     )}
@@ -623,9 +621,9 @@ export const ItemDetailPage = () => {
                   );
                   return (
                     <Card key={lot.id}>
-                      <CardContent className="p-3">
+                      <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-2">
-                          <div className="space-y-0.5">
+                          <div className="space-y-0">
                             <p className="text-sm font-medium">
                               {t("lotLabel", { index: index + 1 })} — {lotDisplay}
                             </p>
@@ -681,7 +679,7 @@ export const ItemDetailPage = () => {
               className="space-y-2"
             >
               {logsError ? (
-                <div role="alert" className="space-y-3 py-6 text-center">
+                <div role="alert" className="space-y-4 py-6 text-center">
                   <p className="text-sm text-destructive">{t("historyLoadError")}</p>
                   <Button
                     type="button"
@@ -697,16 +695,16 @@ export const ItemDetailPage = () => {
               ) : (
                 <>
                   <Card>
-                    <CardContent className="p-3">
+                    <CardContent className="p-4">
                       <ItemConsumptionMiniChart pace={consumptionPace} />
                     </CardContent>
                   </Card>
                   {logs.map((log) => (
                     <Card key={log.id}>
-                      <CardContent className="p-3">
+                      <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="flex items-center gap-1.5 text-sm font-medium">
+                            <p className="flex items-center gap-2 text-sm font-medium">
                               −{log.delta_amount}
                               {log.delta_unit}
                               {log.note && (
@@ -720,7 +718,7 @@ export const ItemDetailPage = () => {
                               {log.units_before} → {log.units_after} {t("units")}
                             </p>
                             {log.note && (
-                              <p className="mt-1 text-xs text-muted-foreground">{log.note}</p>
+                              <p className="mt-2 text-xs text-muted-foreground">{log.note}</p>
                             )}
                           </div>
                           <p className="text-xs whitespace-nowrap text-muted-foreground">

@@ -41,7 +41,7 @@ export const ArchivedItemsPage = () => {
         onCancel={() => setPurgeTarget(null)}
       />
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -60,7 +60,7 @@ export const ArchivedItemsPage = () => {
           <Spinner />
         </div>
       ) : isError ? (
-        <div role="alert" className="space-y-3 py-8 text-center">
+        <div role="alert" className="space-y-4 py-8 text-center">
           <p className="text-sm text-destructive">{ti("loadError")}</p>
           <Button variant="outline" size="sm" onClick={() => void refetch()}>
             {tc("retry")}
@@ -71,7 +71,7 @@ export const ArchivedItemsPage = () => {
       ) : (
         <ul className="divide-y rounded-lg border">
           {items.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center gap-3 p-3">
+            <li key={item.id} className="flex flex-wrap items-center gap-4 p-4">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{item.name}</p>
                 {item.expiry_date && (
@@ -87,9 +87,9 @@ export const ArchivedItemsPage = () => {
                 onClick={() => restoreItem.mutate(item.id)}
               >
                 {restoreItem.isPending && restoreItem.variables === item.id ? (
-                  <Spinner className="mr-1.5 h-4 w-4" />
+                  <Spinner className="mr-2 h-4 w-4" />
                 ) : (
-                  <RotateCcw className="mr-1.5 h-4 w-4" />
+                  <RotateCcw className="mr-2 h-4 w-4" />
                 )}
                 {t("restore")}
               </Button>
@@ -100,7 +100,7 @@ export const ArchivedItemsPage = () => {
                 disabled={deleteItemPermanently.isPending && purgeTarget?.id === item.id}
                 onClick={() => setPurgeTarget(item)}
               >
-                <Trash2 className="mr-1.5 h-4 w-4" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 {t("purgeItem")}
               </Button>
             </li>

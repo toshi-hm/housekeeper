@@ -222,7 +222,7 @@ export const ThreeDFloorPlanViewer = ({
             <li key={marker.id}>
               <button
                 type="button"
-                className="w-full p-3 text-left text-sm hover:bg-muted/50"
+                className="w-full p-4 text-left text-sm hover:bg-muted/50"
                 onClick={
                   onStorageLocationClick
                     ? () => onStorageLocationClick(marker.storage_location_id)
@@ -244,7 +244,7 @@ export const ThreeDFloorPlanViewer = ({
               <li key={placement.id}>
                 <button
                   type="button"
-                  className="w-full p-3 text-left text-sm hover:bg-muted/50"
+                  className="w-full p-4 text-left text-sm hover:bg-muted/50"
                   onClick={onItemClick ? () => onItemClick(placement.item_id) : undefined}
                 >
                   {item?.name ?? t("mapUnknownItem")}

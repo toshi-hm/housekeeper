@@ -24,7 +24,7 @@ export const ExpiryRecipeSuggestions = ({
   if (isLoading) {
     return (
       <div
-        className="animate-pulse rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"
+        className="animate-pulse rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"
         aria-hidden="true"
       >
         <div className="flex items-center gap-2">
@@ -38,12 +38,12 @@ export const ExpiryRecipeSuggestions = ({
   if (suggestions.length === 0) return null;
 
   return (
-    <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
+    <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
       <div className="flex items-center gap-2">
         <ChefHat className="h-5 w-5 shrink-0" />
         <p className="text-sm font-medium">{t("recipeSuggestionsTitle")}</p>
       </div>
-      <ul className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+      <ul className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-2">
         {suggestions.map((recipe) => (
           <li key={recipe.id} className="w-36 shrink-0">
             <a
@@ -56,18 +56,18 @@ export const ExpiryRecipeSuggestions = ({
                 <img
                   src={recipe.imageUrl}
                   alt=""
-                  className="mb-1.5 aspect-square w-full rounded object-cover"
+                  className="mb-2 aspect-square w-full rounded object-cover"
                   loading="lazy"
                 />
               ) : (
-                <div className="mb-1.5 flex aspect-square w-full items-center justify-center rounded bg-emerald-100 dark:bg-emerald-900/40">
+                <div className="mb-2 flex aspect-square w-full items-center justify-center rounded bg-emerald-100 dark:bg-emerald-900/40">
                   <ChefHat className="h-6 w-6 text-emerald-400" />
                 </div>
               )}
               <span className="line-clamp-2 font-medium text-emerald-900 dark:text-emerald-100">
                 {recipe.title}
               </span>
-              <span className="mt-1 flex items-center gap-0.5 text-emerald-600 dark:text-emerald-300">
+              <span className="mt-2 flex items-center gap-0 text-emerald-600 dark:text-emerald-300">
                 <ExternalLink className="h-3 w-3 shrink-0" />
                 {t("recipeSuggestionsExternalLink")}
               </span>

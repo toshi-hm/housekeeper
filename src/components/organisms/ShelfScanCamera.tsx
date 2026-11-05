@@ -233,7 +233,7 @@ export const ShelfScanCamera = ({ onCapture, onClose }: ShelfScanCameraProps) =>
               <div>
                 <p className="text-lg font-medium">{t("cameraError")}</p>
                 <p className="mt-2 text-sm text-white/70">{error}</p>
-                <div className="mt-4 flex flex-wrap justify-center gap-3">
+                <div className="mt-4 flex flex-wrap justify-center gap-4">
                   <Button onClick={handleRetry} variant="outline">
                     {tCommon("retry")}
                   </Button>

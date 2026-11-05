@@ -155,9 +155,9 @@ const SearchInput = ({
 
   return (
     <div className="relative flex-1">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
-        className="pl-9"
+        className="pl-10"
         placeholder={placeholder}
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -553,7 +553,7 @@ export const DashboardPage = () => {
       onRefresh={() => qc.invalidateQueries({ queryKey: ["items"], refetchType: "all" })}
     >
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">
@@ -568,14 +568,14 @@ export const DashboardPage = () => {
         <div className="flex flex-wrap items-center gap-2">
           {selectionMode ? (
             <Button size="sm" variant="outline" onClick={exitSelectionMode}>
-              <X className="mr-1 h-4 w-4" />
+              <X className="mr-2 h-4 w-4" />
               {tc("cancel")}
             </Button>
           ) : (
             <>
               {items.length > 0 && (
                 <Button size="sm" variant="outline" onClick={() => setSelectionMode(true)}>
-                  <CheckSquare className="mr-1 h-4 w-4" />
+                  <CheckSquare className="mr-2 h-4 w-4" />
                   {t("bulkSelect")}
                 </Button>
               )}
@@ -605,7 +605,7 @@ export const DashboardPage = () => {
               </Link>
               <Link to="/items/new">
                 <Button size="sm">
-                  <Plus className="mr-1 h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4" />
                   {t("addItem")}
                 </Button>
               </Link>
@@ -616,7 +616,7 @@ export const DashboardPage = () => {
 
       {/* Selection mode sub-header */}
       {selectionMode && (
-        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
+        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2">
           <span className="text-sm font-medium">
             {t("bulkSelectedCount", { count: selectedIds.size })}
           </span>
@@ -648,7 +648,7 @@ export const DashboardPage = () => {
 
         {/* Expiry alert banner */}
         {urgentCount > 0 && (
-          <div className="space-y-3 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">
+          <div className="space-y-4 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 shrink-0" />
               <p className="text-sm">
@@ -659,13 +659,13 @@ export const DashboardPage = () => {
               <summary className="cursor-pointer text-sm font-medium">
                 {t("urgentBannerDetails")}
               </summary>
-              <div className="mt-3 space-y-3 text-sm">
+              <div className="mt-4 space-y-4 text-sm">
                 <div>
-                  <p className="mb-1 font-medium">{t("expiryStatus.expired")}</p>
+                  <p className="mb-2 font-medium">{t("expiryStatus.expired")}</p>
                   {expiredItems.length === 0 ? (
                     <p className="text-xs text-yellow-700">{t("urgentBannerNoExpiredItems")}</p>
                   ) : (
-                    <ul className="list-inside list-disc space-y-1">
+                    <ul className="list-inside list-disc space-y-2">
                       {expiredItems.map((item) => (
                         <li key={item.id}>
                           <Link
@@ -678,7 +678,7 @@ export const DashboardPage = () => {
                           {/* #714: 賞味期限切れは安全性の問題ではないため、消費期限切れ
                               （または区別未設定）と見分けられるよう注記する */}
                           {item.expiry_type === "best_before" && (
-                            <span className="ml-1 text-xs text-yellow-700">
+                            <span className="ml-2 text-xs text-yellow-700">
                               {t("urgentBannerBestBeforeNote")}
                             </span>
                           )}
@@ -688,13 +688,13 @@ export const DashboardPage = () => {
                   )}
                 </div>
                 <div>
-                  <p className="mb-1 font-medium">{t("expiryStatus.expiring-soon")}</p>
+                  <p className="mb-2 font-medium">{t("expiryStatus.expiring-soon")}</p>
                   {expiringSoonItems.length === 0 ? (
                     <p className="text-xs text-yellow-700">
                       {t("urgentBannerNoExpiringSoonItems")}
                     </p>
                   ) : (
-                    <ul className="list-inside list-disc space-y-1">
+                    <ul className="list-inside list-disc space-y-2">
                       {expiringSoonItems.map((item) => (
                         <li key={item.id}>
                           <Link
@@ -719,7 +719,7 @@ export const DashboardPage = () => {
                 onClick={() => void handleBulkAddToShopping()}
                 disabled={isBulkAdding}
               >
-                <ShoppingCart className="mr-1.5 h-4 w-4" />
+                <ShoppingCart className="mr-2 h-4 w-4" />
                 {isBulkAdding
                   ? tc("loading")
                   : t("bulkAddToShopping", { count: urgentItems.length })}
@@ -738,7 +738,7 @@ export const DashboardPage = () => {
 
         {/* Low-stock alert banner */}
         {lowStockItems.length > 0 && (
-          <div className="space-y-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-orange-800">
+          <div className="space-y-2 rounded-lg border border-orange-300 bg-orange-50 p-4 text-orange-800">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 shrink-0" />
               <p className="text-sm font-medium">
@@ -749,7 +749,7 @@ export const DashboardPage = () => {
               <summary className="cursor-pointer text-sm font-medium">
                 {t("lowStockBannerDetails")}
               </summary>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+              <ul className="mt-2 list-inside list-disc space-y-2 text-sm">
                 {lowStockItems.map((item) => (
                   <li key={item.id}>
                     <Link
@@ -768,7 +768,7 @@ export const DashboardPage = () => {
 
         {/* Consumption-pace forecast banner (#392) */}
         {forecastAlertItems.length > 0 && (
-          <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
+          <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-4 text-blue-800">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 shrink-0" />
               <p className="text-sm font-medium">
@@ -779,7 +779,7 @@ export const DashboardPage = () => {
               <summary className="cursor-pointer text-sm font-medium">
                 {t("forecastAlertBannerDetails")}
               </summary>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+              <ul className="mt-2 list-inside list-disc space-y-2 text-sm">
                 {forecastAlertItems.map(({ forecastAlert, item }) => (
                   <li key={item.id}>
                     <Link
@@ -801,7 +801,7 @@ export const DashboardPage = () => {
 
         {/* 棚卸し（在庫確認）未確認アラート (#375) */}
         {unverifiedItems.length > 0 && (
-          <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
+          <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-4 text-blue-800">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 shrink-0" />
               <p className="text-sm font-medium">
@@ -812,7 +812,7 @@ export const DashboardPage = () => {
               <summary className="cursor-pointer text-sm font-medium">
                 {t("stocktakeBannerDetails")}
               </summary>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+              <ul className="mt-2 list-inside list-disc space-y-2 text-sm">
                 {unverifiedItems.map((item) => (
                   <li key={item.id}>
                     <Link
@@ -831,7 +831,7 @@ export const DashboardPage = () => {
 
         {/* JSONエクスポート（唯一のバックアップ導線）の未実行リマインダー (#815) */}
         {showBackupExportReminder && (
-          <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-blue-800">
+          <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-4 text-blue-800">
             <div className="flex items-center gap-2">
               <Download className="h-5 w-5 shrink-0" />
               <p className="text-sm font-medium">{t("backupExportReminderBanner")}</p>
@@ -885,7 +885,7 @@ export const DashboardPage = () => {
             <button
               onClick={() => setExpiryFilter("")}
               aria-pressed={!expiryFilter || expiryFilter === "all"}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
                 !expiryFilter || expiryFilter === "all"
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-background text-foreground hover:bg-muted"
@@ -897,7 +897,7 @@ export const DashboardPage = () => {
               <button
                 onClick={() => setExpiryFilter(expiryFilter === "expired" ? "" : "expired")}
                 aria-pressed={expiryFilter === "expired"}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
                   expiryFilter === "expired"
                     ? "border-destructive bg-destructive text-destructive-foreground"
                     : "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
@@ -912,7 +912,7 @@ export const DashboardPage = () => {
                   setExpiryFilter(expiryFilter === "expiring-soon" ? "" : "expiring-soon")
                 }
                 aria-pressed={expiryFilter === "expiring-soon"}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
                   expiryFilter === "expiring-soon"
                     ? "border-yellow-600 bg-yellow-500 text-white"
                     : "border-yellow-400/50 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
@@ -926,12 +926,12 @@ export const DashboardPage = () => {
 
         {/* Filter panel */}
         {showFilters && (
-          <div className="space-y-3 rounded-lg border p-3">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="space-y-4 rounded-lg border p-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div>
                 <label
                   htmlFor={categoryFilterId}
-                  className="mb-1 block text-xs text-muted-foreground"
+                  className="mb-2 block text-xs text-muted-foreground"
                 >
                   {t("filterByCategory")}
                 </label>
@@ -951,7 +951,7 @@ export const DashboardPage = () => {
               <div>
                 <label
                   htmlFor={locationFilterId}
-                  className="mb-1 block text-xs text-muted-foreground"
+                  className="mb-2 block text-xs text-muted-foreground"
                 >
                   {t("filterByLocation")}
                 </label>
@@ -974,7 +974,7 @@ export const DashboardPage = () => {
                 <div>
                   <label
                     htmlFor={expiryFilterId}
-                    className="mb-1 block text-xs text-muted-foreground"
+                    className="mb-2 block text-xs text-muted-foreground"
                   >
                     {t("filterByExpiry")}
                   </label>
@@ -992,7 +992,7 @@ export const DashboardPage = () => {
                 </div>
               )}
               <div>
-                <label htmlFor={sortFilterId} className="mb-1 block text-xs text-muted-foreground">
+                <label htmlFor={sortFilterId} className="mb-2 block text-xs text-muted-foreground">
                   {tc("sort")}
                 </label>
                 <Select
@@ -1040,7 +1040,7 @@ export const DashboardPage = () => {
             {allItems.length === 0 ? (
               <>
                 <p className="text-lg font-medium">{t("noItems")}</p>
-                <p className="mt-1 text-sm">{t("firstAddHint")}</p>
+                <p className="mt-2 text-sm">{t("firstAddHint")}</p>
                 <Link to="/items/new" className="mt-4">
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
@@ -1055,7 +1055,7 @@ export const DashboardPage = () => {
         ) : (
           <>
             {viewMode === "grid" ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {visibleItems.map((item) => (
                   <ItemCard
                     key={item.id}

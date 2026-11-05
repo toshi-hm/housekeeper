@@ -48,7 +48,7 @@ export const ReceiptLineItemRow = ({
 
   return (
     <div
-      className={`space-y-2 rounded-lg border p-3 ${draft.included ? "" : "border-dashed text-muted-foreground"} ${
+      className={`space-y-2 rounded-lg border p-4 ${draft.included ? "" : "border-dashed text-muted-foreground"} ${
         draft.confidence === "low" ? "border-orange-300 bg-orange-50/50 dark:bg-orange-950/10" : ""
       }`}
     >
@@ -94,7 +94,7 @@ export const ReceiptLineItemRow = ({
       </div>
 
       {draft.confidence === "low" && (
-        <p className="flex items-center gap-1 text-xs text-orange-700 dark:text-orange-400">
+        <p className="flex items-center gap-2 text-xs text-orange-700 dark:text-orange-400">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           {t("lowConfidenceHint")}
         </p>
@@ -107,7 +107,7 @@ export const ReceiptLineItemRow = ({
       )}
 
       <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
+        <div className="space-y-2">
           <label htmlFor={quantityFieldId} className="text-xs text-muted-foreground">
             {t("quantity")}
           </label>
@@ -130,7 +130,7 @@ export const ReceiptLineItemRow = ({
             disabled={isBusy}
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2">
           <label htmlFor={unitPriceFieldId} className="text-xs text-muted-foreground">
             {t("unitPrice")}
           </label>
@@ -149,7 +149,7 @@ export const ReceiptLineItemRow = ({
             disabled={isBusy}
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2">
           <label htmlFor={categoryFieldId} className="text-xs text-muted-foreground">
             {ti("category")}
           </label>
@@ -167,7 +167,7 @@ export const ReceiptLineItemRow = ({
             ))}
           </Select>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2">
           <label htmlFor={storageLocationFieldId} className="text-xs text-muted-foreground">
             {ti("storageLocation")}
           </label>
@@ -185,7 +185,7 @@ export const ReceiptLineItemRow = ({
             ))}
           </Select>
         </div>
-        <div className="col-span-2 space-y-1">
+        <div className="col-span-2 space-y-2">
           <label htmlFor={expiryDateFieldId} className="text-xs text-muted-foreground">
             {ti("expiryDate")}
           </label>

@@ -154,7 +154,7 @@ export const DataExportPanel = () => {
   return (
     <div className="space-y-4">
       {/* Items export */}
-      <div className="space-y-3 rounded-lg border p-4">
+      <div className="space-y-4 rounded-lg border p-4">
         <div>
           <p className="font-medium">{t("exportItems")}</p>
           <p className="text-xs text-muted-foreground">{t("exportItemsDescription")}</p>
@@ -167,7 +167,7 @@ export const DataExportPanel = () => {
             disabled={itemsPending}
             onClick={handleExportItemsCsv}
           >
-            <Download className="mr-1.5 h-4 w-4" />
+            <Download className="mr-2 h-4 w-4" />
             {t("exportDownloadCsv")}
           </Button>
           <Button
@@ -177,7 +177,7 @@ export const DataExportPanel = () => {
             disabled={itemsPending}
             onClick={handleExportItemsJson}
           >
-            <Download className="mr-1.5 h-4 w-4" />
+            <Download className="mr-2 h-4 w-4" />
             {t("exportDownloadJson")}
           </Button>
           <Button
@@ -187,20 +187,20 @@ export const DataExportPanel = () => {
             disabled={itemsPending}
             onClick={handleExportItemsIcs}
           >
-            <Download className="mr-1.5 h-4 w-4" />
+            <Download className="mr-2 h-4 w-4" />
             {t("exportDownloadIcs")}
           </Button>
         </div>
       </div>
 
       {/* Consumption / purchase history export */}
-      <div className="space-y-3 rounded-lg border p-4">
+      <div className="space-y-4 rounded-lg border p-4">
         <div>
           <p className="font-medium">{t("exportHistory")}</p>
           <p className="text-xs text-muted-foreground">{t("exportHistoryDescription")}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
             <Label htmlFor="export-history-period">{t("exportPeriod")}</Label>
             <Select
               id="export-history-period"
@@ -212,7 +212,7 @@ export const DataExportPanel = () => {
               <option value="all">{t("exportPeriodAllTime")}</option>
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label htmlFor="export-history-target">{t("exportTarget")}</Label>
             <Select
               id="export-history-target"
@@ -232,7 +232,7 @@ export const DataExportPanel = () => {
           disabled={historyPending}
           onClick={handleExportHistoryCsv}
         >
-          <Download className="mr-1.5 h-4 w-4" />
+          <Download className="mr-2 h-4 w-4" />
           {t("exportDownloadCsv")}
         </Button>
       </div>

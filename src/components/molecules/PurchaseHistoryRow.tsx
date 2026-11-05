@@ -24,7 +24,7 @@ export const PurchaseHistoryRow = ({
   const { t } = useTranslation("shopping");
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border p-3">
+    <div className="flex items-center gap-4 rounded-lg border p-4">
       <div className="min-w-0 flex-1">
         <p className="font-medium">{name}</p>
         <p className="text-sm text-muted-foreground">
@@ -40,7 +40,7 @@ export const PurchaseHistoryRow = ({
           onClick={() => onRestock(id)}
           disabled={isRestocking}
         >
-          <RotateCcw className="mr-1 h-4 w-4" />
+          <RotateCcw className="mr-2 h-4 w-4" />
           {t("restock")}
         </Button>
       )}

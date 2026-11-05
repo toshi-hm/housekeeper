@@ -20,13 +20,13 @@ export const ShoppingModeEstimatedTotal = ({
   const { t, i18n } = useTranslation("shopping");
 
   return (
-    <div className="rounded-lg border bg-muted/40 p-3">
+    <div className="rounded-lg border bg-muted/40 p-4">
       <p className="text-sm text-muted-foreground">{t("shoppingModeEstimatedTotalLabel")}</p>
       <p className="text-xl font-semibold">
         {t("shoppingModeEstimatedTotalValue", { price: total.toLocaleString() })}
       </p>
       {excludedItemNames.length > 0 && (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           {t("shoppingModeEstimatedTotalPartialNote", {
             count: excludedItemNames.length,
             names: new Intl.ListFormat(i18n.language, {

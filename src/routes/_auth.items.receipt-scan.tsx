@@ -69,7 +69,7 @@ export const ReceiptScanPage = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -85,14 +85,14 @@ export const ReceiptScanPage = () => {
       </div>
 
       {step.kind === "idle" && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <ImageUploader onFile={(file) => void handleFile(file)} />
           <p className="text-xs text-muted-foreground">{t("idleHint")}</p>
         </div>
       )}
 
       {step.kind === "scanning" && (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center gap-4 py-16 text-muted-foreground">
           <Spinner className="h-8 w-8" />
           <p>{t("scanning")}</p>
           <Button variant="outline" size="sm" onClick={handleCancelScan}>
@@ -112,7 +112,7 @@ export const ReceiptScanPage = () => {
       )}
 
       {step.kind === "done" && (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
           <p className="text-lg font-medium">{t("doneTitle", { count: step.succeeded })}</p>
           <Button onClick={() => void navigate({ to: "/" })}>{t("backToList")}</Button>
         </div>

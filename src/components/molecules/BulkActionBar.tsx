@@ -37,7 +37,7 @@ export const BulkActionBar = ({
             disabled={disabled || isEmpty}
             onClick={onChangeLocation}
           >
-            <MapPin className="mr-1 h-4 w-4" />
+            <MapPin className="mr-2 h-4 w-4" />
             {t("bulkChangeLocation")}
           </Button>
           <Button
@@ -46,11 +46,11 @@ export const BulkActionBar = ({
             disabled={disabled || isEmpty}
             onClick={onChangeCategory}
           >
-            <Tag className="mr-1 h-4 w-4" />
+            <Tag className="mr-2 h-4 w-4" />
             {t("bulkChangeCategory")}
           </Button>
           <Button size="sm" variant="outline" disabled={disabled || isEmpty} onClick={onConsume}>
-            <Minus className="mr-1 h-4 w-4" />
+            <Minus className="mr-2 h-4 w-4" />
             {t("bulkConsume")}
           </Button>
           <Button
@@ -60,7 +60,7 @@ export const BulkActionBar = ({
             disabled={disabled || isEmpty}
             onClick={onDelete}
           >
-            <Trash2 className="mr-1 h-4 w-4" />
+            <Trash2 className="mr-2 h-4 w-4" />
             {t("bulkDelete")}
           </Button>
         </div>

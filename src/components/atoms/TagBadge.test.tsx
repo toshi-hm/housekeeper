@@ -30,6 +30,6 @@ describe("TagBadge (#806)", () => {
     const button = getByRole("button");
     expect(button.className).toContain("after:-inset-2");
     expect(button.className).toContain("after:absolute");
-    expect(button.className).toContain("p-1");
+    expect(button.className).toContain("p-2");
   });
 });

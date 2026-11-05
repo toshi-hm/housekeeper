@@ -33,14 +33,14 @@ export const DashboardNotificationCenter = ({
     <div className="rounded-lg border">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 p-3 text-left"
+        className="flex w-full items-center justify-between gap-2 p-4 text-left"
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
         aria-controls={contentId}
       >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium">
           {chips.map((chip) => (
-            <span key={chip.key} className="inline-flex items-center gap-1">
+            <span key={chip.key} className="inline-flex items-center gap-2">
               {chip.icon}
               {chip.text}
             </span>
@@ -53,7 +53,7 @@ export const DashboardNotificationCenter = ({
         )}
       </button>
       {expanded && (
-        <div id={contentId} className="space-y-3 border-t p-3">
+        <div id={contentId} className="space-y-4 border-t p-4">
           {children}
         </div>
       )}

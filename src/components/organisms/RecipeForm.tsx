@@ -61,8 +61,8 @@ export const RecipeForm = ({
   };
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
-      <div className="space-y-1">
+    <div className="space-y-4 rounded-lg border p-4">
+      <div className="space-y-2">
         <Label htmlFor="recipe-name">{t("recipeName")}</Label>
         <Input
           id="recipe-name"
@@ -85,7 +85,7 @@ export const RecipeForm = ({
               const itemErrorId = `recipe-item-error-${index}`;
               const amountErrorId = `recipe-amount-error-${index}`;
               return (
-                <div key={index} className="space-y-1">
+                <div key={index} className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Select
                       value={row.item_id}
@@ -146,7 +146,7 @@ export const RecipeForm = ({
               variant="ghost"
               onClick={() => setRows((prev) => [...prev, emptyRow(firstItemId)])}
             >
-              <Plus className="mr-1 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" />
               {t("recipeAddRow")}
             </Button>
           </>

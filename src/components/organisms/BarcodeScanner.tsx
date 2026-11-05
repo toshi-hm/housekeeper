@@ -233,7 +233,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
               <div>
                 <p className="text-lg font-medium">{t("scannerError")}</p>
                 <p className="mt-2 text-sm text-white/70">{error}</p>
-                <div className="mt-4 flex justify-center gap-3">
+                <div className="mt-4 flex justify-center gap-4">
                   <Button onClick={handleRetry} variant="outline">
                     {t("scannerRetry")}
                   </Button>
@@ -265,7 +265,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
                   <div>
                     <p className="text-lg font-medium">{t("scannerTimeout")}</p>
                     <p className="mt-2 text-sm text-white/70">{t("scannerTimeoutHint")}</p>
-                    <div className="mt-4 flex flex-wrap justify-center gap-3">
+                    <div className="mt-4 flex flex-wrap justify-center gap-4">
                       <Button onClick={handleRetry} variant="outline">
                         {t("scannerRetry")}
                       </Button>

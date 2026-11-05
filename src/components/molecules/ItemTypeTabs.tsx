@@ -30,7 +30,7 @@ export const ItemTypeTabs = ({ value, counts, onChange }: ItemTypeTabsProps) => 
 
   return (
     <div
-      className="flex rounded-lg border p-1"
+      className="flex rounded-lg border p-2"
       role="tablist"
       aria-label={t("itemTypeTabsLabel")}
       {...tablistProps}
@@ -43,7 +43,7 @@ export const ItemTypeTabs = ({ value, counts, onChange }: ItemTypeTabsProps) => 
           aria-selected={value === tab}
           aria-controls={itemTypeTabPanelId(tab)}
           {...getTabProps(tab)}
-          className={`min-h-11 flex-1 rounded py-1.5 text-sm font-medium transition-colors ${
+          className={`min-h-11 flex-1 rounded py-2 text-sm font-medium transition-colors ${
             value === tab
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground"

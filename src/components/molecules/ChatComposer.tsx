@@ -54,7 +54,7 @@ export const ChatComposer = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-1 border-t bg-background p-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-2 border-t bg-background p-4">
       <div className="flex items-end gap-2">
         <Textarea
           ref={ref}
