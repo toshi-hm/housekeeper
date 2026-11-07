@@ -119,6 +119,9 @@ export const usePullToRefresh = ({
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchCancel);
+      // disabled 切替・アンマウントでリスナーが外れると touchend/touchcancel を受けられず、
+      // 引っ張り量が残り続けるため、ここで必ず元に戻す（更新中の表示は finally 側が戻す）
+      if (!refreshingRef.current) setPull(0);
     };
   }, [disabled]);
 
