@@ -49,6 +49,12 @@ jobs:
         continue-on-error: true
         run: bun run scripts/diffCoverage.ts coverage/lcov.info "origin/${{ github.base_ref }}"
 
+      # #1295: PR で新規追加された hook / lib / molecules / organisms に単体テストが無ければ警告（非ブロッキング）
+      - name: Untested new files (non-blocking)
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        run: bun run scripts/untestedFiles.ts --changed "origin/${{ github.base_ref }}"
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
         with:
