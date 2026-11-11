@@ -30,6 +30,8 @@ import { clearItemFormDraft } from "@/lib/itemFormDraft";
 import { OfflineError } from "@/lib/requireOnline";
 import { useToast } from "@/lib/toast-context";
 import {
+  getLotRemainingAmount,
+  getQuickConsumeAmount,
   isAlreadyInStock,
   type Item,
   type ItemFormValues,
@@ -173,7 +175,10 @@ export const NewItemPage = ({ cloneFrom, prefillName }: NewItemPageProps) => {
         const result = await consumeLot.mutateAsync({
           lot,
           item,
-          deltaAmount: item.content_amount,
+          deltaAmount: getQuickConsumeAmount(
+            getLotRemainingAmount(lot.units, item.content_amount, lot.opened_remaining ?? null),
+            item.content_amount,
+          ),
         });
         undo = {
           kind: "lot",
@@ -190,6 +195,7 @@ export const NewItemPage = ({ cloneFrom, prefillName }: NewItemPageProps) => {
         const result = await consumeItemDirect.mutateAsync({
           item,
           deltaAmount: item.content_amount,
+          clampToLotRemaining: true,
         });
         undo = result._undo;
       }

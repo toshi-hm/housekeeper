@@ -598,6 +598,31 @@ describe("NewItemPage - quick consume sheet on barcode match (#924)", () => {
     expect(consumeItemMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("残量が1パック未満の開封済みロットでは、残量全てを消費量にして使い切る (#1300)", async () => {
+    findActiveItemSpy = spyOn(useItemsModule, "findActiveItemByBarcode").mockResolvedValue(
+      matchedItem,
+    );
+    mockLots([
+      {
+        id: "lot-opened",
+        item_id: "item-existing",
+        units: 1,
+        opened_remaining: matchedItem.content_amount / 2,
+        expiry_date: null,
+        created_at: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+
+    const { getByTestId, findByRole } = render(<NewItemPage />, { wrapper: WrapperWithI18n });
+    fireEvent.click(getByTestId("scan-barcode"));
+    const dialog = await findByRole("dialog");
+    fireEvent.click(within(dialog).getByText(/1点使う|Use 1 \(/));
+
+    await waitFor(() => expect(consumeLotMutateAsync).toHaveBeenCalledTimes(1));
+    const call = consumeLotMutateAsync.mock.calls[0]?.[0] as { deltaAmount: number };
+    expect(call.deltaAmount).toBe(matchedItem.content_amount / 2);
+  });
+
   it("falls back to consumeItem directly when the matched item has no lots yet", async () => {
     findActiveItemSpy = spyOn(useItemsModule, "findActiveItemByBarcode").mockResolvedValue(
       matchedItem,

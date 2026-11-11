@@ -224,6 +224,12 @@ export interface ConsumeParams {
   deltaAmount: number;
   /** Optional free-text memo describing why/how the stock was consumed (#418). */
   note?: string | null;
+  /**
+   * #1300: true のとき、消費量を「消費対象ロットの残量」を上限に切り詰める。
+   * 「1点使う」系のクイック消費で、1パック未満しか残っていないロットを
+   * 在庫不足エラーにせず使い切るために使う。
+   */
+  clampToLotRemaining?: boolean;
 }
 
 export interface ConsumeLotParams {
@@ -513,6 +519,13 @@ export const pickFefoConsumableLot = (
     ) ?? null
   );
 };
+
+/**
+ * #1300: 「1点使う」系クイック消費の消費量。基本は1パック（content_amount）だが、
+ * 対象ロットの残量がそれ未満ならその残量全てを使い切る量にする。
+ */
+export const getQuickConsumeAmount = (lotRemaining: number, contentAmount: number): number =>
+  Math.min(contentAmount, lotRemaining);
 
 /** カードや一覧で使う「残量」の合計値を文字列として返す。 */
 export const formatRemaining = (

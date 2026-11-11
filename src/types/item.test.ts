@@ -11,6 +11,7 @@ import {
   getExpirySeverity,
   getExpiryStatus,
   getLotRemainingAmount,
+  getQuickConsumeAmount,
   isAlreadyInStock,
   isBackupExportOverdue,
   isItemUnverified,
@@ -843,5 +844,16 @@ describe("isLotDepleted (#1144)", () => {
   test("units が1以上、または開封残量があれば使い切りではない", () => {
     expect(isLotDepleted(1, null)).toBe(false);
     expect(isLotDepleted(0, 0.5)).toBe(false);
+  });
+});
+
+describe("getQuickConsumeAmount (#1300)", () => {
+  test("残量が1パック以上なら1パック分（content_amount）を返す", () => {
+    expect(getQuickConsumeAmount(2500, 1000)).toBe(1000);
+    expect(getQuickConsumeAmount(1000, 1000)).toBe(1000);
+  });
+
+  test("残量が1パック未満ならその残量全てを返す（使い切り）", () => {
+    expect(getQuickConsumeAmount(200, 1000)).toBe(200);
   });
 });

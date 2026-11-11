@@ -6,7 +6,14 @@ import { maybeAutoReorder } from "@/lib/autoReorder";
 import { ConcurrentUpdateError, OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast-context";
-import { computeConsumption, type ConsumeParams, isLotDepleted, type Item } from "@/types/item";
+import {
+  computeConsumption,
+  type ConsumeParams,
+  getLotRemainingAmount,
+  getQuickConsumeAmount,
+  isLotDepleted,
+  type Item,
+} from "@/types/item";
 
 /**
  * #752: mirrors the item_lots_set_opened_at DB trigger for the "direct"
@@ -69,8 +76,9 @@ interface ConsumeItemResult extends Item {
 /** Consume from a single-lot item (backward compat path). */
 export const consumeItem = async ({
   item,
-  deltaAmount,
+  deltaAmount: requestedDelta,
   note,
+  clampToLotRemaining,
 }: ConsumeParams): Promise<ConsumeItemResult> => {
   requireOnline();
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -96,6 +104,18 @@ export const consumeItem = async ({
     lots && lots.length > 0
       ? (lots.find((l) => !isLotDepleted(l.units, l.opened_remaining ?? null)) ?? lots[0])
       : undefined;
+  // #1300: 「1点使う」では、選ばれたロットの残量が1パック未満でも在庫不足にせず使い切る。
+  const deltaAmount =
+    clampToLotRemaining && targetLot
+      ? getQuickConsumeAmount(
+          getLotRemainingAmount(
+            targetLot.units,
+            item.content_amount,
+            targetLot.opened_remaining ?? null,
+          ),
+          requestedDelta,
+        )
+      : requestedDelta;
   if (targetLot) {
     const lotResult = await consumeLotFn({ lot: targetLot, item, deltaAmount, note });
     logInsertFailed = !!lotResult._logInsertFailed;
