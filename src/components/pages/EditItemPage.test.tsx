@@ -413,3 +413,65 @@ describe("EditItemPage - defaultValues に種別と期限種別を引き継ぐ",
     expect(props.defaultValues.expiry_type).toBeNull();
   });
 });
+
+// #1299: 複数ロット編集時、選択ロットの null（未開封・期限なし）を集計値
+// (items.opened_remaining / expiry_date) で埋めてはならない。
+describe("EditItemPage - 選択ロットの defaultValues (#1299)", () => {
+  it("選択ロットの opened_remaining / 日付が null のとき、item の集計値へフォールバックしない", () => {
+    const aggregateItem: Item = {
+      ...baseItem,
+      units: 3,
+      opened_remaining: 200,
+      purchase_date: "2026-05-01",
+      expiry_date: "2026-12-01",
+    };
+    const lotA: ItemLot = { ...baseLot, id: "lot-a", units: 1 };
+    const lotB: ItemLot = {
+      ...baseLot,
+      id: "lot-b",
+      units: 2,
+      opened_remaining: 200,
+      purchase_date: "2026-05-01",
+      expiry_date: "2026-12-01",
+    };
+    const spies = [
+      spyOn(useItemsModule, "useItem").mockReturnValue({
+        data: aggregateItem,
+        isLoading: false,
+      } as ReturnType<typeof useItemsModule.useItem>),
+      spyOn(useItemLotsModule, "useItemLots").mockReturnValue({
+        data: [lotA, lotB],
+      } as unknown as ReturnType<typeof useItemLotsModule.useItemLots>),
+      spyOn(useTagsModule, "useTags").mockReturnValue({
+        data: [],
+      } as unknown as ReturnType<typeof useTagsModule.useTags>),
+      spyOn(useTagsModule, "useItemTagIds").mockReturnValue({
+        data: [],
+        isSuccess: true,
+      } as unknown as ReturnType<typeof useTagsModule.useItemTagIds>),
+      spyOn(useItemLotsModule, "useUpdateLot").mockReturnValue({
+        mutateAsync: mock(async () => lotA),
+      } as unknown as ReturnType<typeof useItemLotsModule.useUpdateLot>),
+      spyOn(useItemLotsModule, "useCreateLot").mockReturnValue({
+        mutateAsync: mock(async () => lotA),
+      } as unknown as ReturnType<typeof useItemLotsModule.useCreateLot>),
+      spyOn(useItemsModule, "useUpdateItem").mockReturnValue({
+        mutateAsync: mock(async () => aggregateItem),
+      } as unknown as ReturnType<typeof useItemsModule.useUpdateItem>),
+    ];
+    let captured: Partial<ItemFormValues> | undefined;
+    itemFormSpy.mockImplementation(((props: { defaultValues?: Partial<ItemFormValues> }) => {
+      captured = props.defaultValues;
+      return <div />;
+    }) as unknown as typeof ItemFormModule.ItemForm);
+
+    render(<EditItemPage itemId="item-1" />, { wrapper: Wrapper });
+
+    // 先頭ロット（lot-a）は未開封・日付なし。ロットBの集計値が混入しないこと。
+    expect(captured?.units).toBe(1);
+    expect(captured?.opened_remaining).toBeNull();
+    expect(captured?.purchase_date).toBeUndefined();
+    expect(captured?.expiry_date).toBeUndefined();
+    for (const spy of spies) spy.mockRestore();
+  });
+});
