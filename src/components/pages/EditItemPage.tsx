@@ -282,11 +282,16 @@ export const EditItemPage = ({ itemId }: EditItemPageProps) => {
           units: selectedLot?.units ?? item.units,
           content_amount: item.content_amount,
           content_unit: item.content_unit,
-          opened_remaining: selectedLot?.opened_remaining ?? item.opened_remaining,
+          // #1299: ロット選択中は null も含めてそのロットの値を使う（集計値へ落とさない）
+          opened_remaining: selectedLot ? selectedLot.opened_remaining : item.opened_remaining,
           unit_price: selectedLot?.unit_price ?? null,
           store_name: selectedLot?.store_name ?? null,
-          purchase_date: selectedLot?.purchase_date ?? item.purchase_date ?? undefined,
-          expiry_date: selectedLot?.expiry_date ?? item.expiry_date ?? undefined,
+          purchase_date: selectedLot
+            ? (selectedLot.purchase_date ?? undefined)
+            : (item.purchase_date ?? undefined),
+          expiry_date: selectedLot
+            ? (selectedLot.expiry_date ?? undefined)
+            : (item.expiry_date ?? undefined),
           expiry_type: item.expiry_type ?? null,
           notes: item.notes ?? undefined,
           image_path: item.image_path ?? undefined,
