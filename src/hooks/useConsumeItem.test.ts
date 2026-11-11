@@ -153,6 +153,53 @@ describe("consumeItem", () => {
     expect(result._logInsertFailed).toBe(false);
   });
 
+  test("clampToLotRemaining 指定時、残量が1パック未満の開封済みロットは在庫不足にならず使い切る (#1300)", async () => {
+    const openedLot = {
+      id: "lot-opened",
+      user_id: "user-1",
+      item_id: "item-1",
+      units: 1,
+      opened_remaining: 200,
+      purchase_date: null,
+      expiry_date: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    responseQueues.item_lots = [
+      { data: [openedLot], error: null },
+      { data: { ...openedLot, units: 0, opened_remaining: null }, error: null },
+      { data: [], error: null },
+    ];
+    responseQueues.items = [
+      { data: { content_amount: 1000 }, error: null },
+      { data: makeItem({ units: 0, content_amount: 1000 }), error: null },
+    ];
+    responseQueues.consumption_logs = [{ data: null, error: null }];
+
+    const item = makeItem({ units: 1, content_amount: 1000, opened_remaining: 200 });
+    await consumeItem({ item, deltaAmount: 1000, clampToLotRemaining: true });
+
+    const logInsert = callLog.find((c) => c.table === "consumption_logs" && c.method === "insert");
+    expect(logInsert?.args[0]).toMatchObject({ units_before: 1, units_after: 0 });
+  });
+
+  test("clampToLotRemaining 未指定では残量超過は従来どおり在庫不足エラーになる (#1300)", async () => {
+    const openedLot = {
+      id: "lot-opened",
+      user_id: "user-1",
+      item_id: "item-1",
+      units: 1,
+      opened_remaining: 200,
+      purchase_date: null,
+      expiry_date: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    responseQueues.item_lots = [{ data: [openedLot], error: null }];
+    const item = makeItem({ units: 1, content_amount: 1000, opened_remaining: 200 });
+    await expect(consumeItem({ item, deltaAmount: 1000 })).rejects.toThrow("insufficientStock");
+  });
+
   test("先頭ロットが使い切り済みなら、残量のある次の期限のロットを消費する (#1144)", async () => {
     const baseLot = {
       user_id: "user-1",

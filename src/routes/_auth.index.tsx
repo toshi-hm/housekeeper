@@ -320,7 +320,11 @@ export const DashboardPage = () => {
     if (quickConsumingId) return;
     setQuickConsumingId(item.id);
     try {
-      const result = await consumeItem.mutateAsync({ item, deltaAmount: item.content_amount });
+      const result = await consumeItem.mutateAsync({
+        item,
+        deltaAmount: item.content_amount,
+        clampToLotRemaining: true,
+      });
       // Success toast (with an Undo action) is shown by quickConsumeUndo.start
       // instead of a plain toast() call here, so a mistaken tap can be
       // reversed within the undo window (#478).
