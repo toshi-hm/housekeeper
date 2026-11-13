@@ -28,6 +28,40 @@ type EditorState = { mode: "closed" } | { mode: "new" } | { mode: "edit"; id: st
 
 const emptyRow = (): TemplateItemInput => ({ name: "", desired_units: 1 });
 
+interface TemplateUnitsInputProps {
+  value: number;
+  onCommit: (value: number) => void;
+  ariaLabel: string;
+}
+
+/**
+ * 数量入力。入力中は空欄を許容し（即 1 に戻さない）、blur 時に 1 以上の整数へ確定する。
+ * `desired_units` は DB の int 列のため、小数は四捨五入して保存エラーを防ぐ。
+ */
+const TemplateUnitsInput = ({ value, onCommit, ariaLabel }: TemplateUnitsInputProps) => {
+  const [text, setText] = useState<string | null>(null);
+  return (
+    <Input
+      type="number"
+      min={1}
+      step={1}
+      value={text ?? value}
+      onChange={(e) => {
+        setText(e.target.value);
+        const n = Math.round(Number(e.target.value));
+        if (e.target.value !== "" && n >= 1) onCommit(n);
+      }}
+      onBlur={() => {
+        if (text === null) return;
+        onCommit(Math.max(1, Math.round(Number(text)) || 1));
+        setText(null);
+      }}
+      className="w-16"
+      aria-label={ariaLabel}
+    />
+  );
+};
+
 export const ShoppingTemplatesPanel = ({
   templates,
   onApply,
@@ -174,15 +208,10 @@ export const ShoppingTemplatesPanel = ({
                   placeholder={t("itemNamePlaceholder")}
                   className="flex-1"
                 />
-                <Input
-                  type="number"
-                  min={1}
+                <TemplateUnitsInput
                   value={row.desired_units}
-                  onChange={(e) =>
-                    updateRow(index, { desired_units: Math.max(1, Number(e.target.value) || 1) })
-                  }
-                  className="w-16"
-                  aria-label={t("desiredUnits")}
+                  onCommit={(desired_units) => updateRow(index, { desired_units })}
+                  ariaLabel={t("desiredUnits")}
                 />
                 <Button
                   size="icon"
