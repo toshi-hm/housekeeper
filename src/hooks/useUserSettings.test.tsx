@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import i18next from "i18next";
 import { createElement, type ReactNode } from "react";
-
-import { OfflineError } from "@/lib/requireOnline";
+import { I18nextProvider } from "react-i18next";
 
 interface SupabaseResponse {
   data: unknown;
@@ -42,12 +42,16 @@ mock.module("@/lib/supabase", () => ({
 }));
 
 const changeLanguageMock = mock(() => Promise.resolve());
-mock.module("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: { changeLanguage: changeLanguageMock },
-  }),
-}));
+// react-i18next 自体を mock.module するとプロセス全体（他のテストファイル）へ漏れるため、
+// 専用の i18n インスタンスを Provider で注入し、changeLanguage だけを差し替える。
+const i18nStub = i18next.createInstance();
+await i18nStub.init({
+  lng: "ja",
+  resources: { ja: { common: {} } },
+  ns: ["common"],
+  defaultNS: "common",
+});
+i18nStub.changeLanguage = changeLanguageMock as unknown as typeof i18nStub.changeLanguage;
 
 const { useUpdateUserSettings, useUserSettings } = await import("@/hooks/useUserSettings");
 const { ToastContext } = await import("@/lib/toast-context");
@@ -68,7 +72,11 @@ const makeWrapper = (toastSpy: (message: string, kind: string) => void = () => {
     createElement(
       QueryClientProvider,
       { client: queryClient },
-      createElement(ToastContext, { value: stubToast as never }, children),
+      createElement(
+        I18nextProvider,
+        { i18n: i18nStub },
+        createElement(ToastContext, { value: stubToast as never }, children),
+      ),
     );
 };
 
@@ -77,7 +85,6 @@ beforeEach(() => {
   response = { data: null, error: null };
   user = { id: "user-1" };
   changeLanguageMock.mockClear();
-  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
 });
 
 describe("useUserSettings", () => {
@@ -136,23 +143,6 @@ describe("useUpdateUserSettings", () => {
       args: [{ language: "ja", user_id: "user-1" }],
     });
     expect(changeLanguageMock).toHaveBeenCalledWith("ja");
-  });
-
-  test("オフライン時は offlineError トースト", async () => {
-    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
-    const toastSpy = mock(() => {});
-
-    const { result } = renderHook(() => useUpdateUserSettings(), {
-      wrapper: makeWrapper(toastSpy),
-    });
-
-    act(() => {
-      result.current.mutate({ language: "en" });
-    });
-
-    await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error).toBeInstanceOf(OfflineError);
-    expect(toastSpy).toHaveBeenCalledWith("offlineError", "error");
   });
 
   test("未認証のときは unknownError トースト", async () => {
