@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { fetchAllPages } from "@/lib/supabasePagination";
 import { useToast } from "@/lib/toast-context";
 import {
   type Category,
@@ -178,15 +179,21 @@ export const checkCategoryTypeImpact = async (categoryId: string): Promise<numbe
  *  取得したアイテムの `category_id` をクライアント側で集計する。あくまで
  *  UI上のヒントであり、削除実行時は `checkCategoryUsage`（クリック時の
  *  レースコンディション対策込みの正式チェック）を引き続き使用する。 */
-const fetchCategoryUsageCounts = async (): Promise<Record<string, number>> => {
-  const { data, error } = await supabase
-    .from("items")
-    .select("category_id")
-    .not("category_id", "is", null)
-    .is("deleted_at", null);
-  if (error) throw error;
+export const fetchCategoryUsageCounts = async (): Promise<Record<string, number>> => {
+  // #1312: 1000 行上限で打ち切られないよう、安定ソートでページングする。
+  const rows = await fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("items")
+      .select("category_id")
+      .not("category_id", "is", null)
+      .is("deleted_at", null)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as { category_id: string | null }[];
+  });
   const counts: Record<string, number> = {};
-  for (const row of (data ?? []) as { category_id: string | null }[]) {
+  for (const row of rows) {
     if (!row.category_id) continue;
     counts[row.category_id] = (counts[row.category_id] ?? 0) + 1;
   }
@@ -433,15 +440,21 @@ export const checkLocationUsage = async (id: string): Promise<number> => {
 
 /** 保管場所ごとの使用中アイテム数を一括取得する（#863）。詳細は
  *  `fetchCategoryUsageCounts` のコメントを参照。 */
-const fetchLocationUsageCounts = async (): Promise<Record<string, number>> => {
-  const { data, error } = await supabase
-    .from("items")
-    .select("storage_location_id")
-    .not("storage_location_id", "is", null)
-    .is("deleted_at", null);
-  if (error) throw error;
+export const fetchLocationUsageCounts = async (): Promise<Record<string, number>> => {
+  // #1312: 1000 行上限で打ち切られないよう、安定ソートでページングする。
+  const rows = await fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("items")
+      .select("storage_location_id")
+      .not("storage_location_id", "is", null)
+      .is("deleted_at", null)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as { storage_location_id: string | null }[];
+  });
   const counts: Record<string, number> = {};
-  for (const row of (data ?? []) as { storage_location_id: string | null }[]) {
+  for (const row of rows) {
     if (!row.storage_location_id) continue;
     counts[row.storage_location_id] = (counts[row.storage_location_id] ?? 0) + 1;
   }

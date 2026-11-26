@@ -22,6 +22,8 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
   Object.assign(builder, {
     select: chainMethod("select"),
     eq: chainMethod("eq"),
+    order: chainMethod("order"),
+    range: chainMethod("range"),
     insert: chainMethod("insert"),
     update: chainMethod("update"),
     is: chainMethod("is"),
@@ -120,5 +122,13 @@ describe("fetchTagUsageCounts (#1040)", () => {
   test("エラー時はthrowする", async () => {
     responseQueues.items_to_tags = [{ data: null, error: new Error("boom") }];
     await expect(fetchTagUsageCounts()).rejects.toThrow("boom");
+  });
+
+  test("1000 行を超えても全ページを取得して集計する (#1312)", async () => {
+    responseQueues.items_to_tags = [
+      { data: Array.from({ length: 1000 }, () => ({ tag_id: "tag-1" })), error: null },
+      { data: [{ tag_id: "tag-1" }, { tag_id: "tag-2" }], error: null },
+    ];
+    expect(await fetchTagUsageCounts()).toEqual({ "tag-1": 1001, "tag-2": 1 });
   });
 });
