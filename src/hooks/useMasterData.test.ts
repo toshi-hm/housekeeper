@@ -25,6 +25,10 @@ const makeBuilder = (table: string, response: SupabaseResponse) => {
   Object.assign(builder, {
     select: chainMethod("select"),
     eq: chainMethod("eq"),
+    order: chainMethod("order"),
+    not: chainMethod("not"),
+    is: chainMethod("is"),
+    range: chainMethod("range"),
     insert: chainMethod("insert"),
     update: chainMethod("update"),
     single: () => {
@@ -72,6 +76,8 @@ const {
   deleteCategory,
   deleteStorageLocation,
   reorderCategories,
+  fetchCategoryUsageCounts,
+  fetchLocationUsageCounts,
   DuplicateNameError,
   InvalidNameLengthError,
   CategoryInUseError,
@@ -251,5 +257,37 @@ describe("useDeleteStorageLocation", () => {
     );
     expect(invalidatedKeys).toContainEqual(["floor-plan-storage-location-markers"]);
     expect(invalidatedKeys).toContainEqual(["floor-plan-placements"]);
+  });
+});
+
+describe("使用件数の集計 (#1312)", () => {
+  const rows = (col: string, id: string, n: number) =>
+    Array.from({ length: n }, () => ({ [col]: id }));
+
+  test("カテゴリ: 1000 行を超えても全ページを取得して集計する", async () => {
+    responseQueues.items = [
+      { data: rows("category_id", "c1", 1000), error: null },
+      { data: rows("category_id", "c2", 5), error: null },
+    ];
+    const result = await fetchCategoryUsageCounts();
+    expect(result).toEqual({ c1: 1000, c2: 5 });
+    const ranges = callLog.filter((c) => c.method === "range").map((c) => c.args);
+    expect(ranges).toEqual([
+      [0, 999],
+      [1000, 1999],
+    ]);
+  });
+
+  test("保管場所: 1000 行を超えても全ページを取得して集計する", async () => {
+    responseQueues.items = [
+      { data: rows("storage_location_id", "l1", 1000), error: null },
+      { data: rows("storage_location_id", "l1", 3), error: null },
+    ];
+    expect(await fetchLocationUsageCounts()).toEqual({ l1: 1003 });
+  });
+
+  test("エラー時は throw する", async () => {
+    responseQueues.items = [{ data: null, error: new Error("boom") }];
+    await expect(fetchCategoryUsageCounts()).rejects.toThrow("boom");
   });
 });

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { OfflineError, requireOnline } from "@/lib/requireOnline";
 import { supabase } from "@/lib/supabase";
+import { fetchAllPages } from "@/lib/supabasePagination";
 import { useToast } from "@/lib/toast-context";
 import type { Tag } from "@/types/item";
 
@@ -50,13 +51,20 @@ export const useTags = () =>
  *  行も cascade 対象外でそのまま残るため、`items!inner` で結合し `deleted_at is null`
  *  のものだけを数える。 */
 export const fetchTagUsageCounts = async (): Promise<Record<string, number>> => {
-  const { data, error } = await supabase
-    .from("items_to_tags")
-    .select("tag_id, items!inner(deleted_at)")
-    .is("items.deleted_at", null);
-  if (error) throw error;
+  // #1312: 1000 行上限で打ち切られないよう、主キー順でページングする。
+  const rows = await fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("items_to_tags")
+      .select("tag_id, items!inner(deleted_at)")
+      .is("items.deleted_at", null)
+      .order("item_id", { ascending: true })
+      .order("tag_id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as { tag_id: string }[];
+  });
   const counts: Record<string, number> = {};
-  for (const row of (data ?? []) as { tag_id: string }[]) {
+  for (const row of rows) {
     counts[row.tag_id] = (counts[row.tag_id] ?? 0) + 1;
   }
   return counts;
